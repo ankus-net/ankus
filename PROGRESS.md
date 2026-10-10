@@ -141,8 +141,11 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   On Linux x64 the derived catalogs for 13.23 through 19 beta 4 differ from the
   pinned ones only by configuration (assertions, ICU, NLS, liburing, configure
   options, glibc); against a 19 beta 4 build configured like pgrx's, only
-  `_IO_FILE`, the default port and the version string differ. The build still
-  uses the pinned catalogs; switching it is next.
+  `_IO_FILE`, the default port and the version string differ. Extension
+  builds now use these catalogs: `binding-sources` derives them with the
+  build's own Clang options and libclang, caches them by the preprocessed
+  manifest, toolchain and build tool, and binds the generated declarations to
+  their hash. The pinned catalogs remain the drift reference.
 - The new weekly macOS cells found test assumptions that only held for
   packaged servers: PostgreSQL 13's memory fallback relied on the implicit
   library suffix, which is `.so` on macOS before 16; `pg_popcount32` is a
@@ -276,9 +279,8 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   can inspect an error and continue. Projects that enable implicit usings get
   `using Ankus` from the SDK. The `dotnet new` templates accept
   `--extension-name`, matching `ankus new`. The numeric guide notes pgrx's
-  `XX000`. Still open from the audit: binding catalogs still taken from pgrx's
-  generated bindings (header-derived catalogs now match them; the build switch
-  remains), and Linux ARM64, which no runner covers yet.
+  `XX000`. Still open from the audit: Linux ARM64, which no runner covers yet.
+  Binding catalogs are now derived from the selected headers.
 - **2b841a3** passes the complete Linux x64 suite on PostgreSQL 18.6 with run-as
   (**14,442** total; **14,391** passed; 51 skips; zero failures; **41m03s**). Its
   Windows x64 suites on PostgreSQL 17.11 and 13.23, run concurrently at package

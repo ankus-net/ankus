@@ -11,11 +11,17 @@ internal static class NativeBindingCollectionCommand
     /// <summary>
     /// Measures complete declaration identities using Clang independently of the native layout compiler.
     /// </summary>
-    internal static async Task<NativeBindingCollection> RunAsync(NativeBindingCatalog catalog, string[] arguments, CancellationToken cancellationToken)
+    internal static Task<NativeBindingCollection> RunAsync(NativeBindingCatalog catalog, string[] arguments, CancellationToken cancellationToken)
+        => RunAsync(catalog, NativeBindingResources.ReadRawCatalog(catalog.PostgresMajor), arguments, cancellationToken);
+
+    /// <summary>
+    /// Measures complete declaration identities for a given function and global inventory.
+    /// </summary>
+    internal static async Task<NativeBindingCollection> RunAsync(NativeBindingCatalog catalog, NativeBindingRawCatalog inventory, string[] arguments,
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         int major = catalog.PostgresMajor;
-        NativeBindingRawCatalog inventory = NativeBindingResources.ReadRawCatalog(major);
         IReadOnlyList<NativeHeaderRequest> required = NativeBindingHeaderHelpers.Requests(inventory);
         PostgresInstallation installation = arguments[1].Length == 0
             ? await PostgresInstallation.DiscoverAsync(major, cancellationToken)

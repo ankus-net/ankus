@@ -46,9 +46,11 @@ Regenerate catalogs and attribution with `eng/Ankus.Bindings.cs`. Regenerate eac
 `eng/Ankus.Headers.cs`. The manifest generation follows pgrx 0.19.3's source
 rules and does not copy pgrx's already-generated output. The binding app's check
 mode compares those source-derived files with the pinned pgrx release bytes as a
-separate drift guard. Do not edit generated inputs by hand. These declarations
-are input to native binding generation. They are not evidence that all raw
-PostgreSQL functions, globals, callbacks or node APIs are implemented.
+separate drift guard. Do not edit generated inputs by hand. Builds derive their
+own declarations from the selected headers, described below; these pinned files
+are the reference those derivations are compared against. They are not
+evidence that all raw PostgreSQL functions, globals, callbacks or node APIs are
+implemented.
 
 ## Header-derived catalogs
 
@@ -91,6 +93,11 @@ Debian's `extension_destdir` patch, and the C library's own `_IO_FILE` layout.
 Against a PostgreSQL 19 beta 4 built by `ankus init` like pgrx's reference,
 only the C library layout, the port and the version string differ. pgrx
 re-exports `yytoken_kind_t` for 13 through 15 with `pub use`, and the pinned
-catalogs record it as an alias so both sources agree. The build still uses the
-pinned catalogs. Compare an installation's derived catalogs with
+catalogs record it as an alias so both sources agree.
+
+Extension builds use the derived catalogs. `binding-sources` derives them with
+the build's own Clang options and libclang and caches them by the preprocessed
+manifest, toolchain and build tool, so a reused binding still reflects the
+selected headers. The pinned catalogs remain the reference for this comparison
+and for the build tool's own tests. Compare an installation's derived catalogs with
 the pinned ones using `eng/Ankus.Bindings.cs -- --headers`.

@@ -23,9 +23,12 @@ and inherited prefixes must still match the supported casting contract; an
 incompatible prefix fails the build. Reusing cached declarations repeats the
 native checks against the selected headers.
 
-The binding inventory follows pgrx 0.19.3, including its expanded PostgreSQL
-header coverage. PostgreSQL 19 reference declarations and SQLSTATE names use
-beta 4; support is still under validation across the supported platforms.
+Like pgrx, which runs bindgen against your installation, the SDK derives the
+binding inventory from the selected headers under pgrx 0.19.3's bindgen
+configuration and header coverage. Declarations your build of PostgreSQL adds,
+such as ICU or assertion-only ones, are present, and those it omits are absent.
+PostgreSQL 19 SQLSTATE names use beta 4; support is still under validation
+across the supported platforms.
 
 Native declarations retain PostgreSQL names and mutable fields:
 

@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Text.Json;
 using Ankus.Testing;
 
 namespace Ankus.IntegrationTests;
@@ -38,6 +39,16 @@ public sealed partial class ToolCommandTests
             Dictionary<string, string> expected = await SourceArtifactHashesAsync(initial, token);
             Assert.HasCount(10, expected);
             string entry = Assert.ContainsSingle(Directory.GetDirectories(sources));
+            string catalogs = Path.Combine(cache, "catalogs");
+            string catalogEntry = Assert.ContainsSingle(Directory.GetDirectories(catalogs));
+            using (JsonDocument derived = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(catalogEntry, "native-catalogs.json"), token)))
+            {
+                // The build derives its declarations from the selected headers instead of reading pgrx's pinned output.
+                Assert.AreEqual(s_installation.Version.Major, derived.RootElement.GetProperty("Types").GetProperty("PostgresMajor").GetInt32());
+                Assert.IsGreaterThan(1000, derived.RootElement.GetProperty("Raw").GetProperty("Functions").EnumerateObject().Count());
+                Assert.AreEqual(JsonValueKind.Null, derived.RootElement.GetProperty("Raw").GetProperty("SourceRevision").ValueKind);
+            }
+
             string cachedSource = Path.Combine(entry, "native-binding.g.cs");
             File.SetLastWriteTimeUtc(cachedSource, DateTime.UtcNow.AddDays(-1));
             DateTime timestamp = File.GetLastWriteTimeUtc(cachedSource);
@@ -56,6 +67,7 @@ public sealed partial class ToolCommandTests
             File.SetLastWriteTimeUtc(changed, helperTimestamp);
             string rebuilt = await GenerateAsync("changed-content", second, reused: false);
             Assert.HasCount(2, Directory.GetDirectories(sources));
+            Assert.HasCount(2, Directory.GetDirectories(catalogs), "A changed build tool derives its catalogs again.");
             Assert.AreEqual(timestamp, File.GetLastWriteTimeUtc(cachedSource));
             Assert.AreEquivalent(expected, await SourceArtifactHashesAsync(rebuilt, token));
 
@@ -63,6 +75,7 @@ public sealed partial class ToolCommandTests
             {
                 string output = await GenerateAsync(name, second, reused: true);
                 Assert.AreEqual(entry, Assert.ContainsSingle(Directory.GetDirectories(sources)));
+                Assert.AreEqual(catalogEntry, Assert.ContainsSingle(Directory.GetDirectories(catalogs)));
                 Assert.AreEqual(timestamp, File.GetLastWriteTimeUtc(cachedSource), "Reuse must preserve the original immutable artifact.");
                 Assert.AreEquivalent(expected, await SourceArtifactHashesAsync(output, token));
             }

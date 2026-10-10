@@ -22,26 +22,23 @@ internal static class NativeBindingSourceCache
     /// <summary>
     /// Copies content-verified sources after checking a private snapshot against the current native compiler and headers.
     /// </summary>
-    internal static async Task CopyAsync(NativeBindingCatalog catalog,
-        string[] arguments, string cache, CancellationToken cancellationToken)
+    internal static async Task CopyAsync(int major, string[] arguments, string cache, CancellationToken cancellationToken)
     {
         string directory = Directory.CreateTempSubdirectory("ankus-source-").FullName;
         try
         {
             PostgresInstallation installation = arguments[1].Length == 0
-                ? await PostgresInstallation.DiscoverAsync(catalog.PostgresMajor, cancellationToken)
+                ? await PostgresInstallation.DiscoverAsync(major, cancellationToken)
                 : await PostgresInstallation.CreateAsync(arguments[1], cancellationToken);
             string compiler = NativeBindingRecordCommand.FindCompiler(arguments.Length >= 8 && arguments[7].Length != 0 ? arguments[7]
                 : OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang");
             string[] frontend = ["", arguments[0], arguments[1], directory, compiler,
                 arguments.Length >= 5 ? arguments[4] : "", arguments.Length >= 6 ? arguments[5] : "", arguments.Length >= 7 ? arguments[6] : ""];
             List<string> options = await NativeBindingHeaderCommand.CreateArgumentsAsync(installation, frontend, cancellationToken);
-            NativeBindingNodeRoots roots = NativeBindingNodeRecords.CreateRoots(catalog, NativeBindingResources.ReadHeaders(catalog.PostgresMajor),
-                NativeBindingHeaderHelpers.RequiredTypes);
-            string headers = NativeBindingHeaderTarget.GenerateSource(roots.Source, catalog.PostgresMajor);
-            NativeBindingPreprocessed observation = await NativeBindingPreprocessor.ObserveAsync(compiler, options, headers, directory, cancellationToken);
+            NativeBindingPreprocessed manifest = await NativeBindingPreprocessor.ObserveAsync(compiler, options,
+                NativeBindingResources.ReadManifest(major), directory, cancellationToken);
             string library = arguments.Length >= 9 && arguments[8].Length != 0 ? Path.GetFullPath(arguments[8])
-                : await NativeBindingRecordCommand.FindLibraryAsync(compiler, observation.ClangMajor, cancellationToken);
+                : await NativeBindingRecordCommand.FindLibraryAsync(compiler, manifest.ClangMajor, cancellationToken);
             if (!File.Exists(library))
             {
                 throw new FileNotFoundException("Cannot locate the selected libclang library.", library);
@@ -51,8 +48,17 @@ internal static class NativeBindingSourceCache
             string helperPath = PhysicalPath(typeof(NativeBindingSourceCache).Assembly.Location);
             NativeBindingCacheFile helper = tools.Single(input => input.Path == helperPath);
             NativeBindingCacheFile[] nativeTools = [.. tools.Where(input => input.Path != helperPath)];
+            (NativeHeaderCatalogs catalogs, string catalogHash) = await DeriveCatalogsAsync(major, installation, compiler, library, options,
+                Path.Combine(cache, "catalogs"), Key(new { Manifest = manifest, Tools = nativeTools, Generator = helper.Hash, Compiler = compiler,
+                    Library = library, Options = options, Runtime = Environment.Version.ToString() }), directory, cancellationToken);
+            NativeBindingCatalog catalog = catalogs.Types;
+            NativeBindingNodeRoots roots = NativeBindingNodeRecords.CreateRoots(catalog, NativeBindingResources.ReadHeaders(major),
+                NativeBindingHeaderHelpers.RequiredTypes);
+            string headers = NativeBindingHeaderTarget.GenerateSource(roots.Source, major);
+            NativeBindingPreprocessed observation = await NativeBindingPreprocessor.ObserveAsync(compiler, options, headers, directory, cancellationToken);
             string key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
             {
+                Catalogs = catalogHash,
                 Observation = observation,
                 NativeCompiler = arguments.Length >= 4 ? arguments[3] : "",
                 Tools = nativeTools,
@@ -70,7 +76,7 @@ internal static class NativeBindingSourceCache
                 produced = true;
                 string[] selected = [arguments[0], arguments[1], stage,
                     arguments.Length >= 4 ? arguments[3] : "", frontend[5], frontend[6], frontend[7], compiler, library];
-                NativeBindingCollection collection = await NativeBindingCollectionCommand.RunAsync(catalog, selected, token);
+                NativeBindingCollection collection = await NativeBindingCollectionCommand.RunAsync(catalog, catalogs.Raw, selected, token);
                 NativeHeaderRecords records = collection.Records;
                 NativeBindingSelectedNodes nodes = NativeBindingNodeAvailability.Read(catalog, records.Graph);
                 NativeBindingLayout layout = await NativeBindingLayoutCommand.MeasureAsync(nodes, selected[..7], token);
@@ -158,6 +164,38 @@ internal static class NativeBindingSourceCache
             }
         }
     }
+
+    /// <summary>
+    /// Derives the major's catalogs from the selected headers as pgrx's bindgen does, reusing a shared derivation for the
+    /// same preprocessed manifest, toolchain and generator.
+    /// </summary>
+    /// <returns>The catalogs and the hash of their serialized form, which identifies them in later keys.</returns>
+    private static async Task<(NativeHeaderCatalogs Catalogs, string Hash)> DeriveCatalogsAsync(int major, PostgresInstallation installation,
+        string compiler, string library, List<string> options, string cache, string key, string directory, CancellationToken cancellationToken)
+    {
+        const string Artifact = "native-catalogs.json";
+        byte[] bytes;
+        await using (NativeBindingCacheLease lease = await NativeBindingCache.GetAsync(cache, key, async (stage, token) =>
+        {
+            string work = Directory.CreateDirectory(Path.Combine(directory, "catalogs")).FullName;
+            NativeHeaderCatalogs derived = await NativeBindingHeaderCatalogCommand.BuildAsync(compiler,
+                [.. options, OperatingSystem.IsWindows() ? "/Zs" : "-fsyntax-only"], NativeBindingResources.ReadManifest(major), major,
+                installation.ServerIncludeDirectory, library, work, token);
+            await File.WriteAllTextAsync(Path.Combine(stage, Artifact), JsonSerializer.Serialize(derived) + "\n", token);
+            return [];
+        }, cancellationToken))
+        {
+            bytes = await File.ReadAllBytesAsync(Path.Combine(lease.Directory, Artifact), cancellationToken);
+        }
+
+        NativeHeaderCatalogs catalogs = JsonSerializer.Deserialize<NativeHeaderCatalogs>(bytes)
+            ?? throw new FormatException("Missing derived native catalogs.");
+        return catalogs.Types.PostgresMajor == major && catalogs.Raw.PostgresMajor == major
+            ? (catalogs, Convert.ToHexString(SHA256.HashData(bytes)))
+            : throw new FormatException("The derived native catalogs have the wrong major.");
+    }
+
+    private static string Key<T>(T value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(value))));
 
     private static IEnumerable<string> ToolFiles(string compiler, string library)
     {

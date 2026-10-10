@@ -39,7 +39,9 @@ internal sealed unsafe class NativeBindingHeaderReader(NativeClang library, Nati
     {
         NativeClangCursor root = ((delegate* unmanaged[Cdecl]<nint, NativeClangCursor>)library.Export("clang_getTranslationUnitCursor"))(unit.DangerousGetHandle());
         library.LoadDeclarations(root);
-        foreach (NativeClangCursor cursor in library.Children(root))
+
+        // A translation unit with system headers and macro definitions can far exceed a record's member bound.
+        foreach (NativeClangCursor cursor in library.Children(root, limit: 10_000_000))
         {
             switch (cursor.Kind)
             {
@@ -374,8 +376,7 @@ internal sealed unsafe class NativeBindingHeaderReader(NativeClang library, Nati
                 // Clang 21 and later wrap predefined types such as __size_t in sugar that older libclang, as bindgen
                 // saw it, reported as the canonical integer.
                 NativeClangType canonical = library.Transform(type, "clang_getCanonicalType");
-                converted = canonical.Kind is not (1 or 182) ? Convert(canonical, context)
-                    : throw new FormatException($"Unsupported native type '{library.Spelling(type)}'.");
+                converted = canonical.Kind is not (1 or 182) ? Convert(canonical, context) : new NativeCUnsupported(library.Spelling(type));
                 break;
             case 107:
                 NativeClangCursor alias = library.Declaration(type);

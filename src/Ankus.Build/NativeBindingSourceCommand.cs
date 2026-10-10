@@ -74,10 +74,9 @@ internal static class NativeBindingSourceCommand
         }
 
         int major = int.Parse(arguments[0], NumberStyles.None, CultureInfo.InvariantCulture);
-        NativeBindingCatalog catalog = NativeBindingResources.ReadCatalog(major);
         string cache = arguments.Length == 10 && arguments[9].Length != 0 ? Path.GetFullPath(arguments[9])
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Ankus", "bindings");
-        await NativeBindingSourceCache.CopyAsync(catalog,
+        await NativeBindingSourceCache.CopyAsync(major,
             arguments.Length == 10 ? arguments[..9] : arguments, cache, cancellationToken);
         string output = Path.GetFullPath(arguments[2]);
         await WriteIfChangedAsync(Path.Combine(output, "Ankus.NativeBindings.csproj"), CreateProject(output), cancellationToken);

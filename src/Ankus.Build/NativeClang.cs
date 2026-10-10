@@ -183,9 +183,9 @@ internal sealed unsafe class NativeClang(string path) : SafeHandle(NativeLibrary
     /// <summary>
     /// Copies child cursors, containing callback failures until traversal returns to managed code.
     /// </summary>
-    internal List<NativeClangCursor> Children(NativeClangCursor cursor, bool recursive = false)
+    internal List<NativeClangCursor> Children(NativeClangCursor cursor, bool recursive = false, int limit = 100_000)
     {
-        var visit = new CursorVisit(recursive);
+        var visit = new CursorVisit(recursive, limit);
         GCHandle state = GCHandle.Alloc(visit);
         try
         {
@@ -207,7 +207,7 @@ internal sealed unsafe class NativeClang(string path) : SafeHandle(NativeLibrary
     /// </summary>
     internal void LoadDeclarations(NativeClangCursor cursor)
     {
-        var visit = new CursorVisit(recursive: true);
+        var visit = new CursorVisit(recursive: true, limit: 0);
         GCHandle state = GCHandle.Alloc(visit);
         try
         {
@@ -226,7 +226,7 @@ internal sealed unsafe class NativeClang(string path) : SafeHandle(NativeLibrary
     /// </summary>
     internal List<NativeClangCursor> Fields(NativeClangType type)
     {
-        var visit = new CursorVisit(recursive: false);
+        var visit = new CursorVisit(recursive: false, limit: 100_000);
         GCHandle state = GCHandle.Alloc(visit);
         try
         {
@@ -330,7 +330,8 @@ internal sealed unsafe class NativeClang(string path) : SafeHandle(NativeLibrary
     /// Bounds one traversal and carries any callback exception across the native return boundary.
     /// </summary>
     /// <param name="recursive">Whether child traversal includes descendants.</param>
-    private sealed class CursorVisit(bool recursive)
+    /// <param name="limit">The most cursors one traversal may copy.</param>
+    private sealed class CursorVisit(bool recursive, int limit)
     {
         private long _visited;
 
@@ -369,7 +370,7 @@ internal sealed unsafe class NativeClang(string path) : SafeHandle(NativeLibrary
         /// </summary>
         internal void Add(NativeClangCursor cursor)
         {
-            if (Cursors.Count == 100_000)
+            if (Cursors.Count == limit)
             {
                 throw new InvalidDataException("Native cursor traversal exceeds the supported declaration limit.");
             }
