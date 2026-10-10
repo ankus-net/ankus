@@ -70,6 +70,11 @@ public static class SetFunctions
         }
 
         int failures = Volatile.Read(ref *(int*)envelope[5]);
+
+        // Another session can leave a benign interrupt or Windows signal pending, such as a catch-up; serve it before
+        // measuring an idle poll.
+        PgInterrupts.Check();
+
         s_interruptCalls = 0;
         s_interruptInvoke = envelope[2];
         envelope[2] = (nint)(delegate* unmanaged[Cdecl]<nint, void*, void*, void*, int>)&ObserveInterrupt;
