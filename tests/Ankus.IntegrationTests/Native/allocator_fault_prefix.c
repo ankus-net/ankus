@@ -200,3 +200,14 @@ fault_allocate(MemoryContext owner, Size size, int flags)
 #define MemoryContextAlloc fault_list_alloc
 #define repalloc fault_list_realloc
 #define list_free fault_list_free
+
+#ifdef __APPLE__
+/* The emitted bridge registers signal routing with the Native AOT runtime, which this fixture does not link. */
+void RhSetThreadCreationCallback(void (*callback)(void));
+
+void
+RhSetThreadCreationCallback(void (*callback)(void))
+{
+    (void) callback;
+}
+#endif

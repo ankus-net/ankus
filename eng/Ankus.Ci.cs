@@ -12,8 +12,8 @@ using Ankus.PgConfig;
 
 const string RuntimeRepository = "willibrandon/runtime";
 const string RuntimeBase = "v10.0.12";
-const string RuntimeCommit = "d23f4e7374cd3878dc5696fbc26ee6ecdddde1ca";
-const string RuntimeVersion = "10.0.12-ankus.4";
+const string RuntimeCommit = "e3f084f4590644bcf7c191c0d281076757c0b93c";
+const string RuntimeVersion = "10.0.12-ankus.5";
 const string RuntimeCompilerVersion = "10.0.12";
 
 string repositoryRoot = FindRepositoryRoot();
@@ -387,7 +387,7 @@ static (string CCompiler, string CppCompiler, IReadOnlyDictionary<string, string
     return (cCompiler, cppCompiler, environment);
 }
 
-// Prove that a newly built fork runtime preserves native host shutdown, thread cleanup and signal masks.
+// Prove that a newly built fork runtime preserves native host shutdown, thread cleanup, signal masks and signal routing.
 static void VerifyNativeHostBehavior(
     string repositoryRoot,
     string platform,
@@ -439,6 +439,31 @@ static void VerifyNativeHostBehavior(
     Run(cppCompiler, signalArguments, environment: environment);
     Run(signalHost, []);
     Run(signalHost, [Path.Combine(output, library)]);
+
+    // Runtime threads must leave the host's process signals pending for the host thread.
+    string hostSignalRoot = Path.Combine(repositoryRoot, "runtime", "eng", "ankus", "fork-probes", "host-signals");
+    string hostSignalOutput = Path.Combine(output, "host-signals");
+    Run(GetDotNetHost(),
+    [
+        "publish", Path.Combine(hostSignalRoot, "NativeHostSignalProbe.csproj"),
+        "--configuration", "Release", "--runtime", runtimeIdentifier, "--output", hostSignalOutput,
+        $"-p:IlcSdkPath={GetBuiltRuntimePath(repositoryRoot, platform, architecture)}{Path.DirectorySeparatorChar}",
+        $"-p:IlcToolsPath={GetBuiltCompilerPath(repositoryRoot, platform, architecture)}{Path.DirectorySeparatorChar}",
+    ], environment: environment);
+
+    string hostSignalHost = Path.Combine(hostSignalOutput, "host");
+    List<string> hostSignalArguments =
+    [
+        "-std=gnu17", "-O2", "-Wall", "-Wextra", "-Werror", Path.Combine(hostSignalRoot, "host.c"),
+        "-pthread", "-o", hostSignalHost,
+    ];
+    if (OperatingSystem.IsLinux())
+    {
+        hostSignalArguments.Add("-ldl");
+    }
+
+    Run(cCompiler, hostSignalArguments, environment: environment);
+    Run(hostSignalHost, [Path.Combine(hostSignalOutput, "NativeHostSignalProbe" + (OperatingSystem.IsMacOS() ? ".dylib" : ".so"))]);
 }
 
 static void VerifyPlatform(string platform, string architecture)

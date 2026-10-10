@@ -118,6 +118,7 @@ internal static class PgInitializeEmitter
             PGDLLEXPORT void _PG_init(void);
             PGDLLEXPORT void _PG_init(void)
             {
+                ankus_signal_routing_initialize();
                 if (ankus_initialization_state == 1{{(requiresEnsure ? " || ankus_module_loading" : string.Empty)}})
                 {
                     ereport(ERROR, (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),

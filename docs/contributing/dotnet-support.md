@@ -35,8 +35,8 @@ installs the latest stable 10.0 SDK. This selection must remain separate from th
 runtime included in published extensions.
 
 `eng/Ankus.Ci.cs` pins upstream `v10.0.12`, fork commit
-`d23f4e7374cd3878dc5696fbc26ee6ecdddde1ca`, runtime and compiler-host packages
-`10.0.12-ankus.4`, and ILCompiler targets/framework packs `10.0.12`. The SDK
+`e3f084f4590644bcf7c191c0d281076757c0b93c`, runtime and compiler-host packages
+`10.0.12-ankus.5`, and ILCompiler targets/framework packs `10.0.12`. The SDK
 target and per-RID package properties carry matching target runtime and host
 compiler identities. Framework runtime packs also use 10.0.12 instead of
 following the installed SDK's default patch. Check

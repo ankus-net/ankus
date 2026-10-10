@@ -37,11 +37,12 @@ Repository `global.json` selects stable SDK **10.0.400** with
 target is **net10.0**. Installing another SDK does not silently change an
 extension's selected compiler, target framework or embedded runtime.
 
-The platform-fix milestone **bdb5d1c** selects embedded runtime and compiler host **10.0.12-ankus.4**,
-based on runtime fork commit `d23f4e7374cd3878dc5696fbc26ee6ecdddde1ca` and paired
-with the 10.0.12 Native AOT framework and compiler targets. Complete primary CI
-passes with **ankus.4**; Intel acceptance also passes. Additional-version
-acceptance remains in progress.
+Extensions embed runtime and compiler host **10.0.12-ankus.5**, based on runtime
+fork commit `e3f084f4590644bcf7c191c0d281076757c0b93c` and paired with the 10.0.12
+Native AOT framework and compiler targets. It keeps PostgreSQL's signals on the
+backend thread. It replaces **ankus.4** (`d23f4e7374cd3878dc5696fbc26ee6ecdddde1ca`,
+selected by **bdb5d1c**), with which complete primary CI and Intel acceptance
+passed. Additional-version acceptance remains in progress.
 Servicing requires
 immutable patched-runtime and compiler packages, matching compiler selection,
 complete backend validation and extension rebuild/redeployment. Check current
@@ -155,6 +156,26 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   `AllocSetCheck` after a test whose notice resets `ErrorContext`. It did not
   recur in an assert-enabled Linux suite, a full macOS suite or five macOS
   repeats with malloc scribbling, so it remains open as an intermittent fault.
+- macOS 13 also hung in parallel queries: under load, a leader slept with its
+  workers' tuple queues full. Logging every `SIGUSR1` send and delivery showed
+  each of 12 stalls began when the leader's handler ran on the .NET finalizer
+  thread. The kernel gives a signal sent to a process to any thread that leaves
+  it unblocked, and PostgreSQL 13 wakes a latch from that handler assuming it
+  interrupted the sleeping thread; every major runs its timeout, cancellation
+  and shutdown handlers the same way. Runtime **10.0.12-ankus.5** starts runtime
+  threads with asynchronous signals blocked and, on macOS, activates threads
+  with `SIGIO` instead of `SIGUSR1`. That is enough on Linux, but macOS
+  `sigprocmask` changes every thread's mask, so PostgreSQL unblocks them again
+  within a millisecond. On macOS, generated bridges therefore wrap PostgreSQL's
+  asynchronous handlers: one entered on another thread hands the signal to the
+  backend thread, which holds it until it can run the handler, and the original
+  sender is kept for PostgreSQL 19's log detail. The runtime calls the bridge
+  before starting each thread, which also covers children of a preloading
+  postmaster. A fork probe and `BlockedBackendSignalsWaitForTheBackendThread`
+  fail with ankus.4 on Linux and macOS and pass with ankus.5. Under the load
+  that produced 11–14 stalls per run, three runs complete with none. Complete
+  suites with ankus.5 pass on Linux x64 18, macOS ARM64 13 and 18, and Windows
+  x64 13 and 17: **14,511** tests each, zero failures.
 - The weekly platform-versions workflow now covers every supported stable major
   on Windows x64 and every major except 18 on macOS ARM64, which primary CI runs.
   Windows 14.24, 15.19 and 16.15 come from EDB's archives, pass the

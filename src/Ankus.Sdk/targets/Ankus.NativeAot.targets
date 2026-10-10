@@ -1,8 +1,8 @@
 <Project>
   <PropertyGroup>
-    <_AnkusNativeAotVersion>10.0.12-ankus.4</_AnkusNativeAotVersion>
+    <_AnkusNativeAotVersion>10.0.12-ankus.5</_AnkusNativeAotVersion>
     <_AnkusNativeAotCompilerVersion>10.0.12</_AnkusNativeAotCompilerVersion>
-    <_AnkusNativeAotCompilerHostVersion>10.0.12-ankus.4</_AnkusNativeAotCompilerHostVersion>
+    <_AnkusNativeAotCompilerHostVersion>10.0.12-ankus.5</_AnkusNativeAotCompilerHostVersion>
     <_AnkusNativeAotSdkPath Condition="'$(AnkusNativeAotSdkPath)' != ''">$([MSBuild]::NormalizeDirectory('$(AnkusNativeAotSdkPath)'))</_AnkusNativeAotSdkPath>
     <_AnkusNativeAotCompilerToolsPath Condition="'$(AnkusNativeAotCompilerToolsPath)' != ''">$([MSBuild]::NormalizeDirectory('$(AnkusNativeAotCompilerToolsPath)'))</_AnkusNativeAotCompilerToolsPath>
     <_AnkusNativeAotPayloadVersion Condition="'$(AnkusNativeAotSdkPath)' != ''">$(_AnkusNativeAotVersion)</_AnkusNativeAotPayloadVersion>

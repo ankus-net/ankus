@@ -138,6 +138,7 @@ internal static class NativeRecoveryBridge
         #define ANKUS_MANAGED_INVOKE(status, error, expression) \
             do \
             { \
+                ANKUS_SIGNAL_ROUTING_READY(); \
                 AnkusRecoveryFrame ankus_invocation = {0}; \
                 ankus_invocation.previous = ankus_recovery_frame; \
                 ankus_recovery_frame = &ankus_invocation; \

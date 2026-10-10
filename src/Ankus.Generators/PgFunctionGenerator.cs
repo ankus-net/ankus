@@ -333,7 +333,7 @@ public sealed class PgFunctionGenerator : IIncrementalGenerator
             return;
         }
 
-        GeneratorSourceBuilder native = new GeneratorSourceBuilder(NativeBridge.Source).Append(magic);
+        GeneratorSourceBuilder native = new GeneratorSourceBuilder(NativeBridge.Source).Append(magic).Append(NativeSignalRoutingBridge.Source);
         foreach (GeneratorProblem problem in prefixOutput.Analysis.Problems)
         {
             problem.Report(compilation, context);

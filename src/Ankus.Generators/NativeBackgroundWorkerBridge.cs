@@ -173,6 +173,7 @@ internal static class NativeBackgroundWorkerBridge
             }
 
             BackgroundWorkerUnblockSignals();
+            ankus_signal_routing_ensure();
         }
 
         static int

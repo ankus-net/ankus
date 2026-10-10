@@ -2,7 +2,7 @@
   <PropertyGroup>
     <PackageId>Ankus.NativeAot.Compiler</PackageId>
     <PackageId Condition="'$(AnkusCompilerRuntimeIdentifier)' != ''">Ankus.NativeAot.Compiler.$(AnkusCompilerRuntimeIdentifier)</PackageId>
-    <PackageVersion>10.0.12-ankus.4</PackageVersion>
+    <PackageVersion>10.0.12-ankus.5</PackageVersion>
     <Description>Patched .NET Native AOT compiler host for Ankus PostgreSQL extensions.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>

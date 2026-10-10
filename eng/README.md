@@ -44,6 +44,8 @@ thread cleanup, including mutex abandonment, GC and finalizer drain.
 Signal checks also verify host masks, ordinary and alternate stacks, and
 termination deferred until forked children install their own handlers. They
 exercise both the runtime's native object and an initialized Native AOT library.
+A host-signal check sends PostgreSQL's signals to a process whose host thread
+blocks them: runtime threads must leave each one pending for that thread.
 
 Use `--` before command arguments:
 

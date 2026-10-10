@@ -72,3 +72,14 @@ static Oid owner_lookup(Oid type)
 }
 
 #define getBaseType owner_lookup
+
+#ifdef __APPLE__
+/* The emitted bridge registers signal routing with the Native AOT runtime, which this fixture does not link. */
+void RhSetThreadCreationCallback(void (*callback)(void));
+
+void
+RhSetThreadCreationCallback(void (*callback)(void))
+{
+    (void) callback;
+}
+#endif

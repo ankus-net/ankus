@@ -103,6 +103,14 @@ and the .NET 10 implementations of
 [Console](https://github.com/dotnet/runtime/blob/v10.0.12/src/libraries/System.Console/src/System/Console.cs)
 and [Process](https://github.com/dotnet/runtime/blob/v10.0.12/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/Process.Unix.cs).
 
+The kernel can deliver a signal sent to the backend process to any thread that
+leaves it unblocked, but PostgreSQL's handlers must interrupt the backend thread.
+Threads the .NET runtime starts, including the finalizer, thread-pool workers and
+threads you create, therefore block PostgreSQL's asynchronous signals. On macOS,
+where PostgreSQL's mask changes reach every thread, a handler entered on another
+thread passes its signal to the backend thread instead. A native library that
+starts its own threads inside a backend should block these signals in them too.
+
 Keep PostgreSQL's signal ownership intact. Ankus's runtime support does not grant
 arbitrary application signal handlers PostgreSQL semantics. Use `PgInterrupts`
 for query interrupts and the background-worker APIs for worker signals. Run
