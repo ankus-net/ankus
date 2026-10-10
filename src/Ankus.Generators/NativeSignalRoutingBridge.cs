@@ -32,7 +32,6 @@ internal static class NativeSignalRoutingBridge
         static volatile sig_atomic_t ankus_routed_uid[NSIG];
         static pthread_t ankus_backend_thread;
         static AnkusSignalRouting *ankus_signal_routing;
-        static bool ankus_signal_routing_ready;
 
         extern void RhSetThreadCreationCallback(void (*callback)(void));
 
@@ -130,7 +129,6 @@ internal static class NativeSignalRoutingBridge
             }
 
             ankus_signal_routing = *shared;
-            ankus_signal_routing_ready = true;
             RhSetThreadCreationCallback(ankus_signal_routing_thread_creating);
             ankus_signal_routing->ensure();
         }
@@ -148,7 +146,7 @@ internal static class NativeSignalRoutingBridge
         #define ANKUS_SIGNAL_ROUTING_READY() \
             do \
             { \
-                if (unlikely(!ankus_signal_routing_ready)) \
+                if (unlikely(ankus_signal_routing == NULL)) \
                 { \
                     ankus_signal_routing_initialize(); \
                 } \

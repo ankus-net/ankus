@@ -174,8 +174,12 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   postmaster. A fork probe and `BlockedBackendSignalsWaitForTheBackendThread`
   fail with ankus.4 on Linux and macOS and pass with ankus.5. Under the load
   that produced 11–14 stalls per run, three runs complete with none. Complete
-  suites with ankus.5 pass on Linux x64 18, macOS ARM64 13 and 18, and Windows
-  x64 13 and 17: **14,511** tests each, zero failures.
+  suites with ankus.5 pass on Linux x64 13 and 18, macOS ARM64 13 and 18, and
+  Windows x64 13 and 17: **14,511** tests each, zero failures. In
+  [CI 38089102305](https://github.com/willibrandon/ankus/actions/runs/38089102305)
+  for **1b35c17**, Linux and Windows pass, but macOS bridges failed to compile:
+  Clang 23 rejects the routing readiness flag as set but never read in
+  extensions without managed calls. Readiness now tests the shared pointer.
 - The weekly platform-versions workflow now covers every supported stable major
   on Windows x64 and every major except 18 on macOS ARM64, which primary CI runs.
   Windows 14.24, 15.19 and 16.15 come from EDB's archives, pass the
