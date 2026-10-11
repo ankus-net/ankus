@@ -93,17 +93,20 @@ incorrect. See [the detailed review](docs/contributing/evidence/port-history.md#
 ## Current complete acceptance evidence
 
 Primary CI runs all six modules against real published Native AOT extensions.
-The latest successful primary CI source is **e0e469a**, with runtime **10.0.12-ankus.4**.
-[CI 37825380597](https://github.com/willibrandon/ankus/actions/runs/37825380597)
-passes; [Docs run 37825380526](https://github.com/willibrandon/ankus/actions/runs/37825380526)
-also passes. Each platform completed all six modules with zero failures; no
-primary job timed out. It is the first green primary run since **67c9cb5**.
-A complete [Intel refresh](https://github.com/willibrandon/ankus/actions/runs/37460600236)
-also passes on source **e41c687**.
+The latest successful primary CI source is **8605619**, with runtime **10.0.12-ankus.5**.
+[CI 38091742732](https://github.com/willibrandon/ankus/actions/runs/38091742732)
+passes; [Docs run 38089102312](https://github.com/willibrandon/ankus/actions/runs/38089102312)
+for its parent **1b35c17** also passes. Each platform completed all six modules
+with zero failures; no primary job timed out. Earlier **ankus.4** evidence,
+including a complete [Intel refresh](https://github.com/willibrandon/ankus/actions/runs/37460600236)
+on source **e41c687**, is retained below.
 
 | Source | Platform / PostgreSQL | Result | Duration |
 | --- | --- | --- | --- |
-| Latest primary CI, **e0e469a / ankus.4** | Linux x64 / 18 | 13,883 total; 13,833 passed; 50 platform skips; zero failures | 11m37s test step; 13m48s job |
+| Latest primary CI, **8605619 / ankus.5** | Linux x64 / 18 | 14,511 total; 14,460 passed; 51 platform skips; zero failures | 13m15s test step; 15m39s job |
+| Same CI / revision / runtime | macOS ARM64 / 18 | 14,511 total; 14,446 passed; 65 platform skips; zero failures | 13m58s test step; 15m49s job |
+| Same CI / revision / runtime | Windows x64 / 17 | 14,511 total; 14,466 passed; 45 platform skips; zero failures | 14m56s test step; 17m18s job |
+| Earlier primary CI, **e0e469a / ankus.4** | Linux x64 / 18 | 13,883 total; 13,833 passed; 50 platform skips; zero failures | 11m37s test step; 13m48s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 13,883 total; 13,821 passed; 62 platform skips; zero failures | 12m03s test step; 13m44s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 13,883 total; 13,847 passed; 36 platform skips; zero failures | 21m50s test step; 24m04s job |
 | SQL/datetime composition, parent **e41c687 / ankus.4** | Linux x64 / 18.6 | 13,337 total; 13,289 passed; 48 platform skips; zero failures | 42m46.885s tests; 43m41.597s command |
@@ -153,9 +156,12 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   pointer on every platform before 15; and source builds before 16 lack ICU.
   The tests now name the file, expect each major's declaration and report
   inconclusive without ICU. macOS 19 (an assert-enabled build) also aborted on
-  `AllocSetCheck` after a test whose notice resets `ErrorContext`. It did not
-  recur in an assert-enabled Linux suite, a full macOS suite or five macOS
-  repeats with malloc scribbling, so it remains open as an intermittent fault.
+  `AllocSetCheck` after a test whose notice resets `ErrorContext`: the next
+  statement's `PortalDrop` found a context whose recorded allocation differed
+  from its blocks. It did not recur in an assert-enabled Linux suite, a full
+  macOS suite, five macOS repeats with malloc scribbling or 20 repeats of the
+  memory test classes on an assert-enabled Linux 19 build. The report bridge
+  survives the reset as intended, so it remains open as an intermittent fault.
 - macOS 13 also hung in parallel queries: under load, a leader slept with its
   workers' tuple queues full. Logging every `SIGUSR1` send and delivery showed
   each of 12 stalls began when the leader's handler ran on the .NET finalizer
@@ -180,6 +186,19 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   for **1b35c17**, Linux and Windows pass, but macOS bridges failed to compile:
   Clang 23 rejects the routing readiness flag as set but never read in
   extensions without managed calls. Readiness now tests the shared pointer.
+  The wrapper also tolerates code that saves a handler as a plain function and
+  restores it, which drops `SA_SIGINFO`: it checks its installed flags before
+  reading sender information, and the next runtime thread restores the flag.
+  [Platform-versions run 38093011552](https://github.com/willibrandon/ankus/actions/runs/38093011552)
+  on **8605619** passes macOS ARM64 13, 14, 15, 16 and 19 and Windows x64 13–16
+  and 18 (**14,511** tests each, zero failures; 27m47s–29m06s macOS jobs,
+  30m03s–58m09s Windows jobs sharing one host). macOS 17 failed one case: a
+  restarted worker publishes its PID before the postmaster records it in the
+  registration, so the test now waits for the registration before comparing.
+  A local Windows 17 suite found a second race: a strict aggregate adopts the
+  first partial state and combines only later ones, so the combine count is zero
+  when concurrent tests leave the query one worker. The test now counts in an
+  execution where both workers ran.
 - The weekly platform-versions workflow now covers every supported stable major
   on Windows x64 and every major except 18 on macOS ARM64, which primary CI runs.
   Windows 14.24, 15.19 and 16.15 come from EDB's archives, pass the
