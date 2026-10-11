@@ -72,7 +72,7 @@ defines the full scope; family-level implementation is not API-by-API completion
 | --- | --- | --- |
 | Errors and cancellation | Sticky query cancellation/FATAL, retained raw/memory errors, fail-fast backend access and explicit rollback recovery. Transaction-completion callback failures use a fixed-buffer emergency log path without PostgreSQL diagnostic allocation; it preserves the primary error and durable outcome. Abort-time FATAL remains FATAL while irreversible FATAL is promoted to PANIC. Primary-platform full CI passes. | Retain recovery guarantees and complete the version/platform matrix. |
 | Workers and shared memory | Native signal globals, lifecycle/transaction boundaries and shared memory. Idle Wait recovers repeated real cancellation; transaction waits still abort and terminal reports remain sticky. Complete primary-platform CI passes. | Full source-contract and complete version/platform acceptance remain required. |
-| Functions and callbacks | Scalar/array/SETOF/TABLE, triggers/events, lifecycle, native callbacks, operators/conversions and installation-schema search paths. | Full upstream declaration/option audit and complete version/platform evidence. |
+| Functions and callbacks | Scalar/array/SETOF/TABLE, triggers/events, lifecycle, native callbacks, operators/conversions and installation-schema search paths. | The open declaration-audit options listed under active work, and complete version/platform evidence. |
 | Aggregates and SQL graph | Static abstract aggregate capabilities, typed Requires/Before/SupportFunction references with per-contract diagnostics at the authored value, deterministic SQL provenance and extended module magic. Empty SQL dependency anchors and exact authored CR/CRLF values pass complete native acceptance. | Inventoried contracts and complete version/platform acceptance. |
 | Generator caching | Detached equatable declaration/provider/reference models, stable declaration-header locations and cached dispatcher/C/SQL artifacts across multi-declaration body edits, unrelated member insertion and unrelated file insertion. Only selected SQL files are read, with the complete path catalog retained. | Broader precise diagnostics, useful semantic code fixes and final inventory audit remain required. |
 | Values and ownership | Documented scalar, array, composite, temporal, JSON, network, geometry, custom codec and raw datum contracts. Interval equality, hashing and ordering agree with PostgreSQL while retaining exact components; complete primary-platform CI passes. | Remaining mapped/container contracts, parsing/formatting ergonomics and complete source-case mapping remain required. |
@@ -149,6 +149,11 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   or `ref` from callers' arguments across the solution; the edit is dropped when
   any changed project gains a compiler error, as with a delegate, function
   pointer or overload that needs the reference. `ref` and `out` get no fix.
+  The same corrections now cover every other entry kind: trigger and event
+  callbacks, initializers, background workers, backend tests, native callback
+  properties and handlers, enums, custom types, datum carriers and converters
+  (resolved from the `typeof` argument) and output plugin initializers, 35
+  further diagnostics in all.
   Generator tests compare
   the complete corrected source, regenerate it without diagnostics, and check
   that no fix is offered where the result would not compile.
@@ -157,7 +162,13 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   parameters and results, and `should_panic` to `PgTest.ExpectedError`. Only
   `no_guard` is absent, deliberately, because every entry runs behind the
   native guard. Leakproof, rows, SET clauses and search paths go beyond pgrx's
-  set.
+  set. The aggregate, trigger, type, enum, derive, operator, cast, schema,
+  SQL, GUC and worker-builder options also have equivalents. Still open:
+  `pg_guard(unsafe_entry_thread)`, `pg_extern` options on `#[pg_test]`
+  functions, `pg_test::setup`, hooks on GUCs defined at run time, a startup
+  hook from `enable_shmem_access`, alignment derived from the type for
+  `alignment = "on"`, `extension_sql_file!`'s default name, `creates = [Enum]`
+  and `pgvarlena_inoutfuncs` over arbitrary `repr(C)` layouts.
 - Binding catalogs can now be derived from the installed headers, as pgrx
   runs bindgen at build time, instead of from pgrx's generated output.
   `binding-catalog-headers` reads the header manifest through the compiler's

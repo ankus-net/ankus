@@ -18,7 +18,14 @@ public sealed partial class PgFunctionGeneratorTests
         using CompositionHost container = new ContainerConfiguration().WithAssembly(typeof(DeclarationModifierCodeFixProvider).Assembly).CreateContainer();
         DeclarationModifierCodeFixProvider provider =
             Assert.ContainsSingle(container.GetExports<CodeFixProvider>().OfType<DeclarationModifierCodeFixProvider>());
-        Assert.AreSequenceEqual(["ANKUS033", "ANKUS043", "ANKUS034", "ANKUS174", "ANKUS178", "ANKUS179"], provider.FixableDiagnosticIds);
+        Assert.AreSequenceEqual(
+        [
+            "ANKUS033", "ANKUS208", "ANKUS232", "ANKUS251", "ANKUS291", "ANKUS332", "ANKUS516",
+            "ANKUS034", "ANKUS043", "ANKUS135", "ANKUS143", "ANKUS174", "ANKUS178", "ANKUS179", "ANKUS213", "ANKUS222", "ANKUS223",
+            "ANKUS240", "ANKUS243", "ANKUS244", "ANKUS261", "ANKUS264", "ANKUS265", "ANKUS281", "ANKUS282", "ANKUS296", "ANKUS302",
+            "ANKUS303", "ANKUS321", "ANKUS428", "ANKUS522", "ANKUS523",
+            "ANKUS180", "ANKUS304", "ANKUS322",
+        ], provider.FixableDiagnosticIds);
         Assert.AreSame(WellKnownFixAllProviders.BatchFixer, provider.GetFixAllProvider());
     }
 

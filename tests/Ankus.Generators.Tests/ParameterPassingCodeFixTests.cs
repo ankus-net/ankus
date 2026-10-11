@@ -19,7 +19,7 @@ public sealed partial class PgFunctionGeneratorTests
         using CompositionHost container = new ContainerConfiguration().WithAssembly(typeof(ParameterPassingCodeFixProvider).Assembly).CreateContainer();
         ParameterPassingCodeFixProvider provider =
             Assert.ContainsSingle(container.GetExports<CodeFixProvider>().OfType<ParameterPassingCodeFixProvider>());
-        Assert.AreSequenceEqual(["ANKUS038"], provider.FixableDiagnosticIds);
+        Assert.AreSequenceEqual(["ANKUS038", "ANKUS216", "ANKUS259", "ANKUS298", "ANKUS341"], provider.FixableDiagnosticIds);
         Assert.AreNotSame(WellKnownFixAllProviders.BatchFixer, provider.GetFixAllProvider());
         Assert.AreSame(provider.GetFixAllProvider(), provider.GetFixAllProvider());
     }
@@ -131,6 +131,42 @@ public sealed partial class PgFunctionGeneratorTests
             Assert.AreEqual("ANKUS038", remaining.Id);
             Assert.AreEqual("in int other", remaining.Location.SourceTree!.GetText(context.CancellationToken).ToString(remaining.Location.SourceSpan));
         }
+    }
+
+    /// <summary>
+    /// Trigger and event callback contexts, worker arguments, backend test contexts and native callback handler arguments
+    /// get the same correction, and each declaration then generates.
+    /// </summary>
+    /// <param name="source">The declaration before the correction.</param>
+    /// <param name="name">The diagnosed parameter.</param>
+    /// <param name="expected">The exact corrected declaration.</param>
+    [TestMethod]
+    [DataRow("public static class Functions { [Ankus.PgEventTrigger] public static void Audit(in Ankus.PgEventTriggerContext context) { } }", "context",
+        "public static class Functions { [Ankus.PgEventTrigger] public static void Audit(Ankus.PgEventTriggerContext context) { } }")]
+    [DataRow("public static class Workers { [Ankus.PgBackgroundWorker] public static void Run(in nuint argument) { } }", "argument",
+        "public static class Workers { [Ankus.PgBackgroundWorker] public static void Run(nuint argument) { } }")]
+    [DataRow("public static partial class Checks { [Ankus.PgTest] public static void Test(ref readonly Ankus.PgFunctionContext call) { } }", "call",
+        "public static partial class Checks { [Ankus.PgTest] public static void Test(Ankus.PgFunctionContext call) { } }")]
+    [DataRow("public partial class Functions { [Ankus.PgNativeCallback(nameof(Handle))] public static partial Hook Callback { get; } " +
+        "private static long Handle(in int first, long second) => second; }", "first",
+        "public partial class Functions { [Ankus.PgNativeCallback(nameof(Handle))] public static partial Hook Callback { get; } " +
+        "private static long Handle(int first, long second) => second; }")]
+    public async Task ParameterFixCoversEntryKinds(string source, string name, string expected)
+    {
+        string prefix = FixTypesSource(source);
+        using var workspace = new AdhocWorkspace();
+        Document document = CreateCodeFixDocument(workspace, prefix + source);
+        (_, ImmutableArray<Diagnostic> diagnostics) = await GenerateCodeFixDocumentAsync(document);
+        Diagnostic diagnostic = Assert.ContainsSingle(diagnostics);
+        CodeAction action = Assert.ContainsSingle(await CodeFixActionsAsync(new ParameterPassingCodeFixProvider(), document, diagnostic));
+        Assert.AreEqual($"Pass '{name}' by value", action.Title);
+        ApplyChangesOperation change = Assert.IsInstanceOfType<ApplyChangesOperation>(
+            Assert.ContainsSingle(await action.GetOperationsAsync(context.CancellationToken)));
+        Document corrected = change.ChangedSolution.GetDocument(document.Id)!;
+        Assert.AreEqual(prefix + expected, (await corrected.GetTextAsync(context.CancellationToken)).ToString());
+        (Compilation output, ImmutableArray<Diagnostic> after) = await GenerateCodeFixDocumentAsync(corrected);
+        Assert.IsEmpty(after);
+        Assert.IsEmpty(output.GetDiagnostics(context.CancellationToken).Where(static value => value.Severity == DiagnosticSeverity.Error));
     }
 
     /// <summary>

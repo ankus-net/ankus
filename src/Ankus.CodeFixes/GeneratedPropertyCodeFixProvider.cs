@@ -9,39 +9,44 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace Ankus.CodeFixes;
 
 /// <summary>
-/// Turns a GUC auto-property into the static partial definition whose getter Ankus generates.
+/// Turns a GUC or native callback auto-property into the static partial definition whose getter Ankus generates.
 /// </summary>
-[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(SettingDeclarationCodeFixProvider))]
+[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(GeneratedPropertyCodeFixProvider))]
 [Shared]
-public sealed class SettingDeclarationCodeFixProvider : CodeFixProvider
+public sealed class GeneratedPropertyCodeFixProvider : CodeFixProvider
 {
     /// <summary>
-    /// The instance-property diagnostic.
+    /// The instance GUC property diagnostic.
     /// </summary>
     private const string StaticId = "ANKUS170";
 
     /// <summary>
-    /// The non-partial property diagnostic.
+    /// The non-partial GUC property diagnostic.
     /// </summary>
     private const string PartialId = "ANKUS173";
 
     /// <summary>
-    /// The authored-implementation diagnostic.
+    /// The authored GUC implementation diagnostic.
     /// </summary>
     private const string ImplementationId = "ANKUS175";
 
     /// <summary>
-    /// The non-partial container diagnostic.
+    /// The instance native callback property diagnostic.
     /// </summary>
-    private const string ContainerPartialId = "ANKUS180";
+    private const string CallbackStaticId = "ANKUS312";
 
     /// <summary>
-    /// Gets the setting declaration diagnostics corrected by this provider.
+    /// The non-partial native callback property diagnostic.
     /// </summary>
-    public override ImmutableArray<string> FixableDiagnosticIds => [StaticId, PartialId, ImplementationId, ContainerPartialId];
+    private const string CallbackPartialId = "ANKUS317";
 
     /// <summary>
-    /// Gets batch support for independent setting corrections.
+    /// Gets the generated-property diagnostics corrected by this provider.
+    /// </summary>
+    public override ImmutableArray<string> FixableDiagnosticIds => [StaticId, PartialId, ImplementationId, CallbackStaticId, CallbackPartialId];
+
+    /// <summary>
+    /// Gets batch support for independent property corrections.
     /// </summary>
     /// <returns>The standard Roslyn batch provider.</returns>
     public override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
@@ -65,32 +70,26 @@ public sealed class SettingDeclarationCodeFixProvider : CodeFixProvider
         {
             SyntaxToken identifier = root.FindToken(diagnostic.Location.SourceSpan.Start);
             if (identifier.Parent is PropertyDeclarationSyntax property && property.Identifier == identifier &&
-                model.GetDeclaredSymbol(property, cancellationToken) is { } setting)
+                model.GetDeclaredSymbol(property, cancellationToken) is { } symbol)
             {
-                if (diagnostic.Id == StaticId && IsAutoGetter(property) && !setting.IsStatic && !setting.IsOverride && !setting.IsVirtual &&
-                    !setting.IsAbstract && setting.ExplicitInterfaceImplementations.IsEmpty && !ImplementsInterface(setting) &&
-                    !await DeclarationModifiers.HasInstanceReferenceAsync(context.Document.Project.Solution, setting, cancellationToken)
+                if (diagnostic.Id is StaticId or CallbackStaticId && IsAutoGetter(property) && !symbol.IsStatic && !symbol.IsOverride &&
+                    !symbol.IsVirtual && !symbol.IsAbstract && symbol.ExplicitInterfaceImplementations.IsEmpty && !ImplementsInterface(symbol) &&
+                    !await DeclarationModifiers.HasInstanceReferenceAsync(context.Document.Project.Solution, symbol, cancellationToken)
                         .ConfigureAwait(false))
                 {
-                    Register(context, diagnostic, $"Make '{setting.Name}' static", root, property, DeclarationModifiers.AddStatic(property));
+                    Register(context, diagnostic, $"Make '{symbol.Name}' static", root, property, DeclarationModifiers.AddStatic(property));
                 }
-                else if (diagnostic.Id == PartialId && IsAutoGetter(property) && property.Initializer is null &&
+                else if (diagnostic.Id is PartialId or CallbackPartialId && IsAutoGetter(property) && property.Initializer is null &&
                     !property.Modifiers.Any(SyntaxKind.PartialKeyword))
                 {
-                    Register(context, diagnostic, $"Make '{setting.Name}' partial", root, property, DeclarationModifiers.AddPartial(property));
+                    Register(context, diagnostic, $"Make '{symbol.Name}' partial", root, property, DeclarationModifiers.AddPartial(property));
                 }
-                else if (diagnostic.Id == ImplementationId && setting.PartialDefinitionPart is not null)
+                else if (diagnostic.Id == ImplementationId && symbol.PartialDefinitionPart is not null)
                 {
                     SyntaxNode removed = root.RemoveNode(property, SyntaxRemoveOptions.KeepNoTrivia)!;
-                    context.RegisterCodeFix(CodeAction.Create($"Remove the implementation of '{setting.Name}'",
+                    context.RegisterCodeFix(CodeAction.Create($"Remove the implementation of '{symbol.Name}'",
                         _ => Task.FromResult(context.Document.WithSyntaxRoot(removed)), "Ankus.RemoveSettingImplementation"), diagnostic);
                 }
-            }
-            else if (diagnostic.Id == ContainerPartialId && identifier.Parent is ClassDeclarationSyntax container &&
-                container.Identifier == identifier && !container.Modifiers.Any(SyntaxKind.PartialKeyword))
-            {
-                Register(context, diagnostic, $"Make '{container.Identifier.ValueText}' partial", root, container,
-                    DeclarationModifiers.AddPartial(container));
             }
         }
     }

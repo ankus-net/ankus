@@ -9,47 +9,39 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace Ankus.CodeFixes;
 
 /// <summary>
-/// Makes a PostgreSQL entry method static, or makes a declaration or its containing type reachable from generated code.
+/// Makes a PostgreSQL entry method static, makes a declaration or its containing type reachable from generated code, or makes a
+/// containing type partial so it can receive generated members.
 /// </summary>
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(DeclarationModifierCodeFixProvider))]
 [Shared]
 public sealed class DeclarationModifierCodeFixProvider : CodeFixProvider
 {
     /// <summary>
-    /// The instance-method diagnostic.
+    /// The diagnostics for instance methods that PostgreSQL calls without a receiver: functions, trigger and event
+    /// callbacks, initializers, background workers, backend tests, native callback handlers and output plugin initializers.
     /// </summary>
-    private const string InstanceId = "ANKUS033";
+    private static readonly ImmutableArray<string> s_staticIds =
+        ["ANKUS033", "ANKUS208", "ANKUS232", "ANKUS251", "ANKUS291", "ANKUS332", "ANKUS516"];
 
     /// <summary>
-    /// The inaccessible-function diagnostic.
+    /// The diagnostics for declarations or containing types that generated code cannot reach, including file-local types.
     /// </summary>
-    private const string AccessId = "ANKUS034";
+    private static readonly ImmutableArray<string> s_reachableIds =
+    [
+        "ANKUS034", "ANKUS043", "ANKUS135", "ANKUS143", "ANKUS174", "ANKUS178", "ANKUS179", "ANKUS213", "ANKUS222", "ANKUS223",
+        "ANKUS240", "ANKUS243", "ANKUS244", "ANKUS261", "ANKUS264", "ANKUS265", "ANKUS281", "ANKUS282", "ANKUS296", "ANKUS302",
+        "ANKUS303", "ANKUS321", "ANKUS428", "ANKUS522", "ANKUS523",
+    ];
 
     /// <summary>
-    /// The file-local function container diagnostic.
+    /// The diagnostics for containing types that need <c>partial</c> to receive generated members.
     /// </summary>
-    private const string FileLocalId = "ANKUS043";
-
-    /// <summary>
-    /// The inaccessible-setting diagnostic.
-    /// </summary>
-    private const string SettingAccessId = "ANKUS174";
-
-    /// <summary>
-    /// The file-local setting container diagnostic.
-    /// </summary>
-    private const string SettingFileLocalId = "ANKUS178";
-
-    /// <summary>
-    /// The inaccessible setting-container diagnostic.
-    /// </summary>
-    private const string SettingContainerAccessId = "ANKUS179";
+    private static readonly ImmutableArray<string> s_partialContainerIds = ["ANKUS180", "ANKUS304", "ANKUS322"];
 
     /// <summary>
     /// Gets the declaration diagnostics corrected by this provider.
     /// </summary>
-    public override ImmutableArray<string> FixableDiagnosticIds =>
-        [InstanceId, FileLocalId, AccessId, SettingAccessId, SettingFileLocalId, SettingContainerAccessId];
+    public override ImmutableArray<string> FixableDiagnosticIds => [.. s_staticIds, .. s_reachableIds, .. s_partialContainerIds];
 
     /// <summary>
     /// Gets batch support for independent declaration corrections.
@@ -75,27 +67,61 @@ public sealed class DeclarationModifierCodeFixProvider : CodeFixProvider
         foreach (Diagnostic diagnostic in context.Diagnostics)
         {
             SyntaxToken identifier = root.FindToken(diagnostic.Location.SourceSpan.Start);
-            if (diagnostic.Id == InstanceId && identifier.Parent is MethodDeclarationSyntax method && method.Identifier == identifier &&
+            if (s_staticIds.Contains(diagnostic.Id) && identifier.Parent is MethodDeclarationSyntax method && method.Identifier == identifier &&
                 model.GetDeclaredSymbol(method, cancellationToken) is { } instance &&
                 await CanMakeStaticAsync(context.Document.Project.Solution, method, instance, model, cancellationToken).ConfigureAwait(false))
             {
                 context.RegisterCodeFix(CodeAction.Create($"Make '{instance.Name}' static",
                     token => MakeStaticAsync(context.Document, method, token), "Ankus.MakeStatic"), diagnostic);
             }
-            else if (diagnostic.Id is FileLocalId or SettingFileLocalId && identifier.Parent is TypeDeclarationSyntax local &&
-                model.GetDeclaredSymbol(local, cancellationToken) is { IsFileLocal: true } file &&
-                file.ContainingNamespace.GetTypeMembers(file.Name, file.Arity).Length == 1)
+            else if (s_reachableIds.Contains(diagnostic.Id) && FindHidden(identifier, model, cancellationToken) is ({ } member, { } hidden))
             {
-                context.RegisterCodeFix(CodeAction.Create($"Make '{file.Name}' internal",
-                    token => ReplaceFileAsync(context.Document, local, token), "Ankus.MakeFileTypeInternal"), diagnostic);
+                if (member is BaseTypeDeclarationSyntax local && hidden is INamedTypeSymbol { IsFileLocal: true } file &&
+                    file.ContainingNamespace.GetTypeMembers(file.Name, file.Arity).Length == 1)
+                {
+                    context.RegisterCodeFix(CodeAction.Create($"Make '{file.Name}' internal",
+                        token => ReplaceFileAsync(context.Document.Project.Solution, local, token), "Ankus.MakeFileTypeInternal"), diagnostic);
+                }
+                else if (CanMakeInternal(hidden))
+                {
+                    context.RegisterCodeFix(CodeAction.Create($"Make '{hidden.Name}' internal",
+                        token => MakeInternalAsync(context.Document.Project.Solution, member, hidden, token), "Ankus.MakeInternal"), diagnostic);
+                }
             }
-            else if (diagnostic.Id is AccessId or SettingAccessId or SettingContainerAccessId && identifier.Parent is MemberDeclarationSyntax member &&
-                model.GetDeclaredSymbol(member, cancellationToken) is { } hidden && CanMakeInternal(hidden))
+            else if (s_partialContainerIds.Contains(diagnostic.Id) && identifier.Parent is TypeDeclarationSyntax container &&
+                container.Identifier == identifier && !container.Modifiers.Any(SyntaxKind.PartialKeyword))
             {
-                context.RegisterCodeFix(CodeAction.Create($"Make '{hidden.Name}' internal",
-                    token => MakeInternalAsync(context.Document.Project.Solution, member, hidden, token), "Ankus.MakeInternal"), diagnostic);
+                SyntaxNode partial = root.ReplaceNode(container, DeclarationModifiers.AddPartial(container));
+                context.RegisterCodeFix(CodeAction.Create($"Make '{container.Identifier.ValueText}' partial",
+                    _ => Task.FromResult(context.Document.WithSyntaxRoot(partial)), "Ankus.MakeContainerPartial"), diagnostic);
             }
         }
+    }
+
+    /// <summary>
+    /// Resolves the declaration a reachability diagnostic names, either at its own modifier or identifier, or at the
+    /// <c>typeof</c> argument that selects a source type such as a datum converter.
+    /// </summary>
+    /// <param name="token">The token at the diagnostic location.</param>
+    /// <param name="model">The diagnosed document's semantic model.</param>
+    /// <param name="cancellationToken">Cancels binding.</param>
+    /// <returns>The source declaration and its symbol, or nulls when the location names neither.</returns>
+    private static (MemberDeclarationSyntax? Declaration, ISymbol? Symbol) FindHidden(SyntaxToken token, SemanticModel model,
+        CancellationToken cancellationToken)
+    {
+        if (token.Parent is MemberDeclarationSyntax member)
+        {
+            return (member, model.GetDeclaredSymbol(member, cancellationToken));
+        }
+
+        if (token.Parent is TypeOfExpressionSyntax selected &&
+            model.GetTypeInfo(selected.Type, cancellationToken).Type is INamedTypeSymbol { OriginalDefinition: var type } &&
+            type.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken) is MemberDeclarationSyntax declaration)
+        {
+            return (declaration, type);
+        }
+
+        return (null, null);
     }
 
     /// <summary>
@@ -190,15 +216,20 @@ public sealed class DeclarationModifierCodeFixProvider : CodeFixProvider
     /// <summary>
     /// Replaces <c>file</c> with <c>internal</c>, which keeps the type out of other assemblies.
     /// </summary>
-    /// <param name="document">The document containing the type.</param>
+    /// <param name="solution">The solution containing the type.</param>
     /// <param name="type">The file-local declaration.</param>
     /// <param name="cancellationToken">Cancels the edit.</param>
-    /// <returns>The corrected document.</returns>
-    private static async Task<Document> ReplaceFileAsync(Document document, TypeDeclarationSyntax type, CancellationToken cancellationToken)
+    /// <returns>The corrected solution.</returns>
+    private static async Task<Solution> ReplaceFileAsync(Solution solution, BaseTypeDeclarationSyntax type, CancellationToken cancellationToken)
     {
-        SyntaxNode root = (await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false))!;
+        if (solution.GetDocument(type.SyntaxTree) is not { } document)
+        {
+            return solution;
+        }
+
+        SyntaxNode root = await type.SyntaxTree.GetRootAsync(cancellationToken).ConfigureAwait(false);
         SyntaxToken file = type.Modifiers.First(static modifier => modifier.IsKind(SyntaxKind.FileKeyword));
-        return document.WithSyntaxRoot(root.ReplaceToken(file,
+        return solution.WithDocumentSyntaxRoot(document.Id, root.ReplaceToken(file,
             SyntaxFactory.Token(file.LeadingTrivia, SyntaxKind.InternalKeyword, file.TrailingTrivia)));
     }
 

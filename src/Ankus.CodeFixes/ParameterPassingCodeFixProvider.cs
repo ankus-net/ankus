@@ -18,9 +18,10 @@ namespace Ankus.CodeFixes;
 public sealed class ParameterPassingCodeFixProvider : CodeFixProvider
 {
     /// <summary>
-    /// The by-reference parameter diagnostic.
+    /// The by-reference diagnostics for function, trigger and event callback, background worker, backend test and native
+    /// callback handler parameters.
     /// </summary>
-    private const string ReferenceParameterId = "ANKUS038";
+    private static readonly ImmutableArray<string> s_referenceParameterIds = ["ANKUS038", "ANKUS216", "ANKUS259", "ANKUS298", "ANKUS341"];
 
     /// <summary>
     /// Composes all selected parameters before one compiler comparison per changed project.
@@ -28,9 +29,9 @@ public sealed class ParameterPassingCodeFixProvider : CodeFixProvider
     private static readonly FixAllProvider s_fixAll = new ProjectCodeFixAllProvider("Pass parameters by value", ApplyProjectAsync);
 
     /// <summary>
-    /// Gets the by-reference parameter diagnostic corrected by this provider.
+    /// Gets the by-reference parameter diagnostics corrected by this provider.
     /// </summary>
-    public override ImmutableArray<string> FixableDiagnosticIds => [ReferenceParameterId];
+    public override ImmutableArray<string> FixableDiagnosticIds => s_referenceParameterIds;
 
     /// <summary>
     /// Gets project batching for independent parameter corrections.
@@ -54,7 +55,7 @@ public sealed class ParameterPassingCodeFixProvider : CodeFixProvider
             return;
         }
 
-        foreach (Diagnostic diagnostic in context.Diagnostics.Where(static value => value.Id == ReferenceParameterId))
+        foreach (Diagnostic diagnostic in context.Diagnostics.Where(static value => s_referenceParameterIds.Contains(value.Id)))
         {
             if (FindParameter(root, model, diagnostic, cancellationToken) is { } parameter)
             {
@@ -70,13 +71,13 @@ public sealed class ParameterPassingCodeFixProvider : CodeFixProvider
     /// </summary>
     /// <param name="root">The current syntax root.</param>
     /// <param name="model">Its semantic binding.</param>
-    /// <param name="diagnostic">The diagnostic located on the parameter declaration.</param>
+    /// <param name="diagnostic">The diagnostic located on the parameter declaration, its modifier or its name.</param>
     /// <param name="cancellationToken">Cancels symbol binding.</param>
     /// <returns>The read-only reference parameter, or null when no correction preserves the method.</returns>
     private static IParameterSymbol? FindParameter(SyntaxNode root, SemanticModel model, Diagnostic diagnostic,
         CancellationToken cancellationToken)
         => root.FindToken(diagnostic.Location.SourceSpan.Start).Parent?.FirstAncestorOrSelf<ParameterSyntax>() is { } syntax &&
-            syntax.Span == diagnostic.Location.SourceSpan &&
+            syntax.Span.Contains(diagnostic.Location.SourceSpan) &&
             model.GetDeclaredSymbol(syntax, cancellationToken) is { RefKind: RefKind.In or RefKind.RefReadOnlyParameter } parameter &&
             parameter.ContainingSymbol is IMethodSymbol { MethodKind: MethodKind.Ordinary }
             ? parameter
@@ -103,7 +104,7 @@ public sealed class ParameterPassingCodeFixProvider : CodeFixProvider
                 continue;
             }
 
-            foreach (Diagnostic diagnostic in selection.Value.Where(static value => value.Id == ReferenceParameterId))
+            foreach (Diagnostic diagnostic in selection.Value.Where(static value => s_referenceParameterIds.Contains(value.Id)))
             {
                 if (FindParameter(root, model, diagnostic, cancellationToken) is { } parameter)
                 {

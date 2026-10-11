@@ -389,6 +389,10 @@ and reject an invalid declaration before emitting its callable boundary.
 | `ANKUS341`, `ANKUS342`, `ANKUS345`, `ANKUS346` | Match every native argument's type and position, passing it by value. |
 | `ANKUS343` | Remove `UnmanagedCallersOnly` from the managed handler; Ankus generates the native entry boundary. |
 
+Editors offer **Make static** for `ANKUS312` and `ANKUS332`, **Make partial**
+for `ANKUS317` and `ANKUS322`, **Make internal** for `ANKUS321`, and **Pass by
+value** for an `in` or `ref readonly` handler argument (`ANKUS341`).
+
 These checks preserve valid overload selection, private handlers and exact
 pointer, enum and native-structure values. `ANKUS276` continues to reject
 conditional handlers whose managed invocation could disappear.
@@ -891,3 +895,6 @@ an attribute with the same metadata name in another assembly cannot replace it.
 | `ANKUS155` | Keep only one default mapping declaration. |
 | `ANKUS156` | Select a closed construction of the annotated managed type. |
 | `ANKUS157` | Keep only one exact mapping for each closed managed target. |
+
+Editors offer **Make internal** for a private, protected or file-local carrier
+(`ANKUS135`) or converter (`ANKUS143`).

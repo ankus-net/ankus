@@ -149,3 +149,6 @@ their output.
 | ANKUS525 | Put SQL, trigger, test, worker and initialization roles, and SQL metadata, on separate methods. |
 | ANKUS526 | Declare one initializer per extension; the library exports one `_PG_output_plugin_init`. |
 | ANKUS277 | Remove `Conditional` so every native invocation runs the initializer. |
+
+Editors offer **Make static** for ANKUS516 and **Make internal** for ANKUS522
+and ANKUS523.
