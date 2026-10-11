@@ -82,7 +82,7 @@ defines the full scope; family-level implementation is not API-by-API completion
 | .NET templates | Version-matched ordinary extension and worker templates reuse the CLI assets and pin local tools. Optional xUnit/NUnit consumers exercise managed and named backend cases, ignore reasons, worker processes and cleanup alongside default MSTest consumers; all three list backend cases with `dotnet test --list-tests` before anything is published. Complete primary-platform CI passes. | Complete version/platform acceptance. |
 | API discoverability | Idiomatic attributed declarations, documented runtime APIs, named logging helpers and typed SPI interpolation. Compiler transport helpers are isolated in Ankus.CompilerServices and hidden from IntelliSense; complete primary-platform CI passes. `PgAssert` adds MSTest's tolerance, text and count checks. | Final inventory audit. |
 | Packages and release | MIT license, Brandon Williams copyright, author/repository/project metadata and deliberate SDK/runtime boundaries. | Full release gates and supported-platform packages before publishing 0.1.0. |
-| Documentation and samples | Public guides, generated API pages, pgrx migration and backend-execution guidance; current status separated from historical evidence. All 37 of pgrx's examples map to runnable samples with backend integration tests. | Final usage/limitation review across samples and guides. |
+| Documentation and samples | Public guides, generated API pages, pgrx migration and backend-execution guidance; current status separated from historical evidence. All 37 of pgrx's examples map to runnable samples with backend integration tests. Every guide was reviewed against the code on 2026-10-11 and corrected. | Recheck guides that change after the .NET servicing update and before release. |
 
 The custom-type alignment review found no defect: variable-length PostgreSQL
 types require at least four-byte datum alignment. Managed codec payload layout
@@ -150,8 +150,11 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   same extension called the first one's code. Linux libraries now link with
   `-Bsymbolic`, binding their own references locally as macOS and Windows
   already do, and the side-by-side versioned library test passes again.
-  A documentation review of seventeen guides against the code also corrected
-  outdated names, diagnostics and behavioral claims.
+  A review of every guide against the code also corrected outdated names,
+  diagnostics and behavioral claims. The parallel-worker initialization text
+  now says that `PgInitialize` waits for restored settings only on PostgreSQL
+  13–17, transaction callbacks never recover native input errors on any
+  version, and `Open` resolves relation names through `regclass` input.
 - Arrays of `bool`, `"char"`, `int2`, `int4`, `int8`, `oid`, `float4` and
   `float8` without NULLs now cross the call boundary as the packed block
   PostgreSQL stores, copied once, instead of one encoded record per element
@@ -771,7 +774,7 @@ review's findings are fixed or kept by documented design.
 2. Complete every pgrx 0.19.3 release-delta gate, including deterministic header discovery/regeneration, newly exposed native contracts, all CLI/configuration/output forwarding and allocation/shared-memory/varlena audits. Refresh evidence against the corrected current source.
 3. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
 4. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees.
-5. Complete framework/discovery support, representative samples and the final documentation review.
+5. Complete framework/discovery support and representative samples, and recheck guides that change before release.
 6. Complete .NET servicing and every release requirement in the full inventory, using the release rehearsal, before publishing 0.1.0. If .NET 11 reaches GA first, complete its acceptance for that release; preview validation does not block the initial .NET 10 release.
 
 Continue independent work while CI runs. Before every commit and push, check and
