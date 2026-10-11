@@ -81,14 +81,16 @@ internal static class NativeBindingLayoutCommand
     /// <param name="executable">The probe executable path.</param>
     /// <param name="output">The probe working directory.</param>
     /// <param name="cancellationToken">Cancels compilation or execution.</param>
-    /// <param name="requireC11">Whether the probe uses C11 compile-time type checks.</param>
+    /// <param name="requireC11">Whether the probe uses C11 compile-time type checks; MSVC always compiles as C11.</param>
     /// <returns>The successful probe's observations.</returns>
     internal static async Task<string> CompileProbeAsync(PostgresInstallation installation, string[] arguments,
         string source, string executable, string output, CancellationToken cancellationToken, bool requireC11 = false)
     {
         string compiler = arguments.Length >= 4 && arguments[3].Length != 0 ? arguments[3] : OperatingSystem.IsWindows() ? "cl.exe" : "cc";
         var options = new List<string>();
-        if (requireC11)
+        // MSVC's default C mode predates C11, which PostgreSQL 19's headers require; older headers compile unchanged
+        // under it, as the header and link commands already show.
+        if (requireC11 || OperatingSystem.IsWindows())
         {
             options.Add(OperatingSystem.IsWindows() ? "/std:c11" : "-std=gnu11");
         }

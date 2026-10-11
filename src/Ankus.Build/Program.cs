@@ -193,7 +193,8 @@ try
     if (OperatingSystem.IsWindows())
     {
         compiler = Path.Combine(Path.GetDirectoryName(args[3]) ?? string.Empty, "cl.exe");
-        compilerArguments.AddRange(["/nologo", "/c", "/O2", "/MT", "/WX", "/utf-8", $"/Fo{nativeObject}"]);
+        // PostgreSQL 19's headers require C11, which MSVC's default C mode predates.
+        compilerArguments.AddRange(["/nologo", "/std:c11", "/c", "/O2", "/MT", "/WX", "/utf-8", $"/Fo{nativeObject}"]);
         compilerArguments.Add($"/I{installation.ServerIncludeDirectory}");
         compilerArguments.Add($"/I{installation.IncludeDirectory}");
         compilerArguments.Add($"/I{Path.Combine(installation.ServerIncludeDirectory, "port", "win32")}");
