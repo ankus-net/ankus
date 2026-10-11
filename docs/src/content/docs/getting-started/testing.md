@@ -172,6 +172,11 @@ test publications non-relocatable, just as it does for
 [ordinary functions](/function-declarations/#execution-options). Normal publications
 exclude backend test functions and their search paths.
 
+`Volatility`, `ParallelSafety`, `SecurityDefiner` and `Cost` set the test
+function's execution options, as pgrx's `#[pg_test]` passes `#[pg_extern]`
+options through. For example, `[PgTest(SecurityDefiner = true)]` runs the test
+with the installing role's privileges.
+
 Names in reports retain their C# identity. Generated SQL names fit PostgreSQL's
 identifier limit, even for long C# method names. An explicit `[PgSchema]` selects
 the function schema; otherwise the fixture uses the installed extension schema,

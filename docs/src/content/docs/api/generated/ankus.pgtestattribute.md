@@ -32,6 +32,18 @@ public PgTestAttribute()
 
 ## Properties
 
+<a id="member-dd8f9d74b6746b4b"></a>
+
+### Cost
+
+Gets or sets the positive finite planner cost of the test function. The default is one.
+
+```csharp
+public double Cost { get; set; }
+```
+
+Value: [double](https://learn.microsoft.com/dotnet/api/system.double)
+
 <a id="member-196543558d9871c7"></a>
 
 ### ExpectedError
@@ -56,6 +68,18 @@ public string? IgnoreReason { get; set; }
 
 Value: [string](https://learn.microsoft.com/dotnet/api/system.string)
 
+<a id="member-455216b00776a0c6"></a>
+
+### ParallelSafety
+
+Gets or sets whether PostgreSQL may run the test function in parallel queries. The default is Unsafe.
+
+```csharp
+public PgParallelSafety ParallelSafety { get; set; }
+```
+
+Value: [PgParallelSafety](/api/ankus.pgparallelsafety/)
+
 <a id="member-9121acda785fae06"></a>
 
 ### SearchPath
@@ -68,3 +92,28 @@ public string[]? SearchPath { get; set; }
 ```
 
 Value: [string[]](https://learn.microsoft.com/dotnet/api/system.string)
+
+<a id="member-58b01185f19d6bad"></a>
+
+### SecurityDefiner
+
+Gets or sets whether the test function runs with its owner's privileges instead of the caller's.
+
+```csharp
+public bool SecurityDefiner { get; set; }
+```
+
+Value: [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
+
+<a id="member-c9c1b0c8f1884083"></a>
+
+### Volatility
+
+Gets or sets the test function's volatility, as pgrx's <code>#[pg_test]</code> passes <code>#[pg_extern]</code> options
+through. The default is Volatile.
+
+```csharp
+public PgVolatility Volatility { get; set; }
+```
+
+Value: [PgVolatility](/api/ankus.pgvolatility/)

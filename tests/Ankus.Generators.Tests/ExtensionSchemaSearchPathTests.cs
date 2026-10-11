@@ -121,6 +121,34 @@ public sealed partial class PgFunctionGeneratorTests
     }
 
     /// <summary>
+    /// Function options on a backend test reach its SQL function, as pgrx's <c>#[pg_test]</c> passes
+    /// <c>#[pg_extern]</c> options through, and invalid values are reported at the option.
+    /// </summary>
+    [TestMethod]
+    public void BackendTestFunctionOptionsReachTheirSqlFunction()
+    {
+        (Compilation output, ImmutableArray<Diagnostic> diagnostics) = Generate("""
+            public static partial class Checks
+            {
+                [Ankus.PgTest(Volatility = Ankus.PgVolatility.Stable, ParallelSafety = Ankus.PgParallelSafety.Safe, SecurityDefiner = true, Cost = 5)]
+                public static void Verify(){}
+            }
+            """, options: new BackendOptions("true"));
+        Assert.IsEmpty(diagnostics);
+        Assert.Contains("LANGUAGE c STABLE PARALLEL SAFE STRICT SECURITY DEFINER NOT LEAKPROOF COST 5", InstallationBody(output));
+
+        (_, ImmutableArray<Diagnostic> invalid) = Generate("""
+            public static partial class Checks
+            {
+                [Ankus.PgTest(Cost = 0)] public static void Verify(){}
+            }
+            """, options: new BackendOptions("true"));
+        Diagnostic error = Assert.ContainsSingle(invalid);
+        Assert.AreEqual("ANKUS046", error.Id);
+        Assert.AreEqual("0", error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
+    }
+
+    /// <summary>
     /// Body edits preserve conversion and SQL caches; changing the path updates only SQL and relocation metadata.
     /// </summary>
     [TestMethod]
