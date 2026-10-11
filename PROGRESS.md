@@ -163,9 +163,12 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   but with `SA_SIGINFO` still set, and 10.0.12's activation handler then
   chains to a null `sa_sigaction`. A process whose parent once caught `SIGIO`
   can inherit that state on any Mac. Upstream's 10.0.13 fix (`8250bd5`) checks
-  for default and ignored handlers first. The servicing update will add a
-  fork probe that sets this state before loading a library, so every macOS
-  runner checks it, then rerun the rehearsal.
+  for default and ignored handlers first. Linux has the same chain through
+  `SIGRTMIN`, so a probe can set either state before loading a library and
+  check it on every runner. Fork commit `fcf0c5c` extends the host-signal
+  probe this way: on Linux x64 the 10.0.12 runtime crashes in both new cases,
+  and with upstream's fix applied all three cases pass. The servicing update
+  merges 10.0.13 with that probe, then reruns the rehearsal.
 - Ankus library packages now embed their symbols. A package carried no PDB, so
   Native AOT had no source lines for framework code, and a debugger attached to
   a package-built extension showed Ankus frames without files or lines, while a
