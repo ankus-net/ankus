@@ -23,6 +23,39 @@ Inheritance: [object](https://learn.microsoft.com/dotnet/api/system.object)
 
 ## Methods
 
+<a id="member-6a308994ad71cc1f"></a>
+
+### AreEqual(double, double, double, string?)
+
+Checks that two floating-point values differ by no more than a tolerance, as MSTest's <code>Assert.AreEqual</code>
+with a delta does.
+
+```csharp
+public static void AreEqual(double expected, double actual, double delta, string? message = null)
+```
+
+Parameters:
+
+`expected` — [double](https://learn.microsoft.com/dotnet/api/system.double)
+
+The expected value.
+
+`actual` — [double](https://learn.microsoft.com/dotnet/api/system.double)
+
+The actual value.
+
+`delta` — [double](https://learn.microsoft.com/dotnet/api/system.double)
+
+The largest allowed difference; NaN equals NaN.
+
+`message` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+An optional explanation.
+
+Exceptions:
+
+- [PgAssertException](/api/ankus.pgassertexception/): The values differ by more than the tolerance.
+
 <a id="member-ad07e2d51afd23e9"></a>
 
 ### AreEqual&lt;T&gt;(T, T, string?)
@@ -125,6 +158,90 @@ Exceptions:
 
 - [PgAssertException](/api/ankus.pgassertexception/): The sequences differ.
 
+<a id="member-3d3631863a6ece6c"></a>
+
+### Contains(string, string?, string?)
+
+Checks that a string contains a substring, compared ordinally.
+
+```csharp
+public static void Contains(string substring, string? value, string? message = null)
+```
+
+Parameters:
+
+`substring` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+The text that must appear.
+
+`value` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+The string to search.
+
+`message` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+An optional explanation.
+
+Exceptions:
+
+- [PgAssertException](/api/ankus.pgassertexception/): The string does not contain the substring.
+
+<a id="member-6eb96ab8a80379c8"></a>
+
+### DoesNotContain(string, string?, string?)
+
+Checks that a string does not contain a substring, compared ordinally.
+
+```csharp
+public static void DoesNotContain(string substring, string? value, string? message = null)
+```
+
+Parameters:
+
+`substring` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+The text that must not appear.
+
+`value` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+The string to search.
+
+`message` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+An optional explanation.
+
+Exceptions:
+
+- [PgAssertException](/api/ankus.pgassertexception/): The string contains the substring.
+
+<a id="member-c7799b89905cb162"></a>
+
+### EndsWith(string, string?, string?)
+
+Checks that a string ends with a suffix, compared ordinally.
+
+```csharp
+public static void EndsWith(string suffix, string? value, string? message = null)
+```
+
+Parameters:
+
+`suffix` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+The expected end.
+
+`value` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+The string.
+
+`message` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+An optional explanation.
+
+Exceptions:
+
+- [PgAssertException](/api/ankus.pgassertexception/): The string does not end with the suffix.
+
 <a id="member-20af100d16a1926f"></a>
 
 ### Fail(string)
@@ -144,6 +261,70 @@ The explanation.
 Exceptions:
 
 - [PgAssertException](/api/ankus.pgassertexception/): Always.
+
+<a id="member-e86df1979d9deb42"></a>
+
+### HasCount&lt;T&gt;(int, IEnumerable&lt;T&gt;, string?)
+
+Checks that a sequence has exactly the given number of elements.
+
+```csharp
+public static void HasCount<T>(int expected, IEnumerable<T> values, string? message = null)
+```
+
+Type parameters:
+
+`T`
+
+The element type.
+
+Parameters:
+
+`expected` — [int](https://learn.microsoft.com/dotnet/api/system.int32)
+
+The expected count.
+
+`values` — [IEnumerable&lt;T&gt;](https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1)
+
+The sequence.
+
+`message` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+An optional explanation.
+
+Exceptions:
+
+- [PgAssertException](/api/ankus.pgassertexception/): The count differs.
+
+<a id="member-5333a5298d9afc73"></a>
+
+### IsEmpty&lt;T&gt;(IEnumerable&lt;T&gt;, string?)
+
+Checks that a sequence has no elements.
+
+```csharp
+public static void IsEmpty<T>(IEnumerable<T> values, string? message = null)
+```
+
+Type parameters:
+
+`T`
+
+The element type.
+
+Parameters:
+
+`values` — [IEnumerable&lt;T&gt;](https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1)
+
+The sequence.
+
+`message` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+An optional explanation.
+
+Exceptions:
+
+- [PgAssertException](/api/ankus.pgassertexception/): The sequence has elements.
 
 <a id="member-c5b9721e06e53e73"></a>
 
@@ -248,6 +429,34 @@ The condition's source text, supplied by the compiler.
 Exceptions:
 
 - [PgAssertException](/api/ankus.pgassertexception/): The condition is false.
+
+<a id="member-490754052e267ce7"></a>
+
+### StartsWith(string, string?, string?)
+
+Checks that a string starts with a prefix, compared ordinally.
+
+```csharp
+public static void StartsWith(string prefix, string? value, string? message = null)
+```
+
+Parameters:
+
+`prefix` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+The expected beginning.
+
+`value` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+The string.
+
+`message` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+An optional explanation.
+
+Exceptions:
+
+- [PgAssertException](/api/ankus.pgassertexception/): The string does not start with the prefix.
 
 <a id="member-66fc7c2a3b7faacb"></a>
 

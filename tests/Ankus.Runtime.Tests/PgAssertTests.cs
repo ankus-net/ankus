@@ -35,6 +35,39 @@ public sealed class PgAssertTests
     }
 
     /// <summary>
+    /// Tolerance, text and count checks pass quietly and name the check, the values and the explanation on failure.
+    /// </summary>
+    [TestMethod]
+    public void ToleranceTextAndCountChecksNameTheirValues()
+    {
+        PgAssert.AreEqual(0.3, 0.1 + 0.2, 1e-12);
+        PgAssert.AreEqual(double.NaN, double.NaN, 0);
+        PgAssert.AreEqual(double.PositiveInfinity, double.PositiveInfinity, 0);
+        PgAssert.Contains("lo w", "hello world");
+        PgAssert.DoesNotContain("x", "hello");
+        PgAssert.DoesNotContain("x", null);
+        PgAssert.StartsWith("he", "hello");
+        PgAssert.EndsWith("lo", "hello");
+        PgAssert.HasCount(2, s_pair);
+        PgAssert.IsEmpty(Array.Empty<int>());
+        Assert.AreEqual("PgAssert.AreEqual failed. Expected: 1 within 0.5. Actual: 2. close enough",
+            Assert.ThrowsExactly<PgAssertException>(() => PgAssert.AreEqual(1d, 2d, 0.5, "close enough")).Message);
+        Assert.ThrowsExactly<PgAssertException>(() => PgAssert.AreEqual(1d, double.NaN, 10));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => PgAssert.AreEqual(1d, 1d, -1));
+        Assert.AreEqual("PgAssert.Contains failed. Expected text containing: \"z\". Actual: \"abc\".",
+            Assert.ThrowsExactly<PgAssertException>(() => PgAssert.Contains("z", "abc")).Message);
+        Assert.AreEqual("PgAssert.Contains failed. Expected text containing: \"z\". Actual: null.",
+            Assert.ThrowsExactly<PgAssertException>(() => PgAssert.Contains("z", null)).Message);
+        Assert.ThrowsExactly<PgAssertException>(() => PgAssert.DoesNotContain("b", "abc"));
+        Assert.ThrowsExactly<PgAssertException>(() => PgAssert.StartsWith("b", "abc"));
+        Assert.ThrowsExactly<PgAssertException>(() => PgAssert.EndsWith("b", "abc"));
+        Assert.AreEqual("PgAssert.HasCount failed. Expected 3 elements. Actual: 2: [1, 2].",
+            Assert.ThrowsExactly<PgAssertException>(() => PgAssert.HasCount(3, s_pair)).Message);
+        Assert.AreEqual("PgAssert.IsEmpty failed. Expected no elements. Actual: [1, 2].",
+            Assert.ThrowsExactly<PgAssertException>(() => PgAssert.IsEmpty(s_pair)).Message);
+    }
+
+    /// <summary>
     /// Exception checks return the exact exception, reject other types and completed work, and match SQLSTATEs.
     /// </summary>
     [TestMethod]

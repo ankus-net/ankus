@@ -82,7 +82,10 @@ public static partial class BackendChecks
 The method body executes inside the PostgreSQL backend. You can use SPI,
 memory contexts and other backend APIs there. Test frameworks do not load inside
 an extension, so check results with `PgAssert`, as pgrx tests use `assert_eq!`.
-A failed check names the expected and actual values. `PgAssert.ThrowsSqlState`
+A failed check names the expected and actual values. Besides equality, null and
+exception checks, it has `AreEqual` with a floating-point tolerance, ordinal
+`Contains`, `DoesNotContain`, `StartsWith` and `EndsWith` for text, and
+`HasCount` and `IsEmpty` for sequences. `PgAssert.ThrowsSqlState`
 runs its work in a subtransaction and returns the PostgreSQL error, so the test
 can inspect it and keep going in the same transaction:
 

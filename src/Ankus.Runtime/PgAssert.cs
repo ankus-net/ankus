@@ -75,6 +75,128 @@ public static class PgAssert
     }
 
     /// <summary>
+    /// Checks that two floating-point values differ by no more than a tolerance, as MSTest's <c>Assert.AreEqual</c>
+    /// with a delta does.
+    /// </summary>
+    /// <param name="expected">The expected value.</param>
+    /// <param name="actual">The actual value.</param>
+    /// <param name="delta">The largest allowed difference; NaN equals NaN.</param>
+    /// <param name="message">An optional explanation.</param>
+    /// <exception cref="PgAssertException">The values differ by more than the tolerance.</exception>
+    public static void AreEqual(double expected, double actual, double delta, string? message = null)
+    {
+        if (double.IsNaN(delta) || delta < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(delta), delta, "The tolerance must be zero or positive.");
+        }
+
+        if (!(double.IsNaN(expected) && double.IsNaN(actual)) && !(expected == actual) && !(Math.Abs(expected - actual) <= delta))
+        {
+            Fail("AreEqual", $"Expected: {PgPropertyRunner.Describe(expected)} within {PgPropertyRunner.Describe(delta)}. " +
+                $"Actual: {PgPropertyRunner.Describe(actual)}.", message);
+        }
+    }
+
+    /// <summary>
+    /// Checks that a string contains a substring, compared ordinally.
+    /// </summary>
+    /// <param name="substring">The text that must appear.</param>
+    /// <param name="value">The string to search.</param>
+    /// <param name="message">An optional explanation.</param>
+    /// <exception cref="PgAssertException">The string does not contain the substring.</exception>
+    public static void Contains(string substring, string? value, string? message = null)
+    {
+        ArgumentNullException.ThrowIfNull(substring);
+        if (value is null || !value.Contains(substring, StringComparison.Ordinal))
+        {
+            Fail("Contains", $"Expected text containing: {PgPropertyRunner.Describe(substring)}. Actual: {PgPropertyRunner.Describe(value)}.", message);
+        }
+    }
+
+    /// <summary>
+    /// Checks that a string does not contain a substring, compared ordinally.
+    /// </summary>
+    /// <param name="substring">The text that must not appear.</param>
+    /// <param name="value">The string to search.</param>
+    /// <param name="message">An optional explanation.</param>
+    /// <exception cref="PgAssertException">The string contains the substring.</exception>
+    public static void DoesNotContain(string substring, string? value, string? message = null)
+    {
+        ArgumentNullException.ThrowIfNull(substring);
+        if (value is not null && value.Contains(substring, StringComparison.Ordinal))
+        {
+            Fail("DoesNotContain", $"Expected text without: {PgPropertyRunner.Describe(substring)}. Actual: {PgPropertyRunner.Describe(value)}.", message);
+        }
+    }
+
+    /// <summary>
+    /// Checks that a string starts with a prefix, compared ordinally.
+    /// </summary>
+    /// <param name="prefix">The expected beginning.</param>
+    /// <param name="value">The string.</param>
+    /// <param name="message">An optional explanation.</param>
+    /// <exception cref="PgAssertException">The string does not start with the prefix.</exception>
+    public static void StartsWith(string prefix, string? value, string? message = null)
+    {
+        ArgumentNullException.ThrowIfNull(prefix);
+        if (value is null || !value.StartsWith(prefix, StringComparison.Ordinal))
+        {
+            Fail("StartsWith", $"Expected text starting with: {PgPropertyRunner.Describe(prefix)}. Actual: {PgPropertyRunner.Describe(value)}.", message);
+        }
+    }
+
+    /// <summary>
+    /// Checks that a string ends with a suffix, compared ordinally.
+    /// </summary>
+    /// <param name="suffix">The expected end.</param>
+    /// <param name="value">The string.</param>
+    /// <param name="message">An optional explanation.</param>
+    /// <exception cref="PgAssertException">The string does not end with the suffix.</exception>
+    public static void EndsWith(string suffix, string? value, string? message = null)
+    {
+        ArgumentNullException.ThrowIfNull(suffix);
+        if (value is null || !value.EndsWith(suffix, StringComparison.Ordinal))
+        {
+            Fail("EndsWith", $"Expected text ending with: {PgPropertyRunner.Describe(suffix)}. Actual: {PgPropertyRunner.Describe(value)}.", message);
+        }
+    }
+
+    /// <summary>
+    /// Checks that a sequence has exactly the given number of elements.
+    /// </summary>
+    /// <typeparam name="T">The element type.</typeparam>
+    /// <param name="expected">The expected count.</param>
+    /// <param name="values">The sequence.</param>
+    /// <param name="message">An optional explanation.</param>
+    /// <exception cref="PgAssertException">The count differs.</exception>
+    public static void HasCount<T>(int expected, IEnumerable<T> values, string? message = null)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        T[] items = [.. values];
+        if (items.Length != expected)
+        {
+            Fail("HasCount", $"Expected {expected} elements. Actual: {items.Length}: {PgPropertyRunner.Describe(items)}.", message);
+        }
+    }
+
+    /// <summary>
+    /// Checks that a sequence has no elements.
+    /// </summary>
+    /// <typeparam name="T">The element type.</typeparam>
+    /// <param name="values">The sequence.</param>
+    /// <param name="message">An optional explanation.</param>
+    /// <exception cref="PgAssertException">The sequence has elements.</exception>
+    public static void IsEmpty<T>(IEnumerable<T> values, string? message = null)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        T[] items = [.. values];
+        if (items.Length != 0)
+        {
+            Fail("IsEmpty", $"Expected no elements. Actual: {PgPropertyRunner.Describe(items)}.", message);
+        }
+    }
+
+    /// <summary>
     /// Checks that two sequences hold equal elements in the same order.
     /// </summary>
     /// <typeparam name="T">The element type.</typeparam>
