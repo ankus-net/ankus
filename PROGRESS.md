@@ -158,8 +158,8 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   word; compressed, external, domain and non-UTF-8 values keep the native path.
   On a PostgreSQL 16 release build a text view costs 154 ns instead of 2.33 µs,
   `Read<string>()` 185 ns instead of 1.28 µs, and a `PgTextView` parameter about
-  0.64 µs per call instead of 3 µs. The rest of that parameter cost is the
-  callback lifetime checks, each a native memory call.
+  0.41 µs per call instead of 3 µs, now that a borrowed input captures its
+  callback lifetime in one native call instead of three.
 - The scalar call boundary no longer zero-fills two 2.8 KB error buffers on
   every call; they are only valid after a failure, so clearing their headers is
   enough. On a PostgreSQL 16 release build, a managed `int` function costs about

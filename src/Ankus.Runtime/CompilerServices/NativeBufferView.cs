@@ -8,7 +8,7 @@ public partial struct NativeValue
     /// <returns>The checked view over original bytes or a private detoast allocation.</returns>
     public readonly PgByteaView ReadBorrowedBytea()
     {
-        var lifetime = new PgDatumLifetime(PgMemoryContext.Current, NativeMemoryContext.BorrowScope);
+        var lifetime = PgDatumLifetime.ForCurrentInput(NativeMemoryContext.BorrowScope);
         return new PgByteaView(new PgDatum(unchecked((nuint)Integral), unchecked((uint)_auxiliary2), IsNull != 0, lifetime));
     }
 
@@ -18,7 +18,7 @@ public partial struct NativeValue
     /// <returns>The checked UTF-8 view retaining the original server-encoded datum.</returns>
     public readonly PgTextView ReadBorrowedText()
     {
-        var lifetime = new PgDatumLifetime(PgMemoryContext.Current, NativeMemoryContext.BorrowScope);
+        var lifetime = PgDatumLifetime.ForCurrentInput(NativeMemoryContext.BorrowScope);
         return new PgTextView(new PgDatum(unchecked((nuint)Integral), unchecked((uint)_auxiliary2), IsNull != 0, lifetime));
     }
 

@@ -34,7 +34,7 @@ public unsafe partial struct NativeValue
     public readonly PgCStringView ReadBorrowedCString()
     {
         RequirePresentCString();
-        var lifetime = new PgDatumLifetime(PgMemoryContext.Current, NativeMemoryContext.BorrowScope);
+        var lifetime = PgDatumLifetime.ForCurrentInput(NativeMemoryContext.BorrowScope);
         return new PgCStringView(new PgDatum(unchecked((nuint)Integral), unchecked((uint)_auxiliary2), false, lifetime));
     }
 

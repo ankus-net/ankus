@@ -1144,8 +1144,10 @@ internal static class NativeMemoryBridge
                     break;
                 case ANKUS_MEMORY_CURRENT:
                 {
+                    /* The generation lets a callback's borrowed inputs capture their lifetime in this one call. */
                     AnkusMemoryContext *entry = ankus_memory_register_context(CurrentMemoryContext);
                     result->context = (intptr_t) entry->id;
+                    result->value = (intptr_t) entry->generation;
                     break;
                 }
                 case ANKUS_MEMORY_CALLBACK:

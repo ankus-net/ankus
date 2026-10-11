@@ -34,6 +34,32 @@ internal sealed class PgDatumLifetime
     }
 
     /// <summary>
+    /// Captures a known live context's identity and generation.
+    /// </summary>
+    private PgDatumLifetime(nint provider, nint contextId, nuint generation, NativeBorrowScope scope)
+    {
+        _provider = provider;
+        ContextId = contextId;
+        Generation = generation;
+        Scope = scope;
+    }
+
+    /// <summary>
+    /// Captures the callback's current context and its generation in one native call, for a borrowed input.
+    /// </summary>
+    /// <param name="scope">The callback lease the input expires with.</param>
+    /// <returns>The input's lifetime.</returns>
+    internal static PgDatumLifetime ForCurrentInput(NativeBorrowScope scope)
+    {
+        NativeMemoryRequest request = new() { _operation = NativeMemoryOperation.Current };
+        NativeMemoryContext.Invoke(ref request, out NativeMemoryResult result);
+        nint provider = NativeMemoryContext.Provider;
+        return result._value == 0
+            ? new PgDatumLifetime(PgMemoryContext.FromId(provider, result._context), scope)
+            : new PgDatumLifetime(provider, result._context, unchecked((nuint)result._value), scope);
+    }
+
+    /// <summary>
     /// Derives a lifetime for a view that borrows its source's storage in place, which also ends when the view is
     /// disposed, as a view with private storage ends when that storage is freed.
     /// </summary>

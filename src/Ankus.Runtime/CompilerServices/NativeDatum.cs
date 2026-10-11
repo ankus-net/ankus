@@ -42,7 +42,7 @@ public partial struct NativeValue
     /// <returns>The view with original storage or a private PostgreSQL detoast allocation.</returns>
     public readonly PgArrayView ReadBorrowedArray()
     {
-        var lifetime = new PgDatumLifetime(PgMemoryContext.Current, NativeMemoryContext.BorrowScope);
+        var lifetime = PgDatumLifetime.ForCurrentInput(NativeMemoryContext.BorrowScope);
         return new PgArrayView(new PgDatum(unchecked((nuint)Integral), unchecked((uint)_auxiliary2), IsNull != 0, lifetime));
     }
 
@@ -53,7 +53,7 @@ public partial struct NativeValue
     /// <returns>A lazy typed view over the original native array storage.</returns>
     public readonly PgArrayView<T> ReadBorrowedArray<T>()
     {
-        var lifetime = new PgDatumLifetime(PgMemoryContext.Current, NativeMemoryContext.BorrowScope);
+        var lifetime = PgDatumLifetime.ForCurrentInput(NativeMemoryContext.BorrowScope);
         return new PgArrayView<T>(new PgDatum(unchecked((nuint)Integral), unchecked((uint)_auxiliary2), IsNull != 0, lifetime));
     }
 
