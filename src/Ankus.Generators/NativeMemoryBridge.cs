@@ -120,6 +120,7 @@ internal static class NativeMemoryBridge
             int32 *failed_frames;
             volatile int *signal_queue;
             int *signal_mask;
+            int32 direct_reads;
         };
 
         StaticAssertDecl(sizeof(sig_atomic_t) == sizeof(int32), "managed interrupt flag width");
@@ -192,6 +193,9 @@ internal static class NativeMemoryBridge
             memory->signal_queue = &pg_signal_queue;
             memory->signal_mask = &pg_signal_mask;
         #endif
+            /* Lets managed code read flat values in place: bytes always, and text when the database
+             * encoding needs no conversion to UTF-8. */
+            memory->direct_reads = GetDatabaseEncoding() == PG_UTF8 ? 2 : 1;
         }
 
         typedef struct AnkusMemoryAllocation AnkusMemoryAllocation;

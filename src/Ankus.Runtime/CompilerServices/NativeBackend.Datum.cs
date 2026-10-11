@@ -54,6 +54,11 @@ public static unsafe partial class NativeBackend
         }
 
         PgDatumRegistry.RejectOrdinaryResult<T>();
+        if (TryReadDirect(value, out T direct))
+        {
+            return direct;
+        }
+
         if (PgArrayViews.Find(typeof(T)) is { } view)
         {
             return (T)view.Read(value)!;
@@ -102,6 +107,52 @@ public static unsafe partial class NativeBackend
                 : SpiType.FromNative(result._text, typeOid);
             return SpiRow.Convert<T>(converted);
         });
+    }
+
+    /// <summary>
+    /// Reads a built-in by-value type, or flat UTF-8 text or bytea, without a native call when the datum has exactly the
+    /// type the managed type maps to. SQL NULL, domains, compressed or external values and other encodings take the
+    /// native path, which also reports every error.
+    /// </summary>
+    /// <typeparam name="T">The requested managed type.</typeparam>
+    /// <param name="value">The datum.</param>
+    /// <param name="result">The value read.</param>
+    /// <returns>Whether the value was read.</returns>
+    private static bool TryReadDirect<T>(PgDatum value, out T result)
+    {
+        result = default!;
+        Type core = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+        value.Lifetime.Validate();
+        if (value.IsNull || !NativeMemoryContext.CanReadDirectly(false))
+        {
+            return false;
+        }
+
+        nuint bits = value.UncheckedBits;
+        object? converted = value.TypeOid switch
+        {
+            16 when core == typeof(bool) => bits != 0,
+            18 when core == typeof(sbyte) => unchecked((sbyte)bits),
+            21 when core == typeof(short) => unchecked((short)bits),
+            23 when core == typeof(int) => unchecked((int)bits),
+            20 when core == typeof(long) => unchecked((long)bits),
+            26 when core == typeof(uint) => unchecked((uint)bits),
+            700 when core == typeof(float) => BitConverter.Int32BitsToSingle(unchecked((int)bits)),
+            701 when core == typeof(double) => BitConverter.Int64BitsToDouble(unchecked((long)bits)),
+            25 or 1042 or 1043 when core == typeof(string) && NativeMemoryContext.CanReadDirectly(true) &&
+                NativeBorrowedBuffer.TryGetFlatBytes(bits, true, out nint text, out int textLength)
+                => System.Text.Encoding.UTF8.GetString((byte*)text, textLength),
+            17 when core == typeof(byte[]) && NativeBorrowedBuffer.TryGetFlatBytes(bits, false, out nint bytes, out int byteLength)
+                => new ReadOnlySpan<byte>((void*)bytes, byteLength).ToArray(),
+            _ => null,
+        };
+        if (converted is null)
+        {
+            return false;
+        }
+
+        result = (T)converted;
+        return true;
     }
 
     /// <summary>

@@ -149,6 +149,17 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   and calling a function with `internal` arguments by name is rejected as it is
   by OID. Deliberate differences, such as `PgNumeric.Log`'s argument order and
   the scalar helpers running whole commands, are documented in the guides.
+- Borrowed views and raw reads no longer enter PostgreSQL for flat values.
+  Every view created and later deleted a private memory context, and every
+  `PgDatum.Read<T>()` ran a guarded native operation in its own subtransaction,
+  even for a short UTF-8 string or an `int`. A flat `text`, `varchar`, `bpchar`
+  or `bytea` value without a domain is now borrowed in place, after the same
+  UTF-8 check PostgreSQL makes, and built-in by-value types decode their datum
+  word; compressed, external, domain and non-UTF-8 values keep the native path.
+  On a PostgreSQL 16 release build a text view costs 154 ns instead of 2.33 µs,
+  `Read<string>()` 185 ns instead of 1.28 µs, and a `PgTextView` parameter about
+  0.64 µs per call instead of 3 µs. The rest of that parameter cost is the
+  callback lifetime checks, each a native memory call.
 - The scalar call boundary no longer zero-fills two 2.8 KB error buffers on
   every call; they are only valid after a failure, so clearing their headers is
   enough. On a PostgreSQL 16 release build, a managed `int` function costs about

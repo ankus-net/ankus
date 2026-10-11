@@ -154,6 +154,11 @@ public sealed class PgDatum
     }
 
     /// <summary>
+    /// Gets the native Datum word without checking its owner, for a caller that has just validated the lifetime.
+    /// </summary>
+    internal nuint UncheckedBits => _bits;
+
+    /// <summary>
     /// Copies the lifetime identity and raw word into an owned parameter envelope.
     /// </summary>
     /// <returns>The raw native parameter with its SQL NULL flag.</returns>

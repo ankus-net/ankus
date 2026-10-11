@@ -96,6 +96,17 @@ public static unsafe class NativeMemoryContext
     }
 
     /// <summary>
+    /// Gets whether managed code may read flat values in place, and text as well as bytes.
+    /// </summary>
+    /// <param name="text">Whether the value is text.</param>
+    /// <returns>Whether the value may be read without a native call.</returns>
+    internal static bool CanReadDirectly(bool text)
+    {
+        _ = Provider;
+        return ((NativeMemoryApi*)s_api)->_directReads >= (text ? 2 : 1);
+    }
+
+    /// <summary>
     /// Reads callback-scoped interrupt flags without entering PostgreSQL. On Windows, a queued, unblocked signal also
     /// counts, because PostgreSQL turns it into a pending interrupt at its next check.
     /// </summary>
@@ -499,4 +510,9 @@ internal unsafe struct NativeMemoryApi
     /// Borrows the Windows blocked signal bits when a signal queue is present.
     /// </summary>
     internal int* _signalMask;
+    /// <summary>
+    /// Records what managed code may read in place: zero for nothing, one for bytes and two for bytes and text, when the
+    /// database encoding needs no conversion to UTF-8.
+    /// </summary>
+    internal int _directReads;
 }

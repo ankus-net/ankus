@@ -57,6 +57,13 @@ UTF-8 database keeps its original payload when detoasting is unnecessary. Other
 server encodings require conversion into the private context. Invalid encoding
 is rejected without replacing bytes or characters.
 
+A flat `text`, `varchar`, `bpchar` or `bytea` value, without a domain, is
+borrowed in place without entering PostgreSQL, and `PgDatum.Read<T>()` reads
+such values and built-in by-value types the same way. That makes a view about
+as cheap as reading the value's header. Text is borrowed this way only in a
+UTF-8 database, and only when it is valid UTF-8 without zero bytes; anything
+else takes the native path, which detoasts, converts or reports the error.
+
 A `Rune` reads `text`, `varchar` or `bpchar` that holds exactly one Unicode
 scalar value. Empty text fails, and so does `e` followed by a combining accent,
 which is two scalar values. Padded `bpchar` such as `'a'::char(3)` fails too.

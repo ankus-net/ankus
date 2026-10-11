@@ -16,21 +16,21 @@ public sealed partial class BorrowedBufferTests
     }
 
     /// <summary>
-    /// Owner changes expire nested aliases without invalidating copies, including source-only resets with live children.
+    /// Owner changes and view disposal expire nested aliases without invalidating copies. The flat values borrow their
+    /// source in place, so no private context exists before or after.
     /// </summary>
     /// <param name="mode">The native source or view lifetime boundary.</param>
-    /// <param name="remaining">The native child count immediately after invalidation.</param>
     [TestMethod]
-    [DataRow(0, "4")]
-    [DataRow(1, "0")]
-    [DataRow(2, "0")]
-    [DataRow(3, "0")]
-    public async Task BorrowedBuffersRejectSourceExpiryAndReleaseChildren(int mode, string remaining)
+    [DataRow(0)]
+    [DataRow(1)]
+    [DataRow(2)]
+    [DataRow(3)]
+    public async Task BorrowedBuffersRejectSourceExpiryAndReleaseChildren(int mode)
     {
         await using NpgsqlConnection connection = await PostgresFixture.Cluster.OpenConnectionAsync(context.CancellationToken);
         for (int index = 0; index < 3; index++)
         {
-            Assert.AreSequenceEqual<string>(["4", remaining, "ObjectDisposedException", "ObjectDisposedException",
+            Assert.AreSequenceEqual<string>(["0", "0", "ObjectDisposedException", "ObjectDisposedException",
                 "ObjectDisposedException", "ObjectDisposedException", "ObjectDisposedException", "ObjectDisposedException",
                 "ObjectDisposedException", "café", "007FFF", "5", "3"],
                 await Scalar<string[]>(connection, $"SELECT borrowed_buffers.buffer_source_reset({mode})"));
@@ -80,7 +80,7 @@ public sealed partial class BorrowedBufferTests
     public async Task BorrowedBuffersRetainEnclosingCallbackLifetimes()
     {
         await using NpgsqlConnection connection = await PostgresFixture.Cluster.OpenConnectionAsync(context.CancellationToken);
-        Assert.AreSequenceEqual<string>(["7F:nested", "ObjectDisposedException", "ObjectDisposedException", "00FF", "outer café", "2"],
+        Assert.AreSequenceEqual<string>(["7F:nested", "ObjectDisposedException", "ObjectDisposedException", "00FF", "outer café", "0"],
             await Scalar<string[]>(connection, "SELECT borrowed_buffers.buffer_nested('\\x00ff'::bytea,'outer café')"));
         Assert.AreEqual(0L, await Scalar<long>(connection,
             "SELECT count(*) FROM ankus_test_memory.contexts WHERE ident = 'Ankus borrowed buffer'"));

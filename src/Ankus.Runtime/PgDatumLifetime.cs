@@ -8,6 +8,7 @@ internal sealed class PgDatumLifetime
     private readonly nint _provider;
     private readonly int _thread = Environment.CurrentManagedThreadId;
     private readonly PgDatumLifetime? _source;
+    private readonly NativeBorrowedBuffer? _view;
 
     /// <summary>
     /// Captures the generation of a live context.
@@ -30,6 +31,23 @@ internal sealed class PgDatumLifetime
         Generation = unchecked((nuint)result._value);
         Scope = scope ?? source?.Scope;
         _source = source;
+    }
+
+    /// <summary>
+    /// Derives a lifetime for a view that borrows its source's storage in place, which also ends when the view is
+    /// disposed, as a view with private storage ends when that storage is freed.
+    /// </summary>
+    /// <param name="source">The source whose storage the view borrows.</param>
+    /// <param name="view">The view whose disposal ends this lifetime.</param>
+    internal PgDatumLifetime(PgDatumLifetime source, NativeBorrowedBuffer view)
+    {
+        _provider = source._provider;
+        _thread = source._thread;
+        ContextId = source.ContextId;
+        Generation = source.Generation;
+        Scope = source.Scope;
+        _source = source;
+        _view = view;
     }
 
     /// <summary>
@@ -59,6 +77,15 @@ internal sealed class PgDatumLifetime
     }
 
     /// <summary>
+    /// Rejects use from another thread or another extension's backend capability, without checking the owner's generation.
+    /// </summary>
+    internal void CheckAccess()
+    {
+        CheckThread();
+        NativeMemoryContext.CheckProvider(_provider);
+    }
+
+    /// <summary>
     /// Rejects stale context generations and access from another backend provider or thread.
     /// </summary>
     internal void Validate()
@@ -75,6 +102,13 @@ internal sealed class PgDatumLifetime
     private void ValidateContext()
     {
         CheckThread();
+        if (_view is not null)
+        {
+            // The source, next in the chain, checks the shared native owner.
+            ObjectDisposedException.ThrowIf(_view.IsReleased, typeof(PgDatum));
+            return;
+        }
+
         Scope?.Validate();
         NativeMemoryContext.CheckProvider(_provider);
         NativeMemoryRequest request = new()
