@@ -21,15 +21,15 @@ Set extension properties in your project file:
 | `AnkusVersionedLibrary` | `false` | Appends the extension version to the library name so versions install side by side; see [versioned libraries](#versioned-libraries) |
 | `EnableDefaultAnkusUpgradeScripts` | Enabled | Includes `sql/<extension>--<old>--<new>.sql` upgrade files; set to `false` for explicit items only |
 | `EnableDefaultAnkusVersionControlFiles` | Enabled | Includes `sql/<extension>--<version>.control` files; set to `false` for explicit items only |
-| `AnkusPostgresMajor` | The major `AnkusPgConfigPath` reports, otherwise `18` | Selects the server headers used to compile the native wrapper |
+| `AnkusPostgresMajor` | The major `AnkusPgConfigPath` or `AnkusTargetInfo` reports, otherwise `18` | Selects the server headers used to compile the native wrapper |
 | `AnkusPgConfigPath` | Registered or discovered installation | Selects an exact `pg_config`; the tool sets this automatically |
-| `AnkusTargetInfo` | None | Builds from another machine's exported information instead of a `pg_config`: an archive, its extracted directory or its `ankus-target.json`; see [building for another architecture](/getting-started/publishing/#build-for-another-architecture) |
-| `AnkusTargetInfoOutput` | `ankus-target.pg<major>.<rid>.zip` in the project directory | Names the archive the `AnkusExportTargetInfo` target writes |
+| `AnkusTargetInfo` | None | Builds from another machine's exported information instead of a `pg_config`: an archive, its extracted directory or its `ankus-target.json`, relative to the project directory. `RuntimeIdentifier` must match the archive, an explicit `AnkusPostgresMajor` must match its major, and `AnkusPgConfigPath` cannot also be set; see [building for another architecture](/getting-started/publishing/#build-for-another-architecture) |
+| `AnkusTargetInfoOutput` | `ankus-target.pg<major>.<rid>.zip` in the project directory | Names the archive the `AnkusExportTargetInfo` target writes when run directly with a `RuntimeIdentifier`; `ankus target export` passes its own `--output` |
 | `AnkusIncludeTests` | Disabled | Includes `[PgTest]` native exports and installation SQL and defines `ANKUS_TESTS`; the testing fixture enables it for declared backend tests |
 | `AnkusReuseSchema` | `false` | Reuses the last successful installation SQL and matching metadata for this target and publication mode while recompiling native code; missing or incompatible saved declarations fail explicitly |
 | `AnkusClangPath` | `clang` on Linux/macOS; `clang-cl.exe` on Windows | Selects LLVM Clang 20 or later for native declaration discovery |
 | `AnkusLibClangPath` | Matching library from the selected Clang installation | Selects `libclang` when it is installed separately |
-| `AnkusBindingCacheDirectory` | Ankus's directory in the current user's local application data | Selects shared generated sources, compiled companions and native objects |
+| `AnkusBindingCacheDirectory` | Ankus's directory in the current user's local application data | Selects shared generated sources, compiled companions, native objects and extracted target information |
 
 Relative `AnkusPgConfigPath` file paths use each project's directory, including
 when the property comes from an imported file. A bare executable name, such as

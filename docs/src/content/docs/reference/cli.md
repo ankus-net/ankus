@@ -879,8 +879,8 @@ ankus target export --pg 18
 ```
 
 It measures the installation's native bindings with the project's Ankus version
-and writes `ankus-target.pg18.<rid>.zip` in the current directory, with that
-installation's `pg_config` values and headers. `--pg-config` selects another
+and writes `ankus-target.pg18.<rid>.zip` in the current directory, with the
+`pg_config` values a build reads and the headers it compiles against. `--pg-config` selects another
 installation, `--output` (or `-o`) the archive path, and `--project`,
 `--configuration` and `--property` work as they do for `build`.
 
@@ -894,8 +894,9 @@ ankus package --target-info ankus-target.pg18.osx-x64.zip --output dist
 `--target-info` accepts the archive, a directory it was extracted to, or that
 directory's `ankus-target.json`. It selects the archive's runtime and PostgreSQL
 major and cannot be combined with `--pg-config`; `--pg` must match the archive.
-Archives extract once beneath Ankus's directory in local application data, or
-beneath `AnkusBindingCacheDirectory` when you forward it. See
+Archives extract once to `Ankus/targets` in local application data, or to
+`<dir>/targets` when `--property AnkusBindingCacheDirectory=<dir>` selects a
+cache. See
 [building for another architecture](/getting-started/publishing/#build-for-another-architecture).
 
 Use `ankus --help` or `ankus <command> --help` for the available options.

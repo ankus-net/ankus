@@ -202,7 +202,7 @@ optional `PgGucHooks<T>` argument. See
 | Create regression databases as another account with `cargo pgrx regress --runas postgres` | `ankus regress --runas postgres` (Linux and macOS) |
 | Run SQL regression files | `ankus regress --pg 18` |
 | Capture a target with `cargo pgrx cross pgrx-target` | `ankus target export --pg 18` on the target machine |
-| Build with `PGRX_TARGET_INFO_PATH_PG18` and `PGRX_PG_CONFIG_AS_ENV` | `ankus package --target-info ankus-target.pg18.<rid>.zip`, or `-p:AnkusTargetInfo=...` |
+| Build with `PGRX_TARGET_INFO_PATH_PG18`, `PGRX_PG_CONFIG_AS_ENV` and `PGRX_PG_CONFIG_*` | `ankus package --target-info ankus-target.pg18.<rid>.zip`, or `dotnet publish -r <rid> -p:AnkusTargetInfo=...` |
 | Name the shared library with Cargo's `[lib] name` | Set `AnkusLibraryName` |
 | Install versions side by side by omitting `module_pathname` | Set `AnkusVersionedLibrary` to `true` |
 

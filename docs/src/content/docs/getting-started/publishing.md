@@ -114,10 +114,11 @@ The publication still keeps its SQL and control files together under
 
 Native AOT can build for another architecture of the same operating system, such
 as Intel macOS from Apple silicon. Ankus also needs the target's PostgreSQL
-headers and the native layouts measured from them, and it measures layouts by
-compiling and running small C programs, which cannot run on the build machine.
-So the target machine captures this once, as `cargo pgrx cross pgrx-target` does
-for pgrx.
+headers and the native layouts measured from them. It measures layouts by
+compiling and running small C programs, which must run on the target, so the
+target machine captures both once. pgrx's `cargo pgrx cross pgrx-target` captures
+only its generated bindings and takes headers from a sysroot; an Ankus archive
+also carries the headers it was measured against.
 
 On the target machine, from your extension project:
 
@@ -126,10 +127,13 @@ ankus target export --pg 18
 ```
 
 This writes `ankus-target.pg18.osx-x64.zip`, named for the major and the target's
-runtime identifier. It holds the installation's `pg_config` values, its server
-headers, the headers it reads from other libraries, such as ICU, and the measured
-bindings. The target needs the same prerequisites as an ordinary build, but the
-export does not build your extension.
+runtime identifier. It holds the `pg_config` values a build reads, the server
+headers, headers from other libraries found through the search paths in
+`pg_config --cppflags`, such as Homebrew's ICU, and the measured bindings. On
+Windows it also holds the whole include directory and `postgres.lib`. Headers in
+system directories, such as `/usr/include`, come from the build machine. The
+target needs the same prerequisites as an ordinary build, but the export does
+not build your extension.
 
 On the build machine:
 
@@ -139,11 +143,13 @@ ankus package --target-info ankus-target.pg18.osx-x64.zip --output dist
 
 `ankus build` and `ankus publish` accept `--target-info` too. It selects the
 archive's runtime identifier and PostgreSQL major, and a package mirrors the
-target's library and share directories. The build machine does not parse or
-measure the headers, so it needs neither LLVM Clang nor `libclang` nor PostgreSQL.
-It still compiles the native wrapper against the archived headers with Native
-AOT's own compiler and linker, which must build for the target architecture.
-With `dotnet publish`, select the runtime and the archive:
+target's library and share directories. The build machine does not discover
+declarations or measure layouts, so it needs neither LLVM Clang 20 nor `libclang`
+nor a PostgreSQL installation. It still compiles the native wrapper against the
+archived headers with Native AOT's own compiler and linker, which must build for
+the target architecture, with the target's C library headers. macOS SDKs cover
+both architectures; Linux and Windows need the target architecture's sysroot or
+libraries. With `dotnet publish`, select the runtime and the archive:
 
 ```console
 dotnet publish -c Release -r osx-x64 -p:AnkusTargetInfo=ankus-target.pg18.osx-x64.zip
@@ -154,6 +160,10 @@ is checked against the hash the export recorded before each build uses it. Build
 reject information for another runtime or major, or from another Ankus version:
 export again after upgrading Ankus. Run tests on the target machine; `ankus test`
 and `ankus run` need a local server and do not accept target information.
+
+Building from target information is tested on Linux x64 and Windows x64 with the
+same architecture on both sides. The Intel-from-Apple-silicon check is new and
+other cross-architecture combinations are not yet verified.
 
 ## Inspect installation SQL
 
