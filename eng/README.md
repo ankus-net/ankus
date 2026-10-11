@@ -141,6 +141,10 @@ directory, and set repository variables `ANKUS_MACOS_PG13_PG_CONFIG`,
 import libraries; PostgreSQL 16 must be 16.15 or later and 18 must be 18.6 or
 later. EDB publishes no Windows beta, so build 19 beta from source with meson
 and MSVC (with winflexbison and Strawberry Perl on `PATH`) into the same layout.
+Build it with `-Dicu=enabled`, as the EDB builds are, because the suite tests ICU
+collations: point `ICU_ROOT` at ICU's official Win64 MSVC binaries so meson finds
+them through CMake, and copy the `icuuc`, `icuin` and `icudt` DLLs into the
+installation's `bin` directory.
 Configure repository secrets `ANKUS_WINDOWS_PG13_ROOT` through
 `ANKUS_WINDOWS_PG16_ROOT`, `ANKUS_WINDOWS_PG18_ROOT` and `ANKUS_WINDOWS_PG19_ROOT`
 with each installation's root, containing its `bin`, `include` and `lib`
