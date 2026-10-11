@@ -135,6 +135,14 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- Arrays of `bool`, `"char"`, `int2`, `int4`, `int8`, `oid`, `float4` and
+  `float8` without NULLs now cross the call boundary as the packed block
+  PostgreSQL stores, copied once, instead of one encoded record per element
+  that each side parsed and managed code boxed. An `int[]` argument costs
+  about 1 ns per element instead of 57 ns on a PostgreSQL 18.6 release build,
+  and results, SPI cells and parameters take the same path. Set, table and SPI
+  row costs are now measured too; see
+  [guard tiers](docs/contributing/evidence/guard-tiers.md#sets-arrays-and-spi).
 - Extensions can now be built for another architecture, as pgrx's
   `cargo pgrx cross pgrx-target` allows. `ankus target export`, run on the
   target machine, measures that installation's native bindings with the
@@ -142,8 +150,8 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   headers and any headers it reads through the search paths in its cppflags,
   such as ICU or libxml2. `--target-info` on `build`, `publish` and `package`,
   or `AnkusTargetInfo` with `dotnet publish -r`, then builds for that runtime
-  identifier without reading headers: no probe runs and neither Clang nor
-  libclang is needed. Each archive is extracted once by hash, every file is
+  identifier against the archived headers without measuring them: no probe
+  runs and neither LLVM Clang nor libclang is needed. Each archive is extracted once by hash, every file is
   checked against the hash recorded at export, and builds reject another
   runtime, major or Ankus version. Packages mirror the target's library and
   share directories. On Linux x64 with PostgreSQL 18, an exported archive

@@ -1,3 +1,5 @@
+using System.Buffers;
+
 namespace Ankus;
 
 /// <summary>
@@ -31,4 +33,12 @@ internal interface IPgArray
     /// <param name="index">The row-major index.</param>
     /// <returns>The managed scalar, or null for a SQL NULL element.</returns>
     object? GetElement(int index);
+
+    /// <summary>
+    /// Writes the elements as the packed native array PostgreSQL stores for fixed-width primitives, when the element
+    /// type is one and no element is NULL.
+    /// </summary>
+    /// <param name="buffer">The transport after its shape header.</param>
+    /// <returns>Whether the elements were written.</returns>
+    bool TryWritePacked(IBufferWriter<byte> buffer);
 }

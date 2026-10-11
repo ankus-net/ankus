@@ -42,6 +42,12 @@ represent a multidimensional PostgreSQL array with `PgArray<T>`.
 Converting an array to `T[]`, as a parameter, a result or `Get<T[]>()`, rejects
 multiple dimensions or a non-one lower bound. It never silently flattens the value.
 
+Arrays of `bool`, `sbyte`, `short`, `int`, `long`, `uint`, `float` and `double`
+without NULL elements convert with one block copy in each direction, since
+PostgreSQL stores them as a packed native array. Other element types, and arrays
+containing NULL, convert element by element. To read the native elements without
+any copy, use a [contiguous native slice](#contiguous-native-slices).
+
 ## Dimensions and indexing
 
 `PgArray<T>` stores elements in row-major order: the last subscript varies fastest.

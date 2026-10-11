@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Ankus.Runtime.Tests;
 
@@ -257,7 +258,8 @@ public sealed class PgArrayTests
     [DataRow(44, 1)]
     public void MalformedArrayTransportIsRejected(int offset, int replacement)
     {
-        NativeValue source = NativeValue.FromArray(new PgArray<int>([42]));
+        // A NULL element keeps the per-element layout these offsets address.
+        NativeValue source = NativeValue.FromArray(new PgArray<int?>([42, null]));
         byte[] bytes;
         try
         {
@@ -273,7 +275,7 @@ public sealed class PgArrayTests
         ArrayFlag(ref malformed) = -1;
         try
         {
-            Assert.ThrowsExactly<InvalidOperationException>(() => malformed.ReadArray<int>());
+            Assert.ThrowsExactly<InvalidOperationException>(() => malformed.ReadArray<int?>());
         }
         finally
         {
@@ -281,6 +283,104 @@ public sealed class PgArrayTests
         }
     }
 
+    /// <summary>
+    /// Elements PostgreSQL stores as a packed native array arrive as one block with the transport's shape header and
+    /// read as plain or nullable managed elements.
+    /// </summary>
+    [TestMethod]
+    public void PackedPrimitiveElementsKeepShapeAndValues()
+    {
+        byte[] bytes = new byte[20 + 3 * 8];
+        BinaryPrimitives.WriteInt32BigEndian(bytes, 1);
+        BinaryPrimitives.WriteInt32BigEndian(bytes.AsSpan(4), 3);
+        BinaryPrimitives.WriteInt32BigEndian(bytes.AsSpan(8), 20);
+        BinaryPrimitives.WriteInt32BigEndian(bytes.AsSpan(12), 3);
+        BinaryPrimitives.WriteInt32BigEndian(bytes.AsSpan(16), 0);
+        new long[] { long.MinValue, 0, long.MaxValue }.CopyTo(MemoryMarshal.Cast<byte, long>(bytes.AsSpan(20)));
+        NativeValue value = NativeValue.FromBytes(bytes);
+        ArrayFlag(ref value) = -1;
+        ElementKind(ref value) = 4;
+        try
+        {
+            PgArray<long> plain = value.ReadArray<long>();
+            PgArray<long?> nullable = value.ReadArray<long?>();
+            Assert.AreSequenceEqual([0], plain.LowerBounds.ToArray());
+            Assert.AreSequenceEqual([long.MinValue, 0, long.MaxValue], plain);
+            Assert.AreSequenceEqual([long.MinValue, 0, long.MaxValue], nullable);
+            Assert.AreSequenceEqual([long.MinValue, 0, long.MaxValue], ((PgArray<long?>)value.ReadArray()).Select(static item => item!.Value));
+        }
+        finally
+        {
+            value.Release();
+        }
+    }
+
+    /// <summary>
+    /// A packed block must match its count exactly, hold a packed element type and, for Booleans, only zero or one.
+    /// </summary>
+    /// <param name="oid">The transported element type.</param>
+    /// <param name="payload">The packed element bytes after a one-dimensional, two-element header.</param>
+    [TestMethod]
+    [DataRow(23u, new byte[] { 1, 0, 0, 0 })]
+    [DataRow(23u, new byte[] { 1, 0, 0, 0, 2, 0, 0, 0, 3 })]
+    [DataRow(25u, new byte[] { 1, 0, 0, 0, 2, 0, 0, 0 })]
+    [DataRow(16u, new byte[] { 1, 2 })]
+    public void MalformedPackedArraysAreRejected(uint oid, byte[] payload)
+    {
+        byte[] bytes = new byte[20 + payload.Length];
+        BinaryPrimitives.WriteInt32BigEndian(bytes, 1);
+        BinaryPrimitives.WriteInt32BigEndian(bytes.AsSpan(4), 2);
+        BinaryPrimitives.WriteUInt32BigEndian(bytes.AsSpan(8), oid);
+        BinaryPrimitives.WriteInt32BigEndian(bytes.AsSpan(12), 2);
+        BinaryPrimitives.WriteInt32BigEndian(bytes.AsSpan(16), 1);
+        payload.CopyTo(bytes, 20);
+        NativeValue value = NativeValue.FromBytes(bytes);
+        ArrayFlag(ref value) = -1;
+        ElementKind(ref value) = 4;
+        try
+        {
+            Assert.ThrowsExactly<InvalidOperationException>(() => value.ReadArray());
+        }
+        finally
+        {
+            value.Release();
+        }
+    }
+
+    /// <summary>
+    /// Primitive arrays without NULLs are written packed and read back with their shape; a NULL keeps the per-element
+    /// form.
+    /// </summary>
+    [TestMethod]
+    public void PrimitiveArraysRoundTripPacked()
+    {
+        AssertRoundTrip(new PgArray<double>([1.5, double.NaN, -0.0], [3], [5]), packed: true);
+        AssertRoundTrip(new PgArray<bool?>([true, false]), packed: true);
+        AssertRoundTrip(new PgArray<short?>([1, null]), packed: false);
+        AssertRoundTrip(new PgArray<int>([]), packed: true);
+        AssertRoundTrip(new PgArray<string?>(["text"]), packed: false);
+
+        static void AssertRoundTrip<T>(PgArray<T> array, bool packed)
+        {
+            NativeValue value = NativeValue.FromArray(array);
+            try
+            {
+                Assert.AreEqual(packed ? 4 : 0, ElementKind(ref value));
+                PgArray<T> copy = value.ReadArray<T>();
+                Assert.AreSequenceEqual(array.Lengths.ToArray(), copy.Lengths.ToArray());
+                Assert.AreSequenceEqual(array.LowerBounds.ToArray(), copy.LowerBounds.ToArray());
+                Assert.AreSequenceEqual(array, copy);
+            }
+            finally
+            {
+                value.Release();
+            }
+        }
+    }
+
     [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary1")]
     private static extern ref int ArrayFlag(ref NativeValue value);
+
+    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary2")]
+    private static extern ref int ElementKind(ref NativeValue value);
 }

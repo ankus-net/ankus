@@ -1,4 +1,7 @@
+using System.Buffers;
 using System.Collections;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Ankus;
 
@@ -167,4 +170,47 @@ public sealed class PgArray<T> : IReadOnlyList<T>, IPgArray
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     uint IPgArray.ElementOid => ElementTypeOid;
     object? IPgArray.GetElement(int index) => _values[index];
+
+    bool IPgArray.TryWritePacked(IBufferWriter<byte> buffer) => _elementOid == 0 && SpiType.GetOid<T>() switch
+    {
+        16 => WritePacked<bool>(buffer),
+        18 => WritePacked<sbyte>(buffer),
+        21 => WritePacked<short>(buffer),
+        23 => WritePacked<int>(buffer),
+        26 => WritePacked<uint>(buffer),
+        700 => WritePacked<float>(buffer),
+        20 => WritePacked<long>(buffer),
+        701 => WritePacked<double>(buffer),
+        _ => false,
+    };
+
+    private bool WritePacked<TElement>(IBufferWriter<byte> buffer) where TElement : unmanaged
+    {
+        if (typeof(T) == typeof(TElement))
+        {
+            buffer.Write(MemoryMarshal.AsBytes(Unsafe.As<TElement[]>(_values).AsSpan()));
+            return true;
+        }
+
+        if (typeof(T) != typeof(TElement?))
+        {
+            return false;
+        }
+
+        TElement?[] values = Unsafe.As<TElement?[]>(_values);
+        if (Array.IndexOf(values, null) >= 0)
+        {
+            return false;
+        }
+
+        int width = Unsafe.SizeOf<TElement>();
+        Span<byte> target = buffer.GetSpan(values.Length * width);
+        for (int index = 0; index < values.Length; index++)
+        {
+            MemoryMarshal.Write(target[(index * width)..], values[index].GetValueOrDefault());
+        }
+
+        buffer.Advance(values.Length * width);
+        return true;
+    }
 }

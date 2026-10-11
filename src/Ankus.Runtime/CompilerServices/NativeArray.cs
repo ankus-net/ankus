@@ -1,6 +1,7 @@
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Ankus.CompilerServices;
 
@@ -62,6 +63,14 @@ public unsafe partial struct NativeValue
             WriteInt(buffer, value.LowerBounds[index]);
         }
 
+        if (customMapping is null && value.TryWritePacked(buffer))
+        {
+            NativeValue packed = FromBytes(buffer.WrittenSpan);
+            packed._auxiliary1 = -1;
+            packed._auxiliary2 = 4;
+            return packed;
+        }
+
         for (int index = 0; index < value.Count; index++)
         {
             NativeValue item = SpiType.ToNative(value.GetElement(index), customMapping);
@@ -108,7 +117,7 @@ public unsafe partial struct NativeValue
         }
 
         uint oid = CharacterTextElementOid(BinaryPrimitives.ReadUInt32BigEndian(new ReadOnlySpan<byte>(_data + 8, 4)));
-        if (_auxiliary2 == 0)
+        if (_auxiliary2 == 0 || (_auxiliary2 == 4 && PackedWidth(oid) != 0))
         {
             _ = SpiArray.ArrayOid(oid);
         }
@@ -142,7 +151,9 @@ public unsafe partial struct NativeValue
         ReadOnlySpan<byte> data = new(_data, _length);
         int rank = BinaryPrimitives.ReadInt32BigEndian(data);
         int count = BinaryPrimitives.ReadInt32BigEndian(data[4..]);
-        if (rank is < 0 or > 6 || count < 0 || 12L + rank * 8L + count * 28L > data.Length)
+        int width = _auxiliary2 == 4 ? PackedWidth(oid) : 0;
+        if (rank is < 0 or > 6 || count < 0 || (width == 0 ? 12L + rank * 8L + count * 28L > data.Length
+            : 12L + rank * 8L + (long)count * width != data.Length))
         {
             throw new InvalidOperationException("Invalid native array shape or element count.");
         }
@@ -165,7 +176,15 @@ public unsafe partial struct NativeValue
         var values = new T[count];
         try
         {
-            ReadArrayElements(values, data, offset, oid, enumeration);
+            if (width != 0)
+            {
+                ReadPackedElements(values, data[offset..], oid);
+            }
+            else
+            {
+                ReadArrayElements(values, data, offset, oid, enumeration);
+            }
+
             uint baseOid = _auxiliary2 == 2 && _integer != 0 ? (uint)_integer : oid;
             return new PgArray<T>(values, (lengths, bounds), _auxiliary2 == 2 ? oid : 0, _auxiliary2 == 2 ? baseOid : 0);
         }
@@ -174,6 +193,86 @@ public unsafe partial struct NativeValue
             NativeRelationScope.Release(values, primary);
             VarlenaCleanup.Release<T>(values, primary);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Gets the width of an element type whose array storage, without NULLs, is a packed native array.
+    /// </summary>
+    /// <param name="oid">The element type.</param>
+    /// <returns>The element width, or zero for other types.</returns>
+    private static int PackedWidth(uint oid) => oid switch
+    {
+        16 or 18 => 1,
+        21 => 2,
+        23 or 26 or 700 => 4,
+        20 or 701 => 8,
+        _ => 0,
+    };
+
+    /// <summary>
+    /// Copies elements that PostgreSQL stored as a packed native array, as one block when the managed element type is
+    /// the native one.
+    /// </summary>
+    private static void ReadPackedElements<T>(T[] values, ReadOnlySpan<byte> data, uint oid)
+    {
+        switch (oid)
+        {
+            case 16:
+                if (data.ContainsAnyExcept((byte)0, (byte)1))
+                {
+                    throw new InvalidOperationException("Invalid native Boolean array element.");
+                }
+
+                CopyPacked<bool, T>(values, data);
+                break;
+            case 18:
+                CopyPacked<sbyte, T>(values, data);
+                break;
+            case 21:
+                CopyPacked<short, T>(values, data);
+                break;
+            case 23:
+                CopyPacked<int, T>(values, data);
+                break;
+            case 26:
+                CopyPacked<uint, T>(values, data);
+                break;
+            case 700:
+                CopyPacked<float, T>(values, data);
+                break;
+            case 20:
+                CopyPacked<long, T>(values, data);
+                break;
+            case 701:
+                CopyPacked<double, T>(values, data);
+                break;
+            default:
+                throw new InvalidOperationException("Invalid packed native array element type.");
+        }
+    }
+
+    private static void CopyPacked<TElement, T>(T[] values, ReadOnlySpan<byte> data) where TElement : unmanaged
+    {
+        int width = Unsafe.SizeOf<TElement>();
+        if (typeof(T) == typeof(TElement))
+        {
+            data.CopyTo(MemoryMarshal.AsBytes(Unsafe.As<TElement[]>(values).AsSpan()));
+        }
+        else if (typeof(T) == typeof(TElement?))
+        {
+            TElement?[] target = Unsafe.As<TElement?[]>(values);
+            for (int index = 0; index < target.Length; index++)
+            {
+                target[index] = MemoryMarshal.Read<TElement>(data[(index * width)..]);
+            }
+        }
+        else
+        {
+            for (int index = 0; index < values.Length; index++)
+            {
+                values[index] = SpiRow.Convert<T>(MemoryMarshal.Read<TElement>(data[(index * width)..]));
+            }
         }
     }
 

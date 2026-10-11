@@ -33,6 +33,20 @@ internal static class NativeArrayBridge
             }
         }
 
+        /* Elements whose array storage is a packed native array: fixed width, stored at their own alignment. */
+        static int
+        ankus_array_packed_width(Oid type)
+        {
+            switch (type)
+            {
+                case BOOLOID: case CHAROID: return 1;
+                case INT2OID: return 2;
+                case INT4OID: case OIDOID: case FLOAT4OID: return 4;
+                case INT8OID: case FLOAT8OID: return 8;
+                default: return 0;
+            }
+        }
+
         static void
         ankus_read_array(Datum datum, AnkusValue *value, AnkusInputBuffer *owned)
         {
@@ -58,6 +72,31 @@ internal static class NativeArrayBridge
             if ((Pointer) array != DatumGetPointer(datum))
             {
                 owned->detoasted = (struct varlena *) array;
+            }
+
+            if (!ARR_HASNULL(array) && ankus_array_packed_width(base_type) != 0)
+            {
+                /* Without NULLs these elements are already a packed native array; managed code copies it once. */
+                int width = ankus_array_packed_width(base_type);
+                count = ArrayGetNItems(rank, ARR_DIMS(array));
+                initStringInfo(&buffer);
+                pq_sendint32(&buffer, rank);
+                pq_sendint32(&buffer, count);
+                pq_sendint32(&buffer, base_type);
+                for (int index = 0; index < rank; index++)
+                {
+                    pq_sendint32(&buffer, ARR_DIMS(array)[index]);
+                    pq_sendint32(&buffer, ARR_LBOUND(array)[index]);
+                }
+
+                appendBinaryStringInfo(&buffer, ARR_DATA_PTR(array), count * width);
+                owned->serialized = buffer.data;
+                value->data = (unsigned char *) buffer.data;
+                value->length = buffer.len;
+                value->auxiliary1 = -1;
+                value->auxiliary2 = 4;
+                value->integral = 0;
+                return;
             }
 
             get_typlenbyvalalign(type, &length, &by_value, &alignment);
@@ -131,6 +170,8 @@ internal static class NativeArrayBridge
             ArrayType *array;
             Oid transported_type;
             Oid base_type = getBaseType(element_type);
+            /* Managed code sends fixed-width primitives without NULLs as PostgreSQL's packed storage. */
+            int packed = value->auxiliary2 == 4 ? ankus_array_packed_width(element_type) : 0;
             check_stack_depth();
             if (value->auxiliary1 != -1 || value->length < 12 || value->data == NULL)
             {
@@ -144,7 +185,9 @@ internal static class NativeArrayBridge
                 (transported_type != element_type && !(get_typtype(base_type) == TYPTYPE_COMPOSITE &&
                     (transported_type == RECORDOID || getBaseType(transported_type) == base_type))) ||
                 !ankus_array_element_supported(element_type) ||
-                (int64) 12 + rank * 8 + (int64) count * 28 > value->length)
+                (value->auxiliary2 == 4 && (packed == 0 ||
+                    (int64) 12 + rank * 8 + (int64) count * packed != value->length)) ||
+                (value->auxiliary2 != 4 && (int64) 12 + rank * 8 + (int64) count * 28 > value->length))
             {
                 ereport(ERROR, (errcode(ERRCODE_INVALID_BINARY_REPRESENTATION), errmsg("Invalid Ankus array shape or element type")));
             }
@@ -161,6 +204,43 @@ internal static class NativeArrayBridge
             }
 
             ArrayCheckBounds(rank, lengths, bounds);
+            if (packed != 0)
+            {
+                Size bytes = (Size) count * packed;
+                Size size = ARR_OVERHEAD_NONULLS(rank) + bytes;
+                const char *data = pq_getmsgbytes(&buffer, (int) bytes);
+                pq_getmsgend(&buffer);
+                if (element_type == BOOLOID)
+                {
+                    for (int index = 0; index < count; index++)
+                    {
+                        if ((unsigned char) data[index] > 1)
+                        {
+                            ereport(ERROR, (errcode(ERRCODE_INVALID_BINARY_REPRESENTATION), errmsg("Invalid Ankus Boolean array element")));
+                        }
+                    }
+                }
+
+                if (!AllocSizeIsValid(size))
+                {
+                    ereport(ERROR, (errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED), errmsg("array size exceeds the maximum allowed (%d)", (int) MaxAllocSize)));
+                }
+
+                array = (ArrayType *) palloc0(size);
+                SET_VARSIZE(array, size);
+                array->ndim = rank;
+                array->dataoffset = 0;
+                array->elemtype = element_type;
+                if (rank > 0)
+                {
+                    memcpy(ARR_DIMS(array), lengths, rank * sizeof(int));
+                    memcpy(ARR_LBOUND(array), bounds, rank * sizeof(int));
+                    memcpy(ARR_DATA_PTR(array), data, bytes);
+                }
+
+                return PointerGetDatum(array);
+            }
+
             get_typlenbyvalalign(element_type, &length, &by_value, &alignment);
             elements = palloc(sizeof(Datum) * (Size) Max(count, 1));
             nulls = palloc(sizeof(bool) * (Size) Max(count, 1));

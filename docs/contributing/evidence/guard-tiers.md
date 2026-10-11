@@ -91,3 +91,26 @@ one scratch context in the call site's `fn_extra`, as PostgreSQL's own
 aggregates cache per-call-site state, and resets the scratch context after each
 row. The release-build cost fell to 170 ns per row. A nested call through the
 same site while one is running uses a private context as before.
+
+### Sets, arrays and SPI
+
+Measured the same way on the 18.6 release build, against the built-in
+equivalent: `generate_series`, a `SELECT` of the same columns, or a PL/pgSQL
+loop.
+
+| Path | Cost |
+|---|---:|
+| `IEnumerable<int>` set, per row | 77 ns |
+| `IEnumerable<(int, string)>` table, per row | 208 ns |
+| `Spi.ExecuteScalar<int>("SELECT 1")`, per query | 2.86 µs, against 2.0 µs for PL/pgSQL `EXECUTE` |
+| `Spi.Select` of one `int` column, per row | 228 ns |
+| `int[]` argument, per element | 1 ns, down from 57 ns |
+| `int[]` result, per element | 1–2 ns |
+| `int[]` argument or result, per call | 240 ns or 400 ns |
+
+Arrays crossed the boundary as one 28-byte big-endian record per element,
+which native code wrote and managed code parsed, boxing each value. PostgreSQL
+stores `bool`, `"char"`, `int2`, `int4`, `int8`, `oid`, `float4` and `float8`
+elements as a packed native array, and an array without NULLs keeps them
+contiguous, so both directions now copy that block once. Arrays with NULLs,
+domain elements and other element types keep the per-element form.
