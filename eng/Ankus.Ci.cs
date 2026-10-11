@@ -113,6 +113,33 @@ try
             RunRuntimeTests(repositoryRoot);
             break;
 
+        case "target-export":
+            RequireArguments(args, 4);
+            ValidateRuntimeIdentity(repositoryRoot);
+            VerifyStagedRuntime(repositoryRoot, args[1]);
+            InstallPostgreSql(repositoryRoot, args[2]);
+            ConfigureHeaderFrontend(repositoryRoot);
+            ConfigureMacOsSdk();
+            ConfigureBindingCache(repositoryRoot);
+            ExportTarget(repositoryRoot, args[1], args[2], args[3]);
+            break;
+
+        case "target-build":
+            RequireArguments(args, 4);
+            ValidateRuntimeIdentity(repositoryRoot);
+            VerifyStagedRuntime(repositoryRoot, RuntimeInformation.RuntimeIdentifier);
+            VerifyStagedRuntime(repositoryRoot, args[2]);
+            ConfigureMacOsSdk();
+            BuildForTarget(repositoryRoot, args[1], args[2], args[3]);
+            break;
+
+        case "target-verify":
+            RequireArguments(args, 3);
+            InstallPostgreSql(repositoryRoot, args[2]);
+            VerifyTargetPublication(args[1], Environment.GetEnvironmentVariable("AnkusPgConfigPath")
+                ?? throw new InvalidOperationException("No PostgreSQL installation was selected."));
+            break;
+
         case "header-frontend-check":
             RequireArguments(args, 2);
             VerifyHeaderFrontend(args[1]);
@@ -226,6 +253,129 @@ static string GetDotNetHost()
 
     return OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet";
 }
+
+// Like pgrx's `cargo pgrx cross pgrx-target`, the target machine measures its installation once; another
+// architecture builds from that archive, and the target loads the result.
+static void ExportTarget(string repositoryRoot, string runtimeIdentifier, string version, string archive)
+{
+    string pgConfig = Environment.GetEnvironmentVariable("AnkusPgConfigPath")
+        ?? throw new InvalidOperationException("No PostgreSQL installation was selected.");
+    Run(GetDotNetHost(), ["msbuild", TargetSampleProject(repositoryRoot), "-restore", "-nologo", "-t:AnkusExportTargetInfo",
+        "-p:Configuration=Release", "-p:RuntimeIdentifier=" + runtimeIdentifier, "-p:AnkusPostgresMajor=" + version,
+        "-p:AnkusPgConfigPath=" + pgConfig, "-p:AnkusTargetInfoOutput=" + Path.GetFullPath(archive)]);
+}
+
+static void BuildForTarget(string repositoryRoot, string archive, string runtimeIdentifier, string output)
+{
+    // Clang and libclang are unusable here, so the bindings can only come from the archive.
+    string missing = Path.Combine(repositoryRoot, "artifacts", "no-clang", "clang");
+    Run(GetDotNetHost(), ["publish", TargetSampleProject(repositoryRoot), "-nologo", "-c", "Release", "-r", runtimeIdentifier,
+        "--self-contained", "true", "-o", Path.GetFullPath(output), "-p:AnkusTargetInfo=" + Path.GetFullPath(archive),
+        "-p:AnkusClangPath=" + missing, "-p:AnkusLibClangPath=" + missing],
+        environment: new Dictionary<string, string?> { ["AnkusPgConfigPath"] = null, ["AnkusPostgresMajor"] = null });
+    PublishedExtension manifest = PublishedExtension.Read(output);
+    string architecture = ReadNativeArchitecture(Path.Combine(output, manifest.Library));
+    if (manifest.RuntimeIdentifier != runtimeIdentifier || !runtimeIdentifier.EndsWith("-" + architecture, StringComparison.Ordinal))
+    {
+        throw new InvalidOperationException($"The {runtimeIdentifier} build produced a {manifest.RuntimeIdentifier} manifest and a {architecture} library.");
+    }
+
+    Console.WriteLine($"Built {manifest.Library} for {runtimeIdentifier} from {Path.GetFileName(archive)}.");
+}
+
+// Reads the CPU of a Mach-O or ELF library without platform tools.
+static string ReadNativeArchitecture(string library)
+{
+    byte[] header = new byte[20];
+    using (FileStream stream = File.OpenRead(library))
+    {
+        stream.ReadExactly(header);
+    }
+
+    if (BitConverter.ToUInt32(header, 0) == 0xFEEDFACF)
+    {
+        return BitConverter.ToUInt32(header, 4) switch
+        {
+            0x01000007 => "x64",
+            0x0100000C => "arm64",
+            uint cpu => throw new InvalidDataException($"Unexpected Mach-O CPU type 0x{cpu:X8}."),
+        };
+    }
+
+    if (header[0] == 0x7F && header[1] == (byte)'E' && header[2] == (byte)'L' && header[3] == (byte)'F')
+    {
+        return BitConverter.ToUInt16(header, 18) switch
+        {
+            62 => "x64",
+            183 => "arm64",
+            ushort machine => throw new InvalidDataException($"Unexpected ELF machine {machine}."),
+        };
+    }
+
+    throw new InvalidDataException($"'{library}' is not a Mach-O or ELF library.");
+}
+
+static void VerifyTargetPublication(string publication, string pgConfig)
+{
+    PostgresInstallation installation = PostgresInstallation.CreateAsync(pgConfig).GetAwaiter().GetResult();
+    if (installation.Version.Major < 18)
+    {
+        throw new NotSupportedException("Loading a publication from its own directory requires PostgreSQL 18's extension_control_path.");
+    }
+
+    publication = Path.GetFullPath(publication);
+    PublishedExtension manifest = PublishedExtension.Read(publication);
+    if (manifest.RuntimeIdentifier != RuntimeInformation.RuntimeIdentifier)
+    {
+        throw new InvalidOperationException($"The publication targets {manifest.RuntimeIdentifier}, not this {RuntimeInformation.RuntimeIdentifier} machine.");
+    }
+
+    string root = Directory.CreateTempSubdirectory("ankus-target-verify-").FullName;
+    try
+    {
+        string shared = Path.Combine(root, "share");
+        Directory.CreateDirectory(Path.Combine(shared, "extension"));
+        foreach (string file in new[] { manifest.Control, manifest.Sql })
+        {
+            File.Copy(Path.Combine(publication, "extension", file), Path.Combine(shared, "extension", file));
+        }
+
+        var cluster = new PostgresDevelopmentCluster(installation, Path.Combine(root, "home"));
+        cluster.StartAsync(new PostgresDevelopmentOptions
+        {
+            Port = 28700 + installation.Version.Major,
+            Settings = new Dictionary<string, string>
+            {
+                ["dynamic_library_path"] = publication,
+                ["extension_control_path"] = shared,
+            },
+        }).GetAwaiter().GetResult();
+        try
+        {
+            string connection = cluster.GetConnectionStringAsync("postgres").GetAwaiter().GetResult();
+            string extension = Path.GetFileNameWithoutExtension(manifest.Control);
+            string result = Capture(installation.PsqlPath, ["--dbname", connection, "--no-psqlrc", "--tuples-only", "--no-align",
+                "--set", "ON_ERROR_STOP=1", "--command", $"CREATE EXTENSION \"{extension}\"", "--command", "SELECT add(19, 23)"]);
+            if (!result.Split('\n').Select(static line => line.Trim()).Contains("42"))
+            {
+                throw new InvalidOperationException($"The {manifest.RuntimeIdentifier} publication returned '{result}'.");
+            }
+
+            Console.WriteLine($"Loaded {manifest.Library} into PostgreSQL {installation.Version}: {result.Trim()}");
+        }
+        finally
+        {
+            cluster.StopAsync().GetAwaiter().GetResult();
+        }
+    }
+    finally
+    {
+        Directory.Delete(root, recursive: true);
+    }
+}
+
+static string TargetSampleProject(string repositoryRoot)
+    => Path.Combine(repositoryRoot, "samples", "Ankus.Examples.Hello", "Ankus.Examples.Hello.csproj");
 
 static void ValidateRuntimeIdentity(string repositoryRoot)
 {

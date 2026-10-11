@@ -77,7 +77,12 @@ internal static partial class ToolCommand
 
         if (properties.TryGetValue("RuntimeIdentifier", out string? runtime) && runtime != RuntimeInformation.RuntimeIdentifier)
         {
-            throw new ArgumentException("Project commands publish for the host RuntimeIdentifier.");
+            throw new ArgumentException("Project commands publish for the host RuntimeIdentifier; use --target-info to build for another machine.");
+        }
+
+        if (properties.ContainsKey("AnkusTargetInfo"))
+        {
+            throw new ArgumentException("Select target information with --target-info.");
         }
 
         if (properties.TryGetValue("SelfContained", out string? selfContained) &&

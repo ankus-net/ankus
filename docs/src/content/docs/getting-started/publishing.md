@@ -4,7 +4,9 @@ description: Publish an extension library and load it into PostgreSQL.
 ---
 
 Publish your configured extension project on the machine that matches the
-target server's operating system and architecture.
+target server's operating system and architecture, or
+[build for another architecture](#build-for-another-architecture) from information
+captured on the target.
 
 ## Prerequisites
 
@@ -107,6 +109,50 @@ An authored control `directory` setting changes the installed SQL location.
 The publication still keeps its SQL and control files together under
 `extension/`; installation and packaging apply the declared layout. See
 [SQL directories](/reference/build-settings/#sql-directories).
+
+## Build for another architecture
+
+Native AOT can build for another architecture of the same operating system, such
+as Intel macOS from Apple silicon. Ankus also needs the target's PostgreSQL
+headers and the native layouts measured from them, and it measures layouts by
+compiling and running small C programs, which cannot run on the build machine.
+So the target machine captures this once, as `cargo pgrx cross pgrx-target` does
+for pgrx.
+
+On the target machine, from your extension project:
+
+```console
+ankus target export --pg 18
+```
+
+This writes `ankus-target.pg18.osx-x64.zip`, named for the major and the target's
+runtime identifier. It holds the installation's `pg_config` values, its server
+headers, the headers it reads from other libraries, such as ICU, and the measured
+bindings. The target needs the same prerequisites as an ordinary build, but the
+export does not build your extension.
+
+On the build machine:
+
+```console
+ankus package --target-info ankus-target.pg18.osx-x64.zip --output dist
+```
+
+`ankus build` and `ankus publish` accept `--target-info` too. It selects the
+archive's runtime identifier and PostgreSQL major, and a package mirrors the
+target's library and share directories. The build machine reads no headers, so
+it needs neither LLVM Clang nor `libclang` nor PostgreSQL, but Native AOT's own
+compiler and linker must build for the target architecture. With `dotnet publish`,
+select the runtime and the archive:
+
+```console
+dotnet publish -c Release -r osx-x64 -p:AnkusTargetInfo=ankus-target.pg18.osx-x64.zip
+```
+
+An archive is extracted once, into a directory named by its hash, and every file
+is checked against the hash the export recorded before each build uses it. Builds
+reject information for another runtime or major, or from another Ankus version:
+export again after upgrading Ankus. Run tests on the target machine; `ankus test`
+and `ankus run` need a local server and do not accept target information.
 
 ## Inspect installation SQL
 

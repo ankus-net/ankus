@@ -30,6 +30,14 @@ internal static class NativeBindingSourceCache
             PostgresInstallation installation = arguments[1].Length == 0
                 ? await PostgresInstallation.DiscoverAsync(major, cancellationToken)
                 : await PostgresInstallation.CreateAsync(arguments[1], cancellationToken);
+            if (installation.TargetInfo is { } target)
+            {
+                // The target ran its probes when the information was exported; this machine may not be able to.
+                await NativeTargetCommand.ImportAsync(target, major, arguments.Length >= 6 ? arguments[5] : "",
+                    Path.GetFullPath(arguments[2]), cancellationToken);
+                return;
+            }
+
             string compiler = NativeBindingRecordCommand.FindCompiler(arguments.Length >= 8 && arguments[7].Length != 0 ? arguments[7]
                 : OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang");
             string[] frontend = ["", arguments[0], arguments[1], directory, compiler,

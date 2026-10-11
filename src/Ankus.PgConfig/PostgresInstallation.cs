@@ -10,7 +10,7 @@ public sealed class PostgresInstallation
 {
     private PostgresInstallation(
         string pgConfigPath,
-        PostgresVersion version,
+        string versionText,
         string binDirectory,
         string libraryDirectory,
         string sharedDirectory,
@@ -19,7 +19,8 @@ public sealed class PostgresInstallation
         string preprocessorFlags)
     {
         PgConfigPath = pgConfigPath;
-        Version = version;
+        VersionText = versionText;
+        Version = PostgresVersion.Parse(versionText);
         BinDirectory = binDirectory;
         LibraryDirectory = libraryDirectory;
         SharedDirectory = sharedDirectory;
@@ -28,6 +29,32 @@ public sealed class PostgresInstallation
         PreprocessorFlags = preprocessorFlags;
         PreprocessorArguments = UnixCompilerArguments.Split(preprocessorFlags);
     }
+
+    /// <summary>
+    /// Describes an installation on another machine from its exported information. Header directories and search
+    /// flags name the captured copies; the remaining directories keep the target's values, which packages mirror.
+    /// </summary>
+    private PostgresInstallation(PostgresTargetInfo target)
+        : this(target.ManifestPath, target.VersionText, target.BinDirectory, target.LibraryDirectory, target.SharedDirectory,
+            target.MapPath(target.IncludeDirectory), target.MapPath(target.ServerIncludeDirectory), target.PreprocessorFlags)
+    {
+        TargetInfo = target;
+        PreprocessorArguments = target.MapIncludeArguments(PreprocessorArguments);
+    }
+
+    /// <summary>
+    /// Gets the exported information this installation was read from, or null for an installation on this machine.
+    /// </summary>
+    /// <remarks>
+    /// Such an installation can supply headers and build values to compile and package an extension, but has no
+    /// executables or server on this machine.
+    /// </remarks>
+    public PostgresTargetInfo? TargetInfo { get; }
+
+    /// <summary>
+    /// Gets the <c>pg_config --version</c> output.
+    /// </summary>
+    internal string VersionText { get; }
 
     /// <summary>
     /// Gets the absolute path to <c>pg_config</c>.
@@ -129,6 +156,7 @@ public sealed class PostgresInstallation
     /// <exception cref="FileNotFoundException">The selected installation does not contain its regression driver.</exception>
     public async Task<string> GetRegressionDriverPathAsync(CancellationToken cancellationToken = default)
     {
+        ThrowIfTarget();
         string pgxs = Path.GetFullPath(await QueryAsync(PgConfigPath, "--pgxs", cancellationToken).ConfigureAwait(false));
         string? sourceDirectory = Path.GetDirectoryName(Path.GetDirectoryName(pgxs));
         if (sourceDirectory is null)
@@ -166,6 +194,7 @@ public sealed class PostgresInstallation
     /// </returns>
     public async Task<string?> GetValgrindSuppressionsPathAsync(CancellationToken cancellationToken = default)
     {
+        ThrowIfTarget();
         string pgxs = Path.GetFullPath(await QueryAsync(PgConfigPath, "--pgxs", cancellationToken).ConfigureAwait(false));
         string? sourceDirectory = Path.GetDirectoryName(Path.GetDirectoryName(pgxs));
         if (sourceDirectory is null)
@@ -251,9 +280,9 @@ public sealed class PostgresInstallation
 
     /// <summary>
     /// Creates an installation descriptor by querying an explicit
-    /// <c>pg_config</c> executable.
+    /// <c>pg_config</c> executable, or by reading exported target information.
     /// </summary>
-    /// <param name="pgConfigPath">Path to <c>pg_config</c>.</param>
+    /// <param name="pgConfigPath">Path to <c>pg_config</c>, or to an extracted <see cref="PostgresTargetInfo.ManifestFileName"/>.</param>
     /// <param name="cancellationToken">Cancels <c>pg_config</c> queries.</param>
     /// <returns>The queried PostgreSQL installation.</returns>
     public static async Task<PostgresInstallation> CreateAsync(
@@ -261,6 +290,11 @@ public sealed class PostgresInstallation
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(pgConfigPath);
+        if (string.Equals(Path.GetFileName(pgConfigPath), PostgresTargetInfo.ManifestFileName, StringComparison.Ordinal))
+        {
+            return new PostgresInstallation(PostgresTargetInfo.Open(pgConfigPath));
+        }
+
         string? resolvedPath = ExecutableLocator.Find(pgConfigPath);
         if (resolvedPath is null)
         {
@@ -278,7 +312,7 @@ public sealed class PostgresInstallation
 
         return new PostgresInstallation(
             resolvedPath,
-            PostgresVersion.Parse(await version.ConfigureAwait(false)),
+            (await version.ConfigureAwait(false)).Trim(),
             Path.GetFullPath(await binDirectory.ConfigureAwait(false)),
             Path.GetFullPath(await libraryDirectory.ConfigureAwait(false)),
             Path.GetFullPath(await sharedDirectory.ConfigureAwait(false)),
@@ -289,8 +323,18 @@ public sealed class PostgresInstallation
 
     private string GetExecutablePath(string name)
     {
+        ThrowIfTarget();
         string executableName = OperatingSystem.IsWindows() ? $"{name}.exe" : name;
         return Path.Combine(BinDirectory, executableName);
+    }
+
+    private void ThrowIfTarget()
+    {
+        if (TargetInfo is not null)
+        {
+            throw new InvalidOperationException(
+                $"PostgreSQL {Version} described by '{PgConfigPath}' is installed on another machine; run its tools there.");
+        }
     }
 
     private static Task<string> QueryAsync(string pgConfigPath, string argument, CancellationToken cancellationToken)

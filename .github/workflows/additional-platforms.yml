@@ -13,6 +13,11 @@ on:
         description: Package-consumer slots (empty uses the fixture default)
         type: string
         required: false
+      jobs:
+        description: Run the full suites, the cross-architecture target check, or both
+        type: choice
+        options: [all, tests, target]
+        default: all
 
 permissions:
   contents: read
@@ -74,7 +79,7 @@ jobs:
 
   macos-x64:
     needs: runtime
-    if: github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main'
+    if: github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main' && inputs.jobs != 'target'
     strategy:
       fail-fast: false
       # One Intel runner serves every major in turn.
@@ -171,6 +176,114 @@ jobs:
           path: artifacts/ci-reports/test-logs/**
           if-no-files-found: ignore
           retention-days: 7
+
+      - name: Clean generated runner files
+        if: always()
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- runner-cleanup
+
+  # Intel macOS from Apple silicon: the Intel runner exports its PostgreSQL 18 target information, the Apple silicon
+  # runner builds the Hello sample from it without Clang or libclang, and the Intel runner loads the result.
+  target-export:
+    needs: runtime
+    if: github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main' && inputs.jobs != 'tests'
+    name: target export (osx-x64)
+    runs-on: [self-hosted, macOS, X64, ankus-macos-x64]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: nativeaot-osx-x64
+          path: artifacts/nativeaot/osx-x64
+
+      - name: Export PostgreSQL target information
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- target-export osx-x64 18 artifacts/target/ankus-target.pg18.osx-x64.zip
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: target-osx-x64
+          path: artifacts/target
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Clean generated runner files
+        if: always()
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- runner-cleanup
+
+  target-build:
+    needs: [runtime, target-export]
+    if: github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main' && inputs.jobs != 'tests'
+    name: target build (osx-x64 on osx-arm64)
+    runs-on: ankus-macos-arm64
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Read runtime identity
+        id: runtime
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- metadata
+
+      # The host compiler comes from the primary workflow's Apple silicon runtime build.
+      - name: Restore host native runtime
+        uses: actions/cache/restore@v5
+        with:
+          path: artifacts/nativeaot/osx-arm64
+          key: nativeaot-v3-osx-arm64-dedicated-${{ steps.runtime.outputs.commit }}
+          fail-on-cache-miss: true
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: nativeaot-osx-x64
+          path: artifacts/nativeaot/osx-x64
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: target-osx-x64
+          path: artifacts/target
+
+      - name: Build from target information
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- target-build artifacts/target/ankus-target.pg18.osx-x64.zip osx-x64 artifacts/target-build
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: target-build-osx-x64
+          path: artifacts/target-build
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Clean generated runner files
+        if: always()
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- runner-cleanup
+
+  target-verify:
+    needs: target-build
+    if: github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main' && inputs.jobs != 'tests'
+    name: target verify (osx-x64)
+    runs-on: [self-hosted, macOS, X64, ankus-macos-x64]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: target-build-osx-x64
+          path: artifacts/target-build
+
+      - name: Load the cross-built extension
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- target-verify artifacts/target-build 18
 
       - name: Clean generated runner files
         if: always()

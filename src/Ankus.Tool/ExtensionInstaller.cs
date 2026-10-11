@@ -29,10 +29,17 @@ internal static class ExtensionInstaller
                 $"The extension was built for PostgreSQL {manifest.PostgresMajor}, not {installation.Label}.");
         }
 
-        if (manifest.RuntimeIdentifier != RuntimeInformation.RuntimeIdentifier)
+        if (installation.TargetInfo is not null && !packageLayout)
         {
             throw new InvalidOperationException(
-                $"The extension targets {manifest.RuntimeIdentifier}, not {RuntimeInformation.RuntimeIdentifier}.");
+                $"PostgreSQL {installation.Version} is installed on another machine; package the extension and install it there.");
+        }
+
+        string runtime = installation.TargetInfo?.RuntimeIdentifier ?? RuntimeInformation.RuntimeIdentifier;
+        if (manifest.RuntimeIdentifier != runtime)
+        {
+            throw new InvalidOperationException(
+                $"The extension targets {manifest.RuntimeIdentifier}, not {runtime}.");
         }
 
         string libraryDirectory = StagePath(installation.LibraryDirectory, destinationRoot);

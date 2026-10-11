@@ -24,6 +24,7 @@ Assembly: `Ankus.PgConfig.dll`
 - [PostgresRegistry](/api/ankus.pgconfig.postgresregistry/)
 - [PostgresServerLog](/api/ankus.pgconfig.postgresserverlog/)
 - [PostgresServerStorage](/api/ankus.pgconfig.postgresserverstorage/)
+- [PostgresTargetInfo](/api/ankus.pgconfig.postgrestargetinfo/)
 - [PublishedExtension](/api/ankus.pgconfig.publishedextension/)
 
 ## Enums

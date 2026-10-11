@@ -106,23 +106,55 @@ internal static class ExtensionBuilder
         Directory.CreateDirectory(output);
         // A failed build must not leave an earlier manifest that looks installable.
         PublishedExtension.Invalidate(output);
+        // Target information from another machine selects its runtime and stands in for its pg_config.
+        string runtime = installation.TargetInfo?.RuntimeIdentifier ?? RuntimeInformation.RuntimeIdentifier;
+        string selection = installation.TargetInfo is null ? "-p:AnkusPgConfigPath=" + EscapeProperty(installation.PgConfigPath)
+            : "-p:AnkusTargetInfo=" + EscapeProperty(installation.TargetInfo.ManifestPath);
         int exitCode = await ToolProcess.RunAsync("dotnet",
         [
-            "publish", path, .. PropertyArguments(properties), "-p:Configuration=" + EscapeProperty(configuration), "--runtime", RuntimeInformation.RuntimeIdentifier,
+            "publish", path, .. PropertyArguments(properties), "-p:Configuration=" + EscapeProperty(configuration), "--runtime", runtime,
             "--self-contained", "true", "--output", Path.GetFullPath(output),
-            "-p:AnkusPostgresMajor=" + installation.Version.Major.ToString(CultureInfo.InvariantCulture),
-            "-p:AnkusPgConfigPath=" + EscapeProperty(installation.PgConfigPath),
+            "-p:AnkusPostgresMajor=" + installation.Version.Major.ToString(CultureInfo.InvariantCulture), selection,
         ], token, diagnosticsToStandardError);
         if (exitCode == 0)
         {
             PublishedExtension manifest = PublishedExtension.Read(output);
-            if (manifest.PostgresMajor != installation.Version.Major || manifest.RuntimeIdentifier != RuntimeInformation.RuntimeIdentifier)
+            if (manifest.PostgresMajor != installation.Version.Major || manifest.RuntimeIdentifier != runtime)
             {
                 throw new InvalidOperationException("The published extension does not match the selected PostgreSQL target.");
             }
         }
 
         return exitCode;
+    }
+
+    /// <summary>
+    /// Measures the installation's native bindings with the project's toolchain and archives them for other machines.
+    /// </summary>
+    /// <param name="project">The extension project or directory, whose Ankus version builds will need.</param>
+    /// <param name="configuration">The build configuration.</param>
+    /// <param name="installation">The PostgreSQL installation on this machine.</param>
+    /// <param name="archive">The archive to write.</param>
+    /// <param name="token">Cancels the export and its process tree.</param>
+    /// <param name="properties">Literal global properties for the export.</param>
+    /// <returns>The MSBuild exit code.</returns>
+    internal static async Task<int> ExportTargetAsync(string project, string configuration, PostgresInstallation installation,
+        string archive, CancellationToken token, IReadOnlyDictionary<string, string>? properties = null)
+    {
+        if (installation.TargetInfo is not null)
+        {
+            throw new ArgumentException("Export target information from the target machine's own pg_config.");
+        }
+
+        string path = await ResolveProjectAsync(project, configuration, token, properties);
+        return await ToolProcess.RunAsync("dotnet",
+        [
+            "msbuild", path, "-restore", "-nologo", "-t:AnkusExportTargetInfo", .. PropertyArguments(properties),
+            "-p:Configuration=" + EscapeProperty(configuration), "-p:RuntimeIdentifier=" + RuntimeInformation.RuntimeIdentifier,
+            "-p:AnkusPostgresMajor=" + installation.Version.Major.ToString(CultureInfo.InvariantCulture),
+            "-p:AnkusPgConfigPath=" + EscapeProperty(installation.PgConfigPath),
+            "-p:AnkusTargetInfoOutput=" + EscapeProperty(archive),
+        ], token);
     }
 
     /// <summary>

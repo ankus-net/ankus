@@ -685,7 +685,8 @@ Both commands compile the native library and generate the SQL installation files
 The default configuration is `Release`; use `--configuration Debug` or a
 [custom configuration](/getting-started/publishing/#custom-build-configurations)
 such as `--configuration Shipping` to change it.
-Builds target the host operating system and architecture.
+Builds target the host operating system and architecture unless `--target-info`
+selects [another machine](#build-for-another-machine).
 
 Use `--project` to select a project elsewhere. `--pg` selects a registered
 PostgreSQL major; otherwise the project's `AnkusPostgresMajor` applies, falling
@@ -840,8 +841,9 @@ uses the chosen control directory's parent; earlier versions use the selected
 installation's shared directory.
 
 Packages target the host operating system and architecture and the selected
-PostgreSQL major. Use a matching PostgreSQL directory layout when deploying the
-tree. You can move or archive the package root after creation.
+PostgreSQL major, or the machine that `--target-info` describes. Use a matching
+PostgreSQL directory layout when deploying the tree. You can move or archive the
+package root after creation.
 
 `--project` selects an extension project, solution or directory. The default build
 configuration is `Release`; `--configuration` also accepts `Debug` and custom
@@ -866,5 +868,34 @@ new build, that directory is
 The command validates the artifact set and PostgreSQL/runtime target before
 copying. Repeating it updates the package's files and preserves unrelated files
 in the output directory. A failed build leaves the existing package unchanged.
+
+## Build for another machine
+
+On a machine with the target architecture and its PostgreSQL installation, run
+this from the extension project:
+
+```console
+ankus target export --pg 18
+```
+
+It measures the installation's native bindings with the project's Ankus version
+and writes `ankus-target.pg18.<rid>.zip` in the current directory, with that
+installation's `pg_config` values and headers. `--pg-config` selects another
+installation, `--output` (or `-o`) the archive path, and `--project`,
+`--configuration` and `--property` work as they do for `build`.
+
+Then build, publish or package for that machine from one with the same operating
+system:
+
+```console
+ankus package --target-info ankus-target.pg18.osx-x64.zip --output dist
+```
+
+`--target-info` accepts the archive, a directory it was extracted to, or that
+directory's `ankus-target.json`. It selects the archive's runtime and PostgreSQL
+major and cannot be combined with `--pg-config`; `--pg` must match the archive.
+Archives extract once beneath Ankus's directory in local application data, or
+beneath `AnkusBindingCacheDirectory` when you forward it. See
+[building for another architecture](/getting-started/publishing/#build-for-another-architecture).
 
 Use `ankus --help` or `ankus <command> --help` for the available options.

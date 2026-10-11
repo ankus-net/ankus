@@ -30,6 +30,66 @@
     <PropertyGroup Condition="'$(_AnkusResolvedPgConfigPath)' != '' and '$(_AnkusPostgresMajorWasSpecified)' != 'true'">
       <AnkusPostgresMajor>$(_AnkusPgConfigMajor)</AnkusPostgresMajor>
     </PropertyGroup>
+
+    <!-- Target information exported on another machine stands in for its pg_config: the manifest supplies that
+         installation's build values, its headers and the bindings measured there. An archive is extracted once
+         into a directory named by its hash, which `ankus` commands share. -->
+    <Error Condition="'$(AnkusTargetInfo)' != '' and '$(AnkusPgConfigPath)' != ''"
+           Text="Select either AnkusTargetInfo or AnkusPgConfigPath, not both." />
+    <PropertyGroup Condition="'$(AnkusTargetInfo)' != ''">
+      <_AnkusTargetInfoPath>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(AnkusTargetInfo)'))</_AnkusTargetInfoPath>
+      <_AnkusTargetCacheDirectory Condition="'$(AnkusBindingCacheDirectory)' != ''">$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(AnkusBindingCacheDirectory)', 'targets'))</_AnkusTargetCacheDirectory>
+      <_AnkusTargetCacheDirectory Condition="'$(AnkusBindingCacheDirectory)' == ''">$([MSBuild]::NormalizeDirectory($([System.Environment]::GetFolderPath(SpecialFolder.LocalApplicationData)), 'Ankus', 'targets'))</_AnkusTargetCacheDirectory>
+      <_AnkusTargetDirectory />
+    </PropertyGroup>
+    <Error Condition="'$(AnkusTargetInfo)' != '' and !Exists('$(_AnkusTargetInfoPath)')"
+           Text="AnkusTargetInfo '$(AnkusTargetInfo)' does not exist." />
+    <GetFileHash Condition="'$(AnkusTargetInfo)' != '' and $(_AnkusTargetInfoPath.ToLowerInvariant().EndsWith('.zip'))"
+                 Files="$(_AnkusTargetInfoPath)" Algorithm="SHA256">
+      <Output TaskParameter="Hash" PropertyName="_AnkusTargetInfoHash" />
+    </GetFileHash>
+    <PropertyGroup Condition="'$(AnkusTargetInfo)' != ''">
+      <_AnkusTargetDirectory Condition="'$(_AnkusTargetInfoHash)' != ''">$(_AnkusTargetCacheDirectory)$(_AnkusTargetInfoHash.ToLowerInvariant())</_AnkusTargetDirectory>
+      <_AnkusTargetDirectory Condition="'$(_AnkusTargetDirectory)' == '' and Exists('$(_AnkusTargetInfoPath)/ankus-target.json')">$(_AnkusTargetInfoPath)</_AnkusTargetDirectory>
+      <_AnkusTargetDirectory Condition="'$(_AnkusTargetDirectory)' == '' and $([System.IO.Path]::GetFileName('$(_AnkusTargetInfoPath)')) == 'ankus-target.json'">$([System.IO.Path]::GetDirectoryName('$(_AnkusTargetInfoPath)'))</_AnkusTargetDirectory>
+    </PropertyGroup>
+    <Unzip Condition="'$(_AnkusTargetInfoHash)' != '' and !Exists('$(_AnkusTargetDirectory)/ankus-target.json')"
+           SourceFiles="$(_AnkusTargetInfoPath)" DestinationFolder="$(_AnkusTargetDirectory)" SkipUnchangedFiles="true" />
+    <Error Condition="'$(AnkusTargetInfo)' != '' and !Exists('$(_AnkusTargetDirectory)/ankus-target.json')"
+           Text="AnkusTargetInfo must name an archive from 'ankus target export', its extracted directory or its ankus-target.json." />
+    <PropertyGroup Condition="'$(AnkusTargetInfo)' != ''">
+      <_AnkusResolvedPgConfigPath>$([MSBuild]::NormalizePath('$(_AnkusTargetDirectory)', 'ankus-target.json'))</_AnkusResolvedPgConfigPath>
+      <_AnkusTargetMajor>$([System.IO.File]::ReadAllText('$(_AnkusTargetDirectory)/postgres-major').Trim())</_AnkusTargetMajor>
+      <_AnkusTargetRuntimeIdentifier>$([System.IO.File]::ReadAllText('$(_AnkusTargetDirectory)/runtime-identifier').Trim())</_AnkusTargetRuntimeIdentifier>
+    </PropertyGroup>
+    <Error Condition="'$(AnkusTargetInfo)' != '' and '$(RuntimeIdentifier)' != '$(_AnkusTargetRuntimeIdentifier)'"
+           Text="AnkusTargetInfo describes $(_AnkusTargetRuntimeIdentifier). Build with RuntimeIdentifier=$(_AnkusTargetRuntimeIdentifier)." />
+    <Error Condition="'$(AnkusTargetInfo)' != '' and '$(_AnkusPostgresMajorWasSpecified)' == 'true' and '$(AnkusPostgresMajor)' != '$(_AnkusTargetMajor)'"
+           Text="AnkusTargetInfo describes PostgreSQL $(_AnkusTargetMajor), but AnkusPostgresMajor is $(AnkusPostgresMajor)." />
+    <PropertyGroup Condition="'$(AnkusTargetInfo)' != ''">
+      <AnkusPostgresMajor>$(_AnkusTargetMajor)</AnkusPostgresMajor>
+    </PropertyGroup>
+  </Target>
+
+  <!-- Measures the selected installation's bindings on this machine and archives them with its headers, so other
+       machines can build for this runtime (`ankus target export`). -->
+  <Target Name="AnkusExportTargetInfo" DependsOnTargets="_ResolveAnkusPostgresSelection;ResolveReferences;_PrepareAnkusBindingToolchain">
+    <Error Condition="'$(AnkusTargetInfo)' != ''"
+           Text="Export target information from the target machine's own pg_config, not from AnkusTargetInfo." />
+    <Error Condition="'$(PublishAot)' != 'true' or '$(RuntimeIdentifier)' == ''"
+           Text="Exporting target information requires PublishAot and a RuntimeIdentifier." />
+    <PropertyGroup>
+      <_AnkusBuildTool Condition="'@(_AnkusBuildToolAssembly)' != ''">@(_AnkusBuildToolAssembly->'%(FullPath)')</_AnkusBuildTool>
+      <_AnkusTargetInfoOutput>$(AnkusTargetInfoOutput)</_AnkusTargetInfoOutput>
+      <_AnkusTargetInfoOutput Condition="'$(_AnkusTargetInfoOutput)' == ''">ankus-target.pg$(AnkusPostgresMajor).$(RuntimeIdentifier).zip</_AnkusTargetInfoOutput>
+      <_AnkusTargetInfoOutput>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(_AnkusTargetInfoOutput)'))</_AnkusTargetInfoOutput>
+      <_AnkusBindingCacheDirectory Condition="'$(AnkusBindingCacheDirectory)' != ''">$([MSBuild]::EnsureTrailingSlash('$(AnkusBindingCacheDirectory)')).</_AnkusBindingCacheDirectory>
+      <_AnkusTargetExportCommand>dotnet &quot;$(_AnkusBuildTool)&quot; target-export &quot;$(AnkusPostgresMajor)&quot; &quot;$(_AnkusResolvedPgConfigPath)&quot; &quot;$(_AnkusTargetInfoOutput)&quot;</_AnkusTargetExportCommand>
+      <_AnkusTargetExportCommand>$(_AnkusTargetExportCommand) &quot;@(_AnkusBindingToolchain->'%(Compiler)')&quot; &quot;@(_AnkusBindingToolchain->'%(LibraryDirectories)')&quot;</_AnkusTargetExportCommand>
+      <_AnkusTargetExportCommand>$(_AnkusTargetExportCommand) &quot;$(RuntimeIdentifier)&quot; &quot;@(_AnkusBindingToolchain->'%(TargetTriple)')&quot;</_AnkusTargetExportCommand>
+      <_AnkusTargetExportCommand>$(_AnkusTargetExportCommand) &quot;$(AnkusClangPath)&quot; &quot;$(AnkusLibClangPath)&quot; &quot;$(_AnkusBindingCacheDirectory)&quot;</_AnkusTargetExportCommand>
+    </PropertyGroup>
+    <Exec Command="$(_AnkusTargetExportCommand)" EnvironmentVariables="$(_AnkusNativeEnvironment)" />
   </Target>
 
   <!-- Resolve after project evaluation so consumer and Directory.Build.targets overrides apply.

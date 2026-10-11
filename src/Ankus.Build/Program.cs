@@ -47,6 +47,12 @@ try
         return 0;
     }
 
+    if (args.Length > 0 && args[0] == "target-export")
+    {
+        await NativeTargetCommand.ExportAsync(args[1..]);
+        return 0;
+    }
+
     if (args.Length > 0 && args[0] == "binding-compile")
     {
         await NativeBindingCompilationCommand.RunAsync(args[1..]);
@@ -204,7 +210,8 @@ try
             compilerArguments.Add($"/I{directory}");
         }
 
-        libraries.Add(Path.Combine(installation.LibraryDirectory, "postgres.lib"));
+        string libraryDirectory = installation.TargetInfo?.MapPath(installation.LibraryDirectory) ?? installation.LibraryDirectory;
+        libraries.Add(Path.Combine(libraryDirectory, "postgres.lib"));
     }
     else
     {

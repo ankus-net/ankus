@@ -269,6 +269,12 @@ On Linux and macOS, use `--prefix-dir custom/extension` to put the package's
 library, control file and default SQL together beneath that output root.
 Windows packages use `lib/` and `share/extension/`.
 
+To build for another architecture, such as Intel macOS from Apple silicon, run
+`ankus target export --pg 18` on the target machine and pass its archive to
+`ankus package --target-info`. The archive carries that installation's headers,
+build values and native layouts, as a pgrx target bundle does. See
+[building for another architecture](docs/src/content/docs/getting-started/publishing.md#build-for-another-architecture).
+
 Use `--configuration Shipping` to select a custom MSBuild configuration when
 building, publishing, installing, or packaging an extension.
 

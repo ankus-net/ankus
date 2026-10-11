@@ -28,6 +28,9 @@ repository root with `dotnet run --file`.
 | `windows-toolchain` | Select the latest supported Visual Studio installation with C++ x64 tools and export its developer environment to later CI steps. |
 | `runtime-test-run` | Run every already-built test module using the PostgreSQL and compiler environment prepared by `runtime-test-build`. |
 | `header-frontend-setup` | Select LLVM 20 or later and install LLVM 20 on Linux when no supported compiler is present. |
+| `target-export` | Export a runner's PostgreSQL target information for the Hello sample's toolchain, as `ankus target export` does. |
+| `target-build` | Build the Hello sample for another runtime from exported target information, with Clang and libclang unavailable, and check the library's architecture. |
+| `target-verify` | Load a cross-built Hello publication into a temporary PostgreSQL 18 or later server on the target machine and call it. |
 | `header-frontend-check` | Check an explicit Clang executable for the declaration-only frontend required by header collection. |
 | `postgresql-check` | Check an explicit PostgreSQL 13–19 `pg_config` for its selected major and server headers without installing packages. |
 | `unit-test` | Build and run the five unit test modules. |
@@ -102,6 +105,13 @@ and binding caches are saved before tests so later runs reuse successful
 preparation. Each major retains its test results and timings and allows 360
 minutes. Successful execution is required before counting Intel macOS as
 validated.
+
+The same workflow checks cross-architecture builds. The Intel runner exports its
+PostgreSQL 18 target information for the Hello sample, the Apple silicon runner
+builds `osx-x64` from that archive with Clang and libclang unavailable, reusing
+the primary workflow's cached `osx-arm64` compiler, and the Intel runner loads
+the result into a temporary server and calls it. A `jobs` dispatch input of
+`tests` or `target` runs only the suites or only this check.
 
 The `PostgreSQL versions` workflow runs complete Linux x64 suites for PostgreSQL
 13–17 and 19 weekly. Manual dispatch selects one major, including 18, or all six

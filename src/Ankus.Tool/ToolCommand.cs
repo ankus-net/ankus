@@ -41,6 +41,7 @@ internal static partial class ToolCommand
         root.Subcommands.Add(CreateTest(home));
         root.Subcommands.Add(CreateBench(home));
         root.Subcommands.Add(CreateUpgrade());
+        root.Subcommands.Add(CreateTarget(home));
         try
         {
             if (arguments.Length != 0 && arguments[0] == RegressionDriver.ClientSwitch)
@@ -190,6 +191,7 @@ internal static partial class ToolCommand
     {
         var command = new Command(name, description);
         AddSelectionOptions(command);
+        AddTargetInfoOption(command);
         AddBuildOptions(command);
         command.Options.Add(new Option<string?>("--output", "-o") { Description = "Publish directory." });
         command.SetAction(async (result, token) =>
@@ -207,6 +209,11 @@ internal static partial class ToolCommand
             ? new Command("package", "Build an extension installation tree under a separate output directory.")
             : new Command("install", "Build and copy an extension into a PostgreSQL installation.");
         AddSelectionOptions(command);
+        if (package)
+        {
+            AddTargetInfoOption(command);
+        }
+
         AddBuildOptions(command);
         var from = new Option<string?>("--from") { Description = "Use an existing publish directory without rebuilding." };
         Option<string?> destination = package
@@ -319,6 +326,44 @@ internal static partial class ToolCommand
         });
     }
 
+    private static void AddTargetInfoOption(Command command)
+    {
+        command.Options.Add(new Option<string?>("--target-info")
+        {
+            Description = "Build for another machine from information that 'ankus target export' captured there.",
+        });
+    }
+
+    private static Command CreateTarget(Option<string?> home)
+    {
+        var command = new Command("target", "Prepare builds for PostgreSQL installed on another machine.");
+        var export = new Command("export",
+            "Capture this machine's PostgreSQL build values, headers and native bindings for builds on other machines.");
+        AddSelectionOptions(export);
+        AddBuildOptions(export);
+        var output = new Option<string?>("--output", "-o")
+        {
+            Description = "Archive path (default: ankus-target.pgMAJOR.RID.zip in the current directory).",
+        };
+        export.Options.Add(output);
+        export.SetAction(async (result, token) =>
+        {
+            ExtensionSelection selection = await SelectExtensionAsync(result, home, token);
+            string archive = Path.GetFullPath(result.GetValue(output) ??
+                PostgresTargetInfo.GetArchiveFileName(selection.Installation.Version.Major, RuntimeInformation.RuntimeIdentifier));
+            int code = await ExtensionBuilder.ExportTargetAsync(selection.Project, selection.Configuration, selection.Installation,
+                archive, token, selection.Properties);
+            if (code == 0)
+            {
+                Console.WriteLine($"Exported {selection.Installation.Label} target information for {RuntimeInformation.RuntimeIdentifier} to {archive}");
+            }
+
+            return code;
+        });
+        command.Subcommands.Add(export);
+        return command;
+    }
+
     private static void AddBuildOptions(Command command)
     {
         command.Options.Add(new Option<string?>("--project")
@@ -365,7 +410,8 @@ internal static partial class ToolCommand
         string? output = result.CommandResult.Command.Name is "install" or "package" or "run" or "regress" or "bench"
             ? null : result.GetValue<string?>("--output");
         return Path.GetFullPath(output ?? Path.Combine(Path.GetDirectoryName(selection.Project)!, "bin", "ankus",
-            selection.Installation.Label, RuntimeInformation.RuntimeIdentifier, selection.Configuration));
+            selection.Installation.Label, selection.Installation.TargetInfo?.RuntimeIdentifier ?? RuntimeInformation.RuntimeIdentifier,
+            selection.Configuration));
     }
 
     private static async Task<int> PublishAsync(

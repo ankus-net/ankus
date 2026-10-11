@@ -188,6 +188,21 @@ public string SharedDirectory { get; }
 
 Value: [string](https://learn.microsoft.com/dotnet/api/system.string)
 
+<a id="member-db3f907b3b70976b"></a>
+
+### TargetInfo
+
+Gets the exported information this installation was read from, or null for an installation on this machine.
+
+```csharp
+public PostgresTargetInfo? TargetInfo { get; }
+```
+
+Value: [PostgresTargetInfo](/api/ankus.pgconfig.postgrestargetinfo/)
+
+Such an installation can supply headers and build values to compile and package an extension, but has no
+executables or server on this machine.
+
 <a id="member-418857931de723ae"></a>
 
 ### Version
@@ -208,7 +223,7 @@ Value: [PostgresVersion](/api/ankus.pgconfig.postgresversion/)
 ### CreateAsync(string, CancellationToken)
 
 Creates an installation descriptor by querying an explicit
-<code>pg_config</code> executable.
+<code>pg_config</code> executable, or by reading exported target information.
 
 ```csharp
 public static Task<PostgresInstallation> CreateAsync(string pgConfigPath, CancellationToken cancellationToken = default)
@@ -218,7 +233,7 @@ Parameters:
 
 `pgConfigPath` — [string](https://learn.microsoft.com/dotnet/api/system.string)
 
-Path to <code>pg_config</code>.
+Path to <code>pg_config</code>, or to an extracted [ManifestFileName](/api/ankus.pgconfig.postgrestargetinfo/#member-33141273397d6f3a).
 
 `cancellationToken` — [CancellationToken](https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken)
 

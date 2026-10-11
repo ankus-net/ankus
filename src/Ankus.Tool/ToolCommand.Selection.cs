@@ -52,6 +52,23 @@ internal static partial class ToolCommand
 
         major ??= positionalMajor;
         string? selectedProject = resolvedProject;
+        if (result.CommandResult.Command.Options.Any(static option => option.Name == "--target-info") &&
+            result.GetValue<string?>("--target-info") is string targetInfo)
+        {
+            if (result.GetValue<string?>("--pg-config") is not null || testProperties?.ContainsKey("AnkusPgConfigPath") == true)
+            {
+                throw new ArgumentException("Use either --target-info or a pg_config.");
+            }
+
+            PostgresInstallation target = await OpenTargetAsync(targetInfo, testProperties, token);
+            if (major is int requested && target.Version.Major != requested)
+            {
+                throw new ArgumentException($"Expected PostgreSQL {requested}, but '{targetInfo}' describes {target.Label}.");
+            }
+
+            return new(target, selectedProject);
+        }
+
         string? path = result.GetValue<string?>("--pg-config");
         string? forwardedPath = testProperties?.GetValueOrDefault("AnkusPgConfigPath");
         if (testProperties?.GetValueOrDefault("AnkusPostgresMajor") is string value)
@@ -117,6 +134,33 @@ internal static partial class ToolCommand
         }
 
         return new(installation, selectedProject);
+    }
+
+    /// <summary>
+    /// Opens exported target information, extracting an archive where builds of the same archive extract it.
+    /// </summary>
+    /// <param name="path">An archive, an extracted directory or its manifest.</param>
+    /// <param name="properties">Forwarded properties, which may select the binding cache.</param>
+    /// <param name="token">Cancels extraction and verification.</param>
+    /// <returns>An installation that describes the target machine.</returns>
+    private static async Task<PostgresInstallation> OpenTargetAsync(string path, IReadOnlyDictionary<string, string>? properties,
+        CancellationToken token)
+    {
+        PostgresTargetInfo target;
+        if (path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+        {
+            string cache = properties?.GetValueOrDefault("AnkusBindingCacheDirectory") is string bindings && bindings.Length != 0
+                ? Path.Combine(Path.GetFullPath(bindings), "targets")
+                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Ankus", "targets");
+            target = await PostgresTargetInfo.ExtractAsync(path, cache, token);
+        }
+        else
+        {
+            target = PostgresTargetInfo.Open(path);
+            await target.VerifyAsync(token);
+        }
+
+        return await PostgresInstallation.CreateAsync(target.ManifestPath, token);
     }
 
     /// <summary>
