@@ -31,10 +31,6 @@ matching pgrx's backend benchmark bridge. `PgBenchmarkBatchSize` controls groupi
 Use `PgBenchmark.BlackBox` to keep Native AOT optimization from discarding a
 value. It accepts ref structs and does not box value-type inputs.
 
-For an invalid declaration (`ANKUS130`), editors offer **Make static**, **Make
-internal** or **Add the parameter** `PgBencher bencher` where that is the
-missing piece.
-
 Benchmark entry points and the `benches` schema exist only in benchmark
 publications. Normal build, install and package output excludes them.
 
@@ -171,6 +167,31 @@ sample is rejected after the complete planned measurement sequence runs.
 A comparison reports an improvement or regression only when the measured change
 is statistically significant and its confidence interval lies beyond the configured
 noise threshold.
+
+## Declaration errors
+
+Each rule has its own diagnostic, reported at the name, modifier, return type,
+parameter or containing type that breaks it:
+
+| Diagnostic | Correction |
+| --- | --- |
+| `ANKUS130` | Make the method static. |
+| `ANKUS527` | Remove `async`; measure work that completes before the method returns. |
+| `ANKUS528` | Remove the method's type parameters. |
+| `ANKUS529` | Give the method a body. |
+| `ANKUS530` | Return `void` and register the measured routine with the `PgBencher`. |
+| `ANKUS531` | Make the method `public`, `internal` or `protected internal`. |
+| `ANKUS532` | Declare exactly one `PgBencher` parameter. |
+| `ANKUS533` | Pass the `PgBencher` by value. |
+| `ANKUS534` | Declare benchmarks in non-generic, non-file-local public or internal classes. |
+| `ANKUS131` | Name one accessible synchronous static `void` setup method without parameters. |
+| `ANKUS132` | Correct the reported measurement or throughput option. |
+| `ANKUS133` | Keep benchmarks separate from functions, tests, initialization and workers. |
+
+Editors offer **Make static** for `ANKUS130`, **Make synchronous** for
+`ANKUS527`, **Make internal** for `ANKUS531` and `ANKUS534`, **Add the
+parameter** or **Change the type** for `ANKUS532`, and **Pass by value** for an
+`in` or `ref readonly` bencher (`ANKUS533`).
 
 The [benchmark sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Benchmarks)
 shows value operations, batched setup and SPI writes.

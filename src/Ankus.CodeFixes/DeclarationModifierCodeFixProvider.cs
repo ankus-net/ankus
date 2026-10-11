@@ -28,9 +28,9 @@ public sealed class DeclarationModifierCodeFixProvider : CodeFixProvider
     /// </summary>
     private static readonly ImmutableArray<string> s_reachableIds =
     [
-        "ANKUS034", "ANKUS043", "ANKUS130", "ANKUS135", "ANKUS143", "ANKUS174", "ANKUS178", "ANKUS179", "ANKUS213", "ANKUS222", "ANKUS223",
+        "ANKUS034", "ANKUS043", "ANKUS135", "ANKUS143", "ANKUS174", "ANKUS178", "ANKUS179", "ANKUS213", "ANKUS222", "ANKUS223",
         "ANKUS240", "ANKUS243", "ANKUS244", "ANKUS261", "ANKUS264", "ANKUS265", "ANKUS281", "ANKUS282", "ANKUS296", "ANKUS302",
-        "ANKUS303", "ANKUS321", "ANKUS428", "ANKUS522", "ANKUS523",
+        "ANKUS303", "ANKUS321", "ANKUS428", "ANKUS522", "ANKUS523", "ANKUS531", "ANKUS534",
     ];
 
     /// <summary>
@@ -47,7 +47,7 @@ public sealed class DeclarationModifierCodeFixProvider : CodeFixProvider
     /// Gets the declaration diagnostics corrected by this provider.
     /// </summary>
     public override ImmutableArray<string> FixableDiagnosticIds =>
-        [.. s_staticIds, .. s_reachableIds.Where(id => !s_staticIds.Contains(id)), .. s_partialContainerIds, StaticTypeId];
+        [.. s_staticIds, .. s_reachableIds, .. s_partialContainerIds, StaticTypeId];
 
     /// <summary>
     /// Gets batch support for independent declaration corrections.

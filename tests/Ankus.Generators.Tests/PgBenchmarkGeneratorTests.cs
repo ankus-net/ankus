@@ -128,8 +128,6 @@ public sealed partial class PgFunctionGeneratorTests
     /// <param name="source">The invalid declaration source.</param>
     /// <param name="diagnostic">The expected diagnostic identifier.</param>
     [TestMethod]
-    [DataRow("public static class B { [Ankus.PgBenchmark] public static int Run(Ankus.PgBencher b) => 1; }", "ANKUS130")]
-    [DataRow("public static class B { [Ankus.PgBenchmark] public static void Run() { } }", "ANKUS130")]
     [DataRow("public static class B { [Ankus.PgBenchmark(Setup = \"Missing\")] public static void Run(Ankus.PgBencher b) { } }", "ANKUS131")]
     [DataRow("public static class B { [Ankus.PgBenchmark(WarmupTimeMilliseconds = 0)] public static void Run(Ankus.PgBencher b) { } }", "ANKUS132")]
     [DataRow("public static class B { [Ankus.PgBenchmark(Throughput = Ankus.PgBenchmarkThroughput.Bytes)] public static void Run(Ankus.PgBencher b) { } }", "ANKUS132")]
@@ -141,6 +139,37 @@ public sealed partial class PgFunctionGeneratorTests
         (_, ImmutableArray<Diagnostic> diagnostics) = Generate(source, options: new BenchmarkOptions(true, string.Empty));
 
         Assert.AreEqual(diagnostic, Assert.ContainsSingle(diagnostics).Id);
+    }
+
+    /// <summary>
+    /// Each broken benchmark rule has its own diagnostic at the syntax that breaks it: the name, modifier, return type,
+    /// parameter list, parameter or containing type.
+    /// </summary>
+    /// <param name="source">The invalid declaration source.</param>
+    /// <param name="id">The expected diagnostic identifier.</param>
+    /// <param name="span">The exact source text the diagnostic marks.</param>
+    [TestMethod]
+    [DataRow("public class B { [Ankus.PgBenchmark] public void Run(Ankus.PgBencher b) { } }", "ANKUS130", "Run")]
+    [DataRow("public static class B { [Ankus.PgBenchmark] public static async void Run(Ankus.PgBencher b) { } }", "ANKUS527", "async")]
+    [DataRow("public static class B { [Ankus.PgBenchmark] public static void Run<T>(Ankus.PgBencher b) { } }", "ANKUS528", "<T>")]
+    [DataRow("public interface B { [Ankus.PgBenchmark] static abstract void Run(Ankus.PgBencher b); }", "ANKUS529", "abstract")]
+    [DataRow("public static class B { [Ankus.PgBenchmark] public static int Run(Ankus.PgBencher b) => 1; }", "ANKUS530", "int")]
+    [DataRow("public static class B { [Ankus.PgBenchmark] private static void Run(Ankus.PgBencher b) { } }", "ANKUS531", "Run")]
+    [DataRow("public static class B { [Ankus.PgBenchmark] public static void Run() { } }", "ANKUS532", "()")]
+    [DataRow("public static class B { [Ankus.PgBenchmark] public static void Run(Ankus.PgBencher b, int count) { } }", "ANKUS532",
+        "(Ankus.PgBencher b, int count)")]
+    [DataRow("public static class B { [Ankus.PgBenchmark] public static void Run(object b) { } }", "ANKUS532", "object")]
+    [DataRow("public static class B { [Ankus.PgBenchmark] public static void Run(ref Ankus.PgBencher b) { } }", "ANKUS533", "ref Ankus.PgBencher b")]
+    [DataRow("public static class B<T> { [Ankus.PgBenchmark] public static void Run(Ankus.PgBencher b) { } }", "ANKUS534", "B")]
+    [DataRow("file static class B { [Ankus.PgBenchmark] public static void Run(Ankus.PgBencher b) { } }", "ANKUS534", "B")]
+    [DataRow("public struct B { [Ankus.PgBenchmark] public static void Run(Ankus.PgBencher b) { } }", "ANKUS534", "B")]
+    [DataRow("public static class Outer { private static class B { [Ankus.PgBenchmark] public static void Run(Ankus.PgBencher b) { } } }", "ANKUS534", "B")]
+    public void BenchmarkDeclarationDiagnosticsMarkTheirRule(string source, string id, string span)
+    {
+        (_, ImmutableArray<Diagnostic> diagnostics) = Generate(source, options: new BenchmarkOptions(true, string.Empty));
+        Diagnostic diagnostic = Assert.ContainsSingle(diagnostics);
+        Assert.AreEqual(id, diagnostic.Id);
+        Assert.AreEqual(span, diagnostic.Location.SourceTree!.GetText(context.CancellationToken).ToString(diagnostic.Location.SourceSpan));
     }
 
     /// <summary>

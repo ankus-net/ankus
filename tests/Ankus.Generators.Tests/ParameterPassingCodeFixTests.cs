@@ -19,7 +19,7 @@ public sealed partial class PgFunctionGeneratorTests
         using CompositionHost container = new ContainerConfiguration().WithAssembly(typeof(ParameterPassingCodeFixProvider).Assembly).CreateContainer();
         ParameterPassingCodeFixProvider provider =
             Assert.ContainsSingle(container.GetExports<CodeFixProvider>().OfType<ParameterPassingCodeFixProvider>());
-        Assert.AreSequenceEqual(["ANKUS038", "ANKUS216", "ANKUS259", "ANKUS298", "ANKUS341"], provider.FixableDiagnosticIds);
+        Assert.AreSequenceEqual(["ANKUS038", "ANKUS216", "ANKUS259", "ANKUS298", "ANKUS341", "ANKUS533"], provider.FixableDiagnosticIds);
         Assert.AreNotSame(WellKnownFixAllProviders.BatchFixer, provider.GetFixAllProvider());
         Assert.AreSame(provider.GetFixAllProvider(), provider.GetFixAllProvider());
     }
@@ -151,6 +151,8 @@ public sealed partial class PgFunctionGeneratorTests
         "private static long Handle(in int first, long second) => second; }", "first",
         "public partial class Functions { [Ankus.PgNativeCallback(nameof(Handle))] public static partial Hook Callback { get; } " +
         "private static long Handle(int first, long second) => second; }")]
+    [DataRow("public static class Benchmarks { [Ankus.PgBenchmark] public static void Run(in Ankus.PgBencher bencher) { } }", "bencher",
+        "public static class Benchmarks { [Ankus.PgBenchmark] public static void Run(Ankus.PgBencher bencher) { } }")]
     public async Task ParameterFixCoversEntryKinds(string source, string name, string expected)
     {
         string prefix = FixTypesSource(source);

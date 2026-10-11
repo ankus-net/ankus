@@ -23,7 +23,7 @@ public sealed partial class PgFunctionGeneratorTests
             "ANKUS033", "ANKUS130", "ANKUS208", "ANKUS232", "ANKUS251", "ANKUS291", "ANKUS332", "ANKUS516",
             "ANKUS034", "ANKUS043", "ANKUS135", "ANKUS143", "ANKUS174", "ANKUS178", "ANKUS179", "ANKUS213", "ANKUS222", "ANKUS223",
             "ANKUS240", "ANKUS243", "ANKUS244", "ANKUS261", "ANKUS264", "ANKUS265", "ANKUS281", "ANKUS282", "ANKUS296", "ANKUS302",
-            "ANKUS303", "ANKUS321", "ANKUS428", "ANKUS522", "ANKUS523",
+            "ANKUS303", "ANKUS321", "ANKUS428", "ANKUS522", "ANKUS523", "ANKUS531", "ANKUS534",
             "ANKUS180", "ANKUS304", "ANKUS322", "ANKUS425",
         ], provider.FixableDiagnosticIds);
         Assert.AreSame(WellKnownFixAllProviders.BatchFixer, provider.GetFixAllProvider());
@@ -230,8 +230,11 @@ public sealed partial class PgFunctionGeneratorTests
         "ANKUS130", "Make 'Run' static",
         "public class Benchmarks { [Ankus.PgBenchmark] public static void Run(Ankus.PgBencher bencher) => bencher.Iterate(static () => 1); }")]
     [DataRow("public static class Benchmarks { [Ankus.PgBenchmark] private static void Run(Ankus.PgBencher bencher) => bencher.Iterate(static () => 1); }",
-        "ANKUS130", "Make 'Run' internal",
+        "ANKUS531", "Make 'Run' internal",
         "public static class Benchmarks { [Ankus.PgBenchmark] internal static void Run(Ankus.PgBencher bencher) => bencher.Iterate(static () => 1); }")]
+    [DataRow("public static class Outer { private static class Benchmarks { [Ankus.PgBenchmark] public static void Run(Ankus.PgBencher bencher) { } } }",
+        "ANKUS534", "Make 'Benchmarks' internal",
+        "public static class Outer { internal static class Benchmarks { [Ankus.PgBenchmark] public static void Run(Ankus.PgBencher bencher) { } } }")]
     [DataRow("[Ankus.PgType] public static class Value { }", "ANKUS425", "Make 'Value' non-static", "[Ankus.PgType] public class Value { }")]
     public async Task ModifierFixCorrectsBenchmarksAndTypes(string source, string id, string title, string expected)
     {

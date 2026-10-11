@@ -298,6 +298,9 @@ installing, and packaging include them so existing databases can use
 Declare functions as synchronous static methods.
 Compiler diagnostics distinguish `async` methods, task results and asynchronous
 enumerators. See [backend threads and tasks](docs/src/content/docs/reference/execution.md#backend-threads-and-tasks).
+Editors offer corrections for declaration mistakes that have one clear fix, such
+as **Make static**, **Make synchronous** or **Add the parameter** a trigger or
+worker receives.
 
 The generator uses these type mappings:
 

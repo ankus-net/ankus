@@ -18,10 +18,11 @@ namespace Ankus.CodeFixes;
 public sealed class ParameterPassingCodeFixProvider : CodeFixProvider
 {
     /// <summary>
-    /// The by-reference diagnostics for function, trigger and event callback, background worker, backend test and native
-    /// callback handler parameters.
+    /// The by-reference diagnostics for function, trigger and event callback, background worker, backend test, native
+    /// callback handler and benchmark parameters.
     /// </summary>
-    private static readonly ImmutableArray<string> s_referenceParameterIds = ["ANKUS038", "ANKUS216", "ANKUS259", "ANKUS298", "ANKUS341"];
+    private static readonly ImmutableArray<string> s_referenceParameterIds =
+        ["ANKUS038", "ANKUS216", "ANKUS259", "ANKUS298", "ANKUS341", "ANKUS533"];
 
     /// <summary>
     /// Composes all selected parameters before one compiler comparison per changed project.

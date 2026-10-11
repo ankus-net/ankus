@@ -17,10 +17,10 @@ public sealed class SynchronousEntryCodeFixProvider : CodeFixProvider
 {
     /// <summary>
     /// The diagnostics for asynchronous functions, set results, triggers, initializers, workers, backend tests, native
-    /// callback handlers and output plugin initializers.
+    /// callback handlers, output plugin initializers and benchmarks.
     /// </summary>
     private static readonly ImmutableArray<string> s_ids =
-        ["ANKUS030", "ANKUS031", "ANKUS032", "ANKUS209", "ANKUS233", "ANKUS252", "ANKUS292", "ANKUS335", "ANKUS517"];
+        ["ANKUS030", "ANKUS031", "ANKUS032", "ANKUS209", "ANKUS233", "ANKUS252", "ANKUS292", "ANKUS335", "ANKUS517", "ANKUS527"];
 
     /// <summary>
     /// Gets the asynchronous entry diagnostics corrected by this provider.

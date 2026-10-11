@@ -133,7 +133,7 @@ ANKUS126 | Ankus | Error | Repeated aggregate input metadata
 ANKUS127 | Ankus | Error | Aggregate input has a SQL default
 ANKUS128 | Ankus | Error | Scalar aggregate input selects a tuple element
 ANKUS129 | Ankus | Error | Raw PostgreSQL access requires an unsafe context
-ANKUS130 | Ankus | Error | Invalid PostgreSQL benchmark declaration
+ANKUS130 | Ankus | Error | PostgreSQL benchmark must be static
 ANKUS131 | Ankus | Error | Invalid PostgreSQL benchmark setup
 ANKUS132 | Ankus | Error | Invalid PostgreSQL benchmark configuration
 ANKUS133 | Ankus | Error | Conflicting PostgreSQL benchmark role
@@ -504,3 +504,11 @@ ANKUS523 | Ankus | Error | Output plugin container must be accessible
 ANKUS524 | Ankus | Error | Output plugin initializer must support managed invocation
 ANKUS525 | Ankus | Error | Output plugin initializer has a conflicting role
 ANKUS526 | Ankus | Error | Duplicate output plugin initializer
+ANKUS527 | Ankus | Error | PostgreSQL benchmark must be synchronous
+ANKUS528 | Ankus | Error | PostgreSQL benchmark cannot be generic
+ANKUS529 | Ankus | Error | PostgreSQL benchmark must have an implementation
+ANKUS530 | Ankus | Error | PostgreSQL benchmark must return void
+ANKUS531 | Ankus | Error | PostgreSQL benchmark must be accessible
+ANKUS532 | Ankus | Error | PostgreSQL benchmark requires one PgBencher parameter
+ANKUS533 | Ankus | Error | PostgreSQL benchmark bencher must be passed by value
+ANKUS534 | Ankus | Error | Invalid PostgreSQL benchmark container

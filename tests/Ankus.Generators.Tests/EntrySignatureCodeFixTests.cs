@@ -20,8 +20,8 @@ public sealed partial class PgFunctionGeneratorTests
             Assert.ContainsSingle(container.GetExports<CodeFixProvider>().OfType<EntrySignatureCodeFixProvider>());
         Assert.AreSequenceEqual(
         [
-            "ANKUS037", "ANKUS057", "ANKUS067", "ANKUS076", "ANKUS077", "ANKUS113", "ANKUS114", "ANKUS119", "ANKUS130", "ANKUS172", "ANKUS212",
-            "ANKUS215", "ANKUS218", "ANKUS219", "ANKUS258", "ANKUS260", "ANKUS313", "ANKUS339",
+            "ANKUS037", "ANKUS057", "ANKUS067", "ANKUS076", "ANKUS077", "ANKUS113", "ANKUS114", "ANKUS119", "ANKUS172", "ANKUS212", "ANKUS215",
+            "ANKUS218", "ANKUS219", "ANKUS258", "ANKUS260", "ANKUS313", "ANKUS339", "ANKUS532",
         ], provider.FixableDiagnosticIds);
         Assert.AreSame(WellKnownFixAllProviders.BatchFixer, provider.GetFixAllProvider());
     }
@@ -86,7 +86,10 @@ public sealed partial class PgFunctionGeneratorTests
         "ANKUS260", "Change the type of 'argument' to 'nuint'",
         "public static class Workers { [Ankus.PgBackgroundWorker] public static void Run(nuint argument) { } }")]
     [DataRow("public static class Benchmarks { [Ankus.PgBenchmark] public static void Run() { } }",
-        "ANKUS130", "Add the 'PgBencher bencher' parameter",
+        "ANKUS532", "Add the 'PgBencher bencher' parameter",
+        "public static class Benchmarks { [Ankus.PgBenchmark] public static void Run(Ankus.PgBencher bencher) { } }")]
+    [DataRow("public static class Benchmarks { [Ankus.PgBenchmark] public static void Run(object bencher) { } }",
+        "ANKUS532", "Change the type of 'bencher' to 'PgBencher'",
         "public static class Benchmarks { [Ankus.PgBenchmark] public static void Run(Ankus.PgBencher bencher) { } }")]
     [DataRow("public static class Functions { private static int s_value; [Ankus.PgFunction] public static ref int Value() { return ref s_value; } }",
         "ANKUS037", "Return 'Value' by value",

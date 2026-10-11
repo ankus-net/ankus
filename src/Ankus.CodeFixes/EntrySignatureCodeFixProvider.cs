@@ -57,10 +57,6 @@ public sealed class EntrySignatureCodeFixProvider : CodeFixProvider
     /// </summary>
     private const string AggregateEmptyId = "ANKUS119";
 
-    /// <summary>
-    /// An invalid benchmark declaration, corrected here only when it lacks its <c>PgBencher</c> parameter.
-    /// </summary>
-    private const string BenchmarkId = "ANKUS130";
 
     /// <summary>
     /// A GUC property that returns by reference.
@@ -98,6 +94,11 @@ public sealed class EntrySignatureCodeFixProvider : CodeFixProvider
     private const string WorkerTypeId = "ANKUS260";
 
     /// <summary>
+    /// A benchmark without exactly one <c>PgBencher</c> parameter.
+    /// </summary>
+    private const string BenchmarkId = "ANKUS532";
+
+    /// <summary>
     /// A native callback property that returns by reference.
     /// </summary>
     private const string PropertyReferenceId = "ANKUS313";
@@ -113,8 +114,8 @@ public sealed class EntrySignatureCodeFixProvider : CodeFixProvider
     public override ImmutableArray<string> FixableDiagnosticIds =>
     [
         FunctionReferenceId, OptionsId, VariadicId, CastModifierId, CastExplicitId, AggregateDefaultId, AggregateContextId, AggregateEmptyId,
-        BenchmarkId, SettingReferenceId, CallbackReferenceId, CallbackCountId, CallbackOptionalId, CallbackNullableId, WorkerCountId,
-        WorkerTypeId, PropertyReferenceId, HandlerReferenceId,
+        SettingReferenceId, CallbackReferenceId, CallbackCountId, CallbackOptionalId, CallbackNullableId, WorkerCountId, WorkerTypeId,
+        PropertyReferenceId, HandlerReferenceId, BenchmarkId,
     ];
 
     /// <summary>
@@ -157,7 +158,7 @@ public sealed class EntrySignatureCodeFixProvider : CodeFixProvider
                 continue;
             }
 
-            if (diagnostic.Id is CallbackCountId or WorkerCountId or BenchmarkId)
+            if (diagnostic.Id is CallbackCountId or WorkerCountId || diagnostic.Id == BenchmarkId && node is ParameterListSyntax)
             {
                 if (node.FirstAncestorOrSelf<MethodDeclarationSyntax>() is { ParameterList: { Parameters.Count: 0 } list } method &&
                     model.GetDeclaredSymbol(method, cancellationToken) is { } symbol &&
@@ -187,15 +188,17 @@ public sealed class EntrySignatureCodeFixProvider : CodeFixProvider
                 case VariadicId when parameter.Modifiers.IndexOf(SyntaxKind.ParamsKeyword) is var index and >= 0:
                     Register(context, diagnostic, "Remove 'params'", root.ReplaceNode(parameter, RemoveModifier(parameter, index)));
                     break;
-                case CastModifierId or CastExplicitId or WorkerTypeId when parameter.Type is { } type:
+                case CastModifierId or CastExplicitId or WorkerTypeId or BenchmarkId when parameter.Type is { } type:
                     string expected = diagnostic.Id switch
                     {
                         CastModifierId => "int",
                         CastExplicitId => "bool",
-                        _ => "nuint",
+                        WorkerTypeId => "nuint",
+                        _ => "global::Ankus.PgBencher",
                     };
-                    Register(context, diagnostic, $"Change the type of '{parameterName}' to '{expected}'",
-                        root.ReplaceNode(type, SyntaxFactory.ParseTypeName(expected).WithTriviaFrom(type)));
+                    string shownType = expected.Substring(expected.LastIndexOf('.') + 1);
+                    Register(context, diagnostic, $"Change the type of '{parameterName}' to '{shownType}'", root.ReplaceNode(type,
+                        SyntaxFactory.ParseTypeName(expected).WithTriviaFrom(type).WithAdditionalAnnotations(Simplifier.Annotation)));
                     break;
                 case AggregateDefaultId or CallbackOptionalId when parameter.Default is not null:
                     Register(context, diagnostic, $"Remove the default value of '{parameterName}'", root.ReplaceNode(parameter,

@@ -18,7 +18,8 @@ public sealed partial class PgFunctionGeneratorTests
         using CompositionHost container = new ContainerConfiguration().WithAssembly(typeof(SynchronousEntryCodeFixProvider).Assembly).CreateContainer();
         SynchronousEntryCodeFixProvider provider =
             Assert.ContainsSingle(container.GetExports<CodeFixProvider>().OfType<SynchronousEntryCodeFixProvider>());
-        Assert.AreSequenceEqual(["ANKUS030", "ANKUS031", "ANKUS032", "ANKUS209", "ANKUS233", "ANKUS252", "ANKUS292", "ANKUS335", "ANKUS517"],
+        Assert.AreSequenceEqual(
+            ["ANKUS030", "ANKUS031", "ANKUS032", "ANKUS209", "ANKUS233", "ANKUS252", "ANKUS292", "ANKUS335", "ANKUS517", "ANKUS527"],
             provider.FixableDiagnosticIds);
         Assert.AreSame(WellKnownFixAllProviders.BatchFixer, provider.GetFixAllProvider());
     }
@@ -57,6 +58,8 @@ public sealed partial class PgFunctionGeneratorTests
         "private static long Handle(int first, long second) => second; }")]
     [DataRow("public unsafe class Plugins { [Ankus.PgOutputPlugin] public static async void Init(Ankus.Postgres.OutputPluginCallbacks* callbacks) { } }",
         "ANKUS517", "public unsafe class Plugins { [Ankus.PgOutputPlugin] public static void Init(Ankus.Postgres.OutputPluginCallbacks* callbacks) { } }")]
+    [DataRow("public static class Benchmarks { [Ankus.PgBenchmark] public static async System.Threading.Tasks.Task Run(Ankus.PgBencher bencher) { } }",
+        "ANKUS527", "public static class Benchmarks { [Ankus.PgBenchmark] public static void Run(Ankus.PgBencher bencher) { } }")]
     public async Task SynchronousEntryFixKeepsTheProducedResult(string source, string id, string expected)
     {
         string prefix = FixTypesSource(source);

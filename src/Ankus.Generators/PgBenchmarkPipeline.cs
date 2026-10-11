@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Ankus.Generators;
@@ -12,8 +13,36 @@ namespace Ankus.Generators;
 internal static class PgBenchmarkPipeline
 {
     private const string Help = "https://willibrandon.github.io/ankus/benchmarks/";
-    private static readonly DiagnosticDescriptor s_declaration = new(
-        "ANKUS130", "Invalid PostgreSQL benchmark declaration", "Benchmark '{0}' must be an accessible synchronous static void method with one PgBencher parameter",
+    private static readonly DiagnosticDescriptor s_static = new(
+        "ANKUS130", "PostgreSQL benchmark must be static", "Benchmark '{0}' must be static; the benchmark runner calls it without an instance",
+        "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: Help);
+    private static readonly DiagnosticDescriptor s_async = new(
+        "ANKUS527", "PostgreSQL benchmark must be synchronous",
+        "Benchmark '{0}' cannot use async; measure work that completes on the calling PostgreSQL thread",
+        "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: Help);
+    private static readonly DiagnosticDescriptor s_generic = new(
+        "ANKUS528", "PostgreSQL benchmark cannot be generic", "Benchmark '{0}' cannot declare type parameters; the runner calls one closed method",
+        "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: Help);
+    private static readonly DiagnosticDescriptor s_abstract = new(
+        "ANKUS529", "PostgreSQL benchmark must have an implementation", "Benchmark '{0}' must have a body for the runner to call",
+        "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: Help);
+    private static readonly DiagnosticDescriptor s_result = new(
+        "ANKUS530", "PostgreSQL benchmark must return void",
+        "Benchmark '{0}' must return void; register the measured routine with its PgBencher instead of returning a value",
+        "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: Help);
+    private static readonly DiagnosticDescriptor s_access = new(
+        "ANKUS531", "PostgreSQL benchmark must be accessible",
+        "Benchmark '{0}' must be public, internal or protected internal so the generated runner can call it",
+        "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: Help);
+    private static readonly DiagnosticDescriptor s_parameter = new(
+        "ANKUS532", "PostgreSQL benchmark requires one PgBencher parameter", "Benchmark '{0}' must declare exactly one Ankus.PgBencher parameter",
+        "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: Help);
+    private static readonly DiagnosticDescriptor s_reference = new(
+        "ANKUS533", "PostgreSQL benchmark bencher must be passed by value", "Benchmark '{0}' must receive its PgBencher by value",
+        "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: Help);
+    private static readonly DiagnosticDescriptor s_container = new(
+        "ANKUS534", "Invalid PostgreSQL benchmark container",
+        "'{0}' cannot contain benchmark '{1}'; benchmarks belong to non-generic, non-file-local public or internal classes",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: Help);
     private static readonly DiagnosticDescriptor s_setup = new(
         "ANKUS131", "Invalid PostgreSQL benchmark setup", "Benchmark '{0}' setup '{1}' must identify one accessible synchronous static void method with no parameters",
@@ -49,14 +78,8 @@ internal static class PgBenchmarkPipeline
 
     private static Model? Create(IMethodSymbol method, GeneratorDiagnostics diagnostics)
     {
-        IParameterSymbol? parameter = method.Parameters.Length == 1 ? method.Parameters[0] : null;
-        INamedTypeSymbol? bencher = parameter?.Type as INamedTypeSymbol;
-        if (!method.IsStatic || method.IsAsync || method.IsGenericMethod || method.IsAbstract || !method.ReturnsVoid ||
-            method.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal) ||
-            parameter?.RefKind != RefKind.None || bencher is not { Name: "PgBencher", Arity: 0 } ||
-            bencher.ContainingNamespace.ToDisplayString() != "Ankus" || !ValidContainers(method.ContainingType))
+        if (!ValidDeclaration(method, diagnostics))
         {
-            diagnostics.Report(s_declaration, method.Locations.FirstOrDefault(), method.Name);
             return null;
         }
 
@@ -158,18 +181,81 @@ internal static class PgBenchmarkPipeline
         }
     }
 
-    private static bool ValidContainers(INamedTypeSymbol owner)
+    /// <summary>
+    /// Reports the first rule the benchmark method or one of its containers breaks, at the syntax that breaks it.
+    /// </summary>
+    /// <param name="method">The attributed method.</param>
+    /// <param name="diagnostics">The diagnostic destination and cancellation token.</param>
+    /// <returns>Whether the method can be called by the generated runner.</returns>
+    private static bool ValidDeclaration(IMethodSymbol method, GeneratorDiagnostics diagnostics)
     {
-        for (INamedTypeSymbol? type = owner; type is not null; type = type.ContainingType)
+        CancellationToken cancellationToken = diagnostics.CancellationToken;
+        var syntax = method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken) as MethodDeclarationSyntax;
+        Location? name = method.Locations.FirstOrDefault();
+        if (!method.IsStatic)
+        {
+            return Reject(s_static, name);
+        }
+
+        if (method.IsAsync)
+        {
+            return Reject(s_async, Modifier(SyntaxKind.AsyncKeyword));
+        }
+
+        if (method.IsGenericMethod)
+        {
+            return Reject(s_generic, syntax?.TypeParameterList?.GetLocation() ?? name);
+        }
+
+        if (method.IsAbstract)
+        {
+            return Reject(s_abstract, Modifier(SyntaxKind.AbstractKeyword));
+        }
+
+        if (!method.ReturnsVoid)
+        {
+            return Reject(s_result, FunctionDeclarationDiagnostics.Result(method, cancellationToken));
+        }
+
+        if (method.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal))
+        {
+            return Reject(s_access, name);
+        }
+
+        ParameterSyntax? parameter = syntax?.ParameterList.Parameters.Count == 1 ? syntax.ParameterList.Parameters[0] : null;
+        if (method.Parameters.Length != 1 || method.Parameters[0].Type is not INamedTypeSymbol { Name: "PgBencher", Arity: 0 } bencher ||
+            bencher.ContainingNamespace.ToDisplayString() != "Ankus")
+        {
+            return Reject(s_parameter, method.Parameters.Length == 1
+                ? parameter?.Type?.GetLocation() ?? method.Parameters[0].Locations.FirstOrDefault()
+                : syntax?.ParameterList.GetLocation() ?? name);
+        }
+
+        if (method.Parameters[0].RefKind != RefKind.None)
+        {
+            return Reject(s_reference, parameter?.GetLocation() ?? method.Parameters[0].Locations.FirstOrDefault());
+        }
+
+        for (INamedTypeSymbol? type = method.ContainingType; type is not null; type = type.ContainingType)
         {
             if (type.TypeKind != TypeKind.Class || type.IsGenericType || type.IsFileLocal ||
                 type.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal))
             {
+                diagnostics.Report(s_container, type.Locations.FirstOrDefault(), type.Name, method.Name);
                 return false;
             }
         }
 
         return true;
+
+        bool Reject(DiagnosticDescriptor descriptor, Location? location)
+        {
+            diagnostics.Report(descriptor, location ?? name, method.Name);
+            return false;
+        }
+
+        Location? Modifier(SyntaxKind kind)
+            => syntax?.Modifiers.FirstOrDefault(token => token.IsKind(kind)) is { RawKind: not 0 } token ? token.GetLocation() : name;
     }
 
     private static string Target(IMethodSymbol method)
