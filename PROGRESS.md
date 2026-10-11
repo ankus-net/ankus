@@ -119,15 +119,15 @@ timings, rejected attempts and superseded
 results remain in the [acceptance history](docs/contributing/evidence/port-history.md#superseded-active-and-primary-acceptance-detail-before-sqldatetime-acceptance-2026-10-06).
 These results establish the named combinations, not full-port completion.
 
-The Linux version and Intel rows below use the current runtime; the macOS and
-Windows version rows are older revisions. Refreshing those against the current
-source remains required, alongside the never-covered combinations.
+Every row below uses the current runtime. Still never covered: Windows x64 on
+PostgreSQL 19 beta (EDB publishes no Windows beta) and macOS x64 on majors other
+than 18.
 
 | Earlier complete evidence | Platform / PostgreSQL | Result | Duration |
 | --- | --- | --- | --- |
 | [Version CI 38102793609](https://github.com/willibrandon/ankus/actions/runs/38102793609), **be3fbcd / ankus.5** | Linux x64 / each of 13–17 and 19 beta 4 | 14,512 total per major; 14,457–14,460 passed; 52–55 platform skips; zero failures | 27m31s–35m27s jobs; 1h24m for three reruns sharing one host |
-| [Version CI 37145038020](https://github.com/willibrandon/ankus/actions/runs/37145038020), **b9b7eb5 / ankus.4** | macOS ARM64 / 15 and 16 | 11,609 total per major; 11,580 passed; 29 platform skips; zero failures | 26m17s / 26m32s jobs |
-| Same version CI / revision / runtime | Windows x64 / 13 and 18 | 11,609 total per major; 11,584 passed; 25 platform skips; zero failures | 33m51s / 31m46s jobs |
+| [Platform versions 38109393201](https://github.com/willibrandon/ankus/actions/runs/38109393201), **660ea5e / ankus.5** | macOS ARM64 / each of 13–17 and 19 beta 4 (assertions enabled) | 14,642 total per major; 14,573–14,577 passed; 65–69 platform skips; zero failures | 25m52s–32m09s jobs |
+| Same platform-versions run / revision / runtime | Windows x64 / each of 13–16 and 18 | 14,642 total per major; 14,596 passed; 46 platform skips; zero failures | 29m47s–1h00m43s jobs |
 | [Intel CI 38109391178](https://github.com/willibrandon/ankus/actions/runs/38109391178), **660ea5e / ankus.5** | macOS x64 / 18.6 | 14,642 total; 14,577 passed; 65 platform skips; zero failures; run-as cases run | 1h24m04s job |
 
 Earlier timings, outcomes, failed checks and superseded acceptance details remain
@@ -268,6 +268,9 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   macOS suite, five macOS repeats with malloc scribbling or 20 repeats of the
   memory test classes on an assert-enabled Linux 19 build. The report bridge
   survives the reset as intended, so it remains open as an intermittent fault.
+  Since then, 11 repeats of the memory test classes on the macOS 19 assert build
+  and the complete macOS 19 suite in platform-versions run 38109393201 passed
+  without it.
 - macOS 13 also hung in parallel queries: under load, a leader slept with its
   workers' tuple queues full. Logging every `SIGUSR1` send and delivery showed
   each of 12 stalls began when the leader's handler ran on the .NET finalizer
