@@ -144,8 +144,8 @@ PgSubtransactionCallback registration = PgTransaction.RegisterSubtransactionCall
 
 | Event | Timing | SPI |
 |---|---|---|
-| `Start` | After the subtransaction starts | Yes |
-| `PreCommit` | Before it commits | Yes |
+| `Start` | After the subtransaction starts | Yes, without opening a subtransaction |
+| `PreCommit` | Before it commits | Yes, without opening a subtransaction |
 | `Commit` | After it commits | No |
 | `Abort` | After it rolls back | No |
 

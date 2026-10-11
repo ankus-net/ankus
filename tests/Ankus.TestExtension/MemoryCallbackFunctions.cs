@@ -406,6 +406,14 @@ public static class MemoryCallbackFunctions
     }
 
     /// <summary>
+    /// Registers the same caught terminal cleanup report in whichever process runs this parallel-safe call, so a forced
+    /// parallel plan makes a parallel worker report it while its transaction commits.
+    /// </summary>
+    /// <returns>A value returned before the worker's commit starts the cleanup.</returns>
+    [PgFunction(ParallelSafety = PgParallelSafety.Safe)]
+    public static int MemoryCallbackPrepareTerminalInWorker() => MemoryCallbackPrepareTerminal((int)PgLogLevel.Fatal);
+
+    /// <summary>
     /// Inspects the backend-local aftermath of implicit cleanup from a later SQL call.
     /// </summary>
     /// <returns>The callback order, pending states, owner lifetime, and checked payload state.</returns>

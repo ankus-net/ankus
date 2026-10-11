@@ -400,6 +400,36 @@ public sealed class TransactionCallbackTests(TestContext context)
     }
 
     /// <summary>
+    /// SQL in a subtransaction start callback that opens its own subtransaction ends the session with PostgreSQL's FATAL,
+    /// as the guide states, without restarting the cluster.
+    /// </summary>
+    [TestMethod]
+    public async Task StartCallbackSqlOpeningASubtransactionEndsOnlyTheSession()
+    {
+        CancellationToken token = context.CancellationToken;
+        await using NpgsqlConnection observer = await PostgresFixture.Cluster.OpenConnectionAsync(token);
+        int observerBackend = observer.ProcessID;
+        await using (NpgsqlConnection connection = await PostgresFixture.Cluster.OpenConnectionAsync(token))
+        {
+            // The FATAL breaks the connection, so the transaction is left to the connection's disposal.
+            NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
+            await ExecuteAsync(connection, transaction, "CREATE FUNCTION pg_temp.subtransaction_probe() RETURNS integer " +
+                "LANGUAGE plpgsql AS $$ BEGIN BEGIN RETURN 1; EXCEPTION WHEN others THEN RETURN 0; END; END $$", token);
+            await ExecuteAsync(connection, transaction,
+                "SELECT datatype.transaction_callback_register_start_sql('SELECT pg_temp.subtransaction_probe()')", token);
+            // Npgsql defers SaveAsync until the next command, so the savepoint is sent directly.
+            PostgresException error = await Assert.ThrowsExactlyAsync<PostgresException>(
+                () => ExecuteAsync(connection, transaction, "SAVEPOINT starting", token));
+            Assert.AreEqual("FATAL", error.InvariantSeverity);
+            Assert.StartsWith("BeginInternalSubTransaction: unexpected state", error.MessageText);
+            Assert.AreEqual(System.Data.ConnectionState.Closed, connection.State);
+        }
+
+        Assert.AreEqual(observerBackend, observer.ProcessID);
+        Assert.AreEqual(42, await ScalarAsync<int>(observer, null, "SELECT 42", token));
+    }
+
+    /// <summary>
     /// A savepoint commit callback failure aborts the enclosing transaction with ERROR instead of crashing the cluster.
     /// </summary>
     [TestMethod]

@@ -165,6 +165,8 @@ public TimeSpan ShutdownTimeout { get; init; }
 
 Value: [TimeSpan](https://learn.microsoft.com/dotnet/api/system.timespan)
 
+It bounds the server's stop. Checking whether the server is still running has its own allowance.
+
 <a id="member-483c4d79f0031427"></a>
 
 ### StartupTimeout

@@ -93,19 +93,19 @@ incorrect. See [the detailed review](docs/contributing/evidence/port-history.md#
 ## Current complete acceptance evidence
 
 Primary CI runs all six modules against real published Native AOT extensions.
-The latest successful primary CI source is **2265796**, with runtime **10.0.12-ankus.5**.
-[CI 38101274232](https://github.com/willibrandon/ankus/actions/runs/38101274232)
-passes; [Docs run 38089102312](https://github.com/willibrandon/ankus/actions/runs/38089102312)
-for **1b35c17** is the latest documentation run. Each platform completed all six
+The latest successful primary CI source is **554cbb4**, with runtime **10.0.12-ankus.5**.
+[CI 38107375540](https://github.com/willibrandon/ankus/actions/runs/38107375540)
+passes; [Docs run 38107375539](https://github.com/willibrandon/ankus/actions/runs/38107375539)
+for **554cbb4** is the latest documentation run. Each platform completed all six
 modules with zero failures; no primary job timed out. Earlier **ankus.4** evidence,
 including a complete [Intel refresh](https://github.com/willibrandon/ankus/actions/runs/37460600236)
 on source **e41c687**, is retained below.
 
 | Source | Platform / PostgreSQL | Result | Duration |
 | --- | --- | --- | --- |
-| Latest primary CI, **2265796 / ankus.5** | Linux x64 / 18 | 14,512 total; 14,460 passed; 52 platform skips; zero failures | 13m07s test step; 15m28s job |
-| Same CI / revision / runtime | macOS ARM64 / 18 | 14,512 total; 14,447 passed; 65 platform skips; zero failures | 13m59s test step; 15m56s job |
-| Same CI / revision / runtime | Windows x64 / 17 | 14,512 total; 14,466 passed; 46 platform skips; zero failures | 15m10s test step; 17m23s job |
+| Latest primary CI, **554cbb4 / ankus.5** | Linux x64 / 18 | 14,592 total; 14,540 passed; 52 platform skips; zero failures | 16m22s test step; 19m00s job |
+| Same CI / revision / runtime | macOS ARM64 / 18 | 14,592 total; 14,527 passed; 65 platform skips; zero failures | 14m07s test step; 16m08s job |
+| Same CI / revision / runtime | Windows x64 / 17 | 14,592 total; 14,546 passed; 46 platform skips; zero failures | 16m00s test step; 18m26s job |
 | Earlier primary CI, **e0e469a / ankus.4** | Linux x64 / 18 | 13,883 total; 13,833 passed; 50 platform skips; zero failures | 11m37s test step; 13m48s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 13,883 total; 13,821 passed; 62 platform skips; zero failures | 12m03s test step; 13m44s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 13,883 total; 13,847 passed; 36 platform skips; zero failures | 21m50s test step; 24m04s job |
@@ -158,13 +158,18 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   the complete corrected source, regenerate it without diagnostics, and check
   that no fix is offered where the result would not compile.
 - The third code review was re-checked against the current source. Every high,
-  medium and low finding has a fix with tests, except these, which remain open:
-  SQL that opens a subtransaction inside `Start` and subtransaction `PreCommit`
-  callbacks still ends the session as PostgreSQL does, and only the guide says
-  so; FATAL after a
-  parallel-worker commit has no test; per-call SPI subtransactions remain the
-  default, with `Atomic` scopes as the opt-in; and ANKUS483 points at the whole
-  attribute. Two leftovers are now fixed. A `Default` that PostgreSQL's scanner
+  medium and low finding has a fix with tests. Two are kept by design. Each SPI
+  call still runs in its own subtransaction by default, so a caught
+  `PgException` leaves the transaction usable, as .NET code expects; `Atomic`
+  scopes share one subtransaction for long write loops. ANKUS483 stays on the
+  `PgSupportFunction` attribute, the typed selector that conflicts with
+  `SupportFunction`. SQL that opens a subtransaction inside `Start` and
+  subtransaction `PreCommit` callbacks ends the session, as it does under
+  PostgreSQL itself; the guide's event table now says so, and a test pins the
+  boundary: FATAL for the session, no cluster restart. A new test also covers a
+  terminal cleanup report while a parallel worker commits: the worker exits,
+  the leader gets PostgreSQL's ERROR from a parallel worker, and nothing PANICs.
+  Two leftovers are now fixed. A `Default` that PostgreSQL's scanner
   would not close inside its parentheses (an open block comment, string, quoted
   name or dollar quote, unbalanced parentheses or a semicolon) is ANKUS060 at
   the value, under both `standard_conforming_strings` settings, instead of a

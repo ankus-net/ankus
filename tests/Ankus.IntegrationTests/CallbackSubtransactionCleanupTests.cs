@@ -327,6 +327,51 @@ public sealed partial class CallbackSubtransactionCleanupTests(TestContext conte
             (int)PgLogLevel.Fatal, write: false);
 
     /// <summary>
+    /// A terminal cleanup report while a parallel worker commits stays FATAL: the worker exits, the leader receives the
+    /// report as PostgreSQL's ERROR from a parallel worker, and the cluster keeps running.
+    /// </summary>
+    [TestMethod]
+    public async Task CleanupTerminalReportInParallelWorkerCommitRemainsFatal()
+    {
+        CancellationToken token = context.CancellationToken;
+        using IDisposable recoverySlot = await CrashRecovery.ReserveAsync(token);
+        PostgresTestClusterOptions options = await IntegrationEnvironment.CreateOptionsAsync(token);
+        await using PostgresTestCluster cluster = await PostgresTestCluster.StartAsync(options, token);
+        await using NpgsqlConnection observer = await cluster.OpenConnectionAsync(token);
+        await using (var setup = new NpgsqlCommand("CREATE SCHEMA datatype; CREATE EXTENSION ankus_test WITH SCHEMA datatype", observer))
+        {
+            await setup.ExecuteNonQueryAsync(token);
+        }
+
+        await using NpgsqlConnection connection = await cluster.OpenConnectionAsync(token);
+        int leader = connection.ProcessID;
+        int logStart = cluster.ReadServerLog().Length;
+        // A single-copy Gather runs the call only in the worker; PostgreSQL 16 renamed the setting.
+        string forceParallel = connection.PostgreSqlVersion.Major >= 16 ? "debug_parallel_query" : "force_parallel_mode";
+        await using var command = new NpgsqlCommand($"SET {forceParallel} = on; SET parallel_setup_cost = 0; " +
+            "SET parallel_tuple_cost = 0; SET max_parallel_workers_per_gather = 1", connection);
+        await command.ExecuteNonQueryAsync(token);
+        command.CommandText = "SELECT datatype.memory_callback_prepare_terminal_in_worker()";
+        PostgresException error = await Assert.ThrowsExactlyAsync<PostgresException>(() => command.ExecuteScalarAsync(token));
+
+        Assert.AreEqual("ERROR", error.InvariantSeverity);
+        Assert.AreEqual("P7806", error.SqlState);
+        Assert.AreEqual("terminal cleanup café", error.MessageText);
+        Assert.Contains("parallel worker", error.Where ?? string.Empty);
+        Assert.AreEqual(leader, connection.ProcessID);
+        command.CommandText = "SELECT 42";
+        Assert.AreEqual(42, await command.ExecuteScalarAsync(token));
+        await using var observerCheck = new NpgsqlCommand("SELECT 42", observer);
+        Assert.AreEqual(42, await observerCheck.ExecuteScalarAsync(token));
+        string log = cluster.ReadServerLog()[logStart..];
+        Assert.Contains("FATAL:  terminal cleanup café", log);
+        Assert.Contains("ERROR:  terminal cleanup café", log);
+        Assert.DoesNotContain("PANIC", log);
+        Assert.DoesNotContain("reinitializing", log);
+        Assert.DoesNotContain("TRAP: failed Assert", log);
+    }
+
+    /// <summary>
     /// An emit_log_hook that raises ERROR while a terminal cleanup report is written cannot make it recoverable: PostgreSQL
     /// promotes the hook's error to the pending FATAL, so the backend still exits, reporting the hook's error.
     /// </summary>

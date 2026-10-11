@@ -191,6 +191,15 @@ public static class TransactionCallbackFunctions
     }
 
     /// <summary>
+    /// Registers a subtransaction start callback that runs the given SQL, such as a call to a PL/pgSQL function whose
+    /// EXCEPTION block opens a subtransaction while the savepoint is still starting.
+    /// </summary>
+    /// <param name="sql">The SQL the callback runs.</param>
+    [PgFunction]
+    public static void TransactionCallbackRegisterStartSql(string sql)
+        => s_subStart = PgTransaction.RegisterSubtransactionCallback(PgSubtransactionEvent.Start, (_, _) => Spi.Execute(sql));
+
+    /// <summary>
     /// Recovers a native numeric error through explicit rollback before performing another pure operation.
     /// </summary>
     /// <returns>The recovered SQLSTATE and subsequent result.</returns>
