@@ -105,6 +105,12 @@ extension/
 The library suffix is `.dll` on Windows. On macOS it is `.so` for PostgreSQL
 13–15 and `.dylib` for PostgreSQL 16 and later, matching PostgreSQL's loader.
 
+Native AOT writes the library's debug symbols beside it: `Hello.so.dbg` on
+Linux, `Hello.pdb` on Windows and a `.dSYM` bundle on macOS. They carry source
+lines for your code and for the Ankus framework, whose packages embed their
+symbols, so a native debugger or crash dump can show both. Installation and
+packages copy only the library; keep the symbols with the build that produced it.
+
 An authored control `directory` setting changes the installed SQL location.
 The publication still keeps its SQL and control files together under
 `extension/`; installation and packaging apply the declared layout. See

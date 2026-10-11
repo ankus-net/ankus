@@ -12,6 +12,8 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Deterministic>true</Deterministic>
+    <!-- Native AOT reads symbols embedded in package assemblies, so consumers' native debug info keeps Ankus source lines. -->
+    <DebugType>embedded</DebugType>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <Authors>Brandon Williams</Authors>
     <Copyright>Copyright (c) Brandon Williams</Copyright>

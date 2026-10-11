@@ -135,6 +135,13 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- Ankus library packages now embed their symbols. A package carried no PDB, so
+  Native AOT had no source lines for framework code, and a debugger attached to
+  a package-built extension showed Ankus frames without files or lines, while a
+  checkout build showed them. Native AOT reads an embedded PDB first, so the
+  extension's `.dbg`, `.pdb` or `.dSYM` now covers framework code as well, and
+  Source Link maps it to the repository. A package test checks that the runtime,
+  configuration and testing assemblies embed their PDB with Source Link.
 - Editors now correct 117 declaration diagnostics, up from 64. An audit of all
   501 found the ones with a single mechanical answer: removing options or
   attributes that cannot apply, removing `async` from entries that await
