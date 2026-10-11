@@ -134,6 +134,14 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- Editors now fix the two most common entry-method errors. ANKUS033 offers
+  **Make static** when the method reads no instance state, overrides or
+  implements nothing, and no caller uses an instance receiver; ANKUS034 offers
+  **Make internal** for a private or protected method or containing type, on
+  every partial declaration that states accessibility; ANKUS174 and ANKUS179
+  offer it for GUC properties and their classes. Generator tests compare
+  the complete corrected source, regenerate it without diagnostics, and check
+  that no fix is offered where the result would not compile.
 - Binding catalogs can now be derived from the installed headers, as pgrx
   runs bindgen at build time, instead of from pgrx's generated output.
   `binding-catalog-headers` reads the header manifest through the compiler's

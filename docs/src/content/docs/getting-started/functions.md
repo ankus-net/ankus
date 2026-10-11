@@ -115,6 +115,11 @@ Invalid signatures report a specific error at the offending declaration:
 | ANKUS042 | Reduce the number of SQL arguments to 100 or fewer. |
 | ANKUS043 | Move the method out of a file-local type. |
 
+Editors offer fixes for the first two. **Make static** appears when the method
+uses no instance state and no caller invokes it through an instance; **Make
+internal** replaces a private or protected accessibility on the method, or on a
+containing type and each of its partial declarations.
+
 Task and asynchronous iterator diagnostics are described in
 [execution constraints](/reference/execution/#backend-threads-and-tasks).
 

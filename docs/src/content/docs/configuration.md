@@ -21,7 +21,8 @@ public static partial class Settings
 
 The property, its containing classes and any hooks must be accessible from
 generated code in the extension assembly. Use `public` or `internal`;
-`protected internal` also works for members and nested classes.
+`protected internal` also works for members and nested classes. Editors offer
+**Make internal** for a private or protected property or containing class.
 
 The source generator creates native PostgreSQL storage and implements the getters.
 PostgreSQL registers the settings when it loads the library, before calling an
