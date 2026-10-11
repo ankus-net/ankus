@@ -45,7 +45,6 @@ try
         case "release-metadata":
             ValidateRuntimeIdentity(repositoryRoot);
             WriteOutput("version", GetReleaseVersion());
-            WriteRuntimeOutputs();
             break;
 
         case "quality":

@@ -24,11 +24,10 @@ jobs:
   metadata:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    # Actions drops job outputs that contain a masked value, which the runtime repository name can, so each
+    # packaging job reads the runtime identity itself, as CI does.
     outputs:
       version: ${{ steps.metadata.outputs.version }}
-      runtime_repository: ${{ steps.metadata.outputs.repository }}
-      runtime_commit: ${{ steps.metadata.outputs.commit }}
-      runtime_version: ${{ steps.metadata.outputs.runtime_version }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -102,15 +101,19 @@ jobs:
         with:
           ref: ${{ github.event.release.tag_name }}
 
-      - uses: actions/checkout@v5
-        with:
-          repository: ${{ needs.metadata.outputs.runtime_repository }}
-          ref: ${{ needs.metadata.outputs.runtime_commit }}
-          path: runtime
-
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
+
+      - name: Read runtime metadata
+        id: runtime
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- metadata
+
+      - uses: actions/checkout@v5
+        with:
+          repository: ${{ steps.runtime.outputs.repository }}
+          ref: ${{ steps.runtime.outputs.commit }}
+          path: runtime
 
       - name: Build and pack runtime
         run: >-

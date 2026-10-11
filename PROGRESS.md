@@ -135,6 +135,13 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- The first release rehearsal ([38167639394](https://github.com/willibrandon/ankus/actions/runs/38167639394),
+  **c51b0e4**) packed every managed package, but each runtime job checked
+  out the Ankus repository instead of the runtime fork and failed with
+  `not our ref`. Actions drops a job output that contains a masked value,
+  and the runtime repository name contains one, so the checkout fell back to
+  its default repository. Each packaging job now reads the runtime identity
+  itself, as CI does. The rehearsal reruns on the fix.
 - Ankus library packages now embed their symbols. A package carried no PDB, so
   Native AOT had no source lines for framework code, and a debugger attached to
   a package-built extension showed Ankus frames without files or lines, while a
@@ -142,6 +149,9 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   extension's `.dbg`, `.pdb` or `.dSYM` now covers framework code as well, and
   Source Link maps it to the repository. A package test checks that the runtime,
   configuration and testing assemblies embed their PDB with Source Link.
+  CI for **68037b7** ([38162580122](https://github.com/willibrandon/ankus/actions/runs/38162580122))
+  and **c51b0e4** ([38166263958](https://github.com/willibrandon/ankus/actions/runs/38166263958))
+  passes on Linux x64, macOS ARM64 and Windows x64.
 - Editors now correct 117 declaration diagnostics, up from 64. An audit of all
   501 found the ones with a single mechanical answer: removing options or
   attributes that cannot apply, removing `async` from entries that await
@@ -795,7 +805,7 @@ review's findings are fixed or kept by documented design.
 2. Complete every pgrx 0.19.3 release-delta gate, including deterministic header discovery/regeneration, newly exposed native contracts, all CLI/configuration/output forwarding and allocation/shared-memory/varlena audits. Refresh evidence against the corrected current source.
 3. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
 4. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees.
-5. Complete framework/discovery support and representative samples, and recheck guides that change before release.
+5. Keep samples and guides current with API changes, and recheck changed guides before release. Test discovery for MSTest, xUnit and NUnit consumers and samples for all 37 pgrx examples are complete.
 6. Complete .NET servicing and every release requirement in the full inventory, using the release rehearsal, before publishing 0.1.0. If .NET 11 reaches GA first, complete its acceptance for that release; preview validation does not block the initial .NET 10 release.
 
 Continue independent work while CI runs. Before every commit and push, check and

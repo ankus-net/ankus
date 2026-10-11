@@ -14,7 +14,8 @@ dotnet test
 ```
 
 The generated solution uses Central Package Management and the same Ankus
-version as the installed tool. Backend tests use an isolated PostgreSQL 18+ cluster.
+version as the installed tool. Backend tests run in an isolated PostgreSQL cluster
+for the selected major, 18 by default.
 
 Use `Ankus.Sdk` as the project SDK, with the version available from your NuGet feed:
 
@@ -63,6 +64,8 @@ Use the runtime identifier for the machine running PostgreSQL and set
 | `Ankus.PgConfig` | PostgreSQL installation discovery, registration, and artifact manifests |
 | `Ankus.Testing` | Isolated PostgreSQL clusters for ordinary .NET test projects |
 | `Ankus.Tool` | The `ankus` .NET tool: project creation, registration, publishing, and installation |
+| `Ankus.Templates` | `dotnet new` templates for extensions and background workers |
+| `Ankus.NativeAot.Runtime.<rid>`, `Ankus.NativeAot.Compiler.<rid>` | The patched Native AOT runtime and compiler for PostgreSQL process and preload behavior; the SDK restores the ones for your build machine and target |
 
 Install `Ankus.Tool` with `dotnet tool install --global Ankus.Tool --version 0.1.0`. Register PostgreSQL with
 `ankus init --pg18 /path/to/pg_config`, then run `ankus publish` and
