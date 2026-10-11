@@ -66,14 +66,16 @@ else takes the native path, which detoasts, converts or reports the error.
 
 A `Rune` reads `text`, `varchar` or `bpchar` that holds exactly one Unicode
 scalar value. Empty text fails, and so does `e` followed by a combining accent,
-which is two scalar values. Padded `bpchar` such as `'a'::char(3)` fails too.
+which is two scalar values. Reading a query result or raw datum of padded `bpchar`,
+such as `'a'::char(3)`, fails too; a `Rune` argument receives `bpchar` through
+PostgreSQL's `varchar` cast, which removes the trailing spaces.
 `Rune[]` and `PgArray<Rune?>` map to `varchar[]`.
 
 `PgTextView.Datum` retains the original server-encoded representation. Its
 `TypeOid` preserves domains and the `varchar`/`bpchar` identities accepted by
 raw reads; padded `bpchar` text retains trailing spaces. Generated view signatures
 use `text` or `bytea`, and returned raw datums must match that declared SQL type.
-Use an explicit conversion or a [bound raw return](/raw-values/) when choosing
+Use an explicit conversion or a [bound raw return](/raw-values/#raw-sql-values) when choosing
 another SQL identity.
 
 ## Raw values and SPI

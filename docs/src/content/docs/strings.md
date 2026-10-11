@@ -42,7 +42,8 @@ then one piece per Unicode scalar. Empty input with an empty separator therefore
 produces one empty piece; empty input with a nonempty separator produces none.
 Matching is ordinal, without case folding or Unicode normalization.
 
-Nullable arguments follow Ankus's inferred PostgreSQL `STRICT` behavior.
+All arguments are non-nullable, so Ankus declares the functions `STRICT`: a NULL
+argument returns NULL without calling them.
 SQL NULL is distinct from present empty text, an empty array and an empty string
 row. Set/table iterators retain managed text rather than borrowed spans across
 native callbacks.

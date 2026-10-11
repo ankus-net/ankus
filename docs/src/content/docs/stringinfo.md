@@ -89,8 +89,8 @@ only the managed wrapper.
 PostgreSQL 17 and later also define read-only StringInfo views with `maxlen = 0`.
 These may point to non-palloc or unterminated storage. Borrowing supports checked
 reads of these bytes and rejects mutation. `Capacity` reports their payload
-length. `CanWrite` describes the wrapper's initial capability; it does not prove
-that its native context is still alive.
+length. `CanWrite` is false for read-only views and disposed wrappers; it does
+not prove that the native context is still alive.
 
 Unsafe pointer operations preserve native ownership rules:
 

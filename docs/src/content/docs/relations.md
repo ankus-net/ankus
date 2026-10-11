@@ -20,10 +20,11 @@ each clone separately.
 
 ## Opening and locking
 
-`Open(uint oid)` uses the exact relation OID. `Open(string name)` resolves the
-name with PostgreSQL's `to_regclass`, including native quoting, search paths,
-namespace permissions and numeric OID syntax. `TryOpen(name)` returns null when
-that native resolver returns SQL NULL. Permission failures, lock failures and
+`Open(uint oid)` uses the exact relation OID. `Open(string name)` uses
+PostgreSQL's `regclass` input, including native quoting, search paths, namespace
+permissions and numeric OID syntax. `TryOpen(name)` uses `to_regclass` and returns
+null when it returns SQL NULL; it accepts a numeric OID on PostgreSQL 16 and
+later. Permission failures, lock failures and
 concurrent deletion errors propagate as `PgException`.
 
 ```csharp
@@ -159,7 +160,7 @@ with the supplied context lifetime. It does not consume the relation. A typed
 ## Native lifetime and interoperability
 
 PostgreSQL resource owners also reclaim cache references during statement,
-portal, SPI scope or transaction cleanup. Checked access after native release
+portal or transaction cleanup. Checked access after native release
 fails; later disposal is harmless. Automatic release follows PostgreSQL's native
 lock rules and can transfer locks to the enclosing transaction. Dispose a live
 reference explicitly when you need to release its own lock acquisition promptly.

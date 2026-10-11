@@ -71,8 +71,8 @@ keeping a span or reference into storage that PostgreSQL may relocate.
 `Drain(index, count)` eagerly copies and removes a range, then returns the removed
 values as a managed array. The retained tail is already repaired when it returns.
 Stopping enumeration of the returned array early cannot leave the native list
-partly drained. This supplies pgrx's drain result and cleanup semantics without
-an escaping mutable native borrow.
+partly drained. This matches pgrx's `drain` results without exposing a live
+reference into native storage.
 
 For consuming iteration, explicitly dispose the returned enumerator:
 

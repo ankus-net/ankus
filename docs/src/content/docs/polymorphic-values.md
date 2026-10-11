@@ -11,8 +11,8 @@ public static PgAnyElement? Identity(PgAnyElement? value) => value;
 ```
 
 ```sql
-SELECT identity(42);              -- integer
-SELECT identity('hello'::text);   -- text
+SELECT identity(42);              -- 42 (integer)
+SELECT identity('hello'::text);   -- hello (text)
 SELECT identity(NULL::integer);   -- NULL of type integer
 ```
 
@@ -57,8 +57,9 @@ shape; dimension numbers start at zero. Empty arrays have rank zero.
 Polymorphic values also work in named TABLE columns and materialized sets.
 Aggregates can use these wrappers for inputs, states, and results. When retaining
 an input inside managed aggregate state, copy it to `PgAggregateContext.MemoryContext`.
-`FinalExtra` can supply a nullable input slot to resolve an internal-state
-aggregate's polymorphic result.
+Set `FinalExtra = true` so PostgreSQL passes the final function NULL slots typed
+like the inputs, which lets an internal-state aggregate return a polymorphic
+result; the slots are not passed to C#.
 
 Pass either wrapper to `SpiParameter.Create` or `PgFunctionArgument.Create`
 to bind its actual type in a query or function call.

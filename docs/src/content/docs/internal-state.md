@@ -55,7 +55,9 @@ explicit `PgMemoryContext` to control the lifetime.
 keep their state until the caller releases the rows, even though enumeration has
 already finished.
 
-Parallel aggregates must serialize values and recreate state in each worker.
+Parallel aggregates must implement `Serialize` and `Deserialize`: workers
+serialize their partial state, and the combining process deserializes it before
+`Combine`.
 Their `Combine` callback must copy temporary input state into its own aggregate
 owner. Native pointers and managed object identities cannot be sent to another
 process.

@@ -31,12 +31,12 @@ member; decoding that member returns present empty bytea or empty text.
 member, requires all eight trailer bytes, and verifies the data checksum. Later
 members and trailing content are separate inputs. Like that decoder, it reads
 but does not compare the trailer's ISIZE field and does not independently reject
-unused header flags. Optional header checksums use libflate's reconstructed
-header policy. These functions are a sample codec, not an archive validator.
+unused header flags. A header checksum (FHCRC) is checked against the header as
+libflate re-encodes it, so unknown flag bits and unusual XFL values are ignored.
+These functions are a sample codec, not an archive validator.
 
 The sample owns gzip framing around .NET's standard raw DEFLATE codec. This
-preserves empty members and the first-member boundary without changing runtime
-compression settings or using a patched serializer.
+preserves empty members and the first-member boundary.
 
 Malformed gzip data raises `InvalidDataException`. Invalid UTF-8 raises
 `DecoderFallbackException` rather than inserting replacement characters; binary
