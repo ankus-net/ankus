@@ -29,3 +29,7 @@ It requires the active PostgreSQL backend thread.
 
 Subtransaction callbacks receive `PgSubtransactionId` for the current and parent
 IDs. Use its `Value` property when raw numeric access is needed.
+
+The [subtransaction information sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Subtransactions)
+reports a transaction ID's status, parents and nesting level from PostgreSQL's
+`pg_subtrans` data.

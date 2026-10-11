@@ -416,7 +416,7 @@ without a set result.
 
 Declaration errors point to the option value, result type or parameter that
 needs correction. Schema errors point to the schema argument, including named
-constructor arguments. These errors replace the former general `ANKUS004` code.
+constructor arguments.
 
 | Diagnostic | Required correction |
 | --- | --- |

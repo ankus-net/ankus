@@ -65,9 +65,11 @@ exception unwinds every managed frame before PostgreSQL reports an error.
 
 ## Use the plugin
 
-Logical decoding requires `wal_level = logical` and free replication slots. The
+Logical decoding requires `wal_level = logical`, or on PostgreSQL 19 `replica`,
+which enables it once a logical slot exists, and free replication slots. The
 plugin name is the extension library's file name without its suffix:
-`AnkusLibraryName`, which defaults to `AssemblyName`:
+`AnkusLibraryName`, or `TargetName` by default, with `-<version>` added for a
+versioned library:
 
 ```sql
 SELECT pg_create_logical_replication_slot('changes', 'MyDecoder');
@@ -81,10 +83,10 @@ decoding context. Installing the extension's files is enough;
 backends load the plugin for the SQL slot functions, and a WAL sender loads it
 for `START_REPLICATION` on a logical replication connection.
 
-PostgreSQL 14.24, 15.19, 16.15, 17.11, 18.6, 19 and later minor releases load
+PostgreSQL 14.24, 15.19, 16.15, 17.11, 18.6, 19 beta 3 and later releases load
 only the output plugins listed in `output_plugin_libraries`, for every role,
-including superusers. PostgreSQL 13 has no such setting. Its default lists only
-`pgoutput` and `test_decoding`. A DBA adds a trusted
+including superusers. The setting's default lists only `pgoutput` and
+`test_decoding`. PostgreSQL 13 has no such setting. A DBA adds a trusted
 library and reloads the configuration:
 
 ```ini

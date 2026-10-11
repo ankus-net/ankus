@@ -28,8 +28,8 @@ The method must register exactly one timing loop. `Iterate` reuses captured
 inputs. `IterateBatched` creates each input immediately before its routine call.
 The input factory is outside the routine callback but inside the elapsed sample,
 matching pgrx's backend benchmark bridge. `PgBenchmarkBatchSize` controls grouping.
-Use `PgBenchmark.BlackBox` when you need to keep a value observable to Native AOT
-optimization. It accepts ref structs and does not box value-type inputs.
+Use `PgBenchmark.BlackBox` to keep Native AOT optimization from discarding a
+value. It accepts ref structs and does not box value-type inputs.
 
 Benchmark entry points and the `benches` schema exist only in benchmark
 publications. Normal build, install and package output excludes them.
@@ -51,8 +51,8 @@ ankus bench AddNumeric --pg 18
 Results print in Criterion's layout, as `cargo pgrx bench` prints them:
 
 ```console
-     Running Benchmarks.AddNumeric(Ankus.PgBencher) [transaction=shared, setup=none, sample_size=100, warm_up=3000ms, measurement=5000ms, nresamples=100000, noise_threshold=0.01, significance_level=0.05]
-Benchmarks.AddNumeric(Ankus.PgBencher)
+     Running ExtensionBenchmarks.AddNumeric(Ankus.PgBencher) [transaction=shared, setup=none, sample_size=100, warm_up=3000ms, measurement=5000ms, nresamples=100000, noise_threshold=0.01, significance_level=0.05]
+ExtensionBenchmarks.AddNumeric(Ankus.PgBencher)
                             time:   [182.31 ns 183.02 ns 183.8 ns]
                             change: [-1.2045% +0.3821% +1.9712%] (p = 0.64 > 0.05)
                             No change in performance detected.
@@ -84,7 +84,7 @@ Bench history report
   Database acme_benches
      Scope last 10 groups per benchmark
 
-Benchmarks.AddNumeric(Ankus.PgBencher)
+ExtensionBenchmarks.AddNumeric(Ankus.PgBencher)
   baseline: 20261008_181204_805783b (183.02 ns)
   20261008_181204_805783b  |############################| 183.02 ns (baseline)
   20261009_121530_ac6486e* |########################### | 176.4 ns (-3.6171%)

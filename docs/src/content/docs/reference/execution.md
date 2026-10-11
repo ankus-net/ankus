@@ -192,7 +192,7 @@ Ankus reports `ANKUS277` at the attribute, including attributes on either partia
 declaration. It rejects the attribute even when the symbol is currently enabled,
 so each publication retains the same entry contract. Put optional behavior inside
 the method body instead. Native callback handlers have the same restriction;
-see [managed native callbacks](../../raw-values/#managed-native-callbacks-and-hooks).
+see [managed native callbacks](/raw-values/#managed-native-callbacks-and-hooks).
 
 ## Errors
 
@@ -218,9 +218,9 @@ invalid input counts there: a hard error such as running out of memory still
 throws and remains pending. Native scalar JSON converters also roll back input
 errors before wrapping them in `JsonException`.
 
-PostgreSQL forbids independent rollback inside transaction callbacks and parallel
-operations before version 17. Valid input remains usable when the invocation phase
-permits backend value calls. Native invalid-input errors propagate as `PgException`
+PostgreSQL forbids independent rollback inside transaction callbacks, and inside
+parallel operations before PostgreSQL 17. Valid input remains usable when the
+invocation phase permits backend value calls. Native invalid-input errors propagate as `PgException`
 and remain pending until PostgreSQL aborts. Before PostgreSQL 16, `TryParse` cannot return false for an
 unrecovered native error, and a JSON converter cannot turn it into a catchable `JsonException`. From
 PostgreSQL 16, `TryParse` of the built-in types above still returns false there,

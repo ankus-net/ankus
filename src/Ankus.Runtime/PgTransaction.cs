@@ -109,8 +109,9 @@ public static class PgTransaction
     /// </param>
     /// <returns>A registration that can cancel future invocations.</returns>
     /// <remarks>
-    /// Start and PreCommit exceptions reject the operation. Unhandled exceptions during commit or abort
-    /// cleanup cause PostgreSQL crash recovery.
+    /// Start and PreCommit exceptions reject the operation. A Commit exception becomes a PostgreSQL error, and
+    /// PostgreSQL aborts the enclosing transaction. An Abort exception is reported as a warning, because the
+    /// rollback must finish.
     /// </remarks>
     public static PgSubtransactionCallback RegisterSubtransactionCallback(
         PgSubtransactionEvent @event,

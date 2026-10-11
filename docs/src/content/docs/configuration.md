@@ -86,8 +86,8 @@ reservation survives transaction rollback and repeated library loading.
 Prefix matching is literal and case sensitive, even though setting lookup is
 case insensitive. Use the same spelling consistently. Ankus passes the supplied
 text without normalizing it: a dotted prefix can remove matching existing
-placeholders but does not reserve a first component against future ones. Empty
-prefixes retain native behavior. Null, embedded zero characters, and malformed
+placeholders but does not reserve a first component against future ones. An
+empty prefix has no effect. Null, embedded zero characters, and malformed
 Unicode have separate [declaration diagnostics](#prefix-declaration-diagnostics). Non-ASCII prefixes use the backend's database encoding;
 shared-preload prefixes currently must be ASCII.
 
@@ -99,7 +99,7 @@ native calls; generated output for valid sibling prefixes remains intact.
 
 | Diagnostic | Required correction |
 | --- | --- |
-| `ANKUS347` | Supply a nonnull constant string. An empty prefix retains PostgreSQL's native behavior. |
+| `ANKUS347` | Supply a nonnull constant string. An empty prefix has no effect. |
 | `ANKUS348` | Remove embedded zero characters, which would truncate the native C string. |
 | `ANKUS349` | Replace unpaired UTF-16 surrogates with well-formed Unicode. Ankus preserves exact UTF-8 text without replacement. |
 
@@ -302,7 +302,7 @@ public static class Settings
     {
         string prefix = "my_extension";
         s_limit = PgGucRegistry.DefineInt(prefix + ".limit", 100, "Maximum items",
-            minimum: 1, maximum: 10000, unit: PgGucUnit.Kilobytes);
+            minimum: 1, maximum: 10000);
     }
 
     [PgFunction]
@@ -327,7 +327,7 @@ can be defined only while `shared_preload_libraries` is processed.
 
 Pass `PgGucHooks<T>` for check, assign and show hooks, as pgrx's
 `define_*_guc_with_hooks` functions take hook functions. They follow the
-[hook rules](#hooks) above; an enumerated setting's hooks see label values:
+[hook rules](#hooks) above; an enumerated setting's hooks see label ordinals:
 
 ```csharp
 s_limit = PgGucRegistry.DefineInt(prefix + ".limit", 100, "Maximum items", minimum: 1, maximum: 10000,

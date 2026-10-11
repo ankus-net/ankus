@@ -177,7 +177,7 @@ when the visibility map requires it.
 
 ## Parallel shared state
 
-Parallel execution is tested on PostgreSQL 13 through 19 beta on Linux x64, macOS ARM64 and Windows x64. PostgreSQL 13–16
+Parallel execution is tested on PostgreSQL 13 through 19 beta on Linux x64, macOS ARM64, macOS x64 and Windows x64. PostgreSQL 13–16
 cannot use internal subtransactions during parallel execution; see the
 [SPI error boundary](/spi/#errors-and-transactions) before handling worker
 errors. Selected-header compatibility alone does not establish validation of
@@ -227,5 +227,4 @@ full tuple queues. On an error, ordinary shutdown and end callbacks are not
 guaranteed; context cleanup must not dereference a borrowed DSM address after
 PostgreSQL has detached it.
 
-The complete PostgreSQL version and platform validation matrix remains in
-progress. Build against the server headers that will load the extension.
+Build against the server headers that will load the extension.
