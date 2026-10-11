@@ -48,6 +48,13 @@ immutable patched-runtime and compiler packages, matching compiler selection,
 complete backend validation and extension rebuild/redeployment. Check current
 upstream servicing before releasing 0.1.0.
 
+.NET 10.0.13 is due on 2026-10-13. On 2026-10-11, upstream `release/10.0`
+was 67 commits past `v10.0.12`, and a trial merge into the fork applied
+without conflicts. One change, which skips chaining to an ignored or default
+activation handler, is in `PalUnix.cpp` beside the fork's signal patches; it
+does not touch the code they change. It fixes a hang the release rehearsal
+found (see below), so the servicing update must add a fork probe for it.
+
 | Runtime line | Evidence and remaining requirements |
 | --- | --- |
 | .NET 10 LTS | Patched runtime and complete primary-platform suites exist. Complete supported PostgreSQL/platform combinations and final release acceptance remain required. |
@@ -145,6 +152,20 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   job, which a rehearsal skips; a separate verify job now checks the set and
   each manifest's identity, license and source commit in both rehearsals and
   releases. The rehearsal reruns on these fixes.
+- The second rehearsal ([38170635588](https://github.com/willibrandon/ankus/actions/runs/38170635588),
+  **c412aca**) packed every managed package and the Linux x64, Windows x64
+  and macOS ARM64 runtimes; their runtime builds took 2–4 minutes. On GitHub's
+  hosted macOS 26 Intel runner the runtime built, but the fork's host-signal
+  probe failed twice (`collect=2`). A diagnostic run of the cached runtime,
+  which passes on the dedicated Intel runner, hung the compiler there too: its
+  main thread sat in `_sigtramp` calling address 0. That runner starts
+  processes with `SIGIO`, macOS's activation signal, set to the default action
+  but with `SA_SIGINFO` still set, and 10.0.12's activation handler then
+  chains to a null `sa_sigaction`. A process whose parent once caught `SIGIO`
+  can inherit that state on any Mac. Upstream's 10.0.13 fix (`8250bd5`) checks
+  for default and ignored handlers first. The servicing update will add a
+  fork probe that sets this state before loading a library, so every macOS
+  runner checks it, then rerun the rehearsal.
 - Ankus library packages now embed their symbols. A package carried no PDB, so
   Native AOT had no source lines for framework code, and a debugger attached to
   a package-built extension showed Ankus frames without files or lines, while a
