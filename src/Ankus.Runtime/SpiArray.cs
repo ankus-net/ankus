@@ -6,6 +6,12 @@ namespace Ankus;
 internal static class SpiArray
 {
     /// <summary>
+    /// Explains why a multidimensional or offset array cannot become a managed vector.
+    /// </summary>
+    internal const string VectorShapeMessage =
+        "Use PgArray<T> to preserve dimensions and lower bounds, or ToArray() to explicitly flatten them.";
+
+    /// <summary>
     /// Validates PostgreSQL dimension limits, exclusive upper bounds, and the row-major element count.
     /// </summary>
     /// <param name="count">The supplied number of elements, including NULLs.</param>

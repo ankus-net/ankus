@@ -90,7 +90,9 @@ deleted a memory context. The wrapper now keeps that metadata, its buffers and
 one scratch context in the call site's `fn_extra`, as PostgreSQL's own
 aggregates cache per-call-site state, and resets the scratch context after each
 row. The release-build cost fell to 170 ns per row. A nested call through the
-same site while one is running uses a private context as before.
+same site while one is running uses a private context as before. Sharing one
+empty sort-key list among aggregates without `ORDER BY`, instead of allocating
+and wrapping a copy for every row, brought it to 156 ns.
 
 ### Sets, arrays and SPI
 
@@ -106,7 +108,7 @@ loop.
 | `Spi.Select` of one `int` column, per row | See below |
 | `int[]` argument, per element | 1 ns, down from 57 ns |
 | `int[]` result, per element | about 1 ns |
-| `int[]` argument or result, per call | 240 ns or 185 ns, down from 400 ns |
+| `int[]` argument or result, per call | 196 ns or 185 ns, down from 240 ns and 400 ns |
 | `string[]` argument of short text, per element | 34 ns, down from 90 ns |
 | `string[]` result of short text, per element | 72 ns |
 
@@ -127,7 +129,8 @@ elements as a packed native array, and an array without NULLs keeps them
 contiguous, so both directions now copy that block once. Arrays with NULLs,
 domain elements and other element types keep the per-element form. A function
 returning a vector of one of these primitives writes the block directly,
-without building a `PgArray<T>` and looking up its type mappings.
+without building a `PgArray<T>` and looking up its type mappings, and a vector
+argument is read without one.
 
 In a UTF-8 database, `text`, `varchar` and `bpchar` arrays cross as each
 element's length and bytes, since neither side needs to transcode them, and

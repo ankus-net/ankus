@@ -64,7 +64,8 @@ public static unsafe class NativeAggregate
         bool shared = ReadBoolean(metadata[1]);
         uint collation = ReadOid(metadata[2]);
         uint aggregateOid = ReadOid(metadata[3]);
-        var keys = new PgAggregateSortKey[(metadata.Length - 4) / 5];
+        // Most aggregates have no ORDER BY; they share one empty key list instead of allocating one per row.
+        PgAggregateSortKey[] keys = metadata.Length == 4 ? [] : new PgAggregateSortKey[(metadata.Length - 4) / 5];
         for (int index = 0; index < keys.Length; index++)
         {
             int offset = 4 + index * 5;

@@ -17,7 +17,26 @@ public unsafe partial struct NativeValue
     /// </summary>
     /// <typeparam name="T">The scalar element type.</typeparam>
     /// <returns>The converted array. SQL NULL elements require reference or nullable value types.</returns>
-    public readonly PgArray<T> ReadArray<T>()
+    public readonly PgArray<T> ReadArray<T>() => ReadArrayData<T>(ReadArrayElementOid<T>(), PgEnumRegistry.Find(typeof(T)));
+
+    /// <summary>
+    /// Reads a one-dimensional array with lower bound one, or an empty array, as a managed vector without an
+    /// intermediate <see cref="PgArray{T}"/>.
+    /// </summary>
+    /// <typeparam name="T">The scalar element type.</typeparam>
+    /// <returns>The converted elements. SQL NULL elements require reference or nullable value types.</returns>
+    /// <exception cref="InvalidOperationException">The array has several dimensions or another lower bound.</exception>
+    public readonly T[] ReadVector<T>()
+    {
+        uint oid = ReadArrayElementOid<T>();
+        RuntimeHelpers.EnsureSufficientExecutionStack();
+        return ReadArrayValues<T>(oid, PgEnumRegistry.Find(typeof(T)), vector: true, out _, out _);
+    }
+
+    /// <summary>
+    /// Validates the transport and its element type against the requested managed element type.
+    /// </summary>
+    private readonly uint ReadArrayElementOid<T>()
     {
         PgDatumRegistry.RejectOrdinaryArray(typeof(PgArray<T>));
         uint oid = ReadArrayElementOid();
@@ -26,7 +45,7 @@ public unsafe partial struct NativeValue
             throw new InvalidCastException($"Array element OID {oid} cannot be read as '{typeof(T)}'.");
         }
 
-        return ReadArrayData<T>(oid, PgEnumRegistry.Find(typeof(T)));
+        return oid;
     }
 
     /// <summary>
@@ -196,6 +215,16 @@ public unsafe partial struct NativeValue
 
     private readonly PgArray<T> ReadArrayDataCore<T>(uint oid, EnumMapping? enumeration)
     {
+        T[] values = ReadArrayValues<T>(oid, enumeration, vector: false, out int[] lengths, out int[] bounds);
+        uint baseOid = _auxiliary2 == 2 && _integer != 0 ? (uint)_integer : oid;
+        return new PgArray<T>(values, (lengths, bounds), _auxiliary2 == 2 ? oid : 0, _auxiliary2 == 2 ? baseOid : 0);
+    }
+
+    /// <summary>
+    /// Decodes the elements after validating the shape, which a vector must keep one-dimensional with lower bound one.
+    /// </summary>
+    private readonly T[] ReadArrayValues<T>(uint oid, EnumMapping? enumeration, bool vector, out int[] lengths, out int[] bounds)
+    {
         ReadOnlySpan<byte> data = new(_data, _length);
         int rank = BinaryPrimitives.ReadInt32BigEndian(data);
         int count = BinaryPrimitives.ReadInt32BigEndian(data[4..]);
@@ -206,8 +235,8 @@ public unsafe partial struct NativeValue
             throw new InvalidOperationException("Invalid native array shape or element count.");
         }
 
-        int[] lengths = new int[rank];
-        int[] bounds = new int[rank];
+        lengths = new int[rank];
+        bounds = new int[rank];
         int offset = 12;
         for (int index = 0; index < rank; index++, offset += 8)
         {
@@ -219,6 +248,11 @@ public unsafe partial struct NativeValue
         if (count == 0 && rank != 0)
         {
             throw new InvalidOperationException("Empty native arrays must have rank zero.");
+        }
+
+        if (vector && (rank > 1 || (rank == 1 && bounds[0] != 1)))
+        {
+            throw new InvalidOperationException(SpiArray.VectorShapeMessage);
         }
 
         var values = new T[count];
@@ -237,8 +271,7 @@ public unsafe partial struct NativeValue
                 ReadArrayElements(values, data, offset, oid, enumeration);
             }
 
-            uint baseOid = _auxiliary2 == 2 && _integer != 0 ? (uint)_integer : oid;
-            return new PgArray<T>(values, (lengths, bounds), _auxiliary2 == 2 ? oid : 0, _auxiliary2 == 2 ? baseOid : 0);
+            return values;
         }
         catch (Exception primary)
         {

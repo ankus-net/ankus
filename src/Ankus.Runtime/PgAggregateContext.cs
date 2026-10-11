@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+
 namespace Ankus;
 
 /// <summary>
@@ -16,7 +18,8 @@ public sealed class PgAggregateContext
         IsStateShared = isStateShared;
         CollationOid = collationOid;
         AggregateOid = aggregateOid;
-        SortKeys = Array.AsReadOnly<PgAggregateSortKey>([.. sortKeys]);
+        SortKeys = sortKeys.Length == 0 ? ReadOnlyCollection<PgAggregateSortKey>.Empty
+            : Array.AsReadOnly<PgAggregateSortKey>([.. sortKeys]);
         Owner = owner;
         Api = api;
         Parent = parent;

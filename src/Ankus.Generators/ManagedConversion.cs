@@ -26,6 +26,8 @@ internal static class ManagedConversion
             "global::Ankus.PgCString" => slot + ".ReadCString()",
             _ when type.IsPolymorphic => "new " + type.Managed + "(" + slot + ".ReadPolymorphic())",
             _ when type.Element?.IsRelation == true && type.IsVector => slot + ".ReadRelationVector<" + type.ElementManaged + ">()",
+            _ when type.Element is not null && type.IsVector && (borrowVarlena || !type.Element.IsVarlena) =>
+                slot + ".ReadVector<" + type.ElementManaged + ">()",
             _ when type.Element is not null => slot +
                 (!borrowVarlena && type.Element.IsVarlena ? ".ReadCallbackArray<" : ".ReadArray<") + type.ElementManaged + ">()" +
                 (type.IsVector ? ".ToVector()" : string.Empty),

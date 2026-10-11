@@ -457,6 +457,30 @@ public sealed class PgArrayTests
         }
     }
 
+    /// <summary>
+    /// A vector read returns the elements directly and rejects other lower bounds and dimensions, as ToVector does.
+    /// </summary>
+    [TestMethod]
+    public void VectorReadsRejectShapeLoss()
+    {
+        NativeValue vector = NativeValue.FromArray(new PgArray<int>([1, 2, 3]));
+        NativeValue offset = NativeValue.FromArray(new PgArray<int>([1, 2], [2], [0]));
+        NativeValue matrix = NativeValue.FromArray(new PgArray<string?>(["a", null, "c", "d"], [2, 2], [1, 1]));
+        try
+        {
+            Assert.AreSequenceEqual([1, 2, 3], vector.ReadVector<int>());
+            InvalidOperationException shifted = Assert.ThrowsExactly<InvalidOperationException>(() => offset.ReadVector<int>());
+            Assert.Contains("Use PgArray<T>", shifted.Message);
+            Assert.ThrowsExactly<InvalidOperationException>(() => matrix.ReadVector<string?>());
+        }
+        finally
+        {
+            vector.Release();
+            offset.Release();
+            matrix.Release();
+        }
+    }
+
     [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary1")]
     private static extern ref int ArrayFlag(ref NativeValue value);
 

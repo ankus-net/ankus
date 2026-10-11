@@ -155,7 +155,7 @@ public sealed class PgArray<T> : IReadOnlyList<T>, IPgArray
     {
         if (Rank > 1 || (Rank == 1 && _lowerBounds[0] != 1))
         {
-            throw new InvalidOperationException("Use PgArray<T> to preserve dimensions and lower bounds, or ToArray() to explicitly flatten them.");
+            throw new InvalidOperationException(SpiArray.VectorShapeMessage);
         }
 
         return ToArray();
