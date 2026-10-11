@@ -139,10 +139,11 @@ ankus package --target-info ankus-target.pg18.osx-x64.zip --output dist
 
 `ankus build` and `ankus publish` accept `--target-info` too. It selects the
 archive's runtime identifier and PostgreSQL major, and a package mirrors the
-target's library and share directories. The build machine reads no headers, so
-it needs neither LLVM Clang nor `libclang` nor PostgreSQL, but Native AOT's own
-compiler and linker must build for the target architecture. With `dotnet publish`,
-select the runtime and the archive:
+target's library and share directories. The build machine does not parse or
+measure the headers, so it needs neither LLVM Clang nor `libclang` nor PostgreSQL.
+It still compiles the native wrapper against the archived headers with Native
+AOT's own compiler and linker, which must build for the target architecture.
+With `dotnet publish`, select the runtime and the archive:
 
 ```console
 dotnet publish -c Release -r osx-x64 -p:AnkusTargetInfo=ankus-target.pg18.osx-x64.zip

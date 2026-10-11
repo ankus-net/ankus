@@ -163,7 +163,9 @@ public sealed class PostgresTargetInfoTests(TestContext context)
                 ["sharedir"] = Rooted("opt", "pg", "share"),
                 ["includedir"] = Rooted("opt", "pg", "include"),
                 ["includedirServer"] = Rooted("opt", "pg", "include", "server"),
-                ["cppflags"] = "-I" + Rooted("opt", "deps", "include") + " -D_GNU_SOURCE -isystem " + Rooted("opt", "more") + " -Irelative",
+                // pg_config reports shell words, where a backslash escapes; Windows paths here use forward slashes.
+                ["cppflags"] = "-I" + Rooted("opt", "deps", "include").Replace('\\', '/') + " -D_GNU_SOURCE -isystem " +
+                    Rooted("opt", "more").Replace('\\', '/') + " -Irelative",
             },
             ["files"] = files,
         };
