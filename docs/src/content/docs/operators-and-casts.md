@@ -171,7 +171,7 @@ and comparison must return zero exactly when equality is true. Any negative or
 positive `CompareTo` result works, including the minimum and maximum `int`.
 These contracts apply to logical values, independently of serialized storage.
 The attributes support generated CBOR, custom text, explicit codecs, tagged class
-hierarchies and packed native storage. Native-layout comparisons receive copied
+hierarchies and native struct storage. Native-layout comparisons receive copied
 `T` values and preserve existing `PgVarlena<T>` aliases.
 
 ### Manual datum mappings

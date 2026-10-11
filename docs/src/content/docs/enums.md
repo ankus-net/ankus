@@ -95,10 +95,10 @@ and SQL; unrelated valid declarations still generate normally.
 | `ANKUS288` | Shorten the label to at most 63 UTF-8 bytes. |
 | `ANKUS289` | Assign a distinct label to each member. |
 | `ANKUS290` | Assign distinct numeric values; aliases cannot preserve distinct PostgreSQL labels. |
+| `ANKUS506` | Give the enum a `Name` or `Schema` that no other `[PgEnum]` or `[PgType]` in the extension generates. The error points at the later enum's name. |
 
 Editors offer **Make internal** for `ANKUS281` and `ANKUS282`, on the enum or on
 the containing type that hides it.
-| `ANKUS506` | Give the enum a `Name` or `Schema` that no other `[PgEnum]` or `[PgType]` in the extension generates. The error points at the later enum's name. |
 
 These checks preserve exact labels and source ordering for all eight C# integer
 backing types. Invalid text from a referenced assembly is rejected as well;

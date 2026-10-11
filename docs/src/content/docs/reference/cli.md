@@ -462,7 +462,7 @@ On a Unix platform supported by Valgrind, install Valgrind and put it on `PATH`:
 ankus start --pg 18 --valgrind
 ```
 
-`start`, `run`, `connect`, `regress` and `test` accept `--valgrind`. PostgreSQL and its
+`start`, `run`, `connect`, `regress`, `bench` and `test` accept `--valgrind`. PostgreSQL and its
 children run under Memcheck, with diagnostics in the server log. Error reports
 are delimited by `VALGRINDERROR-BEGIN` and `VALGRINDERROR-END`. Inspect that log
 after running your extension's queries and stopping the server. Instrumentation
@@ -610,8 +610,7 @@ filter, `--auto`, or multiple iterations.
 SQL errors use psql's `terse` verbosity by default. Choose `default`, `verbose`,
 or `sqlstate` with `--psql-verbosity`. SQL errors can be expected test output;
 use `\set ON_ERROR_STOP on` in a SQL file when they should instead fail the
-client process. Alternate operating-system users or data
-directories are not yet supported by this command.
+client process. Alternate data directories are not yet supported by this command.
 
 ## Build and publish
 

@@ -201,12 +201,14 @@ public static PgDate? ReadDate(string text)
 Parsing accepts PostgreSQL input syntax, including special values. `DateStyle`
 controls ambiguous date input and date/timestamp output. `IntervalStyle` controls
 interval output. `TryParse` returns `false` and a default out value for invalid
-input after rolling back its input operation; backend-access and operational
-errors still throw. These types also implement `IParsable<T>` with the same
+input without leaving an error pending: on PostgreSQL 16 and later through soft
+input errors, and on earlier majors by rolling back an internal subtransaction.
+Backend-access and operational errors still throw. These types also implement `IParsable<T>` with the same
 rules, so generic code such as `T.Parse(text, null)` uses PostgreSQL input.
 
 In transaction callbacks and parallel operations before PostgreSQL 17, native
-input errors must propagate because independent rollback is unavailable. See
+input errors must propagate because independent rollback is unavailable.
+`TryParse` still returns false there on PostgreSQL 16 and later. See
 [error recovery](/reference/execution/#errors).
 
 Dates, times, and timestamps also expose `ToIsoString`, using PostgreSQL's ISO JSON

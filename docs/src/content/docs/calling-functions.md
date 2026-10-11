@@ -91,7 +91,8 @@ The explicit `PgMemoryContext` owns both the list and its nodes. Dispose the lis
 to release its container; its pointees remain until that context resets or is
 deleted. List operations reject an expired context. Raw pointers require the
 selected PostgreSQL version's node declarations and must not outlive their
-owner. A complete managed node-layout and inheritance API remains unfinished.
+owner. Use [`PgNodes`](/raw-values/) to view these pointers as checked generated
+node types.
 
 ## Default arguments
 

@@ -76,8 +76,9 @@ PgPath path = PgPath.Parse("[(1,2),(3,4)]");
 ```
 
 `TryParse` returns false for malformed input and coordinate range errors.
-Backend-access and operational errors propagate. `TryParse` recovers its input
-operation before returning false. Catch other native input errors outside
+Backend-access and operational errors propagate. Invalid input leaves no error
+pending: PostgreSQL 16 and later report it as a soft input error, and earlier
+majors roll back an internal subtransaction. Catch other native input errors outside
 `PgTransaction.RunInSubtransaction` before continuing with backend work.
 `ToString()` uses invariant coordinate formatting and works on detached values.
 Every geometry type also implements `IParsable<T>` and `ISpanFormattable`, so
@@ -96,7 +97,8 @@ requires at least one point, so empty collection formatting is not a text-input
 round trip.
 
 In transaction callbacks and parallel operations before PostgreSQL 17, native
-input errors must propagate because independent rollback is unavailable. See
+input errors must propagate because independent rollback is unavailable.
+`TryParse` still returns false there on PostgreSQL 16 and later. See
 [error recovery](/reference/execution/#errors).
 
 ## Arrays and SPI

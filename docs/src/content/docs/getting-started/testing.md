@@ -366,5 +366,5 @@ within the original startup timeout, retaining each failed attempt's log and
 removing its data and sockets. Configuration errors and other startup failures
 are reported immediately; cancellation stops further attempts.
 
-PostgreSQL 18 uses its per-cluster extension search path. For earlier versions,
+PostgreSQL 18 and later use a per-cluster extension search path. For earlier versions,
 the fixture makes and removes an isolated copy of the installation.

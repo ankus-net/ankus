@@ -1,6 +1,6 @@
 ---
 title: Custom types
-description: Declare PostgreSQL base types with CBOR, packed native storage, or explicit codecs.
+description: Declare PostgreSQL base types with CBOR, native struct storage, or explicit codecs.
 ---
 
 Put `[PgType]` on a record, class, struct, or enum. Ankus generates a serializer,
@@ -29,7 +29,7 @@ to control scalar storage conversion independently of type DDL and serialization
 
 The [type variants sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.TypeVariants)
 ports pgrx's `postgres_type_variants` example and compares these choices side by
-side: generated JSON, a custom text codec, packed native storage, a hand-written
+side: generated JSON, a custom text codec, native struct storage, a hand-written
 datum mapping and arrays of a custom type.
 
 ## Datum alignment
@@ -326,7 +326,7 @@ values into independent managed storage. See the compiled
 
 Use `PgVarlena<T>` with a registered `NativeLayout` type for checked native
 storage. It represents the same SQL type as `T`, with nullable wrappers for SQL
-NULL. The existing packed-layout restrictions still apply.
+NULL. The `NativeLayout` field and layout restrictions still apply.
 
 ```csharp
 [PgFunction]
@@ -516,7 +516,7 @@ constructor parameter, or serialization attribute that must change.
 | `ANKUS424`–`ANKUS429`, `ANKUS469` | Managed root shape, accessibility, generic closure, explicit codecs on abstract types, and conflicting declarations |
 | `ANKUS430`–`ANKUS432` | Codec construction, exact managed type, and required-member initialization |
 | `ANKUS433`–`ANKUS435` | Inherited schema, PostgreSQL type name, and schema name |
-| `ANKUS436`–`ANKUS442` | Packed native root, fields, struct layout, recursion, buffers, size, and empty payloads |
+| `ANKUS436`–`ANKUS442` | Native-layout root, fields, struct layout, recursion, buffers, size, and empty payloads |
 | `ANKUS443`–`ANKUS468` | Generated serialization shape, members, constructors, tagged variants, and JSON attributes |
 | `ANKUS507` | A `Name` or `Schema` that no other `[PgType]` or `[PgEnum]` in the extension generates; the error points at the later type's name |
 

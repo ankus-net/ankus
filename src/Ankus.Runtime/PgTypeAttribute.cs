@@ -40,14 +40,15 @@ public sealed class PgTypeAttribute(Type? codec = null) : Attribute
     }
 
     /// <summary>
-    /// Gets or sets whether storage uses the exact native representation of a densely packed unmanaged struct.
-    /// Requires TextCodec and explicit sequential layout with Pack = 1 on the root and nested structs.
-    /// Only fixed-width numeric fields, enums, nested packed structs and fixed buffers of numeric fields are supported.
+    /// Gets or sets whether storage uses the native representation of a sequential unmanaged struct, as pgrx's
+    /// <c>pgvarlena_inoutfuncs</c> stores a <c>repr(C)</c> struct. Requires TextCodec. Fields are aligned as C aligns
+    /// them, limited by an optional StructLayout Pack, and every write sets the padding bytes to zero.
+    /// Only fixed-width numeric fields, enums, nested sequential structs and fixed buffers of numeric fields are supported.
     /// </summary>
     /// <remarks>
-    /// Native storage depends on field order and host byte order. BinaryProtocol exposes this same representation.
-    /// Changing the layout requires a data migration. Booleans, characters, pointers, platform-sized integers,
-    /// explicit layouts, padding, empty structs and framework value types are rejected by the generator.
+    /// Native storage depends on field order, packing and host byte order. BinaryProtocol exposes this same
+    /// representation. Changing the layout requires a data migration. Booleans, characters, pointers, platform-sized
+    /// integers, explicit layouts, size overrides, empty structs and framework value types are rejected by the generator.
     /// Values of the declared struct use copied managed transport. PgVarlena wrappers provide checked native
     /// borrowing, copy-on-write mutation and explicit ownership for the same SQL type.
     /// </remarks>

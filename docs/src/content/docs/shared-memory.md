@@ -513,4 +513,4 @@ and hashing. Do not rely on record-generated `GetHashCode`, `HashCode.Combine`,
 process-local addresses, mutable settings, or randomized hashing. Use the same
 comparer semantics for every attachment to a populated map.
 
-High-level background-worker APIs are still being ported.
+Background workers can share these values; see [background workers](/background-workers/).

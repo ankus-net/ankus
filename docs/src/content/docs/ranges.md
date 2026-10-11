@@ -114,12 +114,16 @@ require two separate intervals.
 
 `PgRange.TryParse<T>` returns false for malformed text, reversed bounds, and
 PostgreSQL subtype range errors. Backend-access errors and checked .NET narrowing
-failures propagate. Invalid input is rolled back before `TryParse` returns false.
+failures propagate. For built-in range types, invalid input leaves no error
+pending: PostgreSQL 16 and later report it as a soft input error, and earlier
+majors roll back an internal subtransaction before `TryParse` returns false.
 Catch other native range errors outside `PgTransaction.RunInSubtransaction` to
 recover before continuing with backend work.
 
 In transaction callbacks and parallel operations before PostgreSQL 17, native
-input errors must propagate because independent rollback is unavailable. See
+input errors must propagate because independent rollback is unavailable.
+`TryParse` on a built-in range type still returns false there on PostgreSQL 16
+and later. See
 [error recovery](/reference/execution/#errors).
 
 `ToPostgresString()` returns canonical SQL input text using the session's

@@ -317,7 +317,7 @@ The generator uses these type mappings:
 | `TimeSpan`, `PgInterval` | `interval` |
 | `PgRange<T>` | The supported built-in or explicitly mapped range type |
 | `[PgEnum]` C# enums | Generated PostgreSQL enum types |
-| `[PgType]` classes, structs, and enums | Generated PostgreSQL base types with CBOR, packed native storage, or an explicit storage codec |
+| `[PgType]` classes, structs, and enums | Generated PostgreSQL base types with CBOR, native struct storage, or an explicit storage codec |
 | `[PgDatumType]` classes, structs, and enums | An existing SQL scalar representation with an explicit datum reader and/or writer |
 | `PgHeapTuple` | `record`, or a named type using `[PgCompositeType]` |
 | `PgAnyElement`, `PgAnyArray` | `anyelement`, `anyarray` |

@@ -324,8 +324,9 @@ the payload and its views remain live until cleanup proceeds.
 
 An unmanaged .NET type does not establish a PostgreSQL C layout or SQL type.
 These wrappers copy raw bytes; arbitrary boxed values are not automatically SQL
-arguments or results. Versioned native layouts, datum conversion and PostgreSQL
-node APIs remain separate required parts of the port.
+arguments or results. Use [native PostgreSQL declarations](/raw-values/),
+`PgVarlena<T>` or a reusable datum mapping when a value needs a PostgreSQL layout
+or SQL type.
 
 ## Cleanup callbacks
 
