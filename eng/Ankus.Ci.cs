@@ -7,7 +7,9 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Security;
+using System.IO.Compression;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 using Ankus.PgConfig;
 
 const string RuntimeRepository = "willibrandon/runtime";
@@ -190,6 +192,11 @@ try
                 GetBuiltRuntimePath(repositoryRoot, args[1], args[2]),
                 GetBuiltCompilerPath(repositoryRoot, args[1], args[2]),
                 Path.Combine(repositoryRoot, "runtime"));
+            break;
+
+        case "release-verify":
+            RequireArguments(args, 2);
+            _ = VerifyPackages(repositoryRoot, args[1]);
             break;
 
         case "publish":
@@ -1662,6 +1669,31 @@ static void PackRuntime(
 static void PublishPackages(string repositoryRoot, string packageVersion)
 {
     string packageDirectory = Path.Combine(repositoryRoot, "artifacts", "packages");
+    string[] packages = VerifyPackages(repositoryRoot, packageVersion);
+    string apiKey = Environment.GetEnvironmentVariable("NUGET_API_KEY")
+        ?? throw new InvalidOperationException("NUGET_API_KEY is required.");
+
+    foreach (string package in packages)
+    {
+        Run(GetDotNetHost(),
+        [
+            "nuget",
+            "push",
+            Path.Combine(packageDirectory, package),
+            "--api-key",
+            apiKey,
+            "--source",
+            "https://api.nuget.org/v3/index.json",
+            "--skip-duplicate",
+        ], repositoryRoot, sensitiveValue: apiKey);
+    }
+}
+
+// Checks that the release has exactly the expected packages and that each one's manifest names its file, the MIT
+// license and the Ankus repository at the commit being released. A rehearsal runs the same checks without publishing.
+static string[] VerifyPackages(string repositoryRoot, string packageVersion)
+{
+    string packageDirectory = Path.Combine(repositoryRoot, "artifacts", "packages");
     string[] packages =
     [
         $"Ankus.NativeAot.Runtime.linux-x64.{RuntimeVersion}.nupkg",
@@ -1694,23 +1726,41 @@ static void PublishPackages(string repositoryRoot, string packageVersion)
         throw new InvalidOperationException($"Package set does not match. Expected: {string.Join(", ", expected)}. Actual: {string.Join(", ", actual)}.");
     }
 
-    string apiKey = Environment.GetEnvironmentVariable("NUGET_API_KEY")
-        ?? throw new InvalidOperationException("NUGET_API_KEY is required.");
-
+    string? commit = Environment.GetEnvironmentVariable("GITHUB_SHA");
     foreach (string package in packages)
     {
-        Run(GetDotNetHost(),
-        [
-            "nuget",
-            "push",
-            Path.Combine(packageDirectory, package),
-            "--api-key",
-            apiKey,
-            "--source",
-            "https://api.nuget.org/v3/index.json",
-            "--skip-duplicate",
-        ], repositoryRoot, sensitiveValue: apiKey);
+        using ZipArchive archive = ZipFile.OpenRead(Path.Combine(packageDirectory, package));
+        ZipArchiveEntry manifest = archive.Entries.SingleOrDefault(static entry =>
+                !entry.FullName.Contains('/', StringComparison.Ordinal) && entry.FullName.EndsWith(".nuspec", StringComparison.OrdinalIgnoreCase))
+            ?? throw new InvalidOperationException($"{package} has no root manifest.");
+        XElement metadata;
+        using (Stream stream = manifest.Open())
+        {
+            metadata = XDocument.Load(stream).Root?.Elements().SingleOrDefault(static element => element.Name.LocalName == "metadata")
+                ?? throw new InvalidOperationException($"{package} has no manifest metadata.");
+        }
+
+        string Value(string name) => metadata.Elements().SingleOrDefault(element => element.Name.LocalName == name)?.Value
+            ?? throw new InvalidOperationException($"{package} has no {name}.");
+        XElement repository = metadata.Elements().SingleOrDefault(static element => element.Name.LocalName == "repository")
+            ?? throw new InvalidOperationException($"{package} has no repository.");
+        if (Value("id") + "." + Value("version") + ".nupkg" != package)
+        {
+            throw new InvalidOperationException($"{package} declares {Value("id")} {Value("version")}.");
+        }
+
+        if (Value("license") != "MIT" || (string?)repository.Attribute("url") != "https://github.com/willibrandon/ankus")
+        {
+            throw new InvalidOperationException($"{package} does not declare the MIT license and Ankus repository.");
+        }
+
+        if (!string.IsNullOrEmpty(commit) && (string?)repository.Attribute("commit") != commit)
+        {
+            throw new InvalidOperationException($"{package} was packed from {(string?)repository.Attribute("commit")}, not {commit}.");
+        }
     }
+
+    return packages;
 }
 
 static void Run(

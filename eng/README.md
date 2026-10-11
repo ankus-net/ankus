@@ -38,7 +38,8 @@ repository root with `dotnet run --file`.
 | `runner-cleanup` | On a self-hosted runner, stop build servers, remove generated checkout files after artifact upload, and delete abandoned package-test directories. |
 | `release-managed` | Pack the managed NuGet packages. |
 | `release-runtime` | Build and pack the runtime and compiler host for one platform. |
-| `publish` | Validate and publish the complete NuGet package set. |
+| `release-verify` | Check the complete NuGet package set and each manifest's identity, license and source commit. |
+| `publish` | Verify and publish the complete NuGet package set. |
 
 Runtime and compiler packages are built on their own operating system and
 architecture, including Intel macOS. Linux/macOS builds also execute the fork's bounded host-shutdown

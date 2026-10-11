@@ -3,7 +3,7 @@ name: Release
 on:
   release:
     types: [published]
-  # A dry run builds and packs every package from the dispatched commit without publishing.
+  # A dry run builds, packs and verifies every package from the dispatched commit without publishing.
   workflow_dispatch:
     inputs:
       tag:
@@ -129,8 +129,32 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-  publish:
+  verify:
     needs: [metadata, managed-packages, runtime-packages]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: '*package*'
+          path: artifacts/packages
+          merge-multiple: true
+
+      - name: Verify packages
+        run: >-
+          dotnet run --file ./eng/Ankus.Ci.cs -- release-verify
+          ${{ needs.metadata.outputs.version }}
+
+  publish:
+    needs: [metadata, verify]
     if: github.event_name == 'release'
     runs-on: ubuntu-24.04
     timeout-minutes: 60

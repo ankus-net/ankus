@@ -141,7 +141,10 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   `not our ref`. Actions drops a job output that contains a masked value,
   and the runtime repository name contains one, so the checkout fell back to
   its default repository. Each packaging job now reads the runtime identity
-  itself, as CI does. The rehearsal reruns on the fix.
+  itself, as CI does. The package-set check also ran only in the publish
+  job, which a rehearsal skips; a separate verify job now checks the set and
+  each manifest's identity, license and source commit in both rehearsals and
+  releases. The rehearsal reruns on these fixes.
 - Ankus library packages now embed their symbols. A package carried no PDB, so
   Native AOT had no source lines for framework code, and a debugger attached to
   a package-built extension showed Ankus frames without files or lines, while a
