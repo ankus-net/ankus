@@ -14,7 +14,8 @@ also required, including correctness, safety, maintenance and command changes.
 Updating native inputs does not establish full API-by-API parity.
 This inventory covers feature families discovered in the workspace, including features absent from its
 README. Each family's public APIs, options, error behavior, ownership rules, examples, and regression
-cases require implementation and evidence. Family coverage is not API-by-API completion evidence.
+cases require implementation and evidence. Family coverage is not API-by-API completion evidence; the
+[public API mapping](pgrx-api-mapping.md) records that item by item.
 
 ### pgrx 0.19.3 release delta and refresh gates
 
@@ -80,9 +81,9 @@ related build/test invocation, including nested fixture publication, matching th
 upstream cargo-option contract. Automatic response files retain normal MSBuild
 precedence. See the [CLI guide](../../src/content/docs/reference/cli.md#pass-msbuild-properties).
 Execution-account options (`test --runas`, `regress --runas`) and privileged
-installation (`install --sudo`) are implemented with real-account evidence on
-Linux; run-as provisioning of the remaining Unix runners and complete
-version/platform validation are still required.
+installation (`install --sudo`) are implemented with real-account evidence. Every
+Linux and macOS runner has a least-privilege run-as account, so these cases run
+in CI; complete version/platform validation is still required.
 The framework also requires versioned extension SQL upgrades, custom/versioned shared-library names,
 control-file settings, dependency handling, and deterministic packaging.
 Primary author settings and native dependency/privilege behavior are implemented

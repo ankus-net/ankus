@@ -179,16 +179,40 @@ internal static class NativeDatumBridge
                     request->result_context, request->result_generation);
         }
 
+        /* Converts a managed value to a datum of its declared type, applying a domain's
+         * constraints as an assignment does, including to SQL NULL. */
+        static void
+        ankus_create_datum(AnkusRequest *request, AnkusResult *result)
+        {
+            const AnkusParameter *parameter = &request->parameters[0];
+            Datum datum;
+            if (get_typtype(parameter->type_oid) == '\0')
+                ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT), errmsg("Parameter type OID %u does not exist", parameter->type_oid)));
+            ankus_datum_context(request->result_context, request->result_generation);
+            datum = ankus_parameter_datum(parameter);
+            result->processed = parameter->type_oid;
+            result->text.is_null = parameter->value.is_null;
+            if (!parameter->value.is_null)
+                result->text.integral = (int64) (uintptr_t) ankus_copy_raw_datum(datum, parameter->type_oid,
+                    request->result_context, request->result_generation);
+        }
+
         static void
         ankus_datum_operation(AnkusRequest *request, AnkusResult *result)
         {
-            if (request->scalar_operation < 0 || request->scalar_operation > 15)
+            if (request->scalar_operation < 0 || request->scalar_operation > 16)
                 ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("Unknown raw datum operation")));
             if (request->parameter_count != 1 || request->parameters == NULL)
                 ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("Datum operations require one value")));
             if (request->scalar_operation == 15)
             {
                 ankus_rebuild_cell(request, result);
+                return;
+            }
+
+            if (request->scalar_operation == 16)
+            {
+                ankus_create_datum(request, result);
                 return;
             }
 

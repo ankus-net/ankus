@@ -90,6 +90,26 @@ Returns: [IEnumerator&lt;PgDatum&gt;](https://learn.microsoft.com/dotnet/api/sys
 
 The value enumerator.
 
+<a id="member-e188f5f89b55df01"></a>
+
+### GetOrdinal(string)
+
+Resolves an exact, case-sensitive column name to its zero-based ordinal. Duplicate names resolve to the first column.
+
+```csharp
+public int GetOrdinal(string name)
+```
+
+Parameters:
+
+`name` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+The column name.
+
+Returns: [int](https://learn.microsoft.com/dotnet/api/system.int32)
+
+The zero-based ordinal.
+
 <a id="member-817b051aae059e17"></a>
 
 ### Get&lt;T&gt;(int)

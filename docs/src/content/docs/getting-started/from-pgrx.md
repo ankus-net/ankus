@@ -69,6 +69,8 @@ passed through. A nullable result can return SQL NULL.
 | PostgreSQL date/time values | `PgDate`, `PgTime`, `PgTimestamp`, `PgTimestampTz`, `PgTimeTz`, `PgInterval` |
 | `AnyElement`, `AnyArray` | `PgAnyElement`, `PgAnyArray` |
 | Native `Datum` | `PgDatum` with explicit `[PgSqlType]` where required |
+| `IntoDatum::into_datum` | `PgDatum.Create(value, context)` |
+| Manual `FromDatum`/`IntoDatum` impls | `[PgDatumType]` with `IPgDatumReader<T>`/`IPgDatumWriter<T>`, also read and written by `SpiRow` and `PgHeapTuple` |
 | Composite tuples | `PgHeapTuple`, optionally bound with `[PgCompositeType]` |
 | Managed aggregate payload | `PgAggregateState<T>` |
 | Backend-owned opaque state | `PgInternal` |
@@ -106,7 +108,10 @@ retain their C# pointee types. See [native bindings](/raw-values/).
 Use `Spi.ExecuteScalar<T>`, `Spi.Execute` and `Spi.Connect` for backend SQL.
 Parameters are explicit `SpiParameter` values. A connected session stays inside
 its callback. Result rows are managed copies; kept plans and cursors have their
-own lifetime rules. See [SPI queries](/spi/).
+own lifetime rules. As in pgrx, a column is converted only when read, so a type
+without a managed conversion does not stop the rest of the row. Unlike pgrx's
+`get_one`, scalar helpers run the whole command and copy its first row. See
+[SPI queries](/spi/).
 
 `Spi.Select`, `Spi.SelectRaw` and the default cursor overload follow
 `SpiClient::select`: they use read-only snapshots until the transaction becomes

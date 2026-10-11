@@ -163,13 +163,13 @@ public sealed class PgTriggerTests
     }
 
     /// <summary>
-    /// The generated invocation shape has exactly twelve slots, with no ignored extra metadata.
+    /// The generated invocation shape has exactly fifteen slots, with no ignored extra metadata.
     /// </summary>
     [TestMethod]
     [DataRow(0)]
-    [DataRow(11)]
-    [DataRow(13)]
-    public void InvocationRequiresExactlyTwelveSlots(int count)
+    [DataRow(14)]
+    [DataRow(16)]
+    public void InvocationRequiresExactlyFifteenSlots(int count)
     {
         var values = new NativeValue[count];
         Assert.ThrowsExactly<InvalidOperationException>(() => NativeValue.ReadTriggerContext(values));
@@ -191,6 +191,60 @@ public sealed class PgTriggerTests
     {
         using NativeEnvelope envelope = CreateEnvelope(3);
         envelope.Replace(slot, new NativeValue { Integral = value });
+        Assert.ThrowsExactly<InvalidOperationException>(() => NativeValue.ReadTriggerContext(envelope.Values));
+    }
+
+    /// <summary>
+    /// Column lists and constraint flags arrive as copies, and an UPDATE without a reported set still lists no columns.
+    /// </summary>
+    [TestMethod]
+    public void ColumnsAndConstraintFlagsArriveAsCopies()
+    {
+        using NativeEnvelope update = CreateEnvelope(14, hasOld: true, hasNew: true);
+        update.Replace(12, NativeValue.FromArray(new PgArray<int>([0])));
+        update.Values[14].Integral = 7300;
+        TransportKind(ref update.Values[14]) = 3;
+        PgTriggerContext context = NativeValue.ReadTriggerContext(update.Values);
+        Assert.AreSequenceEqual([0], context.UpdateOfColumns);
+        Assert.AreSequenceEqual([0], context.UpdatedColumns!);
+        Assert.AreEqual(7300U, context.ConstraintOid);
+        Assert.IsTrue(context.IsDeferrable);
+        Assert.IsTrue(context.IsInitiallyDeferred);
+
+        using NativeEnvelope insert = CreateEnvelope(4, hasNew: true);
+        PgTriggerContext inserted = NativeValue.ReadTriggerContext(insert.Values);
+        Assert.IsEmpty(inserted.UpdateOfColumns);
+        Assert.IsNull(inserted.UpdatedColumns);
+        Assert.AreEqual(0U, inserted.ConstraintOid);
+        Assert.IsFalse(inserted.IsDeferrable);
+        Assert.IsEmpty(new PgTriggerContext(14, 8100, 8200, "trigger", "table", "schema", null, null, [],
+            new PgHeapTuple(CreateDescriptor(), [1]), new PgHeapTuple(CreateDescriptor(), [2]), CreateDescriptor()).UpdatedColumns!);
+    }
+
+    /// <summary>
+    /// Column ordinals outside the relation, updated columns outside an UPDATE, and an initially deferred trigger that is
+    /// not deferrable are rejected.
+    /// </summary>
+    /// <param name="slot">The slot to replace.</param>
+    /// <param name="eventBits">The trigger event.</param>
+    [TestMethod]
+    [DataRow(12, 14U)]
+    [DataRow(13, 14U)]
+    [DataRow(13, 4U)]
+    [DataRow(14, 14U)]
+    public void InvalidColumnsAndConstraintFlagsAreRejected(int slot, uint eventBits)
+    {
+        bool update = (eventBits & 3) == 2;
+        using NativeEnvelope envelope = CreateEnvelope(eventBits, hasOld: update, hasNew: true);
+        if (slot == 14)
+        {
+            TransportKind(ref envelope.Values[14]) = 2;
+        }
+        else
+        {
+            envelope.Replace(slot, NativeValue.FromArray(new PgArray<int>([update ? 1 : 0])));
+        }
+
         Assert.ThrowsExactly<InvalidOperationException>(() => NativeValue.ReadTriggerContext(envelope.Values));
     }
 
@@ -578,6 +632,9 @@ public sealed class PgTriggerTests
             hasOld ? NativeValue.FromTuple(new PgHeapTuple(descriptor, [-7])) : new NativeValue { IsNull = 1 },
             hasNew ? NativeValue.FromTuple(new PgHeapTuple(descriptor, [42])) : new NativeValue { IsNull = 1 },
             NativeValue.FromTuple(descriptor.CreateTuple()),
+            NativeValue.FromArray(new PgArray<int>([])),
+            (eventBits & 3) == 2 ? NativeValue.FromArray(new PgArray<int>([0])) : new NativeValue { IsNull = 1 },
+            new() { Integral = 0 },
         ];
 
         return new NativeEnvelope(values);

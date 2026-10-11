@@ -93,3 +93,24 @@ public IEnumerator<SpiRow> GetEnumerator()
 Returns: [IEnumerator&lt;SpiRow&gt;](https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerator-1)
 
 The row enumerator.
+
+<a id="member-b6a3f2387e50beb5"></a>
+
+### GetOrdinal(string)
+
+Resolves an exact, case-sensitive column name to its zero-based ordinal, including when the query returned no rows.
+Duplicate names resolve to the first column.
+
+```csharp
+public int GetOrdinal(string name)
+```
+
+Parameters:
+
+`name` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+The column name.
+
+Returns: [int](https://learn.microsoft.com/dotnet/api/system.int32)
+
+The zero-based ordinal.

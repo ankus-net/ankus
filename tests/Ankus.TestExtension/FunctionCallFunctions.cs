@@ -253,6 +253,31 @@ public static class FunctionCallFunctions
     }
 
     /// <summary>
+    /// Calls a function with an internal argument, which only a native entry-point call can pass.
+    /// </summary>
+    /// <param name="oid">The function OID, or zero to call it by name.</param>
+    /// <returns>The error's SQLSTATE and a recovered call's result.</returns>
+    [PgFunction]
+    public static string CallInternal(uint oid)
+    {
+        string failure;
+        try
+        {
+            PgInternal? state = null;
+            _ = oid == 0
+                ? PgFunctions.Call<int>("pg_catalog.array_agg_transfn", PgFunctionArgument.Create(state), PgFunctionArgument.Create(1))
+                : PgFunctions.Call<int>(oid, PgFunctionArgument.Create(state), PgFunctionArgument.Create(1));
+            return "no error";
+        }
+        catch (PgException error)
+        {
+            failure = error.SqlState;
+        }
+
+        return $"{failure}|{PgFunctions.Call<int>("pg_catalog.abs", PgFunctionArgument.Create(-42))}";
+    }
+
+    /// <summary>
     /// Returns a call's resolved collation through nested generated dispatch.
     /// </summary>
     /// <param name="call">The injected native context.</param>

@@ -38,22 +38,14 @@ public sealed class SpiRawRow : IReadOnlyList<PgDatum>
     /// </summary>
     /// <param name="name">The column name.</param>
     /// <returns>The raw value, including its SQL NULL flag.</returns>
-    public PgDatum this[string name]
-    {
-        get
-        {
-            ArgumentNullException.ThrowIfNull(name);
-            for (int index = 0; index < _columns.Count; index++)
-            {
-                if (_columns[index].Name == name)
-                {
-                    return _values[index];
-                }
-            }
+    public PgDatum this[string name] => _values[GetOrdinal(name)];
 
-            throw new ArgumentException($"The SPI result has no column named '{name}'.", nameof(name));
-        }
-    }
+    /// <summary>
+    /// Resolves an exact, case-sensitive column name to its zero-based ordinal. Duplicate names resolve to the first column.
+    /// </summary>
+    /// <param name="name">The column name.</param>
+    /// <returns>The zero-based ordinal.</returns>
+    public int GetOrdinal(string name) => SpiColumn.GetOrdinal(_columns, name);
 
     /// <summary>
     /// Reads a column as a managed value or a polymorphic wrapper sharing this result's lifetime.

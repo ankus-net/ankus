@@ -27,6 +27,22 @@ public readonly partial record struct PgTime : IComparable<PgTime>
     public long Microseconds { get; }
 
     /// <summary>
+    /// The microseconds in one second.
+    /// </summary>
+    public const long MicrosecondsPerSecond = 1_000_000;
+
+    /// <summary>
+    /// The microseconds in one 24-hour day.
+    /// </summary>
+    public const long MicrosecondsPerDay = PgTemporal.MicrosecondsPerDay;
+
+    /// <summary>
+    /// Converts the time of day to an interval with no months or days, as PostgreSQL's <c>time::interval</c> cast does.
+    /// </summary>
+    /// <returns>The interval.</returns>
+    public PgInterval ToInterval() => new(0, 0, Microseconds);
+
+    /// <summary>
     /// Gets PostgreSQL's 24:00:00 value.
     /// </summary>
     public static PgTime EndOfDay => new(PgTemporal.MicrosecondsPerDay);

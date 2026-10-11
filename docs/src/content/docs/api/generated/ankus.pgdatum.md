@@ -45,6 +45,63 @@ Returns: [PgDatum](/api/ankus.pgdatum/)
 
 The copied datum with its exact type and NULL state.
 
+<a id="member-7d75ae2a5c499da0"></a>
+
+### Create(SpiParameter, PgMemoryContext)
+
+Converts a typed value to a datum of its declared PostgreSQL type, allocated in the destination context. A domain's
+constraints apply as they do to an assignment, including to SQL NULL.
+
+```csharp
+public static PgDatum Create(SpiParameter value, PgMemoryContext context)
+```
+
+Parameters:
+
+`value` — [SpiParameter](/api/ankus.spiparameter/)
+
+The typed value, which can be a typed SQL NULL.
+
+`context` — [PgMemoryContext](/api/ankus.pgmemorycontext/)
+
+The destination context whose reset or deletion ends the datum's lifetime.
+
+Returns: [PgDatum](/api/ankus.pgdatum/)
+
+The converted datum.
+
+<a id="member-c8441671095e157e"></a>
+
+### Create&lt;T&gt;(T, PgMemoryContext)
+
+Converts a managed value to a datum of its PostgreSQL type, allocated in the destination context, as pgrx's
+<code>IntoDatum</code> does. The value's type selects the PostgreSQL type, as for [Create&lt;T&gt;(T)](/api/ankus.spiparameter/#member-5df5f7c60ee052be),
+including a [PgDatumTypeAttribute](/api/ankus.pgdatumtypeattribute/) mapping. A null value gives SQL NULL of that type.
+
+```csharp
+public static PgDatum Create<T>(T value, PgMemoryContext context)
+```
+
+Type parameters:
+
+`T`
+
+The managed type, which selects the PostgreSQL type when the value is null.
+
+Parameters:
+
+`value` — <code>T</code>
+
+The value.
+
+`context` — [PgMemoryContext](/api/ankus.pgmemorycontext/)
+
+The destination context whose reset or deletion ends the datum's lifetime.
+
+Returns: [PgDatum](/api/ankus.pgdatum/)
+
+The converted datum.
+
 <a id="member-50450cbf5c068936"></a>
 
 ### DangerousCreate(nuint, uint, PgMemoryContext, bool)

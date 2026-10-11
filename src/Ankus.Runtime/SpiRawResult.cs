@@ -52,6 +52,14 @@ public sealed class SpiRawResult : IReadOnlyList<SpiRawRow>, IDisposable
     public SpiRawRow this[int index] => _rows[index];
 
     /// <summary>
+    /// Resolves an exact, case-sensitive column name to its zero-based ordinal, including when the query returned no rows.
+    /// Duplicate names resolve to the first column.
+    /// </summary>
+    /// <param name="name">The column name.</param>
+    /// <returns>The zero-based ordinal.</returns>
+    public int GetOrdinal(string name) => SpiColumn.GetOrdinal(Columns, name);
+
+    /// <summary>
     /// Releases all result datums and invalidates their checked native access.
     /// </summary>
     public void Dispose() => _context.Dispose();

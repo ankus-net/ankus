@@ -145,25 +145,38 @@ public static unsafe partial class NativeBackend
     /// <returns>The rebuilt datum.</returns>
     internal static PgDatum RebuildCell(object value, uint typeOid, PgDatumLifetime lifetime)
     {
+        PgDatum datum = Materialize(15, SpiParameter.CreateCell(typeOid, value), lifetime);
+        return datum.IsNull ? throw new InvalidOperationException("The native cell builder returned SQL NULL for a present value.") : datum;
+    }
+
+    /// <summary>
+    /// Converts a typed value to a datum of its declared type, applying a domain's constraints as an assignment does.
+    /// </summary>
+    /// <param name="value">The typed value, including a typed SQL NULL.</param>
+    /// <param name="lifetime">The destination, which owns the converted datum.</param>
+    /// <returns>The converted datum.</returns>
+    internal static PgDatum CreateDatum(SpiParameter value, PgDatumLifetime lifetime) => Materialize(16, value, lifetime);
+
+    /// <summary>
+    /// Builds one datum from a typed value in the destination lifetime.
+    /// </summary>
+    private static PgDatum Materialize(int operation, SpiParameter value, PgDatumLifetime lifetime)
+    {
         CheckAccess();
         lifetime.Validate();
         NativeSpiRequest request = new()
         {
             _operation = SpiOperation.Datum,
-            _scalarOperation = 15,
+            _scalarOperation = operation,
             _resultContext = lifetime.ContextId,
             _resultGeneration = lifetime.Generation,
         };
         NativeSpiResult result = default;
         try
         {
-            InvokeParameters(&request, [SpiParameter.CreateCell(typeOid, value)], &result);
-            if (result._text.IsNull != 0)
-            {
-                throw new InvalidOperationException("The native cell builder returned SQL NULL for a present value.");
-            }
-
-            return new PgDatum(unchecked((nuint)result._text.Integral), typeOid, false, lifetime);
+            InvokeParameters(&request, [value], &result);
+            bool isNull = result._text.IsNull != 0;
+            return new PgDatum(isNull ? 0 : unchecked((nuint)result._text.Integral), value.TypeOid, isNull, lifetime);
         }
         finally
         {

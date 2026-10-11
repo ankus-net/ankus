@@ -187,6 +187,43 @@ public static class DetachedCellFunctions
     }
 
     /// <summary>
+    /// Reads row and composite cells as raw datums, and resolves a column of a result without rows.
+    /// </summary>
+    /// <param name="value">The composite.</param>
+    /// <returns>The datums' text, NULL flags and type identities.</returns>
+    [PgFunction(Name = "raw_cells", Requires = ["detached-cells"])]
+    public static string RawCells([PgCompositeType("unconverted", Schema = "detached_cells")] PgHeapTuple value)
+    {
+        SpiResult empty = Spi.Select("SELECT 1 AS id, 'a:1'::tsvector AS words WHERE false");
+        SpiRow row = Spi.Select("SELECT 'b:2'::tsvector AS words, NULL::macaddr AS address, 7 AS id")[0];
+        PgDatum words = value.Get<PgDatum>("words");
+        PgDatum number = value.Get<PgDatum>("number");
+        PgDatum rowWords = row.Get<PgDatum>("words");
+        PgDatum address = row.Get<PgDatum>("address");
+        return string.Join("|", empty.GetOrdinal("words"), words.ToPostgresString(), number.IsNull,
+            number.TypeOid == value.Descriptor.Attributes[0].TypeOid, rowWords.ToPostgresString(), address.IsNull,
+            address.TypeOid == row.GetTypeOid("address"), row.Get<PgDatum>("id").Read<int>());
+    }
+
+    /// <summary>
+    /// Forms a native heap tuple from a composite and copies it back with a native descriptor, then converts the
+    /// composite to a raw datum.
+    /// </summary>
+    /// <param name="value">The composite.</param>
+    /// <returns>The copied fields, the descriptor's shape and the datum's text.</returns>
+    [PgFunction(Name = "native_tuples", Requires = ["detached-cells"])]
+    public static unsafe string NativeTuples([PgCompositeType("unconverted", Schema = "detached_cells")] PgHeapTuple value)
+    {
+        nint descriptor = (nint)Ankus.Postgres.NativeMethods.lookup_rowtype_tupdesc_copy(value.Descriptor.TypeOid, -1);
+        nint heap = value.DangerousToNative(PgMemoryContext.Current);
+        PgHeapTuple copy = PgHeapTuple.DangerousCopy(heap, descriptor);
+        PgTupleDescriptor shape = PgTupleDescriptor.DangerousCopy(descriptor);
+        return string.Join("|", copy.Get<MappedU24?>("number")?.Value, copy.Get<MappedWords?>("words")?.Text, copy.Get<string>("label"),
+            shape.Attributes.Count, shape.TypeOid == value.Descriptor.TypeOid,
+            PgDatum.Create(value, PgMemoryContext.Current).ToPostgresString());
+    }
+
+    /// <summary>
     /// Changes a document's label and amount, leaving fields without a managed conversion as they were.
     /// </summary>
     /// <param name="context">The trigger invocation.</param>

@@ -645,6 +645,44 @@ public static unsafe partial class NativeBackend
     /// <returns>The canonical tuple.</returns>
     internal static PgHeapTuple CreateTuple(PgHeapTuple value) => ReadTupleOperation(1, [SpiParameter.Create(value)]);
 
+    /// <summary>
+    /// Copies a caller-supplied native tuple descriptor, and a heap tuple of that shape when one is supplied.
+    /// </summary>
+    /// <param name="descriptor">The native TupleDesc address.</param>
+    /// <param name="tuple">The native HeapTuple address, or zero for the descriptor alone.</param>
+    /// <returns>The owned tuple; its cells are SQL NULL when no heap tuple is supplied.</returns>
+    internal static PgHeapTuple CopyNativeTuple(nint descriptor, nint tuple)
+        => ReadTupleOperation(tuple == 0 ? 3 : 4, [SpiParameter.Create((long)descriptor), SpiParameter.Create((long)tuple)]);
+
+    /// <summary>
+    /// Forms a native heap tuple from a managed composite in the destination context.
+    /// </summary>
+    /// <param name="value">The managed composite.</param>
+    /// <param name="lifetime">The destination, which owns the heap tuple.</param>
+    /// <returns>The native HeapTuple address.</returns>
+    internal static nint FormNativeTuple(PgHeapTuple value, PgDatumLifetime lifetime)
+    {
+        CheckAccess();
+        lifetime.Validate();
+        var request = new NativeSpiRequest
+        {
+            _operation = SpiOperation.Tuple,
+            _scalarOperation = 5,
+            _resultContext = lifetime.ContextId,
+            _resultGeneration = lifetime.Generation,
+        };
+        NativeSpiResult result = default;
+        try
+        {
+            InvokeParameters(&request, [SpiParameter.Create(value)], &result);
+            return (nint)result._text.Integral;
+        }
+        finally
+        {
+            ReleaseResult(&result);
+        }
+    }
+
     private static PgHeapTuple ReadTupleOperation(int operation, ReadOnlySpan<SpiParameter> parameters)
     {
         CheckAccess();

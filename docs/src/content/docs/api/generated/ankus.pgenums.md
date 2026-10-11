@@ -66,6 +66,32 @@ Returns: [uint](https://learn.microsoft.com/dotnet/api/system.uint32)
 
 The current PostgreSQL type OID.
 
+<a id="member-c6e41667b65f9669"></a>
+
+### GetValueOid(uint, string)
+
+Resolves a label of any enum type, including one without a generated managed mapping, to its pg_enum value OID.
+Use [GetOid(string)](/api/ankus.pgtypes/#member-bf7e08fdf9df20b0) to find the type by name. PostgreSQL validates the label and transaction
+visibility on the active backend.
+
+```csharp
+public static uint GetValueOid(uint typeOid, string label)
+```
+
+Parameters:
+
+`typeOid` — [uint](https://learn.microsoft.com/dotnet/api/system.uint32)
+
+The enum type OID.
+
+`label` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+The exact case-sensitive label.
+
+Returns: [uint](https://learn.microsoft.com/dotnet/api/system.uint32)
+
+The pg_enum row OID.
+
 <a id="member-971c17d7c84a4cd7"></a>
 
 ### GetValueOid&lt;T&gt;(T)

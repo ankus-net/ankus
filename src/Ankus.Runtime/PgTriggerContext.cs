@@ -11,7 +11,8 @@ public sealed class PgTriggerContext
     /// </summary>
     internal PgTriggerContext(uint eventBits, uint relationOid, uint triggerOid, string name, string tableName,
         string tableSchema, string? oldTransitionTableName, string? newTransitionTableName,
-        string[] arguments, PgHeapTuple? oldRow, PgHeapTuple? newRow, PgTupleDescriptor descriptor)
+        string[] arguments, PgHeapTuple? oldRow, PgHeapTuple? newRow, PgTupleDescriptor descriptor,
+        int[]? updateOfColumns = null, int[]? updatedColumns = null, uint constraintOid = 0, int constraintFlags = 0)
     {
         if ((eventBits & ~127U) != 0 || (eventBits & 24U) == 24U ||
             ((eventBits & 4U) != 0 && (eventBits & 3U) == 3U) ||
@@ -64,6 +65,27 @@ public sealed class PgTriggerContext
 
         ValidateRow(oldRow, descriptor);
         ValidateRow(newRow, descriptor);
+        updateOfColumns ??= [];
+        ValidateColumns(updateOfColumns, descriptor);
+        if (updatedColumns is not null)
+        {
+            if (Operation != PgTriggerOperation.Update)
+            {
+                throw new InvalidOperationException("Only an UPDATE trigger reports updated columns.");
+            }
+
+            ValidateColumns(updatedColumns, descriptor);
+        }
+        else if (Operation == PgTriggerOperation.Update)
+        {
+            updatedColumns = [];
+        }
+
+        if (constraintFlags is < 0 or > 3 or 2)
+        {
+            throw new InvalidOperationException("A trigger can be initially deferred only when it is deferrable.");
+        }
+
         RelationOid = relationOid;
         TriggerOid = triggerOid;
         Name = name;
@@ -75,6 +97,11 @@ public sealed class PgTriggerContext
         Old = oldRow;
         New = newRow;
         Descriptor = descriptor;
+        UpdateOfColumns = Array.AsReadOnly<int>([.. updateOfColumns]);
+        UpdatedColumns = updatedColumns is null ? null : Array.AsReadOnly<int>([.. updatedColumns]);
+        ConstraintOid = constraintOid;
+        IsDeferrable = (constraintFlags & 1) != 0;
+        IsInitiallyDeferred = (constraintFlags & 2) != 0;
     }
 
     /// <summary>
@@ -155,11 +182,46 @@ public sealed class PgTriggerContext
     /// </summary>
     public string? NewTransitionTableName { get; }
 
+    /// <summary>
+    /// Gets the zero-based ordinals of the columns named by the trigger's <c>UPDATE OF</c> list, or an empty list when the
+    /// trigger is not column-specific.
+    /// </summary>
+    public IReadOnlyList<int> UpdateOfColumns { get; }
+
+    /// <summary>
+    /// Gets the zero-based ordinals of the columns the triggering <c>UPDATE</c> assigns, or null for other operations.
+    /// A column can be assigned its current value; compare <see cref="Old"/> and <see cref="New"/> to find changed values.
+    /// </summary>
+    public IReadOnlyList<int>? UpdatedColumns { get; }
+
+    /// <summary>
+    /// Gets the OID of the constraint a constraint trigger implements, or zero for an ordinary trigger.
+    /// </summary>
+    public uint ConstraintOid { get; }
+
+    /// <summary>
+    /// Gets whether the constraint trigger is deferrable.
+    /// </summary>
+    public bool IsDeferrable { get; }
+
+    /// <summary>
+    /// Gets whether the constraint trigger is initially deferred until transaction commit.
+    /// </summary>
+    public bool IsInitiallyDeferred { get; }
+
     private static void ValidateName(string name)
     {
         if (string.IsNullOrEmpty(name) || name.Contains('\0', StringComparison.Ordinal))
         {
             throw new InvalidOperationException("Trigger metadata requires nonempty names without zero characters.");
+        }
+    }
+
+    private static void ValidateColumns(int[] columns, PgTupleDescriptor descriptor)
+    {
+        if (columns.Any(column => column < 0 || column >= descriptor.Attributes.Count))
+        {
+            throw new InvalidOperationException("Trigger column ordinals must identify the target relation's attributes.");
         }
     }
 

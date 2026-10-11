@@ -347,6 +347,20 @@ Returns: [PgInterval](/api/ankus.pginterval/)
 
 The signed interval.
 
+<a id="member-d1dd3e567e7db633"></a>
+
+### ToInterval()
+
+Converts the time of day to an interval with no months or days, as PostgreSQL's <code>time::interval</code> cast does.
+
+```csharp
+public PgInterval ToInterval()
+```
+
+Returns: [PgInterval](/api/ankus.pginterval/)
+
+The interval.
+
 <a id="member-cf8834551cb617ae"></a>
 
 ### ToIsoString()
@@ -535,6 +549,29 @@ public int Second { get; }
 ```
 
 Value: [int](https://learn.microsoft.com/dotnet/api/system.int32)
+
+
+## Fields
+
+<a id="member-c5689e16f0e49079"></a>
+
+### MicrosecondsPerDay
+
+The microseconds in one 24-hour day.
+
+```csharp
+public const long MicrosecondsPerDay = 86400000000
+```
+
+<a id="member-f62036bc13865f26"></a>
+
+### MicrosecondsPerSecond
+
+The microseconds in one second.
+
+```csharp
+public const long MicrosecondsPerSecond = 1000000
+```
 
 
 ## Operators

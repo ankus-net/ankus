@@ -79,7 +79,7 @@ defines the full scope; family-level implementation is not API-by-API completion
 | Runtime performance | Owned binary PgNumeric, direct decimal coefficient encoding, constant-time fixed-width array indexing, and a measured native guard for allowlisted pure built-ins. Catalog-miss errors require actual rollback; real-resource regressions and complete primary-platform CI pass. Persistent in-backend benchmarks provide batching, transaction modes and statistical baseline comparisons. | Complete current guard supported-version acceptance. Extend that tier only where ownership proofs and measurements justify it. Never weaken error recovery to reduce overhead. |
 | Native bindings | pgrx 0.19.3 inventories, matching PostgreSQL 19 beta 4 inputs and target-compiler ABI checks; typed pointers and ANKUS129 make raw caller obligations explicit. Complete current primary-platform compositions pass, with focused binding checks on all seven majors. | Full supported-major/platform tests and final inventory audit. |
 | Development CLI | Version/project selection, installation/registration, cluster lifecycle, run/connect, test/regress/bench, property forwarding, environment selection, scriptable info and package prefixes. Benchmarks are measured inside PostgreSQL and retained in named comparison groups. `install --sudo`, `test --runas` and `regress --runas` follow cargo-pgrx with real-account evidence. | Remaining inventoried CLI/platform contracts. Run-as cases now run on every runner; the Linux PostgreSQL 16 rerun ([38115917411](https://github.com/willibrandon/ankus/actions/runs/38115917411)) has 52 skips where it had 55. Persistent clusters already retain Windows event-log diagnostics through `PostgresServerLog`. |
-| .NET templates | Version-matched ordinary extension and worker templates reuse the CLI assets and pin local tools. Optional xUnit/NUnit consumers exercise managed and named backend cases, ignore reasons, worker processes and cleanup alongside default MSTest consumers. Complete primary-platform CI passes. | Remaining discovery contracts and complete version/platform acceptance. |
+| .NET templates | Version-matched ordinary extension and worker templates reuse the CLI assets and pin local tools. Optional xUnit/NUnit consumers exercise managed and named backend cases, ignore reasons, worker processes and cleanup alongside default MSTest consumers; all three list backend cases with `dotnet test --list-tests` before anything is published. Complete primary-platform CI passes. | Complete version/platform acceptance. |
 | API discoverability | Idiomatic attributed declarations, documented runtime APIs, named logging helpers and typed SPI interpolation. Compiler transport helpers are isolated in Ankus.CompilerServices and hidden from IntelliSense; complete primary-platform CI passes. `PgAssert` adds MSTest's tolerance, text and count checks. | Final inventory audit. |
 | Packages and release | MIT license, Brandon Williams copyright, author/repository/project metadata and deliberate SDK/runtime boundaries. | Full release gates and supported-platform packages before publishing 0.1.0. |
 | Documentation and samples | Public guides, generated API pages, pgrx migration and backend-execution guidance; current status separated from historical evidence. All 37 of pgrx's examples map to runnable samples with backend integration tests. | Final usage/limitation review across samples and guides. |
@@ -135,6 +135,25 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- The public API of the `pgrx` crate is now mapped item by item in the
+  [API mapping](docs/contributing/evidence/pgrx-api-mapping.md). Three passes
+  over the datum, SPI and call, and backend runtime modules found gaps that are
+  now filled: `PgDatum.Create` turns a managed value into a typed datum, as
+  `IntoDatum` does; rows and tuples read any cell as a `PgDatum`, and results
+  resolve column names without rows; triggers report their `UPDATE OF` columns,
+  the columns an UPDATE assigns and their constraint deferral; memory contexts,
+  heap tuples and descriptors can be borrowed or copied from native addresses,
+  and a tuple formed as a native `HeapTuple`; unmapped enum labels resolve by
+  type; intervals and times convert like PostgreSQL's casts; calendar constants,
+  date-part names, `PgInterrupts.IsPending` and atomic `Max`/`Min` are public;
+  and calling a function with `internal` arguments by name is rejected as it is
+  by OID. Deliberate differences, such as `PgNumeric.Log`'s argument order and
+  the scalar helpers running whole commands, are documented in the guides.
+- The scalar call boundary no longer zero-fills two 2.8 KB error buffers on
+  every call; they are only valid after a failure, so clearing their headers is
+  enough. On a PostgreSQL 16 release build, a managed `int` function costs about
+  27 ns per call over a C built-in, down from 51 ns, and a text echo about
+  148 ns, down from 171 ns. Set-returning rows save the same work per row.
 - Rows and composites now match pgrx's lazy field reads. A cell whose type has
   no managed conversion (`tsvector`, `macaddr`, `money`, a base type the
   extension declares, or an array of one) is copied exactly instead of failing
@@ -152,7 +171,9 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 - Windows bridges now compile as C11. PostgreSQL 19's headers use `_Noreturn`
   and `alignas`, which MSVC accepts only under `/std:c11`; the layout probe and
   the extension bridge compile lacked it, so the Windows 19 cell failed before
-  testing. Two Windows tests that failed under load now wait for the condition
+  testing. With that fixed the cell builds and passes every module except the
+  integration tests, whose allocator fixture compiled its own C helper the same
+  way; it now passes the flag too. Two Windows tests that failed under load now wait for the condition
   they check: a regression driver deleted right after it exits, and a parallel
   aggregate whose late worker found no blocks left to scan.
 - Editors now fix the two most common entry-method errors. ANKUS033 offers
@@ -662,7 +683,7 @@ review's findings are fixed or kept by documented design.
 1. Resolve discovered correctness and CI failures before accepting affected work, including the intermittent macOS PostgreSQL 19 `AllocSetCheck` fault if it recurs.
 2. Complete every pgrx 0.19.3 release-delta gate, including deterministic header discovery/regeneration, newly exposed native contracts, all CLI/configuration/output forwarding and allocation/shared-memory/varlena audits. Refresh evidence against the corrected current source.
 3. Finish supported-major/platform coverage: Intel macOS on 13–17 and 19 beta (now dispatched weekly) and Windows on 19 beta (a source build in progress).
-4. Finish the final API-by-API inventory audit.
+4. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
 5. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees.
 6. Close remaining CLI, account/privilege and platform-installation contracts.
 7. Complete framework/discovery support, representative samples and the final documentation review.

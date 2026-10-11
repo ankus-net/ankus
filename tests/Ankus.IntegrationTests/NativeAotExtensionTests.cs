@@ -119,6 +119,18 @@ public sealed class NativeAotExtensionTests(TestContext context)
         }, context.CancellationToken);
 
     /// <summary>
+    /// A context borrowed by its native address and the owner of an allocation are the same context as the original
+    /// handle, and an address that is not a context is rejected without losing the backend.
+    /// </summary>
+    [TestMethod]
+    public Task MemoryContextsResolveFromNativeAddresses()
+        => PostgresFixture.Cluster.RunInTransactionAsync(nameof(MemoryContextsResolveFromNativeAddresses), async (connection, transaction, token) =>
+        {
+            await using var command = new NpgsqlCommand("SELECT datatype.memory_context_native_address()", connection, transaction);
+            Assert.AreEqual("True|Ankus native address|ArgumentException|True", Assert.IsInstanceOfType<string>(await command.ExecuteScalarAsync(token)));
+        }, context.CancellationToken);
+
+    /// <summary>
     /// Verifies PostgreSQL's STRICT contract for either or both null operands.
     /// </summary>
     /// <param name="left">The nullable first operand.</param>

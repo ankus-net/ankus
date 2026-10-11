@@ -25,4 +25,12 @@ public static class PgInterrupts
     /// <exception cref="InvalidOperationException">No backend callback is active, or a spinlock or scoped shared-memory borrow forbids backend access.</exception>
     /// <exception cref="PgQueryCanceledException">PostgreSQL has canceled the current query.</exception>
     public static void Check() => NativeMemoryContext.CheckInterrupts();
+
+    /// <summary>
+    /// Gets whether PostgreSQL has a pending interrupt, such as a query cancellation or a shutdown request, without
+    /// processing it. Call <see cref="Check"/> to process it. Reading the flag does not enter PostgreSQL, so it is
+    /// allowed while a spinlock or scoped shared-memory borrow is held.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">No backend callback is active.</exception>
+    public static bool IsPending => NativeMemoryContext.IsInterruptPending();
 }

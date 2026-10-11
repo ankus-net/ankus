@@ -74,6 +74,23 @@ public sealed class PgTupleDescriptor
     }
 
     /// <summary>
+    /// Copies a native tuple descriptor, such as one a hook or custom scan receives, as pgrx's
+    /// <c>PgTupleDesc::from_pg_copy</c> does.
+    /// </summary>
+    /// <param name="tupleDescriptor">The native TupleDesc address.</param>
+    /// <returns>An owned descriptor.</returns>
+    /// <remarks>
+    /// The caller must supply the address of a live descriptor with a row type in this backend; any other address is
+    /// undefined behavior.
+    /// </remarks>
+    [NativeUnsafeAccess]
+    public static PgTupleDescriptor DangerousCopy(nint tupleDescriptor)
+    {
+        ArgumentOutOfRangeException.ThrowIfZero(tupleDescriptor);
+        return NativeBackend.CopyNativeTuple(tupleDescriptor, 0).Descriptor;
+    }
+
+    /// <summary>
     /// Creates a nonnull tuple whose physical fields are all SQL NULL. It may be populated before native validation.
     /// </summary>
     /// <returns>A detached mutable tuple.</returns>

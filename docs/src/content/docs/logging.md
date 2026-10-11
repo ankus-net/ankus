@@ -168,6 +168,11 @@ on subsequent checks even after a managed catch.
 Call it on the active backend thread. A task or thread-pool continuation has no
 backend capability. Release spinlock and shared-memory guards before polling.
 
+`PgInterrupts.IsPending` reports whether an interrupt is waiting without processing
+it, as pgrx's `interrupt_pending()` does. Reading it never enters PostgreSQL, so it
+is allowed while a spinlock or scoped shared-memory borrow is held. Use it to leave a
+critical section early, then call `Check()` to process the interrupt.
+
 `Fatal` and `Panic` also unwind managed code before reporting at the native
 boundary. Their severity and diagnostics remain pending even if a
 `catch (Exception)` block swallows the managed exception or a subtransaction

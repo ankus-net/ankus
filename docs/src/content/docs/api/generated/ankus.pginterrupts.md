@@ -46,3 +46,24 @@ A worker transaction retains cancellation until rollback; its caller can then ha
 and continue through [RunTransaction(Action)](/api/ankus.pgbackgroundworker/#member-cc4c154898bd56ae).
 An idle worker outside a transaction can handle cancellation from this check and continue;
 the completed check owns no transaction resources requiring rollback. Other failures remain unrecovered.
+
+
+## Properties
+
+<a id="member-94c4fe8ae11628d9"></a>
+
+### IsPending
+
+Gets whether PostgreSQL has a pending interrupt, such as a query cancellation or a shutdown request, without
+processing it. Call [Check()](/api/ankus.pginterrupts/#member-7f3f063d086acd2d) to process it. Reading the flag does not enter PostgreSQL, so it is
+allowed while a spinlock or scoped shared-memory borrow is held.
+
+```csharp
+public static bool IsPending { get; }
+```
+
+Value: [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
+
+Exceptions:
+
+- [InvalidOperationException](https://learn.microsoft.com/dotnet/api/system.invalidoperationexception): No backend callback is active.

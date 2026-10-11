@@ -371,6 +371,50 @@ internal static class NativeTupleBridge
                     ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT), errmsg("Composite array type does not exist")));
                 result->text.integral = type;
             }
+            else if (request->scalar_operation == 3 || request->scalar_operation == 4)
+            {
+                /* Copies a caller-supplied native descriptor, and with operation 4 a heap tuple of that shape.
+                 * The caller vouches for both addresses. */
+                TupleDesc descriptor = (TupleDesc) (uintptr_t) request->parameters[0].value.integral;
+                HeapTuple tuple = request->scalar_operation == 4 ? (HeapTuple) (uintptr_t) request->parameters[1].value.integral : NULL;
+                Datum *values = NULL;
+                bool *nulls = NULL;
+                AnkusValue input = {0};
+                AnkusInputBuffer owned = {0};
+                if (descriptor == NULL || descriptor->natts < 0 || descriptor->natts > MaxTupleAttributeNumber ||
+                    !OidIsValid(descriptor->tdtypeid))
+                    ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("The address is not a tuple descriptor with a row type")));
+                if (request->scalar_operation == 4)
+                {
+                    if (tuple == NULL || tuple->t_data == NULL || HeapTupleHeaderGetNatts(tuple->t_data) > descriptor->natts)
+                        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("The heap tuple does not match its descriptor")));
+                    values = palloc(sizeof(Datum) * Max(descriptor->natts, 1));
+                    nulls = palloc(sizeof(bool) * Max(descriptor->natts, 1));
+                    heap_deform_tuple(tuple, descriptor, values, nulls);
+                }
+
+                ankus_tuple_transport(descriptor, descriptor->tdtypeid, values, nulls, &input, &owned);
+                result->text = input;
+                result->text.data = NULL;
+                ankus_copy_owned(&result->text, input.data, input.length);
+                ankus_free_input(&owned);
+            }
+            else if (request->scalar_operation == 5)
+            {
+                /* Forms a native heap tuple in the destination context from a managed composite. */
+                const AnkusParameter *parameter = &request->parameters[0];
+                MemoryContext target = ankus_datum_context(request->result_context, request->result_generation);
+                HeapTupleHeader header = DatumGetHeapTupleHeader(ankus_write_tuple(&parameter->value, parameter->type_oid, NULL));
+                HeapTupleData source = {0};
+                MemoryContext previous;
+                source.t_len = HeapTupleHeaderGetDatumLength(header);
+                ItemPointerSetInvalid(&source.t_self);
+                source.t_tableOid = InvalidOid;
+                source.t_data = header;
+                previous = MemoryContextSwitchTo(target);
+                result->text.integral = (int64) (uintptr_t) heap_copytuple(&source);
+                MemoryContextSwitchTo(previous);
+            }
             else
             {
                 Oid type;

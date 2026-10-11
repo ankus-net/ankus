@@ -366,6 +366,10 @@ public sealed class FunctionCallTests(TestContext context)
         PostgresException mismatch = await ErrorAsync(connection, "SELECT datatype.call_wrong_result('pg_temp.writes')", token);
         Assert.AreEqual(PostgresErrorCodes.DatatypeMismatch, mismatch.SqlState);
         Assert.AreEqual(0L, await ScalarAsync<long>(connection, "SELECT count(*) FROM pg_temp.call_writes", token));
+        string internalOid = byOid ? "'pg_catalog.array_agg_transfn(internal,anynonarray)'::regprocedure::oid" : "0::oid";
+        // Current PostgreSQL minor releases reject the call while resolving the name; Ankus rejects it on older ones.
+        Assert.AreEqual("0A000|42",
+            await ScalarAsync<string>(connection, $"SELECT datatype.call_internal({internalOid})", token));
         string oid = byOid ? "'pg_temp.fails()'::regprocedure::oid" : "0::oid";
         Assert.AreEqual("P7801|call failed|owned detail|owned hint|1|42", await ScalarAsync<string>(connection, $"SELECT datatype.call_recover('pg_temp.fails',{oid})", token));
         Assert.AreEqual(0L, await ScalarAsync<long>(connection, "SELECT count(*) FROM pg_temp.call_writes", token));

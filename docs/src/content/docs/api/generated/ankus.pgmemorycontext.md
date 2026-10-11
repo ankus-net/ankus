@@ -504,6 +504,36 @@ Returns: <code>PgNativeBox&lt;T&gt;</code>
 
 The individually disposable uninitialized owner.
 
+<a id="member-2362862ed56247fe"></a>
+
+### DangerousBorrow(nint)
+
+Borrows a native MemoryContext address, such as a function's <code>fn_mcxt</code> obtained through raw bindings, so
+the managed allocation, scoping and callback APIs can use it, as pgrx's <code>PgMemoryContexts::For</code> does.
+
+```csharp
+[NativeUnsafeAccess]
+public static PgMemoryContext DangerousBorrow(nint context)
+```
+
+Parameters:
+
+`context` — [nint](https://learn.microsoft.com/dotnet/api/system.intptr)
+
+The native MemoryContext address.
+
+Returns: [PgMemoryContext](/api/ankus.pgmemorycontext/)
+
+A borrowed handle that does not delete the context when disposed.
+
+Exceptions:
+
+- [ArgumentException](https://learn.microsoft.com/dotnet/api/system.argumentexception): The address is null or not a memory context.
+
+The caller must supply the address of a live context in this backend. Ankus checks only its node tag, so a
+dangling or foreign address is undefined behavior. The handle survives a reset and becomes stale when PostgreSQL
+deletes the context.
+
 <a id="member-0a639879332d5c81"></a>
 
 ### DangerousBorrow&lt;T&gt;(void*)
@@ -567,6 +597,51 @@ A borrowed view, or null without backend access for a null address.
 No allocator ownership is inferred. The caller guarantees the entire extent remains accessible
 and honors shorter external lifetimes. Typed casts retain this extent and the captured generation;
 a cast never increases the caller's original storage guarantee.
+
+<a id="member-3e80f52238ce5439"></a>
+
+### DangerousGetOwner(nint)
+
+Finds the context that owns a palloc'd allocation, as PostgreSQL's <code>GetMemoryChunkContext</code> and pgrx's
+<code>PgMemoryContexts::of</code> do.
+
+```csharp
+[NativeUnsafeAccess]
+public static PgMemoryContext DangerousGetOwner(nint allocation)
+```
+
+Parameters:
+
+`allocation` — [nint](https://learn.microsoft.com/dotnet/api/system.intptr)
+
+The address palloc returned.
+
+Returns: [PgMemoryContext](/api/ankus.pgmemorycontext/)
+
+A borrowed handle for the owning context.
+
+Exceptions:
+
+- [ArgumentException](https://learn.microsoft.com/dotnet/api/system.argumentexception): The address is null, misaligned or not owned by a memory context.
+
+The caller must supply an address returned by PostgreSQL's allocator that has not been freed; any other address,
+including one inside an allocation, is undefined behavior. A Bump context does not record its chunks' owner, so
+its allocations are not supported.
+
+<a id="member-4aa1bb1f57a0080e"></a>
+
+### DangerousGetPointer()
+
+Gets the native MemoryContext address for raw PostgreSQL calls, as pgrx's <code>PgMemoryContexts::value</code> does.
+
+```csharp
+[NativeUnsafeAccess]
+public nint DangerousGetPointer()
+```
+
+Returns: [nint](https://learn.microsoft.com/dotnet/api/system.intptr)
+
+The address, valid until the context is reset or deleted.
 
 <a id="member-68628cf191ce64b4"></a>
 

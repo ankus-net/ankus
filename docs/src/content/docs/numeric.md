@@ -52,6 +52,11 @@ Operators `+`, `-`, `*`, `/`, `%`, and unary `-` use PostgreSQL's numeric routin
 Methods include `Abs`, `Round`, `Truncate`, `Ceiling`, `Floor`, `Sqrt`, `Exp`,
 `Log`, `Pow`, `GreatestCommonDivisor`, and `LeastCommonMultiple`.
 
+`value.Log(b)` is the logarithm of `value` in base `b`, so `8.Log(2)` is 3, as
+SQL's `log(2, 8)`. pgrx's `log(base)` passes its arguments to PostgreSQL in the
+other order and returns the logarithm of `base` in base `value`; reverse the
+operands when porting such a call.
+
 ```csharp
 [PgFunction]
 public static PgNumeric Price(PgNumeric value) => value.Rescale(precision: 10, scale: 2);

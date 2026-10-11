@@ -107,13 +107,19 @@ public sealed class SpiRow
     /// Gets a typed cell without implicit numeric or textual conversion. Temporal cells also accept exact .NET conversions.
     /// SQL NULL is accepted for nullable value types and reference types.
     /// A <see cref="PgDatumTypeAttribute"/> type, or an array of one, uses its reader when the cell has exactly the mapped
-    /// PostgreSQL type. Reading PgRelation or its arrays opens fresh references that the caller must dispose.
+    /// PostgreSQL type. <see cref="PgDatum"/> rebuilds the cell, including SQL NULL, as a datum of its type owned by the
+    /// current callback. Reading PgRelation or its arrays opens fresh references that the caller must dispose.
     /// </summary>
     /// <typeparam name="T">The expected managed type.</typeparam>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The cell value.</returns>
     public T Get<T>(int ordinal)
     {
+        if (typeof(T) == typeof(PgDatum))
+        {
+            return (T)(object)ReadRaw(_values[ordinal], GetTypeOid(ordinal));
+        }
+
         if (PgDatumRegistry.Find(typeof(T)) is { } mapping)
         {
             return Convert<T>(mapping.ReadCell(_values[ordinal], GetTypeOid(ordinal)));
@@ -140,18 +146,19 @@ public sealed class SpiRow
     /// </summary>
     /// <param name="name">The column name.</param>
     /// <returns>The zero-based ordinal.</returns>
-    public int GetOrdinal(string name)
-    {
-        ArgumentNullException.ThrowIfNull(name);
-        for (int index = 0; index < _columns.Count; index++)
-        {
-            if (_columns[index].Name == name)
-            {
-                return index;
-            }
-        }
+    public int GetOrdinal(string name) => SpiColumn.GetOrdinal(_columns, name);
 
-        throw new ArgumentException($"The SPI result has no column named '{name}'.", nameof(name));
+    /// <summary>
+    /// Rebuilds a row or composite cell as a datum of its exact type owned by the current callback, as pgrx's raw cell
+    /// reads return a datum with its type and NULL flag.
+    /// </summary>
+    /// <param name="cell">The managed cell, or null for SQL NULL.</param>
+    /// <param name="typeOid">The cell's PostgreSQL type OID.</param>
+    /// <returns>The rebuilt datum.</returns>
+    internal static PgDatum ReadRaw(object? cell, uint typeOid)
+    {
+        var lifetime = new PgDatumLifetime(PgMemoryContext.Current);
+        return cell is null ? new PgDatum(0, typeOid, true, lifetime) : NativeBackend.RebuildCell(cell, typeOid, lifetime);
     }
 
     /// <summary>

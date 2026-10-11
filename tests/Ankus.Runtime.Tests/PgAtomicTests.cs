@@ -405,6 +405,12 @@ public sealed unsafe class PgAtomicTests
         Assert.AreEqual(T.CreateChecked(0x3A), storage.Value, typeof(T).Name);
         Assert.AreEqual(T.CreateChecked(0x3A), storage.Xor(T.CreateChecked(0x66)), typeof(T).Name);
         Assert.AreEqual(T.CreateChecked(0x5C), storage.Value, typeof(T).Name);
+        Assert.AreEqual(T.CreateChecked(0x5C), storage.Max(T.CreateChecked(0x10)), typeof(T).Name);
+        Assert.AreEqual(T.CreateChecked(0x5C), storage.Max(T.MaxValue), typeof(T).Name);
+        Assert.AreEqual(T.MaxValue, storage.Value, typeof(T).Name);
+        Assert.AreEqual(T.MaxValue, storage.Min(T.MinValue), typeof(T).Name);
+        Assert.AreEqual(T.MinValue, storage.Min(T.Zero), typeof(T).Name);
+        Assert.AreEqual(T.MinValue, storage.Value, typeof(T).Name);
         fixture.AssertGuards(sizeof(T));
     }
 

@@ -178,7 +178,17 @@ the combined duration with zero, so one month minus thirty days has sign zero.
 otherwise negates every component together. One month minus thirty-one days
 becomes minus one month plus thirty-one days, which compares as one day, and
 equivalent intervals have equivalent absolute values. Negating a component equal
-to its signed minimum value throws `OverflowException`.
+to its signed minimum value throws `OverflowException`. pgrx's `abs` and `signum`
+work on each component separately instead, so they differ from these for mixed
+signs: pgrx makes one month minus thirty-one days positive one month plus
+thirty-one days.
+
+`ToTime()` keeps the time component wrapped into one day and ignores months and
+days, as PostgreSQL's `interval::time` cast does; an infinite interval raises
+`22008`. `PgTime.ToInterval()` is the reverse cast. `PgDate.PostgresEpochJulianDay`,
+`PgDate.UnixEpochJulianDay`, `PgTime.MicrosecondsPerSecond` and
+`PgTime.MicrosecondsPerDay` give the calendar constants pgrx exports, and
+`part.ToPostgresName()` gives a `PgDateTimePart`'s SQL spelling, such as `isoyear`.
 
 `PgInterval.PositiveInfinity` and `NegativeInfinity` require PostgreSQL 17 or
 later. Their finite component properties are zero; check `IsFinite` first.
@@ -233,8 +243,10 @@ text with the same components under every `IntervalStyle`.
 
 `PgTimestampTz.ToIsoString(zone)` formats an instant in an explicit timezone. Its
 offset comes from that instant, including historical offsets and daylight-saving
-transitions. `PgTimeTz.ToIsoString(zone)` uses current-date rules because a time
-with offset has no stored date.
+transitions. `PgTimeTz.ToIsoString(zone)` converts the time into that zone using
+current-date rules, because a time with offset has no stored date. pgrx's version
+keeps the stored offset, because PostgreSQL's JSON encoder ignores the zone for
+`timetz`.
 
 ## Timezones and fields
 

@@ -90,6 +90,37 @@ public sealed class PgDatum
     }
 
     /// <summary>
+    /// Converts a managed value to a datum of its PostgreSQL type, allocated in the destination context, as pgrx's
+    /// <c>IntoDatum</c> does. The value's type selects the PostgreSQL type, as for <see cref="SpiParameter.Create{T}(T)"/>,
+    /// including a <see cref="PgDatumTypeAttribute"/> mapping. A null value gives SQL NULL of that type.
+    /// </summary>
+    /// <typeparam name="T">The managed type, which selects the PostgreSQL type when the value is null.</typeparam>
+    /// <param name="value">The value.</param>
+    /// <param name="context">The destination context whose reset or deletion ends the datum's lifetime.</param>
+    /// <returns>The converted datum.</returns>
+    public static PgDatum Create<T>(T value, PgMemoryContext context) => Create(SpiParameter.Create(value), context);
+
+    /// <summary>
+    /// Converts a typed value to a datum of its declared PostgreSQL type, allocated in the destination context. A domain's
+    /// constraints apply as they do to an assignment, including to SQL NULL.
+    /// </summary>
+    /// <param name="value">The typed value, which can be a typed SQL NULL.</param>
+    /// <param name="context">The destination context whose reset or deletion ends the datum's lifetime.</param>
+    /// <returns>The converted datum.</returns>
+    public static PgDatum Create(SpiParameter value, PgMemoryContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        if (value.TypeOid == 0)
+        {
+            throw new ArgumentException("The value must be created with an explicit managed or PostgreSQL type.", nameof(value));
+        }
+
+        return value.Value is PgDatum datum && datum.TypeOid == value.TypeOid
+            ? datum.CopyTo(context)
+            : NativeBackend.CreateDatum(value, new PgDatumLifetime(context));
+    }
+
+    /// <summary>
     /// Borrows a caller-supplied native Datum word using an explicit context lifetime anchor.
     /// </summary>
     /// <param name="bits">A correctly represented by-value Datum or a valid by-reference address.</param>

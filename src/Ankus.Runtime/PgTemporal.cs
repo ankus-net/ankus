@@ -64,7 +64,12 @@ internal static class PgTemporal
     /// <summary>
     /// Maps public field names to PostgreSQL's spellings without culture-sensitive enum formatting.
     /// </summary>
-    internal static SpiParameter Part(PgDateTimePart part) => SpiParameter.Create(part switch
+    internal static SpiParameter Part(PgDateTimePart part) => SpiParameter.Create(PartName(part));
+
+    /// <summary>
+    /// Gets PostgreSQL's spelling of a field name.
+    /// </summary>
+    internal static string PartName(PgDateTimePart part) => part switch
     {
         PgDateTimePart.Century => "century",
         PgDateTimePart.Day => "day",
@@ -89,7 +94,7 @@ internal static class PgTemporal
         PgDateTimePart.Week => "week",
         PgDateTimePart.Year => "year",
         _ => throw new ArgumentOutOfRangeException(nameof(part)),
-    });
+    };
 
     /// <summary>
     /// Contains the .NET tick count at PostgreSQL's epoch, 2000-01-01 midnight.

@@ -9,7 +9,9 @@ internal static class NativeTriggerBridge
     /// Gets trigger scope state and transition registration used by SPI connections and cursors.
     /// </summary>
     internal const string Declarations = """
+        #include "access/sysattr.h"
         #include "commands/trigger.h"
+        #include "nodes/bitmapset.h"
         #include "utils/rel.h"
         #include "utils/memutils.h"
 
@@ -119,6 +121,34 @@ internal static class NativeTriggerBridge
             pfree(unavailable);
         }
 
+        /* The columns named by UPDATE OF and the columns an UPDATE assigns, as zero-based
+         * ordinals. PostgreSQL reports only the second for UPDATE events. */
+        static void
+        ankus_trigger_columns(TriggerData *trigger, AnkusValue *named, AnkusValue *updated, AnkusInputBuffer *owned)
+        {
+            Trigger *definition = trigger->tg_trigger;
+            Datum *values = palloc(sizeof(Datum) * Max(definition->tgnattr, 1));
+            int count = 0;
+            int member = -1;
+            for (int index = 0; index < definition->tgnattr; index++)
+                values[index] = Int32GetDatum(definition->tgattr[index] - 1);
+            ankus_read_array(PointerGetDatum(construct_array(values, definition->tgnattr, INT4OID, sizeof(int32), true, TYPALIGN_INT)),
+                named, owned);
+            updated->is_null = !TRIGGER_FIRED_BY_UPDATE(trigger->tg_event);
+            if (updated->is_null)
+                return;
+            values = palloc(sizeof(Datum) * Max(bms_num_members(trigger->tg_updatedcols), 1));
+            while ((member = bms_next_member(trigger->tg_updatedcols, member)) >= 0)
+            {
+                AttrNumber attribute = member + FirstLowInvalidHeapAttributeNumber;
+                if (attribute > 0)
+                    values[count++] = Int32GetDatum(attribute - 1);
+            }
+
+            ankus_read_array(PointerGetDatum(construct_array(values, count, INT4OID, sizeof(int32), true, TYPALIGN_INT)),
+                updated, owned);
+        }
+
         static HeapTuple
         ankus_trigger_result(const AnkusValue *value, TriggerData *trigger)
         {
@@ -180,7 +210,7 @@ internal static class NativeTriggerBridge
             AnkusTriggerScope *previous_scope = ankus_trigger_scope;
             Oid previous_function = ankus_function_oid;
             MemoryContext caller = CurrentMemoryContext;
-            AnkusValue arguments[12] = {0};
+            AnkusValue arguments[15] = {0};
             AnkusValue *result;
             AnkusError *error;
             volatile HeapTuple output = NULL;
@@ -233,6 +263,9 @@ internal static class NativeTriggerBridge
 
                 ankus_tuple_transport(RelationGetDescr(trigger->tg_relation), RelationGetDescr(trigger->tg_relation)->tdtypeid,
                     NULL, NULL, &arguments[11], &owned);
+                ankus_trigger_columns(trigger, &arguments[12], &arguments[13], &owned);
+                arguments[14].integral = trigger->tg_trigger->tgconstraint;
+                arguments[14].auxiliary1 = (trigger->tg_trigger->tgdeferrable ? 1 : 0) | (trigger->tg_trigger->tginitdeferred ? 2 : 0);
                 ANKUS_MANAGED_INVOKE(status, error, callback(arguments, result, error, ankus_spi_execute, &memory));
                 if (status != 0)
                     ankus_raise_error(error);

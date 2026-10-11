@@ -25,4 +25,24 @@ public sealed class SpiColumn
     /// Gets the declared PostgreSQL type OID.
     /// </summary>
     public uint TypeOid { get; }
+
+    /// <summary>
+    /// Resolves an exact, case-sensitive column name to its zero-based ordinal. Duplicate names resolve to the first column.
+    /// </summary>
+    /// <param name="columns">The result's columns.</param>
+    /// <param name="name">The column name.</param>
+    /// <returns>The zero-based ordinal.</returns>
+    internal static int GetOrdinal(IReadOnlyList<SpiColumn> columns, string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        for (int index = 0; index < columns.Count; index++)
+        {
+            if (columns[index].Name == name)
+            {
+                return index;
+            }
+        }
+
+        throw new ArgumentException($"The SPI result has no column named '{name}'.", nameof(name));
+    }
 }

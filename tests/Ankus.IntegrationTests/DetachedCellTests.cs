@@ -83,6 +83,30 @@ public sealed class DetachedCellTests(TestContext context)
     }
 
     /// <summary>
+    /// Row and composite cells read as raw datums of their exact type, including SQL NULL, and an empty result still
+    /// resolves its column names.
+    /// </summary>
+    [TestMethod]
+    public async Task CellsReadAsRawDatums()
+    {
+        await using NpgsqlConnection connection = await Open();
+        Assert.AreEqual("1|'x':1 'y':2|True|True|'b':2|True|True|7", await Scalar<string>(connection,
+            "SELECT detached_cells.raw_cells(ROW(NULL, NULL, 'y:2 x:1', NULL, NULL, NULL, NULL, NULL)::detached_cells.unconverted)"));
+    }
+
+    /// <summary>
+    /// A composite round-trips through a native heap tuple and descriptor, and converts to a raw datum with the same text.
+    /// </summary>
+    [TestMethod]
+    public async Task CompositesRoundTripThroughNativeTuples()
+    {
+        await using NpgsqlConnection connection = await Open();
+        string[] parts = (await Scalar<string>(connection, $"SELECT detached_cells.native_tuples({Input})")).Split('|');
+        Assert.AreEqual("5|'x':1 'y':2|before|8|True", string.Join('|', parts[..5]));
+        Assert.AreEqual(await Scalar<string>(connection, $"SELECT ({Input})::text"), string.Join('|', parts[5..]));
+    }
+
+    /// <summary>
     /// A record built from a mapped parameter and a raw datum reads both fields back through their readers.
     /// </summary>
     [TestMethod]

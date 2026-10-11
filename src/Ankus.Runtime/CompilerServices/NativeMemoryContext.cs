@@ -96,6 +96,19 @@ public static unsafe class NativeMemoryContext
     }
 
     /// <summary>
+    /// Reads callback-scoped interrupt flags without entering PostgreSQL. On Windows, a queued, unblocked signal also
+    /// counts, because PostgreSQL turns it into a pending interrupt at its next check.
+    /// </summary>
+    /// <returns>Whether an interrupt is pending.</returns>
+    internal static bool IsInterruptPending()
+    {
+        _ = Provider;
+        NativeMemoryApi* api = (NativeMemoryApi*)s_api;
+        return (api->_interruptPending != null && Volatile.Read(ref *api->_interruptPending) != 0) ||
+            (api->_signalQueue != null && (Volatile.Read(ref *api->_signalQueue) & ~Volatile.Read(ref *api->_signalMask)) != 0);
+    }
+
+    /// <summary>
     /// Polls callback-scoped flags before entering PostgreSQL's guarded interrupt handler.
     /// </summary>
     internal static void CheckInterrupts()
@@ -342,6 +355,18 @@ internal enum NativeMemoryOperation
     /// Retains terminal diagnostics in the current native callback frame without entering PostgreSQL reporting.
     /// </summary>
     RecordTerminal = 39,
+    /// <summary>
+    /// Registers a caller-supplied native MemoryContext address.
+    /// </summary>
+    BorrowNative = 40,
+    /// <summary>
+    /// Registers the context that owns a caller-supplied allocation.
+    /// </summary>
+    ChunkOwner = 41,
+    /// <summary>
+    /// Gets a registered context's native MemoryContext address.
+    /// </summary>
+    NativePointer = 42,
 }
 
 /// <summary>

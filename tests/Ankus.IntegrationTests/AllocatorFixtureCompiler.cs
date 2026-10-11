@@ -137,7 +137,7 @@ internal static class AllocatorFixtureCompiler
         if (OperatingSystem.IsWindows())
         {
             compiler = nativeCompiler ?? "cl.exe";
-            arguments = ["/nologo", "/LD", "/O2", "/MD", "/WX",
+            arguments = ["/nologo", "/std:c11", "/LD", "/O2", "/MD", "/WX",
                 "/I" + installation.ServerIncludeDirectory,
                 "/I" + installation.IncludeDirectory,
                 "/I" + Path.Combine(installation.ServerIncludeDirectory, "port", "win32"),

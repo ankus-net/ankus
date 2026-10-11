@@ -78,6 +78,13 @@ cleanup, and garbage collection. `Clone()` copies the cell slots. Nested tuples,
 arrays, and binary buffers remain shared managed references, so replace or copy
 those values when independent mutation is needed.
 
+Hooks and custom scans receive native rows. `PgHeapTuple.DangerousCopy(heapTuple,
+tupleDescriptor)` and `PgTupleDescriptor.DangerousCopy(tupleDescriptor)` copy them
+from their addresses, as pgrx's `from_heap_tuple` and `PgTupleDesc::from_pg_copy`
+do. `tuple.DangerousToNative(context)` forms a native `HeapTuple` in a memory
+context, as pgrx's `into_pg` does, and `PgDatum.Create(tuple, context)` gives its
+composite datum. The addresses must belong to live values in this backend.
+
 Native reconstruction validates the current type and physical layout. A tuple
 captured before incompatible `ALTER TYPE` or drop/recreate operations cannot be
 silently reinterpreted. PostgreSQL assignment coercion applies field type

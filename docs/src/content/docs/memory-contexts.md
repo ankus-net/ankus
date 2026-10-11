@@ -217,6 +217,16 @@ replacement; the reported byte change includes both operations.
 
 ## Borrowed native allocators
 
+`PgMemoryContext.DangerousBorrow(address)` wraps a native `MemoryContext` address,
+such as one obtained through raw bindings, as pgrx's `PgMemoryContexts::For` does.
+The handle can allocate, run code and register callbacks; it survives a reset and
+becomes stale when the context is deleted. `DangerousGetOwner(allocation)` finds the
+context that owns a palloc'd address, as `GetMemoryChunkContext` does, and
+`DangerousGetPointer()` returns a handle's address for raw PostgreSQL calls. Ankus
+checks only the context's node tag, so the address must belong to a live context
+or allocation in this backend. A Bump context does not record its chunks' owner, so
+`DangerousGetOwner` cannot be used with its allocations.
+
 `Create` and `RunTransient` construct AllocSet contexts. Borrowed handles can also
 refer to PostgreSQL's Slab, Generation, or Bump contexts created by native code.
 Their operations retain the native allocator's restrictions:

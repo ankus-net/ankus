@@ -652,6 +652,25 @@ public override string ToString()
 
 Returns: [string](https://learn.microsoft.com/dotnet/api/system.string)
 
+<a id="member-29e142c770a927bd"></a>
+
+### ToTime()
+
+Gets the time-of-day part of the interval's time component, wrapped into one day, as PostgreSQL's
+<code>interval::time</code> cast does. Months and days are ignored.
+
+```csharp
+public PgTime ToTime()
+```
+
+Returns: [PgTime](/api/ankus.pgtime/)
+
+The time of day.
+
+Exceptions:
+
+- [PgException](/api/ankus.pgexception/): The interval is infinite (SQLSTATE 22008).
+
 <a id="member-46349a07bbffdfdc"></a>
 
 ### ToTimeSpan()

@@ -40,6 +40,20 @@ public static class PgEnums
         => NativeBackend.EnumValueOid(GetTypeOid<T>(), GetLabel(value));
 
     /// <summary>
+    /// Resolves a label of any enum type, including one without a generated managed mapping, to its pg_enum value OID.
+    /// Use <see cref="PgTypes.GetOid(string)"/> to find the type by name. PostgreSQL validates the label and transaction
+    /// visibility on the active backend.
+    /// </summary>
+    /// <param name="typeOid">The enum type OID.</param>
+    /// <param name="label">The exact case-sensitive label.</param>
+    /// <returns>The pg_enum row OID.</returns>
+    public static uint GetValueOid(uint typeOid, string label)
+    {
+        ArgumentNullException.ThrowIfNull(label);
+        return NativeBackend.EnumValueOid(typeOid, label);
+    }
+
+    /// <summary>
     /// Looks up an enum datum OID on the active backend and copies its label, type and sort order.
     /// This also supports enum types without a generated managed mapping.
     /// </summary>

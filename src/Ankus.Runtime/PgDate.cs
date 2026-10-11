@@ -36,6 +36,16 @@ public readonly partial record struct PgDate : IComparable<PgDate>
     public static PgDate PositiveInfinity => new(int.MaxValue);
 
     /// <summary>
+    /// The Julian day number of PostgreSQL's epoch, 2000-01-01.
+    /// </summary>
+    public const int PostgresEpochJulianDay = PgTemporal.EpochJulianDay;
+
+    /// <summary>
+    /// The Julian day number of the Unix epoch, 1970-01-01.
+    /// </summary>
+    public const int UnixEpochJulianDay = PgTemporal.EpochJulianDay - PgTemporal.UnixEpochDays;
+
+    /// <summary>
     /// Gets negative infinity.
     /// </summary>
     public static PgDate NegativeInfinity => new(int.MinValue);

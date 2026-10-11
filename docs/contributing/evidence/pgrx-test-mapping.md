@@ -141,7 +141,8 @@ Deliberate differences are documented where users meet them.
 | --- | --- | --- |
 | test_spi_failure, test_panic_via_spi | Covered | IT SpiCommandBoundaryTests InvalidBindingContextsRecoverTheSameCallback; IT SpiSessionTests FailedCallbackClosesSessionAndPlans; IT SpiTests RecursiveManagedErrorCanBeCaughtByOuterFunction |
 | test_spi_can_nest | Covered | IT SpiSessionTests SessionOperationsPreserveScopeAndResults |
-| test_spi_returns_primitive, _str, _string, test_spi_get_one, test_option | Covered | IT SpiQueryTests ScalarAndRowLimitSemanticsArePreserved, ParametersPreserveValuesAndDeclaredTypes |
+| test_spi_returns_primitive, _str, _string, test_option | Covered | IT SpiQueryTests ScalarAndRowLimitSemanticsArePreserved, ParametersPreserveValuesAndDeclaredTypes |
+| test_spi_get_one | Different | pgrx's `get_one` runs its query with a row limit of 1; Ankus scalar helpers run the whole command and copy the first row, so `INSERT ... RETURNING` inserts every row ([SPI guide](../../src/content/docs/spi.md)). IT SpiQueryTests ExecuteScalarCompletesAllWriteEffects |
 | test_spi_get_two, _three and their failures | Covered | IT SpiScalarTests FirstRowValuesRemainExactAndOwned, ResultErrorsPreserveBackendRecovery. Ankus reads int4 as `int` and rejects widening by design. |
 | test_spi_select_zero_rows | Added | IT SpiEdgeTests SpiBoundaryCasesReportExactOutcomes: a non-nullable read of an empty result reports that the query returned no rows; nullable reads return null |
 | test_spi_run, test_spi_run_with_args | Covered | IT SpiTests ExecuteMutatesCallingTransaction; IT SpiQueryTests BoundParametersRemainData |

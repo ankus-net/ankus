@@ -142,7 +142,8 @@ The cell's current type OID.
 Gets a typed cell without implicit numeric or textual conversion. Temporal cells also accept exact .NET conversions.
 SQL NULL is accepted for nullable value types and reference types.
 A [PgDatumTypeAttribute](/api/ankus.pgdatumtypeattribute/) type, or an array of one, uses its reader when the cell has exactly the mapped
-PostgreSQL type. Reading PgRelation or its arrays opens fresh references that the caller must dispose.
+PostgreSQL type. [PgDatum](/api/ankus.pgdatum/) rebuilds the cell, including SQL NULL, as a datum of its type owned by the
+current callback. Reading PgRelation or its arrays opens fresh references that the caller must dispose.
 
 ```csharp
 public T Get<T>(int ordinal)

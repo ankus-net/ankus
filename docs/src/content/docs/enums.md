@@ -185,6 +185,10 @@ PgEnumInfo info = PgEnums.Lookup(valueOid);
 // info.Label, info.TypeOid, info.ValueOid, info.SortOrder
 ```
 
+For an enum type without a managed mapping, resolve a label by the type's OID:
+`PgEnums.GetValueOid(PgTypes.GetOid("mood"), "happy")`. An unknown label fails with
+SQLSTATE `22P02`, as PostgreSQL's enum input does.
+
 `Lookup` also supports enum types without a managed mapping. Its returned
 information is owned and remains readable after the native catalog tuple has
 been released. Sort positions can be fractional after `ALTER TYPE ADD VALUE`.

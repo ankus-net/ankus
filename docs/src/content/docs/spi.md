@@ -225,7 +225,9 @@ your extension declares, is copied exactly and converted only when you read it,
 as pgrx does. Read it with its [`PgDatumType`](/raw-values/#reusable-scalar-mappings),
 or an array of one: `row.Get<Unsigned24>("value")`. The cell must have exactly the
 mapped type. The indexer and other types throw `NotSupportedException` for such a
-cell, and the rest of the row stays readable. Use `SelectRaw` to read it as a `PgDatum`.
+cell, and the rest of the row stays readable. `row.Get<PgDatum>("value")` rebuilds any
+cell, including SQL NULL, as a raw datum of its type owned by the current callback.
+`result.GetOrdinal(name)` resolves a column even when the query returned no rows.
 
 Results are managed copies. Rows, text, and binary buffers remain valid after
 another SPI command or after the original SPI connection is released.

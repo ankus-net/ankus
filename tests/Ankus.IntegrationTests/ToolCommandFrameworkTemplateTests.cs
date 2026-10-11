@@ -105,8 +105,12 @@ public sealed partial class ToolCommandTests
         // templates differ in their shared-memory identities. Each distinct tree runs once.
         string[] test = ["test", "--report-trx", "-p:AnkusPostgresMajor=" + MajorText()];
         SharedOutput run = await GetSharedOutputAsync(ContentKey(output, ["dotnet", .. test]),
-            shared => TestSharedSolutionAsync(CopySharedSnapshot(output), test, environment, shared), token);
+            shared => TestSharedSolutionAsync(CopySharedSnapshot(output), Name, test, environment, shared), token);
         string solution = run.Directory;
+        run.Listing!.EnsureSuccess("dotnet", ["test", "--list-tests"]);
+        Assert.IsFalse(run.PublishedDuringListing, "Listing tests must not publish the extension or start PostgreSQL.");
+        Assert.Contains("AdditionInsidePostgres", run.Listing.StandardOutput);
+        Assert.Contains("IgnoredNativeCase", run.Listing.StandardOutput);
         run.Result.EnsureSuccess("dotnet", ["test"]);
         XDocument report = XDocument.Load(Directory.GetFiles(solution, "*.trx", SearchOption.AllDirectories).Single());
         XNamespace ns = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010";
@@ -138,18 +142,25 @@ public sealed partial class ToolCommandTests
     }
 
     /// <summary>
-    /// Runs a generated solution's tests in class-owned storage so every case with the same files reads one result.
+    /// Lists, then runs, a generated solution's tests in class-owned storage so every case with the same files reads one
+    /// result. The listing discovers backend cases from the compiled catalog, before anything is published.
     /// </summary>
     /// <param name="solution">The class-owned copy of the generated solution.</param>
+    /// <param name="name">The generated extension's name.</param>
     /// <param name="arguments">The dotnet test arguments that form part of the content key.</param>
     /// <param name="environment">The consumer's process environment.</param>
     /// <param name="token">Cancels the class-owned run.</param>
-    /// <returns>The tested solution and its runner result.</returns>
-    private static async Task<SharedOutput> TestSharedSolutionAsync(string solution, string[] arguments,
+    /// <returns>The tested solution, its runner result and its listing.</returns>
+    private static async Task<SharedOutput> TestSharedSolutionAsync(string solution, string name, string[] arguments,
         IReadOnlyDictionary<string, string?> environment, CancellationToken token)
     {
+        ProcessResult listing = await PackageProcessRunner.RunAsync("dotnet",
+            ["test", "--list-tests", .. arguments.Where(static argument => argument.StartsWith("-p:", StringComparison.Ordinal))],
+            environment, token, workingDirectory: solution);
+        string publish = Path.Combine(solution, "src", name, "bin", "ankus-test-publish");
+        bool published = Directory.Exists(publish) && Directory.EnumerateFileSystemEntries(publish).Any();
         ProcessResult result = await PackageProcessRunner.RunAsync("dotnet", arguments, environment, token, workingDirectory: solution);
-        return new SharedOutput(solution, result);
+        return new SharedOutput(solution, result, listing, published);
     }
 
     /// <summary>

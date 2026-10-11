@@ -57,13 +57,67 @@ Returns: [PgHeapTuple](/api/ankus.pgheaptuple/)
 
 An owned record with a canonical registered type modifier.
 
+<a id="member-1e08da44aafdfb5f"></a>
+
+### DangerousCopy(nint, nint)
+
+Copies a native heap tuple and its descriptor, such as a row a hook or custom scan receives, as pgrx's
+<code>PgHeapTuple::from_heap_tuple</code> does. Cells whose types have no managed conversion are copied exactly.
+
+```csharp
+[NativeUnsafeAccess]
+public static PgHeapTuple DangerousCopy(nint heapTuple, nint tupleDescriptor)
+```
+
+Parameters:
+
+`heapTuple` — [nint](https://learn.microsoft.com/dotnet/api/system.intptr)
+
+The native HeapTuple address.
+
+`tupleDescriptor` — [nint](https://learn.microsoft.com/dotnet/api/system.intptr)
+
+The native TupleDesc address describing the tuple.
+
+Returns: [PgHeapTuple](/api/ankus.pgheaptuple/)
+
+An owned tuple.
+
+The caller must supply live addresses in this backend, and the descriptor must describe the tuple; any other
+address is undefined behavior.
+
+<a id="member-6c47e3cd61997b62"></a>
+
+### DangerousToNative(PgMemoryContext)
+
+Forms a native heap tuple from this composite in a memory context, as pgrx's <code>PgHeapTuple::into_pg</code> does.
+Current domain and type-modifier constraints apply, as they do when PostgreSQL receives the composite.
+
+```csharp
+[NativeUnsafeAccess]
+public nint DangerousToNative(PgMemoryContext context)
+```
+
+Parameters:
+
+`context` — [PgMemoryContext](/api/ankus.pgmemorycontext/)
+
+The destination context whose reset or deletion frees the heap tuple.
+
+Returns: [nint](https://learn.microsoft.com/dotnet/api/system.intptr)
+
+The native HeapTuple address.
+
+The returned address is valid until the context is reset or deleted.
+
 <a id="member-22d26ffee02af29d"></a>
 
 ### Get&lt;T&gt;(int)
 
 Reads a cell with the same strict type and SQL NULL rules as an SPI row.
 A [PgDatumTypeAttribute](/api/ankus.pgdatumtypeattribute/) type, or an array of one, uses its reader when the attribute has exactly the
-mapped PostgreSQL type. Reading PgRelation or its arrays opens fresh references that the caller must dispose.
+mapped PostgreSQL type. [PgDatum](/api/ankus.pgdatum/) rebuilds the cell, including SQL NULL, as a datum of its type owned
+by the current callback. Reading PgRelation or its arrays opens fresh references that the caller must dispose.
 
 ```csharp
 public T Get<T>(int ordinal)

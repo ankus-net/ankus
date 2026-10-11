@@ -110,6 +110,15 @@ internal static class NativeFunctionInvocation
                 ereport(ERROR, (errcode(ERRCODE_UNDEFINED_FUNCTION), errmsg("Function disappeared during lookup")));
             Form_pg_proc procedure = (Form_pg_proc) GETSTRUCT(tuple);
             ankus_function_require_scalar(procedure);
+            /* As for a call by OID: an internal value is a native pointer only its own entry points can interpret. */
+            for (int index = 0; index < procedure->pronargs; index++)
+            {
+                if (procedure->proargtypes.values[index] == INTERNALOID)
+                    ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED), errmsg("An internal argument requires a native entry-point call")));
+            }
+
+            if (expression->funcresulttype == INTERNALOID)
+                ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED), errmsg("An internal result requires a native entry-point call")));
             for (int index = 0; index < request->parameter_count; index++)
             {
                 if (!request->argument_defaults[index])

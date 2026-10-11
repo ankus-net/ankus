@@ -66,7 +66,8 @@ public sealed class PgHeapTuple
     /// <summary>
     /// Reads a cell with the same strict type and SQL NULL rules as an SPI row.
     /// A <see cref="PgDatumTypeAttribute"/> type, or an array of one, uses its reader when the attribute has exactly the
-    /// mapped PostgreSQL type. Reading PgRelation or its arrays opens fresh references that the caller must dispose.
+    /// mapped PostgreSQL type. <see cref="PgDatum"/> rebuilds the cell, including SQL NULL, as a datum of its type owned
+    /// by the current callback. Reading PgRelation or its arrays opens fresh references that the caller must dispose.
     /// </summary>
     /// <typeparam name="T">The requested managed type.</typeparam>
     /// <param name="ordinal">The zero-based physical ordinal.</param>
@@ -74,6 +75,14 @@ public sealed class PgHeapTuple
     public T Get<T>(int ordinal)
     {
         object? cell = GetStoredCell(ordinal);
+        if (typeof(T) == typeof(PgDatum))
+        {
+            PgTupleAttributeInfo attribute = Descriptor.Attributes[ordinal];
+            return attribute.IsDropped
+                ? throw new InvalidOperationException("A dropped tuple attribute has no PostgreSQL type to read.")
+                : (T)(object)SpiRow.ReadRaw(cell, attribute.TypeOid);
+        }
+
         if (PgDatumRegistry.Find(typeof(T)) is { } mapping)
         {
             return SpiRow.Convert<T>(mapping.ReadCell(cell, Descriptor.Attributes[ordinal].TypeOid));
@@ -173,6 +182,39 @@ public sealed class PgHeapTuple
     /// <param name="name">The exact attribute name.</param>
     /// <param name="value">The typed replacement.</param>
     public void Set(string name, SpiParameter value) => Set(Descriptor.GetOrdinal(name), value);
+
+    /// <summary>
+    /// Copies a native heap tuple and its descriptor, such as a row a hook or custom scan receives, as pgrx's
+    /// <c>PgHeapTuple::from_heap_tuple</c> does. Cells whose types have no managed conversion are copied exactly.
+    /// </summary>
+    /// <param name="heapTuple">The native HeapTuple address.</param>
+    /// <param name="tupleDescriptor">The native TupleDesc address describing the tuple.</param>
+    /// <returns>An owned tuple.</returns>
+    /// <remarks>
+    /// The caller must supply live addresses in this backend, and the descriptor must describe the tuple; any other
+    /// address is undefined behavior.
+    /// </remarks>
+    [NativeUnsafeAccess]
+    public static PgHeapTuple DangerousCopy(nint heapTuple, nint tupleDescriptor)
+    {
+        ArgumentOutOfRangeException.ThrowIfZero(heapTuple);
+        ArgumentOutOfRangeException.ThrowIfZero(tupleDescriptor);
+        return NativeBackend.CopyNativeTuple(tupleDescriptor, heapTuple);
+    }
+
+    /// <summary>
+    /// Forms a native heap tuple from this composite in a memory context, as pgrx's <c>PgHeapTuple::into_pg</c> does.
+    /// Current domain and type-modifier constraints apply, as they do when PostgreSQL receives the composite.
+    /// </summary>
+    /// <param name="context">The destination context whose reset or deletion frees the heap tuple.</param>
+    /// <returns>The native HeapTuple address.</returns>
+    /// <remarks>The returned address is valid until the context is reset or deleted.</remarks>
+    [NativeUnsafeAccess]
+    public nint DangerousToNative(PgMemoryContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return NativeBackend.FormNativeTuple(this, new PgDatumLifetime(context));
+    }
 
     /// <summary>
     /// Copies the cell slots while sharing immutable metadata and nested reference values.

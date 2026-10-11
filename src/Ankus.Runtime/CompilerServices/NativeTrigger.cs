@@ -3,16 +3,16 @@ namespace Ankus.CompilerServices;
 public unsafe partial struct NativeValue
 {
     /// <summary>
-    /// Copies a validated twelve-slot native trigger invocation into owned managed context and row values.
+    /// Copies a validated fifteen-slot native trigger invocation into owned managed context and row values.
     /// Input buffers remain borrowed; the caller retains responsibility for releasing their native storage.
     /// </summary>
     /// <param name="arguments">The generated native trigger argument envelope.</param>
     /// <returns>The detached trigger context.</returns>
     public static PgTriggerContext ReadTriggerContext(ReadOnlySpan<NativeValue> arguments)
     {
-        if (arguments.Length != 12)
+        if (arguments.Length != 15)
         {
-            throw new InvalidOperationException("A native trigger invocation must contain exactly twelve context slots.");
+            throw new InvalidOperationException("A native trigger invocation must contain exactly fifteen context slots.");
         }
 
         uint eventBits = ReadTriggerUnsigned(arguments[0]);
@@ -35,8 +35,23 @@ public unsafe partial struct NativeValue
             }
         }
 
+        int[] updateOf = arguments[12].ReadArray<int>().ToVector();
+        int[]? updated = ReadTriggerIsNull(arguments[13]) ? null : arguments[13].ReadArray<int>().ToVector();
+        (uint constraintOid, int constraintFlags) = ReadTriggerConstraint(arguments[14]);
         return new PgTriggerContext(eventBits, relationOid, triggerOid, name, tableName, tableSchema,
-            oldTransition, newTransition, triggerArguments, oldRow, newRow, descriptor.Descriptor);
+            oldTransition, newTransition, triggerArguments, oldRow, newRow, descriptor.Descriptor,
+            updateOf, updated, constraintOid, constraintFlags);
+    }
+
+    private static (uint Oid, int Flags) ReadTriggerConstraint(NativeValue value)
+    {
+        if (value._isNull != 0 || value._integer is < 0 or > uint.MaxValue || value._data != null || value._length != 0 ||
+            value._auxiliary1 is < 0 or > 3 || value._auxiliary2 != 0 || value._temporalInfinity != 0)
+        {
+            throw new InvalidOperationException("Invalid native trigger constraint envelope.");
+        }
+
+        return ((uint)value._integer, value._auxiliary1);
     }
 
     private static uint ReadTriggerUnsigned(NativeValue value)

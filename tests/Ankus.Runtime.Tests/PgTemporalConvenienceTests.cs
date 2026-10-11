@@ -10,6 +10,31 @@ namespace Ankus.Runtime.Tests;
 public sealed class PgTemporalConvenienceTests
 {
     /// <summary>
+    /// Time and interval convert as PostgreSQL's casts do: the interval's time component wraps into one day, months and
+    /// days are ignored, and an infinite interval has no time of day.
+    /// </summary>
+    [TestMethod]
+    public void TimesAndIntervalsConvertLikePostgresCasts()
+    {
+        Assert.AreEqual(new PgTime(3_600_000_000), new PgInterval(5, 7, 3_600_000_000).ToTime());
+        Assert.AreEqual(new PgTime(PgTime.MicrosecondsPerDay - 1), new PgInterval(0, 0, -1).ToTime());
+        Assert.AreEqual(new PgTime(0), new PgInterval(0, 0, PgTime.MicrosecondsPerDay * 3).ToTime());
+        Assert.AreEqual(new PgTime(PgTime.MicrosecondsPerDay + (long.MinValue % PgTime.MicrosecondsPerDay)),
+            new PgInterval(0, 0, long.MinValue).ToTime());
+        PgException infinite = Assert.ThrowsExactly<PgException>(() => PgInterval.PositiveInfinity.ToTime());
+        Assert.AreEqual("22008", infinite.SqlState);
+        Assert.AreEqual(new PgInterval(0, 0, 45_000_000), new PgTime(45_000_000).ToInterval());
+        Assert.AreEqual(new PgInterval(0, 0, PgTime.MicrosecondsPerDay), PgTime.EndOfDay.ToInterval());
+        Assert.AreEqual(PgDate.PostgresEpochJulianDay, PgDate.FromDateOnly(new DateOnly(2000, 1, 1)).ToJulianDays());
+        Assert.AreEqual(PgDate.UnixEpochJulianDay, PgDate.FromDateOnly(new DateOnly(1970, 1, 1)).ToJulianDays());
+        Assert.AreEqual(PgTime.MicrosecondsPerDay, PgTime.EndOfDay.Microseconds);
+        Assert.AreEqual("isoyear", PgDateTimePart.IsoYear.ToPostgresName());
+        Assert.AreEqual("dow", PgDateTimePart.DayOfWeek.ToPostgresName());
+        Assert.AreEqual("timezone_minute", PgDateTimePart.TimeZoneMinute.ToPostgresName());
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => ((PgDateTimePart)(-1)).ToPostgresName());
+    }
+
+    /// <summary>
     /// Checks exact construction and comparison scale without backend access or Int64 overflow.
     /// </summary>
     [TestMethod]

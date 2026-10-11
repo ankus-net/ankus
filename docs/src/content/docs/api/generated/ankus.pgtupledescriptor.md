@@ -147,6 +147,31 @@ Exceptions:
 
 - [InvalidOperationException](https://learn.microsoft.com/dotnet/api/system.invalidoperationexception): This physical descriptor has no PostgreSQL row type.
 
+<a id="member-eab85228652ccc83"></a>
+
+### DangerousCopy(nint)
+
+Copies a native tuple descriptor, such as one a hook or custom scan receives, as pgrx's
+<code>PgTupleDesc::from_pg_copy</code> does.
+
+```csharp
+[NativeUnsafeAccess]
+public static PgTupleDescriptor DangerousCopy(nint tupleDescriptor)
+```
+
+Parameters:
+
+`tupleDescriptor` — [nint](https://learn.microsoft.com/dotnet/api/system.intptr)
+
+The native TupleDesc address.
+
+Returns: [PgTupleDescriptor](/api/ankus.pgtupledescriptor/)
+
+An owned descriptor.
+
+The caller must supply the address of a live descriptor with a row type in this backend; any other address is
+undefined behavior.
+
 <a id="member-6582e58202f441a4"></a>
 
 ### GetOrdinal(string)

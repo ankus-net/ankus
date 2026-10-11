@@ -267,5 +267,8 @@ public sealed partial class ToolCommandTests
     /// </summary>
     /// <param name="Directory">The immutable output; consumers copy it before changing anything.</param>
     /// <param name="Result">The producing command's exit code and streams.</param>
-    private sealed record SharedOutput(string Directory, ProcessResult Result);
+    /// <param name="Listing">A test listing run before the command, when one was requested.</param>
+    /// <param name="PublishedDuringListing">Whether the listing published an extension.</param>
+    private sealed record SharedOutput(string Directory, ProcessResult Result, ProcessResult? Listing = null,
+        bool PublishedDuringListing = false);
 }

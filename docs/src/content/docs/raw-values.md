@@ -556,6 +556,19 @@ Explicit Ankus parameter and result assignments still check current domain
 constraints. Formatting invokes the selected output function, and mapped readers
 retain their own conversion behavior.
 
+`PgDatum.Create(value, context)` converts a managed value to a datum of its
+PostgreSQL type, allocated in `context`, as pgrx's `IntoDatum` does. The value's
+type selects the PostgreSQL type, as for `SpiParameter.Create<T>`, including a
+`PgDatumType` mapping; a null value gives SQL NULL of that type. Pass an
+`SpiParameter` to choose the type explicitly. A domain's constraints apply, as
+they do to an assignment. Use the datum wherever a raw value is accepted, including
+`DangerousCall` arguments:
+
+```csharp
+PgDatum text = PgDatum.Create("héllo", PgMemoryContext.Current);
+int length = PgFunctions.Call<int>("pg_catalog.length", PgFunctionArgument.Create(text));
+```
+
 Inputs belong to the current function call or iterator. Use `CopyTo(context)` to
 keep one longer. Returned values must have the declared type and a live owner;
 Ankus checks both before using their native storage. These bindings also work

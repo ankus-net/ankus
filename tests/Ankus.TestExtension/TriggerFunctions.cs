@@ -440,6 +440,21 @@ public static class TriggerFunctions
         }
     }
 
+    /// <summary>
+    /// Records the trigger's UPDATE OF columns, the columns an UPDATE assigns and its constraint deferral.
+    /// </summary>
+    /// <param name="context">The owned trigger invocation.</param>
+    /// <returns>The unchanged row.</returns>
+    [PgTrigger]
+    [PgFunction(Requires = ["trigger-support"])]
+    public static PgHeapTuple? TriggerColumns(PgTriggerContext context)
+    {
+        Audit(context, string.Join(',', context.UpdateOfColumns) + "|" +
+            (context.UpdatedColumns is null ? "null" : string.Join(',', context.UpdatedColumns)) + "|" +
+            (context.ConstraintOid != 0) + "|" + context.IsDeferrable + "|" + context.IsInitiallyDeferred);
+        return context.New ?? context.Old;
+    }
+
     private static void Audit(PgTriggerContext context, string? detail = null, string? oldTransitionRows = null,
         string? newTransitionRows = null)
         => Spi.Execute("""

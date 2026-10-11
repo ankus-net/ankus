@@ -694,6 +694,29 @@ Exceptions:
 - [InvalidOperationException](https://learn.microsoft.com/dotnet/api/system.invalidoperationexception): The date is infinite.
 
 
+## Fields
+
+<a id="member-279c8a15edf9cd77"></a>
+
+### PostgresEpochJulianDay
+
+The Julian day number of PostgreSQL's epoch, 2000-01-01.
+
+```csharp
+public const int PostgresEpochJulianDay = 2451545
+```
+
+<a id="member-89e505ce1002ae2b"></a>
+
+### UnixEpochJulianDay
+
+The Julian day number of the Unix epoch, 1970-01-01.
+
+```csharp
+public const int UnixEpochJulianDay = 2440588
+```
+
+
 ## Operators
 
 <a id="member-d542053a28c3d7ce"></a>

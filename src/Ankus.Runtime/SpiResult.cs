@@ -45,6 +45,14 @@ public sealed class SpiResult : IReadOnlyList<SpiRow>
     public SpiRow this[int index] => _rows[index];
 
     /// <summary>
+    /// Resolves an exact, case-sensitive column name to its zero-based ordinal, including when the query returned no rows.
+    /// Duplicate names resolve to the first column.
+    /// </summary>
+    /// <param name="name">The column name.</param>
+    /// <returns>The zero-based ordinal.</returns>
+    public int GetOrdinal(string name) => SpiColumn.GetOrdinal(Columns, name);
+
+    /// <summary>
     /// Reads one first-row value, treating an empty result as SQL NULL and rejecting a missing column in a returned row.
     /// </summary>
     /// <typeparam name="T">The expected managed type.</typeparam>

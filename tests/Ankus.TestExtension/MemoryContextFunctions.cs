@@ -10,6 +10,34 @@ public static class MemoryContextFunctions
     private static int s_sequenceDisposals;
 
     /// <summary>
+    /// Borrows a context by its native address, finds an allocation's owner, and rejects an address that is not a context.
+    /// </summary>
+    /// <returns>Whether each handle names the same context, and the rejection's exception type.</returns>
+    [PgFunction]
+    public static unsafe string MemoryContextNativeAddress()
+    {
+        using PgMemoryContext child = PgMemoryContext.Create("Ankus native address", PgMemoryContext.Current);
+        nint address = child.DangerousGetPointer();
+        PgMemoryContext borrowed = PgMemoryContext.DangerousBorrow(address);
+        using PgAllocation allocation = borrowed.AllocateZeroed(16);
+        PgMemoryContext owner = PgMemoryContext.DangerousGetOwner((nint)allocation.DangerousGetPointer());
+        string rejected;
+        try
+        {
+            _ = PgMemoryContext.DangerousBorrow((nint)allocation.DangerousGetPointer());
+            rejected = "none";
+        }
+        catch (ArgumentException error)
+        {
+            rejected = error.GetType().Name;
+        }
+
+        bool same = borrowed.Id == child.Id && owner.Id == child.Id && owner.DangerousGetPointer() == address;
+        child.Reset();
+        return $"{same}|{owner.Name}|{rejected}|{borrowed.IsAlive}";
+    }
+
+    /// <summary>
     /// Allocates, switches, resets, and reallocates a context-owned integer in one backend callback.
     /// </summary>
     /// <param name="value">The integer written to the native allocation.</param>

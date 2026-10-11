@@ -214,8 +214,8 @@ or fails. Floating-point comparisons distinguish NaN payloads and positive
 from negative zero.
 
 Integer `Add`, `Subtract`, `Increment` and `Decrement` wrap on overflow and
-return the new value. Integer and Boolean `And`, `Or` and `Xor` return the old
-value. These operations use .NET `Interlocked` ordering. Separate operations
+return the new value. Integer and Boolean `And`, `Or` and `Xor`, and integer `Max`
+and `Min`, return the old value. These operations use .NET `Interlocked` ordering. Separate operations
 on multiple descriptors do not form an atomic transaction; use a lock around
 an unmanaged aggregate when its fields must change together.
 

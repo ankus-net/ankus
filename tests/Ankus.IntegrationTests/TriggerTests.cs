@@ -159,6 +159,30 @@ public sealed class TriggerTests(TestContext context)
         });
 
     /// <summary>
+    /// Triggers report their UPDATE OF columns, the columns an UPDATE assigns and their constraint deferral.
+    /// </summary>
+    [TestMethod]
+    public Task TriggersReportColumnsAndConstraintDeferral()
+        => Run(nameof(TriggersReportColumnsAndConstraintDeferral), async (connection, transaction, token) =>
+        {
+            await SetupRows(connection, transaction, token);
+            await Execute(connection, transaction, """
+                CREATE TRIGGER columns_of BEFORE UPDATE OF value, note ON trigger_values.rows
+                    FOR EACH ROW EXECUTE FUNCTION trigger_values.trigger_columns();
+                CREATE CONSTRAINT TRIGGER columns_deferred AFTER UPDATE ON trigger_values.rows DEFERRABLE INITIALLY DEFERRED
+                    FOR EACH ROW EXECUTE FUNCTION trigger_values.trigger_columns();
+                CREATE TRIGGER columns_insert AFTER INSERT ON trigger_values.rows
+                    FOR EACH ROW EXECUTE FUNCTION trigger_values.trigger_columns();
+                UPDATE trigger_values.rows SET note = 'new', id = id;
+                INSERT INTO trigger_values.rows VALUES (2, 20, 'other');
+                SET CONSTRAINTS ALL IMMEDIATE;
+                """, token);
+            Assert.AreEqual("columns_of=1,2|0,2|False|False|False;columns_insert=|null|False|False|False;columns_deferred=|0,2|True|True|True",
+                await Scalar<string>(connection, transaction,
+                    "SELECT string_agg(trigger_name||'='||detail, ';' ORDER BY position) FROM trigger_values.events", token));
+        });
+
+    /// <summary>
     /// Discards irrelevant return tuples before serialization and preserves the actual deleted image.
     /// </summary>
     /// <param name="operation">The row operation.</param>

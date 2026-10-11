@@ -201,6 +201,23 @@ public readonly partial record struct PgInterval : IComparable<PgInterval>
     public int Sign => IsFinite ? ToComparisonMicroseconds().CompareTo(Int128.Zero) : _infinity;
 
     /// <summary>
+    /// Gets the time-of-day part of the interval's time component, wrapped into one day, as PostgreSQL's
+    /// <c>interval::time</c> cast does. Months and days are ignored.
+    /// </summary>
+    /// <returns>The time of day.</returns>
+    /// <exception cref="PgException">The interval is infinite (SQLSTATE 22008).</exception>
+    public PgTime ToTime()
+    {
+        if (!IsFinite)
+        {
+            throw new PgException(PgSqlStates.DatetimeValueOutOfRange, "cannot convert infinite interval to time");
+        }
+
+        long time = Microseconds % PgTemporal.MicrosecondsPerDay;
+        return new PgTime(time < 0 ? time + PgTemporal.MicrosecondsPerDay : time);
+    }
+
+    /// <summary>
     /// Gets the absolute value under PostgreSQL's interval comparison, consistent with Sign, CompareTo, and equality.
     /// No backend is required.
     /// </summary>

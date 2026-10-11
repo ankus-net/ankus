@@ -67,6 +67,9 @@ input errors must propagate because independent rollback is unavailable.
 [error recovery](/reference/execution/#errors).
 
 `ToString()` works outside PostgreSQL and produces round-trippable address text.
+It uses .NET's address formatting, which can differ from PostgreSQL's output for
+an IPv6 address with embedded IPv4, such as `::ffff:0:1.2.3.4`. Use
+`PgDatum.Create(value, context).ToPostgresString()` when you need the server's text.
 An `inet` full-width prefix is omitted; a `cidr` prefix is always included.
 Both types implement `IParsable<T>` and `ISpanFormattable` with the same input
 and output rules, and reject format strings.

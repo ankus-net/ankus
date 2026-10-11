@@ -168,7 +168,8 @@ public sealed unsafe partial class PgMemoryContext : IDisposable
     /// Gets the stable validation token for this handle.
     /// </summary>
     /// <remarks>
-    /// This opaque token is not a native MemoryContext address and must not be passed to raw PostgreSQL functions.
+    /// This opaque token is not a native MemoryContext address and must not be passed to raw PostgreSQL functions;
+    /// use <see cref="DangerousGetPointer"/> for the address.
     /// </remarks>
     [EditorBrowsable(EditorBrowsableState.Never)]
     public nint Id { get; }
@@ -529,6 +530,57 @@ public sealed unsafe partial class PgMemoryContext : IDisposable
         }
 
         _disposed = true;
+    }
+
+    /// <summary>
+    /// Borrows a native MemoryContext address, such as a function's <c>fn_mcxt</c> obtained through raw bindings, so
+    /// the managed allocation, scoping and callback APIs can use it, as pgrx's <c>PgMemoryContexts::For</c> does.
+    /// </summary>
+    /// <param name="context">The native MemoryContext address.</param>
+    /// <returns>A borrowed handle that does not delete the context when disposed.</returns>
+    /// <remarks>
+    /// The caller must supply the address of a live context in this backend. Ankus checks only its node tag, so a
+    /// dangling or foreign address is undefined behavior. The handle survives a reset and becomes stale when PostgreSQL
+    /// deletes the context.
+    /// </remarks>
+    /// <exception cref="ArgumentException">The address is null or not a memory context.</exception>
+    [NativeUnsafeAccess]
+    public static PgMemoryContext DangerousBorrow(nint context)
+        => Resolve(NativeMemoryOperation.BorrowNative, context, owned: false) ??
+            throw new ArgumentException("The address is not a PostgreSQL memory context.", nameof(context));
+
+    /// <summary>
+    /// Finds the context that owns a palloc'd allocation, as PostgreSQL's <c>GetMemoryChunkContext</c> and pgrx's
+    /// <c>PgMemoryContexts::of</c> do.
+    /// </summary>
+    /// <param name="allocation">The address palloc returned.</param>
+    /// <returns>A borrowed handle for the owning context.</returns>
+    /// <remarks>
+    /// The caller must supply an address returned by PostgreSQL's allocator that has not been freed; any other address,
+    /// including one inside an allocation, is undefined behavior. A Bump context does not record its chunks' owner, so
+    /// its allocations are not supported.
+    /// </remarks>
+    /// <exception cref="ArgumentException">The address is null, misaligned or not owned by a memory context.</exception>
+    [NativeUnsafeAccess]
+    public static PgMemoryContext DangerousGetOwner(nint allocation)
+        => Resolve(NativeMemoryOperation.ChunkOwner, allocation, owned: false) ??
+            throw new ArgumentException("The address is not owned by a PostgreSQL memory context.", nameof(allocation));
+
+    /// <summary>
+    /// Gets the native MemoryContext address for raw PostgreSQL calls, as pgrx's <c>PgMemoryContexts::value</c> does.
+    /// </summary>
+    /// <returns>The address, valid until the context is reset or deleted.</returns>
+    [NativeUnsafeAccess]
+    public nint DangerousGetPointer()
+    {
+        EnsureAlive();
+        NativeMemoryRequest request = new()
+        {
+            _operation = NativeMemoryOperation.NativePointer,
+            _context = Id
+        };
+        NativeMemoryContext.Invoke(ref request, out NativeMemoryResult result);
+        return result._pointer;
     }
 
     private static PgMemoryContext? Resolve(NativeMemoryOperation operation, nint value, bool owned)

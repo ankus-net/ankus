@@ -72,7 +72,10 @@ internal static class NativeMemoryBridge
             ANKUS_MEMORY_SPIN = 36,
             ANKUS_MEMORY_WORKER = 37,
             ANKUS_MEMORY_CHECK_INTERRUPTS = 38,
-            ANKUS_MEMORY_RECORD_TERMINAL = 39
+            ANKUS_MEMORY_RECORD_TERMINAL = 39,
+            ANKUS_MEMORY_BORROW_NATIVE = 40,
+            ANKUS_MEMORY_CHUNK_OWNER = 41,
+            ANKUS_MEMORY_NATIVE_POINTER = 42
         } AnkusMemoryOperation;
 
         typedef struct AnkusMemoryRequest
@@ -1168,6 +1171,23 @@ internal static class NativeMemoryBridge
 
                     break;
                 }
+                case ANKUS_MEMORY_BORROW_NATIVE:
+                case ANKUS_MEMORY_CHUNK_OWNER:
+                {
+                    /* The caller vouches for the address; a context's node tag is the one check that is possible.
+                     * A failed check returns no context, which managed code reports without a PostgreSQL error. */
+                    void *address = (void *) request->value;
+                    MemoryContext context;
+                    if (address == NULL || (request->operation == ANKUS_MEMORY_CHUNK_OWNER && address != (void *) MAXALIGN(address)))
+                        break;
+                    context = request->operation == ANKUS_MEMORY_BORROW_NATIVE ? (MemoryContext) address : GetMemoryChunkContext(address);
+                    if (MemoryContextIsValid(context))
+                        result->context = (intptr_t) ankus_memory_context_id(context);
+                    break;
+                }
+                case ANKUS_MEMORY_NATIVE_POINTER:
+                    result->pointer = (intptr_t) ankus_memory_context_from_request(request)->context;
+                    break;
                 case ANKUS_MEMORY_CREATE:
                     ankus_memory_create(request, result);
                     break;

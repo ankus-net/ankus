@@ -67,6 +67,12 @@ current trigger and relation. `Descriptor` describes the relation's physical
 columns. `Arguments` contains the exact strings from `EXECUTE FUNCTION f('arg', ...)`.
 Arguments are trigger configuration strings, not SQL function parameters.
 
+`UpdateOfColumns` lists the zero-based ordinals named by `UPDATE OF`, and is empty
+for a trigger that fires for any column. For an UPDATE, `UpdatedColumns` lists the
+columns the statement assigns, which can include a column set to its current value;
+it is null for other operations. A constraint trigger reports its `ConstraintOid`,
+`IsDeferrable` and `IsInitiallyDeferred`; an ordinary trigger has a zero OID.
+
 Rows, descriptors, strings, and arguments are managed copies. They remain valid
 after the callback and after further SPI calls. Use the [composite value APIs](/composites/)
 to read cells by name or zero-based physical ordinal, change values, and clone rows.

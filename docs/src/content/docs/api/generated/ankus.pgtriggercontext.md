@@ -32,6 +32,18 @@ public IReadOnlyList<string> Arguments { get; }
 
 Value: [IReadOnlyList&lt;string&gt;](https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1)
 
+<a id="member-b2b1b1f5ee8531bf"></a>
+
+### ConstraintOid
+
+Gets the OID of the constraint a constraint trigger implements, or zero for an ordinary trigger.
+
+```csharp
+public uint ConstraintOid { get; }
+```
+
+Value: [uint](https://learn.microsoft.com/dotnet/api/system.uint32)
+
 <a id="member-2a195a81ffc568a8"></a>
 
 ### Descriptor
@@ -55,6 +67,30 @@ public uint Event { get; }
 ```
 
 Value: [uint](https://learn.microsoft.com/dotnet/api/system.uint32)
+
+<a id="member-87c989e79169d8b3"></a>
+
+### IsDeferrable
+
+Gets whether the constraint trigger is deferrable.
+
+```csharp
+public bool IsDeferrable { get; }
+```
+
+Value: [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
+
+<a id="member-890dadfa5be3f7db"></a>
+
+### IsInitiallyDeferred
+
+Gets whether the constraint trigger is initially deferred until transaction commit.
+
+```csharp
+public bool IsInitiallyDeferred { get; }
+```
+
+Value: [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
 
 <a id="member-f87c4750884d10c3"></a>
 
@@ -202,3 +238,29 @@ public uint TriggerOid { get; }
 ```
 
 Value: [uint](https://learn.microsoft.com/dotnet/api/system.uint32)
+
+<a id="member-bd1e27c7e3a550e9"></a>
+
+### UpdateOfColumns
+
+Gets the zero-based ordinals of the columns named by the trigger's <code>UPDATE OF</code> list, or an empty list when the
+trigger is not column-specific.
+
+```csharp
+public IReadOnlyList<int> UpdateOfColumns { get; }
+```
+
+Value: [IReadOnlyList&lt;int&gt;](https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1)
+
+<a id="member-846d23b3bac7dce7"></a>
+
+### UpdatedColumns
+
+Gets the zero-based ordinals of the columns the triggering <code>UPDATE</code> assigns, or null for other operations.
+A column can be assigned its current value; compare [Old](/api/ankus.pgtriggercontext/#member-f3fd9385901d8ce4) and [New](/api/ankus.pgtriggercontext/#member-b4f4d77019cf4355) to find changed values.
+
+```csharp
+public IReadOnlyList<int>? UpdatedColumns { get; }
+```
+
+Value: [IReadOnlyList&lt;int&gt;](https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1)
