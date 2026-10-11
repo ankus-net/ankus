@@ -102,7 +102,7 @@ PostgreSQL 16 and later through PostgreSQL's soft input errors, and on earlier
 majors by rolling back an internal subtransaction. Text access, comparison,
 hashing, and exact .NET conversions also work outside PostgreSQL.
 
-In transaction callbacks and parallel operations before PostgreSQL 17, native
+In transaction callbacks, and in parallel operations before PostgreSQL 17, native
 input errors must propagate because independent rollback is unavailable.
 `TryParse` still returns false there on PostgreSQL 16 and later. See
 [error recovery](/reference/execution/#errors).
@@ -115,7 +115,8 @@ explicit `decimal` cast throw `OverflowException` for NaN, infinities, values th
 `decimal` would round, and display scales that `decimal` cannot carry. This
 includes trailing fractional zeros beyond 28 digits or beyond decimal's 96-bit
 coefficient, so `1.00000000000000000000000000000` (scale 29) is rejected.
-`System.Data.SqlTypes.SqlDecimal` rejects scales above 28 in the same way. To accept
+Converting a `System.Data.SqlTypes.SqlDecimal` to `decimal` rejects scales above
+28 in the same way. To accept
 such values, reduce the scale explicitly with `Round`, `Truncate`, `Rescale`, or a
 SQL cast such as `::numeric(38,28)`. `decimal` function parameters, SPI results
 and array elements use the same checked conversion. `FromBigInteger` and
@@ -156,13 +157,14 @@ decimal price = Spi.ExecuteScalar<decimal>(
     "SELECT $1::numeric(10,2)", SpiParameter.Create(12.345m));
 ```
 
-Untyped numeric cells contain `PgNumeric`. Reading them with `row.Get<decimal>()`
+Untyped numeric cells contain `PgNumeric`. Reading them with `row.Get<decimal>(ordinal)`
 performs the same exact conversion as a generated function adapter.
 
 ## Numeric sample
 
 The [numeric sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Numeric)
-ports pgrx's addition, parsing, random integer and arithmetic examples. Its
+ports pgrx's addition, parsing, random integer, arithmetic and fixed-scale
+constant examples. Its
 addition rounds the result after adding the full-range inputs:
 
 ```csharp

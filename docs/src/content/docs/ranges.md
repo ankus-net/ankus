@@ -66,9 +66,10 @@ Numeric infinity bounds require PostgreSQL 14 or later, just like scalar numeric
 infinity. PostgreSQL 13 rejects an explicit `Infinity` or `-Infinity` numeric
 bound; unbounded ends remain available through null bounds or `(,)` SQL syntax.
 
-The parameterless constructor creates an empty range. No constructor calls
-PostgreSQL. It retains finite bounds and inclusion flags even if PostgreSQL will
-later canonicalize the interval to a different representation or reject it.
+The parameterless constructor creates an empty range. Neither constructor calls
+PostgreSQL. The bounded constructor retains finite bounds and inclusion flags
+even if PostgreSQL will later canonicalize the interval to a different
+representation or reject it.
 
 `PgRange.FromRange(2..^2, length: 10)` resolves a C# index range to `[2,8)`.
 The length is required to resolve from-end indices. A zero-length slice becomes
@@ -120,7 +121,7 @@ majors roll back an internal subtransaction before `TryParse` returns false.
 Catch other native range errors outside `PgTransaction.RunInSubtransaction` to
 recover before continuing with backend work.
 
-In transaction callbacks and parallel operations before PostgreSQL 17, native
+In transaction callbacks, and in parallel operations before PostgreSQL 17, native
 input errors must propagate because independent rollback is unavailable.
 `TryParse` on a built-in range type still returns false there on PostgreSQL 16
 and later. See
@@ -217,11 +218,10 @@ read range results require both. SPI rows and composite tuples read them with
 `Get<PgRange<Count>>` and write them with `Set`; the cell must have exactly the
 declared range type.
 
-Generic bounds follow the same finite selection rules as scalar mappings.
-`PgRangeType(typeof(NumberBox<int>), "number_range")` selects an exact closed
-bound and overrides an optional default declaration. An exact local declaration
-also registers a raw-only root. Open converter definitions are inferred from
-the scalar contract. Invalid range metadata produces a [mapping diagnostic](#mapping-diagnostics) without partial
+Generic bounds follow the same selection rules as scalar mappings. For a generic
+bound type such as `NumberBox<T>` with a `PgDatumType` mapping,
+`PgRangeType(typeof(NumberBox<int>), "number_range")` maps one closed bound and
+takes precedence over a default declaration on the generic type. Invalid range metadata produces a [mapping diagnostic](#mapping-diagnostics) without partial
 generated output. Reference-type bounds, automatically derived range metadata
 for `PgType`/`PgEnum`, and multiranges are not supported.
 
@@ -232,9 +232,6 @@ For a mapping in another assembly, they identify the consuming function's type.
 Invalid mappings prevent generation of partial SQL or native registration code.
 Names and schemas retain their exact text across project and assembly references;
 zero characters and malformed UTF-8 are rejected.
-C# namespaces with escaped identifiers, such as `@class`, work normally.
-The selected range attribute retains its actual defining assembly and module,
-including when another assembly declares an attribute with the same metadata name.
 
 | Diagnostic | Required correction |
 | --- | --- |

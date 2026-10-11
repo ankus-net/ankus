@@ -83,20 +83,23 @@ majors roll back an internal subtransaction. Catch other native input errors out
 `ToString()` uses invariant coordinate formatting and works on detached values.
 Every geometry type also implements `IParsable<T>` and `ISpanFormattable`, so
 generic parsing code and string interpolation follow the same rules. Format
-strings are rejected because PostgreSQL text has one canonical form.
+strings are rejected. `ToString()` uses .NET's round-trip number format, which
+can differ from PostgreSQL's output, such as `1E+20` for `1e+20`; use
+`PgDatum.Create(value, context).ToPostgresString()` when you need the server's text.
 
 `PgLine` and `PgCircle` constructors retain the supplied coefficients and radius.
 PostgreSQL validates them when converting to SQL: near-zero `A` and `B`
 coefficients together are invalid, as is a negative radius. In particular,
-`default(PgLine)` must be initialized before it is used as a SQL line. Conversion
-errors cross the guarded native boundary before managed code can handle them.
+`default(PgLine)` must be initialized before it is used as a SQL line. An invalid
+line or circle raises a PostgreSQL error when it is converted, not when it is
+constructed.
 
 Empty paths and polygons can be constructed and exchanged, matching pgrx's owned
 geometries. An empty polygon has a zero bounding box. PostgreSQL's text parser
 requires at least one point, so empty collection formatting is not a text-input
 round trip.
 
-In transaction callbacks and parallel operations before PostgreSQL 17, native
+In transaction callbacks, and in parallel operations before PostgreSQL 17, native
 input errors must propagate because independent rollback is unavailable.
 `TryParse` still returns false there on PostgreSQL 16 and later. See
 [error recovery](/reference/execution/#errors).

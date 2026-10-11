@@ -61,7 +61,7 @@ subtransaction.
 To catch a `Parse` or native arithmetic error and continue, run the operation in
 `PgTransaction.RunInSubtransaction` and catch outside that callback.
 
-In transaction callbacks and parallel operations before PostgreSQL 17, native
+In transaction callbacks, and in parallel operations before PostgreSQL 17, native
 input errors must propagate because independent rollback is unavailable.
 `TryParse` still returns false there on PostgreSQL 16 and later. See
 [error recovery](/reference/execution/#errors).

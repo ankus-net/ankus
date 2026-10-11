@@ -95,14 +95,13 @@ and SQL; unrelated valid declarations still generate normally.
 | `ANKUS288` | Shorten the label to at most 63 UTF-8 bytes. |
 | `ANKUS289` | Assign a distinct label to each member. |
 | `ANKUS290` | Assign distinct numeric values; aliases cannot preserve distinct PostgreSQL labels. |
-| `ANKUS506` | Give the enum a `Name` or `Schema` that no other `[PgEnum]` or `[PgType]` in the extension generates. The error points at the later enum's name. |
+| `ANKUS506` | Give the enum a `Name` or `Schema` that no other `[PgEnum]` in the extension generates. The error points at the later enum's name. A clash with a `[PgType]` reports `ANKUS507` on that type. |
 
 Editors offer **Make internal** for `ANKUS281` and `ANKUS282`, on the enum or on
 the containing type that hides it.
 
-These checks preserve exact labels and source ordering for all eight C# integer
-backing types. Invalid text from a referenced assembly is rejected as well;
-unreadable referenced attribute metadata retains the `ANKUS206` diagnostic.
+Invalid label text from a referenced assembly is rejected as well; unreadable
+referenced attribute metadata reports `ANKUS206`.
 
 ## Schemas and dependencies
 
@@ -124,7 +123,7 @@ functions that accept or return them, including arrays. `PgEnum.Id` and
 ```csharp
 [assembly: PgSql("deliveries",
     "CREATE TABLE deliveries(id bigint PRIMARY KEY, status delivery_status);",
-    Requires = new[] { "delivery-status" }, Relocatable = true)]
+    Requires = ["delivery-status"], Relocatable = true)]
 
 [PgEnum(Id = "delivery-status")]
 public enum DeliveryStatus { Pending, Delivered }
@@ -134,7 +133,8 @@ public enum DeliveryStatus { Pending, Delivered }
 omits that statement while retaining the managed label mapping and native
 conversions. Supply a compatible enum with the declared name, schema and labels
 when generated functions still consume it. SQL changes do not infer a new
-managed mapping. See [declaration SQL controls](/custom-sql/#replace-other-declarations).
+managed mapping. Replacement SQL makes the extension non-relocatable unless
+`SqlRelocatable = true`. See [declaration SQL controls](/custom-sql/#replace-other-declarations).
 
 ## NULL, arrays and SPI
 

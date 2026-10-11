@@ -107,8 +107,8 @@ requires PostgreSQL 14+, and interval infinity requires PostgreSQL 17+. A value
 the selected server cannot parse raises `JsonException` with the JSON property
 path and an inner `PgException` carrying the native diagnostic. Quoting the value
 in JSON does not make it available on an older server. Before PostgreSQL 16,
-where PostgreSQL forbids independent rollback, native input errors remain pending
-and propagate as `PgException`; see [error recovery](/reference/execution/#errors).
+inside transaction callbacks and parallel operations, invalid input remains
+pending and propagates as `PgException`; see [error recovery](/reference/execution/#errors).
 
 JSON and JSONB participate in the [typed SPI APIs](/spi/), including nullable
 parameters, plans, cursors, domains over these base types, and owned result rows.

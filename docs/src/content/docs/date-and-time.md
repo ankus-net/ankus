@@ -15,7 +15,7 @@ public static DateTimeOffset AddHour(DateTimeOffset instant) => instant.AddHours
 
 | .NET type | PostgreSQL type | Conversion |
 | --- | --- | --- |
-| `DateOnly` | `date` | Finite dates in years 1–9999 |
+| `DateOnly` | `date` | Finite dates in years 1 through 9999 |
 | `TimeOnly` | `time` | Midnight through 23:59:59.999999 |
 | `DateTime` | `timestamp` | Requires `Kind.Unspecified` |
 | `DateTimeOffset` | `timestamptz` | Converts to UTC; reads have offset zero |
@@ -97,8 +97,8 @@ double seconds = time.FractionalSecond; // 56.123456
 
 The tuple's microseconds are within the second. PostgreSQL's
 `EXTRACT(MICROSECONDS)` includes whole seconds: the same time yields 56,123,456
-through `GetPart(PgDateTimePart.Microseconds)` or `Extract`. The explicitly named
-fractional property avoids that ambiguity.
+through `GetPart(PgDateTimePart.Microseconds)` or `Extract`. The
+`MicrosecondsWithinSecond` name avoids that ambiguity.
 
 `PgDate.ToJulianDays`, `ToUnixEpochDays`, and `ToUnixTimeSeconds` return exact
 finite epoch values across PostgreSQL's full date range. These methods and finite
@@ -125,9 +125,8 @@ PgInterval elapsedDay = PgInterval.FromTimeSpan(TimeSpan.FromHours(24));
 
 These can produce different timestamps when added to the same instant.
 `ToTimeSpan()` therefore accepts only finite intervals whose month and day
-components are zero. Mixed component signs are preserved. Equality, hashing and
-ordering follow PostgreSQL's interval comparison, which treats a month as thirty
-days. Read `Months`, `Days` and `Microseconds` to compare stored components.
+components are zero. Mixed component signs are preserved. Read `Months`, `Days`
+and `Microseconds` to compare stored components.
 
 `PgInterval` implements `IComparable<PgInterval>`, so `Array.Sort`, `OrderBy`,
 `CompareTo` and the `<`, `>`, `<=` and `>=` operators use PostgreSQL's interval
@@ -178,10 +177,10 @@ the combined duration with zero, so one month minus thirty days has sign zero.
 otherwise negates every component together. One month minus thirty-one days
 becomes minus one month plus thirty-one days, which compares as one day, and
 equivalent intervals have equivalent absolute values. Negating a component equal
-to its signed minimum value throws `OverflowException`. pgrx's `abs` and `signum`
-work on each component separately instead, so they differ from these for mixed
-signs: pgrx makes one month minus thirty-one days positive one month plus
-thirty-one days.
+to its signed minimum value throws `OverflowException`. pgrx's `abs` takes each
+component's absolute value instead, making one month minus thirty-one days
+positive one month plus thirty-one days, and its `signum` is negative when any
+component is negative.
 
 `ToTime()` keeps the time component wrapped into one day and ignores months and
 days, as PostgreSQL's `interval::time` cast does; an infinite interval raises
@@ -216,7 +215,7 @@ input errors, and on earlier majors by rolling back an internal subtransaction.
 Backend-access and operational errors still throw. These types also implement `IParsable<T>` with the same
 rules, so generic code such as `T.Parse(text, null)` uses PostgreSQL input.
 
-In transaction callbacks and parallel operations before PostgreSQL 17, native
+In transaction callbacks, and in parallel operations before PostgreSQL 17, native
 input errors must propagate because independent rollback is unavailable.
 `TryParse` still returns false there on PostgreSQL 16 and later. See
 [error recovery](/reference/execution/#errors).
@@ -309,8 +308,8 @@ validation and fractional-second rounding. Negative years denote BC; year zero
 is invalid. Timestamp construction with a negative year requires PostgreSQL 14+;
 PostgreSQL 13's timestamp constructors reject it with SQLSTATE `22008`. BC
 timestamps can still be parsed or created from raw values on PostgreSQL 13.
-`PgTimestampTz.Create` accepts an optional explicit zone; otherwise
-it uses the session timezone. `PgTimeTz.Create` accepts an explicit offset in
+An overload of `PgTimestampTz.Create` takes an explicit zone; otherwise it uses
+the session timezone. `PgTimeTz.Create` accepts an explicit offset in
 seconds or uses the session's current-date offset.
 
 `PgTimeTz.Create(hour, minute, second, zone)` attaches the named zone's offset at
@@ -333,8 +332,8 @@ live wall clock, so it can change within a statement or transaction.
 
 `PgDate.CurrentDate`, `PgTime.GetLocalTime`, `PgTimeTz.GetCurrentTime`,
 `PgTimestamp.GetLocalTimestamp`, and `PgTimestampTz.GetCurrentTimestamp` match
-SQL's current/local expressions. The methods accept a precision from zero through
-six fractional-second digits and use the current transaction's start time.
+SQL's current/local expressions and use the current transaction's start time. The
+methods take an optional precision from zero through six fractional-second digits.
 
 Times and timestamps also expose `Round(precision)`, following PostgreSQL's type
 modifiers. Rounding can reach 24:00 or carry into the next day. A timestamp that
@@ -342,7 +341,8 @@ rounds outside the finite range raises a `PgException` range error.
 
 Server parsing, formatting, arithmetic, extraction, and timezone methods require
 the active backend thread inside an Ankus callback. To catch a native error
-and continue with backend work, catch outside `PgTransaction.RunInSubtransaction`.
+and continue with backend work, run the operation in
+`PgTransaction.RunInSubtransaction` and catch outside that callback.
 Stored-value access, exact .NET conversions,
 and date/time/timestamp comparisons also work outside PostgreSQL. `CompareTo` and
 relational operators preserve infinities and the distinct 24:00 time value.
@@ -378,7 +378,7 @@ Ankus also reads its own finite ISO 8601 interval text without a backend,
 restoring the identical month, day, and microsecond components. Other temporal
 JSON reading and writing requires the backend thread, and parsing follows the
 same rules as `Parse`. Backend parsing also handles other interval spellings,
-such as session-style text written by earlier Ankus versions, infinity, and the
+such as `IntervalStyle` output text, infinity, and the
 all-maximum and all-minimum component triples that PostgreSQL 17 reads as
 infinity. Invalid values throw `JsonException` with the property path and the
 underlying `PgException` when PostgreSQL rejected the input.

@@ -84,8 +84,9 @@ tupleDescriptor)` and `PgTupleDescriptor.DangerousCopy(tupleDescriptor)` copy th
 from their addresses, as pgrx's `from_heap_tuple` and `PgTupleDesc::from_pg_copy`
 do. `tuple.DangerousToNative(context)` forms a native `HeapTuple` in a memory
 context, as pgrx's `into_pg` does, and `PgDatum.Create(tuple, context)` gives its
-composite datum. The addresses must belong to live values in this backend, and
-like other raw operations these calls need an `unsafe` block (ANKUS129).
+composite datum. The addresses must belong to live values in this backend. Like
+other raw operations, the `Dangerous*` methods need an `unsafe` block (ANKUS129);
+`PgDatum.Create` does not.
 
 Native reconstruction validates the current type and physical layout. A tuple
 captured before incompatible `ALTER TYPE` or drop/recreate operations cannot be
@@ -143,8 +144,9 @@ use `record[]`; their first element never determines a named array identity.
 `PgCompositeType` supplies the named type for generated function signatures.
 
 Use `IEnumerable<PgHeapTuple?>` for composite SETOF results and apply the return
-attribute as usual. TABLE rows can contain composite fields; use the attribute's
-`Column` to select their final SQL output names. Multiple composite columns
+attribute as usual. TABLE rows can contain composite fields; set the attribute's
+`Column` to a composite column's SQL name to bind it, and a single composite
+column binds automatically. Multiple composite columns
 require separate bindings. Streaming preserves NULL tuple identity; a
 materialized composite set stores expanded rows, so a NULL tuple becomes a row
 whose fields are all NULL. See [sets and tables](/sets-and-tables/).
