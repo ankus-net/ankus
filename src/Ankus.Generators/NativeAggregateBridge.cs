@@ -246,16 +246,38 @@ internal static class NativeAggregateBridge
             return status;
         }
 
+        /* What an aggregate support call needs that is fixed for its call site: the catalog
+         * signature, the resolved result type, the aggregate's metadata, a scratch context and
+         * the call's buffers. PostgreSQL leaves fn_extra to the function, so later rows reuse
+         * them and allocate nothing. */
+        typedef struct AnkusAggregateSite
+        {
+            Oid *types;
+            int parameter_count;
+            Oid result_type;
+            AnkusValue *metadata;
+            int metadata_count;
+            AnkusAggregateSortKey *keys;
+            int key_count;
+            MemoryContext scratch;
+            bool busy;
+            AnkusAggregateScope scope;
+            AnkusValue *arguments;
+            AnkusInputBuffer *owned;
+            AnkusValue result;
+            AnkusError error;
+        } AnkusAggregateSite;
+
         static AnkusValue *
-        ankus_aggregate_metadata(FunctionCallInfo fcinfo, int kind, AnkusAggregateScope *scope, int *count)
+        ankus_aggregate_metadata(FunctionCallInfo fcinfo, int kind, AnkusAggregateSite *site, int *count)
         {
             Aggref *reference = AggGetAggref(fcinfo);
             AnkusValue *metadata;
             ListCell *cell;
             int index = 0;
-            scope->key_count = reference == NULL ? 0 : list_length(reference->aggorder);
-            scope->keys = palloc0(sizeof(AnkusAggregateSortKey) * Max(1, scope->key_count));
-            *count = 4 + 5 * scope->key_count;
+            site->key_count = reference == NULL ? 0 : list_length(reference->aggorder);
+            site->keys = palloc0(sizeof(AnkusAggregateSortKey) * Max(1, site->key_count));
+            *count = 4 + 5 * site->key_count;
             metadata = palloc0(sizeof(AnkusValue) * *count);
             metadata[0].integral = kind == AGG_CONTEXT_AGGREGATE ? 1 : 2;
             metadata[1].integral = AggStateIsShared(fcinfo);
@@ -268,7 +290,7 @@ internal static class NativeAggregateBridge
                 SortGroupClause *clause = lfirst_node(SortGroupClause, cell);
                 ListCell *argument;
                 TargetEntry *entry = NULL;
-                AnkusAggregateSortKey *key = &scope->keys[index];
+                AnkusAggregateSortKey *key = &site->keys[index];
                 foreach(argument, reference->args)
                 {
                     TargetEntry *candidate = lfirst_node(TargetEntry, argument);
@@ -297,6 +319,36 @@ internal static class NativeAggregateBridge
             return metadata;
         }
 
+        static AnkusAggregateSite *
+        ankus_aggregate_site(FunctionCallInfo fcinfo, int kind, int arguments_count)
+        {
+            AnkusAggregateSite *site = fcinfo->flinfo->fn_extra;
+            MemoryContext previous;
+            if (site != NULL)
+                return site;
+            previous = MemoryContextSwitchTo(fcinfo->flinfo->fn_mcxt);
+            site = palloc0(sizeof(AnkusAggregateSite));
+            site->result_type = get_func_signature(fcinfo->flinfo->fn_oid, &site->types, &site->parameter_count);
+            if (site->parameter_count != arguments_count)
+                ereport(ERROR, (errmsg("Aggregate support catalog signature does not match generated code")));
+            if (IsPolymorphicType(site->result_type))
+            {
+                Oid resolved = get_fn_expr_rettype(fcinfo->flinfo);
+                if (OidIsValid(resolved))
+                    site->result_type = resolved;
+                if (!OidIsValid(site->result_type) || IsPolymorphicType(site->result_type))
+                    ereport(ERROR, (errcode(ERRCODE_DATATYPE_MISMATCH), errmsg("Aggregate result type was not resolved")));
+            }
+
+            site->metadata = ankus_aggregate_metadata(fcinfo, kind, site, &site->metadata_count);
+            site->arguments = palloc0(sizeof(AnkusValue) * Max(arguments_count, 1));
+            site->owned = palloc0(sizeof(AnkusInputBuffer) * Max(arguments_count, 1));
+            site->scratch = AllocSetContextCreate(fcinfo->flinfo->fn_mcxt, "Ankus aggregate callback", ALLOCSET_SMALL_SIZES);
+            MemoryContextSwitchTo(previous);
+            fcinfo->flinfo->fn_extra = site;
+            return site;
+        }
+
         static Datum
         ankus_aggregate_call(FunctionCallInfo fcinfo, AnkusAggregateCallback callback, int arguments_count,
             const bool *required, const bool *internal_arguments, bool internal_result, bool deserialize,
@@ -306,6 +358,8 @@ internal static class NativeAggregateBridge
             int kind = AggCheckCallContext(fcinfo, &owner);
             MemoryContext caller = CurrentMemoryContext;
             MemoryContext temporary;
+            AnkusAggregateSite *site;
+            bool reuse;
             AnkusAggregateScope *scope;
             AnkusAggregateScope *previous = ankus_aggregate_scope;
             Oid previous_function = ankus_function_oid;
@@ -323,40 +377,49 @@ internal static class NativeAggregateBridge
             for (int index = 0; index < arguments_count; index++)
                 if (required[index] && PG_ARGISNULL(index))
                     PG_RETURN_NULL();
-            temporary = AllocSetContextCreate(caller, "Ankus aggregate callback", ALLOCSET_SMALL_SIZES);
-            scope = MemoryContextAllocZero(temporary, sizeof(AnkusAggregateScope));
+            site = ankus_aggregate_site(fcinfo, kind, arguments_count);
+            /* A support function reached again from inside its own call uses a private context. */
+            reuse = !site->busy;
+            temporary = reuse ? site->scratch : AllocSetContextCreate(caller, "Ankus aggregate callback", ALLOCSET_SMALL_SIZES);
+            site->busy = true;
+            if (reuse)
+            {
+                scope = &site->scope;
+                arguments = site->arguments;
+                owned = site->owned;
+                result = &site->result;
+                error = &site->error;
+                memset(scope, 0, sizeof(*scope));
+                memset(arguments, 0, sizeof(AnkusValue) * Max(arguments_count, 1));
+                memset(owned, 0, sizeof(AnkusInputBuffer) * Max(arguments_count, 1));
+                memset(result, 0, sizeof(*result));
+            }
+            else
+            {
+                scope = MemoryContextAllocZero(temporary, sizeof(AnkusAggregateScope));
+                arguments = MemoryContextAllocZero(temporary, sizeof(AnkusValue) * Max(arguments_count, 1));
+                owned = MemoryContextAllocZero(temporary, sizeof(AnkusInputBuffer) * Max(arguments_count, 1));
+                result = MemoryContextAllocZero(temporary, sizeof(AnkusValue));
+                error = MemoryContextAlloc(temporary, sizeof(AnkusError));
+            }
+
+            ankus_error_clear(error);
             scope->owner = deserialize ? caller : owner;
             scope->lifetime = kind == AGG_CONTEXT_AGGREGATE ?
                 ((AggState *) fcinfo->context)->ss.ps.state->es_query_cxt : scope->owner;
-            arguments = MemoryContextAllocZero(temporary, sizeof(AnkusValue) * Max(arguments_count, 1));
-            owned = MemoryContextAllocZero(temporary, sizeof(AnkusInputBuffer) * Max(arguments_count, 1));
-            result = MemoryContextAllocZero(temporary, sizeof(AnkusValue));
-            error = MemoryContextAllocZero(temporary, sizeof(AnkusError));
+            scope->keys = site->keys;
+            scope->key_count = site->key_count;
             ankus_aggregate_scope = scope;
             ankus_function_oid = fcinfo->flinfo->fn_oid;
             ankus_memory_protect(&protection, scope->owner, false);
             PG_TRY();
             {
-                Oid *types;
-                Oid result_type;
-                int parameter_count;
-                int metadata_count;
-                AnkusValue *metadata;
+                Oid *types = site->types;
+                Oid result_type = site->result_type;
+                int metadata_count = site->metadata_count;
+                AnkusValue *metadata = site->metadata;
                 int status;
                 MemoryContextSwitchTo(temporary);
-                result_type = get_func_signature(fcinfo->flinfo->fn_oid, &types, &parameter_count);
-                if (parameter_count != arguments_count)
-                    ereport(ERROR, (errmsg("Aggregate support catalog signature does not match generated code")));
-                if (IsPolymorphicType(result_type))
-                {
-                    Oid resolved = get_fn_expr_rettype(fcinfo->flinfo);
-                    if (OidIsValid(resolved))
-                        result_type = resolved;
-                    if (!OidIsValid(result_type) || IsPolymorphicType(result_type))
-                        ereport(ERROR, (errcode(ERRCODE_DATATYPE_MISMATCH), errmsg("Aggregate result type was not resolved")));
-                }
-
-                metadata = ankus_aggregate_metadata(fcinfo, kind, scope, &metadata_count);
                 for (int index = 0; index < arguments_count; index++)
                 {
                     /* PostgreSQL supplies a non-NULL SQL internal dummy with Datum zero.
@@ -413,7 +476,13 @@ internal static class NativeAggregateBridge
                 if (result->release != NULL)
                     result->release(result->data);
                 ankus_release_error(error);
-                MemoryContextDelete(temporary);
+                if (reuse)
+                {
+                    MemoryContextReset(temporary);
+                    site->busy = false;
+                }
+                else
+                    MemoryContextDelete(temporary);
             }
             PG_END_TRY();
             return datum;

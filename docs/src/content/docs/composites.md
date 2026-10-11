@@ -52,8 +52,9 @@ or nullable value types when read.
 A field whose type has no managed conversion, such as `tsvector` or `macaddr`, is
 copied exactly. Read or write it with a [`PgDatumType`](/raw-values/#reusable-scalar-mappings)
 mapping, or an array of one, which must have exactly the field's type. The indexer
-and other types throw `NotSupportedException`. A tuple returned to PostgreSQL
-writes the copy back unchanged.
+and other managed types throw `NotSupportedException`. `Get<PgDatum>` rebuilds any
+field that is not dropped, including SQL NULL, as a raw datum owned by the current
+memory context. A tuple returned to PostgreSQL writes the copy back unchanged.
 
 `Descriptor.Attributes` records names, declared and base type OIDs, type
 modifiers, collations, dropped slots, and catalog `NOT NULL` metadata.
@@ -83,7 +84,8 @@ tupleDescriptor)` and `PgTupleDescriptor.DangerousCopy(tupleDescriptor)` copy th
 from their addresses, as pgrx's `from_heap_tuple` and `PgTupleDesc::from_pg_copy`
 do. `tuple.DangerousToNative(context)` forms a native `HeapTuple` in a memory
 context, as pgrx's `into_pg` does, and `PgDatum.Create(tuple, context)` gives its
-composite datum. The addresses must belong to live values in this backend.
+composite datum. The addresses must belong to live values in this backend, and
+like other raw operations these calls need an `unsafe` block (ANKUS129).
 
 Native reconstruction validates the current type and physical layout. A tuple
 captured before incompatible `ALTER TYPE` or drop/recreate operations cannot be

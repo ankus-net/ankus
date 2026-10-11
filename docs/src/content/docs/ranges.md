@@ -213,8 +213,9 @@ Mapped ranges support the operations above, typed SPI scalar results, function
 calls, raw `PgDatum.Read<PgRange<Count>>()`, generated scalar/SETOF/TABLE/aggregate
 signatures, and arrays such as `PgArray<PgRange<Count>?>`. Each direction requires
 the corresponding scalar reader or writer; operations that write operands and
-read range results require both. For detached ordinary SPI rows or tuples, use
-raw cells and explicit mapped reads as described in the mapping guide.
+read range results require both. SPI rows and composite tuples read them with
+`Get<PgRange<Count>>` and write them with `Set`; the cell must have exactly the
+declared range type.
 
 Generic bounds follow the same finite selection rules as scalar mappings.
 `PgRangeType(typeof(NumberBox<int>), "number_range")` selects an exact closed

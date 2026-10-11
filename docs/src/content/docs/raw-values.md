@@ -390,8 +390,8 @@ and reject an invalid declaration before emitting its callable boundary.
 | `ANKUS343` | Remove `UnmanagedCallersOnly` from the managed handler; Ankus generates the native entry boundary. |
 
 Editors offer **Make static** for `ANKUS312` and `ANKUS332`, **Make partial**
-for `ANKUS317` and `ANKUS322`, **Make internal** for `ANKUS321`, and **Pass by
-value** for an `in` or `ref readonly` handler argument (`ANKUS341`).
+for `ANKUS317` and `ANKUS322`, **Make internal** for `ANKUS321`, **Remove** for
+`ANKUS276` and `ANKUS343`, and **Pass by value** for an `in` or `ref readonly` handler argument (`ANKUS341`).
 
 These checks preserve valid overload selection, private handlers and exact
 pointer, enum and native-structure values. `ANKUS276` continues to reject
@@ -806,8 +806,9 @@ SETOF/TABLE outputs, aggregate support methods, and manual operator/cast functio
 Readable mappings can also declare `PgEquality`, `PgOrdering`, and `PgHashing`
 without a writer. See [generated type operators](/operators-and-casts/#manual-datum-mappings)
 for value contracts, type-provider ordering, schemas and index-class rules.
-They also work in `SpiParameter.Create<T>`, `PgFunctionArgument.Create<T>`, typed
-SPI scalar-result helpers, named/OID `PgFunctions.Call<T>`, and direct raw reads:
+They also work in `SpiParameter.Create<T>`, `PgFunctionArgument.Create<T>`,
+`PgDatum.Create<T>`, typed SPI scalar-result helpers, `SpiRow` and `PgHeapTuple`
+cells, named/OID `PgFunctions.Call<T>`, and direct raw reads:
 
 ```csharp
 Unsigned24 value;
@@ -849,8 +850,9 @@ is rejected. The backend verifies the declared range's exact scalar subtype.
 The cell must have exactly the mapped type. Ankus rebuilds the copied cell as a
 temporary datum, passes it to the reader, and frees it when the reader returns, so a
 reader must copy what it keeps. `Set<T>` writes through the mapping and stores a copy.
-Cells of types without any managed conversion are copied exactly and can only be
-read this way; writing their row back to PostgreSQL restores the original value.
+Cells of types without any managed conversion are copied exactly and can be read
+only through their mapping or with `Get<PgDatum>`; writing their row back to
+PostgreSQL restores the original value.
 For native addresses, `DangerousCall<T>` selects the registered reader; use
 `DangerousCallRaw` for an explicit native owner or delayed mapped read. The caller
 must supply an address whose actual result matches the mapping's SQL type and

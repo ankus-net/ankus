@@ -411,7 +411,8 @@ For `ANKUS056`, supported C# editors offer **Remove SQL metadata from injected
 context**. This removes `PgParameter` from injected `PgFunctionContext` and
 `PgMemoryContext` parameters while retaining ordinary SQL inputs, their metadata,
 and unrelated attributes. The correction also supports the editor's **Fix all**
-action.
+action. For `ANKUS053`, **Remove** deletes `Rows` or `SetMode` from a function
+without a set result.
 
 Declaration errors point to the option value, result type or parameter that
 needs correction. Schema errors point to the schema argument, including named

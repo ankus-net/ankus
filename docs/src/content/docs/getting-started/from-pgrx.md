@@ -103,13 +103,21 @@ allocator and lifetime correctness. Raw calls and global accesses require an
 unsafe context, including signatures containing only scalars. Data pointers
 retain their C# pointee types. See [native bindings](/raw-values/).
 
+Native addresses from hooks and raw calls have unsafe constructors, as in pgrx:
+`PgMemoryContext.DangerousBorrow` for `PgMemoryContexts::For`, `DangerousGetOwner`
+for `GetMemoryChunkContext`, and `PgHeapTuple.DangerousCopy`,
+`PgTupleDescriptor.DangerousCopy` and `DangerousToNative` for `from_heap_tuple`,
+`from_pg_copy` and `into_pg`. See [borrowed native allocators](/memory-contexts/#borrowed-native-allocators)
+and [composite values](/composites/).
+
 ## SPI, errors and cancellation
 
 Use `Spi.ExecuteScalar<T>`, `Spi.Execute` and `Spi.Connect` for backend SQL.
 Parameters are explicit `SpiParameter` values. A connected session stays inside
 its callback. Result rows are managed copies; kept plans and cursors have their
-own lifetime rules. As in pgrx, a column is converted only when read, so a type
-without a managed conversion does not stop the rest of the row. Unlike pgrx's
+own lifetime rules. A cell whose type has no managed conversion is copied exactly
+and fails only when read, so, as in pgrx, it does not stop the rest of the row.
+`GetOrdinal(name)` on results and rows corresponds to `column_ordinal`. Unlike pgrx's
 `get_one`, scalar helpers run the whole command and copy its first row. See
 [SPI queries](/spi/).
 
@@ -149,7 +157,7 @@ See [recoverable work](/transaction-callbacks/#recoverable-work) and the
 which maps `catch_when`, `catch_rust_panic`, `rethrow` and `finally` to C#.
 
 Use `PgInterrupts.Check()` where Rust code would use `check_for_interrupts!` in
-a long loop. Call it on the PostgreSQL thread; thread-pool continuations do not
+a long loop, and `PgInterrupts.IsPending` for `interrupt_pending()`. Call it on the PostgreSQL thread; thread-pool continuations do not
 have backend access.
 
 ## Workers and configuration

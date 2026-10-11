@@ -316,9 +316,12 @@ until replaced. Typed NULL retains the replacement type's OID. Invalid types,
 names, or ordinals leave the row's value and type intact.
 
 `Count` gives the number of cells. Both numeric and named indexers return the
-managed object or null. Managed reference values, including byte arrays, follow
-ordinary .NET reference semantics when assigned to a row. The owned rows can be
-read or edited after returning from an extension callback, without a backend binding.
+managed object or null, and throw `NotSupportedException` for a cell without a
+managed conversion. Managed reference values, including byte arrays, follow
+ordinary .NET reference semantics when assigned to a row. Ordinary managed cells
+can be read or edited after returning from an extension callback, without a backend
+binding. Reading through a `PgDatumType` mapping or as `PgDatum`, and setting a
+mapped or `PgDatum` value, need an active backend callback.
 
 Passing a `PgDatum` to `SpiRow.Set` or `PgHeapTuple.Set` copies its value, including
 one without a managed conversion. A `PgDatumType` value is written through its

@@ -66,8 +66,8 @@ exception unwinds every managed frame before PostgreSQL reports an error.
 ## Use the plugin
 
 Logical decoding requires `wal_level = logical` and free replication slots. The
-plugin name is the extension library's file name without its suffix, which is
-its `AssemblyName`:
+plugin name is the extension library's file name without its suffix:
+`AnkusLibraryName`, which defaults to `AssemblyName`:
 
 ```sql
 SELECT pg_create_logical_replication_slot('changes', 'MyDecoder');
@@ -150,5 +150,5 @@ their output.
 | ANKUS526 | Declare one initializer per extension; the library exports one `_PG_output_plugin_init`. |
 | ANKUS277 | Remove `Conditional` so every native invocation runs the initializer. |
 
-Editors offer **Make static** for ANKUS516 and **Make internal** for ANKUS522
-and ANKUS523.
+Editors offer **Make static** for ANKUS516, **Make internal** for ANKUS522
+and ANKUS523, and **Remove** for ANKUS277 and ANKUS524.

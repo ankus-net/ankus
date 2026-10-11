@@ -221,8 +221,8 @@ errors before wrapping them in `JsonException`.
 PostgreSQL forbids independent rollback inside transaction callbacks and parallel
 operations before version 17. Valid input remains usable when the invocation phase
 permits backend value calls. Native invalid-input errors propagate as `PgException`
-and remain pending until PostgreSQL aborts. `TryParse` cannot return false for an unrecovered native error,
-and a JSON converter cannot turn it into a catchable `JsonException`. From
+and remain pending until PostgreSQL aborts. Before PostgreSQL 16, `TryParse` cannot return false for an
+unrecovered native error, and a JSON converter cannot turn it into a catchable `JsonException`. From
 PostgreSQL 16, `TryParse` of the built-in types above still returns false there,
 because a soft input error needs no rollback.
 

@@ -150,7 +150,7 @@ Row callbacks return `PgHeapTuple` or `PgHeapTuple?`; event callbacks return
 | `ANKUS226`, `ANKUS227` | Remove `Rows` and `SetMode`, which describe ordinary set-returning functions. |
 
 Editors offer **Make static** for `ANKUS208`, **Make internal** for `ANKUS213`,
-`ANKUS222` and `ANKUS223`, and **Pass by value** for an `in` or `ref readonly`
+`ANKUS222` and `ANKUS223`, **Remove** for `ANKUS225`, and **Pass by value** for an `in` or `ref readonly`
 context (`ANKUS216`).
 
 Invalid callback declarations do not prevent unrelated valid functions from

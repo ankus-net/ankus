@@ -49,9 +49,12 @@ scope; from 16, the soft input error needs none.
 ## SQL call boundary and direct reads
 
 The call boundary was measured on 2026-10-11 with a scratch extension of
-trivial functions, called two million times from SQL on a PostgreSQL 16.15
-release build (Linux x64, 10 cores). Each figure is the cost per call above the
-same query calling a C built-in, or selecting the input alone.
+trivial functions, called two million times from SQL on the PostgreSQL 16.15
+that `ankus init` builds (Linux x64, 10 cores). Like `cargo pgrx init`, it
+configures `--enable-debug --enable-cassert`, so each allocation is also filled
+with random bytes, which inflates allocation-heavy paths. Each figure is the
+cost per call above the same query calling a C built-in, or selecting the input
+alone.
 
 | Function | Before | After |
 |---|---:|---:|
@@ -67,3 +70,24 @@ build give 154 ns for creating and disposing a text view over a datum, down from
 2.33 µs, and 185 ns for `PgDatum.Read<string>()`, down from 1.28 µs; a guarded
 datum operation runs in its own subtransaction, which is what those paths no
 longer need for flat values.
+
+The same queries on the distribution's PostgreSQL 18.6 release build, after
+these changes:
+
+| Function | Cost per call |
+|---|---:|
+| `int TextLength(string)` over selecting the input | 70 ns |
+| `string Echo(string)` | 148 ns |
+| `string MakeText(int)` against `textin(int4out(g))` | 95 ns |
+| `int ViewLength(PgTextView)` | 0.43 µs |
+
+### Aggregate transitions
+
+A sum aggregate over `int` with a `long` state cost 1.9 µs per row on the
+assert-enabled 16.15 build and 333 ns on the 18.6 release build, above the
+built-in `sum(int)` over the same two million rows. Each transition rebuilt its argument metadata and created and
+deleted a memory context. The wrapper now keeps that metadata, its buffers and
+one scratch context in the call site's `fn_extra`, as PostgreSQL's own
+aggregates cache per-call-site state, and resets the scratch context after each
+row. The release-build cost fell to 170 ns per row. A nested call through the
+same site while one is running uses a private context as before.

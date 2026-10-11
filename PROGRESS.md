@@ -119,9 +119,9 @@ timings, rejected attempts and superseded
 results remain in the [acceptance history](docs/contributing/evidence/port-history.md#superseded-active-and-primary-acceptance-detail-before-sqldatetime-acceptance-2026-10-06).
 These results establish the named combinations, not full-port completion.
 
-Every row below uses the current runtime. Still never covered: Windows x64 on
-PostgreSQL 19 beta (EDB publishes no Windows beta) and macOS x64 on majors other
-than 18.
+Every row below uses the current runtime. Still pending: macOS x64 on 16, 17
+and 19 beta; the [weekly Intel run](https://github.com/willibrandon/ankus/actions/runs/38115991171)
+passes 13, 14 and 15.
 
 | Earlier complete evidence | Platform / PostgreSQL | Result | Duration |
 | --- | --- | --- | --- |
@@ -135,6 +135,19 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- Aggregate support calls now keep their per-call-site state in `fn_extra`, as
+  PostgreSQL's own aggregates do. Each transition used to look up the catalog
+  signature, rebuild the aggregate's metadata and create and delete a memory
+  context; it now reuses them and resets one scratch context per row. An `int`
+  sum with a `long` state costs 170 ns per row over the built-in `sum` on a
+  PostgreSQL 18.6 release build, down from 333 ns. `PgAtomicValue<T>` gains
+  the `Max` and `Min` that `PgAtomic<T>` has.
+- The pending-interrupt test failed once on macOS arm64
+  ([38131906576](https://github.com/willibrandon/ankus/actions/runs/38131906576)):
+  it stopped at the first pending interrupt, and a concurrent test's dropped
+  database had sent every backend a barrier before the statement timeout
+  fired. The fixture now processes unrelated interrupts and keeps waiting for
+  the cancellation.
 - The public API of the `pgrx` crate is now mapped item by item in the
   [API mapping](docs/contributing/evidence/pgrx-api-mapping.md). Three passes
   over the datum, SPI and call, and backend runtime modules found gaps that are
@@ -156,13 +169,13 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   or `bytea` value without a domain is now borrowed in place, after the same
   UTF-8 check PostgreSQL makes, and built-in by-value types decode their datum
   word; compressed, external, domain and non-UTF-8 values keep the native path.
-  On a PostgreSQL 16 release build a text view costs 154 ns instead of 2.33 µs,
+  On the assert-enabled PostgreSQL 16 that `ankus init` builds, a text view costs 154 ns instead of 2.33 µs,
   `Read<string>()` 185 ns instead of 1.28 µs, and a `PgTextView` parameter about
   0.41 µs per call instead of 3 µs, now that a borrowed input captures its
   callback lifetime in one native call instead of three.
 - The scalar call boundary no longer zero-fills two 2.8 KB error buffers on
   every call; they are only valid after a failure, so clearing their headers is
-  enough. On a PostgreSQL 16 release build, a managed `int` function costs about
+  enough. On the same assert-enabled build, a managed `int` function costs about
   27 ns per call over a C built-in, down from 51 ns, and a text echo about
   148 ns, down from 171 ns. Set-returning rows save the same work per row.
 - Rows and composites now match pgrx's lazy field reads. A cell whose type has
@@ -184,7 +197,9 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   the extension bridge compile lacked it, so the Windows 19 cell failed before
   testing. With that fixed, the allocator test fixture's own C helper needed the
   flag too, and the source-built server needed ICU for the collation tests, as
-  the EDB builds of the other majors have. The complete Windows x64 suite now
+  the EDB builds of the other majors have (its four ICU collation cases failed in
+[38127753883](https://github.com/willibrandon/ankus/actions/runs/38127753883) and
+[38129668001](https://github.com/willibrandon/ankus/actions/runs/38129668001)). The complete Windows x64 suite now
   passes on PostgreSQL 19 beta ([38130812681](https://github.com/willibrandon/ankus/actions/runs/38130812681)),
   and on 13–16 and 18 with the C11 bridges ([38119067045](https://github.com/willibrandon/ankus/actions/runs/38119067045)).
   Two Windows tests that failed under load now wait for the condition

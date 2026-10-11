@@ -136,7 +136,7 @@ with the chosen child and its top parent, so column positions follow the whole
 partition ancestry, including reordered and dropped columns. PostgreSQL 13–15
 accept relation-id sets for this helper; PostgreSQL 16 and later accept relation
 pointers. The sample selects the matching declaration with the SDK's
-[`ANKUS_PG13` through `ANKUS_PG19` symbols](reference/build-settings.md).
+[`ANKUS_PG13` through `ANKUS_PG19` symbols](/reference/build-settings/#postgresql-compilation-symbols).
 It returns new native nodes rather than mutating another path's data.
 
 During plan creation, these expressions move into `CustomScan.custom_exprs`.
@@ -177,7 +177,7 @@ when the visibility map requires it.
 
 ## Parallel shared state
 
-Parallel execution is verified on PostgreSQL 15, 17 and 18. PostgreSQL 13–16
+Parallel execution is tested on PostgreSQL 13 through 19 beta on Linux x64, macOS ARM64 and Windows x64. PostgreSQL 13–16
 cannot use internal subtransactions during parallel execution; see the
 [SPI error boundary](/spi/#errors-and-transactions) before handling worker
 errors. Selected-header compatibility alone does not establish validation of

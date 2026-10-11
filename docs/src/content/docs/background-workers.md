@@ -86,7 +86,8 @@ continue to generate their own output.
 | ANKUS275 | Give every worker a distinct method name or explicit `EntryPoint`. |
 
 Editors offer **Make static** for ANKUS251, **Make internal** for ANKUS261,
-ANKUS264 and ANKUS265, and **Pass by value** for an `in` or `ref readonly`
+ANKUS264 and ANKUS265, **Remove** for ANKUS266, ANKUS267, ANKUS270 and ANKUS271,
+and **Pass by value** for an `in` or `ref readonly`
 argument (ANKUS259).
 
 ## Register during preload

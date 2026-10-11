@@ -16,7 +16,7 @@ target server's operating system and architecture.
   native declarations from your PostgreSQL headers.
   Windows also requires LLVM's `llvm-objcopy.exe` on `PATH` for native binding
   verification; the LLVM installer supplies these tools.
-- PostgreSQL 13 through 19 (this guide uses 18), with `pg_config`, server
+- PostgreSQL 13 through 18 or 19 beta (this guide uses 18), with `pg_config`, server
   executables, and development headers.
   Windows also needs the PostgreSQL server import library.
 
@@ -81,8 +81,8 @@ inherit `Release` settings. The default publication directory includes the
 configuration name, keeping configurations separate. Use the same name with
 `schema --skip-build` or `run --no-build` to reuse that publication.
 
-`build`, `publish`, `install`, `package`, `schema`, `run`, and `connect` share this
-option. Names may include spaces and Unicode; quote names containing spaces.
+`build`, `publish`, `install`, `package`, `schema`, `run`, `connect`, `get`,
+`regress` and `bench` share this option; `test` accepts it too, with a `Debug` default. Names may include spaces and Unicode; quote names containing spaces.
 Each name must fit one directory component, without path separators, invalid
 filename characters, or a trailing dot or space.
 

@@ -76,6 +76,26 @@ public static class PgAtomicValue
         => Apply(in storage, value, static (current, operand) => current ^ operand, returnNew: false);
 
     /// <summary>
+    /// Stores the larger of the current value and an operand and returns the previous value.
+    /// </summary>
+    /// <typeparam name="T">A supported unmanaged binary integer.</typeparam>
+    /// <param name="storage">The original inline storage.</param>
+    /// <param name="value">The other operand.</param>
+    /// <returns>The value before the update.</returns>
+    public static T Max<T>(this in PgAtomicValue<T> storage, T value) where T : unmanaged, IBinaryInteger<T>
+        => Apply(in storage, value, static (current, operand) => T.Max(current, operand), returnNew: false);
+
+    /// <summary>
+    /// Stores the smaller of the current value and an operand and returns the previous value.
+    /// </summary>
+    /// <typeparam name="T">A supported unmanaged binary integer.</typeparam>
+    /// <param name="storage">The original inline storage.</param>
+    /// <param name="value">The other operand.</param>
+    /// <returns>The value before the update.</returns>
+    public static T Min<T>(this in PgAtomicValue<T> storage, T value) where T : unmanaged, IBinaryInteger<T>
+        => Apply(in storage, value, static (current, operand) => T.Min(current, operand), returnNew: false);
+
+    /// <summary>
     /// Stores the Boolean conjunction and returns the previous value.
     /// </summary>
     /// <param name="storage">The original inline storage.</param>

@@ -100,15 +100,17 @@ transaction ends: configuration reads, logging and memory operations remain
 available, but SQL is rejected. Perform database work from a later function call
 on those versions.
 
-Use `shared_preload_libraries` to initialize once before PostgreSQL creates its
-backends:
+Use `shared_preload_libraries` to initialize when the server starts:
 
 ```ini
 shared_preload_libraries = 'Ankus.Examples.Initialization'
 ```
 
-Each backend receives its own copy of the initialized managed state. Changes made
-in one backend do not change another backend or the postmaster. Tasks, timers,
+On Linux and macOS, the postmaster initializes once and each forked backend
+receives its own copy of the initialized managed state. Windows starts each backend
+as a new process, so every backend loads the library and runs `PgModuleLoad` and
+`PgInitialize` again; shared-memory descriptors attach to the existing values.
+Changes made in one backend do not change another backend or the postmaster. Tasks, timers,
 garbage collection, finalizers, and managed configuration hooks continue to work
 after startup. Extension projects use this automatically; no host setup is needed.
 
@@ -148,8 +150,9 @@ nongeneric, parameterless static `void` method with a managed implementation.
 | `ANKUS247`, `ANKUS248` | Declare separate SQL exports and remove SQL result metadata from initialization. |
 | `ANKUS249` | Keep one callback per phase in the extension assembly. |
 
-Editors offer **Make static** for `ANKUS232` and **Make internal** for
-`ANKUS240`, `ANKUS243` and `ANKUS244`.
+Editors offer **Make static** for `ANKUS232`, **Make internal** for
+`ANKUS240`, `ANKUS243` and `ANKUS244`, and **Remove** for `ANKUS245`, `ANKUS246`
+and `ANKUS248`.
 
 Invalid initialization declarations do not remove unrelated valid SQL
 dispatchers. A rejected phase does not receive a PostgreSQL loader export.

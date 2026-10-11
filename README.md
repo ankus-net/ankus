@@ -106,6 +106,7 @@ query-tree column references with PostgreSQL's rewriter utilities.
 
 The [WAL decoder sample](samples/Ankus.Examples.WalDecoder/) is a logical decoding
 output plugin that captures committed row changes as JSON.
+
 The [type variants sample](samples/Ankus.Examples.TypeVariants/) compares five
 ways to define a custom type's input, output and storage: generated JSON, custom
 text, packed native bytes, a hand-written datum mapping and arrays of the type.
@@ -307,6 +308,11 @@ The generator uses these type mappings:
 | `byte[]` | `bytea` |
 | `PgTextView`, `PgByteaView` | `text`, `bytea` with checked native borrowing |
 | `Guid` | `uuid` |
+| `PgInet`, `IPAddress` | `inet` |
+| `PgCidr`, `IPNetwork` | `cidr` |
+| `PgPoint`, `PgLine`, `PgLineSegment` | `point`, `line`, `lseg` |
+| `PgBox`, `PgCircle` | `box`, `circle` |
+| `PgPath`, `PgPolygon` | `path`, `polygon` |
 | `PgJson`, `PgJsonb` | `json`, `jsonb` |
 | `decimal`, `PgNumeric` | `numeric` |
 | `DateOnly`, `PgDate` | `date` |
@@ -316,6 +322,7 @@ The generator uses these type mappings:
 | `DateTimeOffset`, `PgTimestampTz` | `timestamptz` |
 | `TimeSpan`, `PgInterval` | `interval` |
 | `PgRange<T>` | The supported built-in or explicitly mapped range type |
+| `T[]`, `PgArray<T>` | Array of the corresponding scalar SQL type |
 | `[PgEnum]` C# enums | Generated PostgreSQL enum types |
 | `[PgType]` classes, structs, and enums | Generated PostgreSQL base types with CBOR, native struct storage, or an explicit storage codec |
 | `[PgDatumType]` classes, structs, and enums | An existing SQL scalar representation with an explicit datum reader and/or writer |
@@ -462,8 +469,9 @@ conversion. See [composite values](docs/src/content/docs/composites.md) and the
 [composite sample](samples/Ankus.Examples.Composites/CompositeFunctions.cs).
 
 Use `[PgTrigger]` with `PgTriggerContext` for row and statement triggers.
-Owned OLD/NEW tuples, trigger arguments, and transition-table SPI queries preserve
-PostgreSQL's before/after/instead-of semantics. See [triggers](docs/src/content/docs/triggers.md)
+Owned OLD/NEW tuples, trigger arguments, transition-table SPI queries, `UPDATE OF`
+and updated columns, and constraint trigger flags preserve PostgreSQL's
+before/after/instead-of semantics. See [triggers](docs/src/content/docs/triggers.md)
 and the [trigger sample](samples/Ankus.Examples.Triggers/PetTriggers.cs).
 
 Use `[PgEventTrigger]` with `PgEventTriggerContext` for DDL, dropped-object,
@@ -570,8 +578,9 @@ argument types and modes, volatility, permissions-related flags, source and loca
 settings. `GetDefaultArguments(context)` materializes actual native expression
 trees in an explicit owner without evaluating them.
 
-`[PgDatumType]` readers also support `Call<T>` and SPI scalar-result helpers,
-with exact mapped type identity and detached managed results.
+`[PgDatumType]` readers also support `Call<T>`, SPI scalar-result helpers and
+`SpiRow` or `PgHeapTuple` cells, with exact mapped type identity and detached
+managed results. Rows keep cells without a managed conversion as exact copies.
 `DangerousCall<T>` accepts mapped results when the caller supplies a valid native
 address with the matching result type and ABI.
 
@@ -684,7 +693,7 @@ and the [command reference](docs/src/content/docs/reference/cli.md) for options.
 Publishing the sample produces a native library and these PostgreSQL installation files:
 
 ```text
-Ankus.Examples.Hello.so                   # .dll on Windows, .dylib on macOS
+Ankus.Examples.Hello.so                   # .dll on Windows; .dylib on macOS for PostgreSQL 16+
 Ankus.Examples.Hello.sql
 ankus.extension.json
 extension/

@@ -48,6 +48,10 @@ are ordinary projects; publish and install one as described in
 | `versioned_so` | [`Ankus.Examples.VersionedLibrary`](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.VersionedLibrary) | `AnkusVersionedLibrary` installs versions side by side. See [versioned libraries](/reference/build-settings/#versioned-libraries). |
 | `wal_decoder` | [`Ankus.Examples.WalDecoder`](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.WalDecoder) | A logical decoding output plugin that writes changes as JSON. See [Logical decoding output plugins](/logical-decoding/). |
 
+[`Ankus.Examples.Hello`](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Hello)
+is the extension `cargo pgrx new` would generate: one function, its backend test
+and an installable library.
+
 Ankus also includes samples without a direct pgrx counterpart:
 [`Ankus.Examples.CustomScans`](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.CustomScans),
 [`Ankus.Examples.Configuration`](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Configuration),

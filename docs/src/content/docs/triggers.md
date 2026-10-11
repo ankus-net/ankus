@@ -79,8 +79,8 @@ to read cells by name or zero-based physical ordinal, change values, and clone r
 `Clone()` copies cell slots and shares nested reference values.
 Row fields use Ankus's composite conversions. A column whose type has no managed
 conversion, such as `tsvector`, is copied exactly: read it with a
-[`PgDatumType`](/raw-values/#reusable-scalar-mappings) mapping, and a returned row
-keeps its original value.
+[`PgDatumType`](/raw-values/#reusable-scalar-mappings) mapping or as a
+`Get<PgDatum>` raw value, and a returned row keeps its original value.
 
 ## Return behavior
 
@@ -180,7 +180,7 @@ Row callbacks return `PgHeapTuple` or `PgHeapTuple?`; event callbacks return
 | `ANKUS226`, `ANKUS227` | Remove `Rows` and `SetMode`, which describe ordinary set-returning functions. |
 
 Editors offer **Make static** for `ANKUS208`, **Make internal** for `ANKUS213`,
-`ANKUS222` and `ANKUS223`, and **Pass by value** for an `in` or `ref readonly`
+`ANKUS222` and `ANKUS223`, **Remove** for `ANKUS225`, and **Pass by value** for an `in` or `ref readonly`
 context (`ANKUS216`).
 
 Invalid callback declarations do not prevent unrelated valid functions from

@@ -52,24 +52,35 @@ public static class DatumCreationFunctions
     public static uint EnumValueOid(string type, string label) => PgEnums.GetValueOid(PgTypes.GetOid(type), label);
 
     /// <summary>
-    /// Reports whether an interrupt is pending on entry and after waiting for one, such as a statement timeout, without
-    /// entering PostgreSQL in between.
+    /// Reports whether an interrupt is pending on entry, then waits up to ten seconds, reporting the first pending
+    /// interrupt before processing it. Another session can also leave one pending, such as the barrier a dropped
+    /// database sends every backend, so the loop processes each and keeps waiting for the statement timeout.
     /// </summary>
-    /// <param name="wait">Whether to wait up to ten seconds for an interrupt.</param>
-    /// <returns>The pending flags before and after.</returns>
+    /// <param name="wait">Whether to wait for interrupts.</param>
+    /// <returns>Whether an interrupt was pending on entry and whether one was seen.</returns>
     [PgFunction(Name = "interrupt_pending", Requires = ["datum-creation"])]
     public static string InterruptPending(bool wait)
     {
         bool before = PgInterrupts.IsPending;
+        bool seen = before;
         var waited = Stopwatch.StartNew();
-        bool after = before;
-        while (wait && !after && waited.Elapsed < TimeSpan.FromSeconds(10))
+        while (wait && waited.Elapsed < TimeSpan.FromSeconds(10))
         {
             Thread.Sleep(10);
-            after = PgInterrupts.IsPending;
+            if (!PgInterrupts.IsPending)
+            {
+                continue;
+            }
+
+            if (!seen)
+            {
+                seen = true;
+                PgLog.Notice($"pending {before} True");
+            }
+
+            PgInterrupts.Check();
         }
 
-        PgLog.Notice($"pending {before} {after}");
-        return $"{before}|{after}";
+        return $"{before}|{seen}";
     }
 }

@@ -287,8 +287,8 @@ Generated-operator diagnostics distinguish the required correction:
 | ANKUS511 | A generated comparison operator's signature is already declared. Remove the conflicting operator or the reported generated-operator attribute. |
 
 Each `ANKUS510` and `ANKUS511` error names the duplicated signature and points
-at the attribute that generates it. Invalid `Id`, `Requires` and `Before`
-values and dependency cycles report the
+at the attribute that generates it. Invalid `Id` and `Requires` values,
+`[PgBefore]` references and dependency cycles report the
 [dependency graph diagnostics](/custom-sql/#dependency-graph-diagnostics);
 `Sql` and `GenerateSql` errors report the
 [SQL replacement diagnostics](/custom-sql/#sql-replacement-diagnostics).
@@ -375,7 +375,7 @@ for placeholders, relocation and ordering constraints.
 The generator reports [specific declaration diagnostics](#declaration-diagnostics)
 for invalid or duplicate operators and casts, and
 [dependency graph diagnostics](/custom-sql/#dependency-graph-diagnostics) for
-invalid `Id`, `Requires` or `Before` values and cycles. PostgreSQL
+invalid `Id` and `Requires` values, `[PgBefore]` references and cycles. PostgreSQL
 validates database-dependent contracts during installation. An existing cast for
 the same source/target pair or an existing fully defined operator is an installation
 error, even when the backing function uses `CreateOrReplace`.
@@ -418,4 +418,5 @@ conversion declarations. They replace the former general `ANKUS007` code.
 | ANKUS509 | Keep one cast for each source and target type. Cast context, type-modifier parameters and the backing function's schema do not create distinct PostgreSQL casts. |
 
 `ANKUS508` and `ANKUS509` point at the later `PgOperator` or `PgCast` attribute
-and name the duplicated catalog signature.
+and name the duplicated catalog signature. Editors offer **Remove** for the
+option reported by `ANKUS070` or `ANKUS071`.

@@ -224,7 +224,7 @@ becomes stale when the context is deleted. `DangerousGetOwner(allocation)` finds
 context that owns a palloc'd address, as `GetMemoryChunkContext` does, and
 `DangerousGetPointer()` returns a handle's address for raw PostgreSQL calls. Ankus
 checks only the context's node tag, so the address must belong to a live context
-or allocation in this backend. A Bump context does not record its chunks' owner, so
+or allocation in this backend. These three calls need an `unsafe` block (ANKUS129). A Bump context does not record its chunks' owner, so
 `DangerousGetOwner` cannot be used with its allocations.
 
 `Create` and `RunTransient` construct AllocSet contexts. Borrowed handles can also

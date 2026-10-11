@@ -35,8 +35,9 @@ dotnet tool restore
 dotnet test
 ```
 
-Use `ankus-worker` instead of `ankus` for a preloaded background worker. These
-templates share the CLI scaffold and its managed/backend tests. Both creation
+`ankus new Acme.Search --background-worker` adds a preloaded background worker
+and its backend test. With the templates, use `ankus-worker` instead of `ankus`.
+These templates share the CLI scaffold and its managed/backend tests. Both creation
 paths pin the matching local tool; invoke it with `dotnet ankus` after restoration.
 Select a package version available in your feed; the initial public release
 remains pending.
@@ -516,7 +517,7 @@ instead. A group is partial when some of its benchmarks failed.
 The default database is `<extension>_benches`. `--database` selects another
 database, and `--resetdb` recreates it, discarding retained history. Each run
 drops and recreates the extension; when other objects depend on it, the drop
-fails unless `--cascade` drops them too. `--wait` pauses after printing the backend PID for debugger attachment, and
+fails unless `--cascade` drops them too. `--wait <seconds>`, from 0 through 3600, pauses that long after printing the backend PID for debugger attachment, and
 `--no-build` reuses the existing benchmark publication. Project selection,
 PostgreSQL selection, configuration, server settings and repeatable MSBuild
 properties follow the other build commands.
@@ -530,7 +531,8 @@ versions require a writable local installation because they do not provide
 Each benchmark invocation runs inside `BEGIN` and is rolled back before its
 result is retained in the runner-owned `ankus_bench` schema. `--report` prints
 each benchmark's recent history against its first successful run without
-rebuilding the extension, and `--report --json` prints the latest raw results. See the
+rebuilding the extension, and `--report --json` prints the latest raw results. Without
+`--report`, `--json` runs the benchmarks and writes their final summary as JSON. See the
 [benchmark authoring guide](/benchmarks/) for timing loops, transaction modes and
 comparison statistics.
 

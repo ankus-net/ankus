@@ -114,6 +114,8 @@ valid identifier spelling and rejects values PostgreSQL would truncate.
 | `ANKUS394` | Keep one custom provider for the exact catalog identity, or retain its generated type/enum declaration. |
 | `ANKUS395` | Add a valid managed provider for the extension-owned mapping. A catalog-name claim does not satisfy managed identity. |
 
+Editors offer **Remove** for the `Schema` assignment reported by `ANKUS384`.
+
 Catalog names are exact, unquoted identifiers. Whitespace and embedded double
 quotes are retained and quoted for PostgreSQL; they are not trimmed or folded.
 Different managed mappings may share a catalog identity when the same block

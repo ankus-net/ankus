@@ -143,6 +143,7 @@ Task and asynchronous iterator diagnostics are described in
 | `sbyte` | `"char"` (the internal signed byte type) |
 | `short`, `int`, `long` | `smallint`, `integer`, `bigint` |
 | `uint` | `oid` |
+| `PgRelation` | `regclass`, a [checked relation reference](/relations/#sql-values-and-ownership) |
 | `PgItemPointer` | `tid` ([tuple location](/item-pointers/)) |
 | `float`, `double` | `real`, `double precision` |
 | `string` | `text` |
@@ -167,8 +168,14 @@ Task and asynchronous iterator diagnostics are described in
 | `T[]`, `PgArray<T>` | Array of the corresponding scalar SQL type |
 | `PgAnyElement`, `PgAnyArray` | `anyelement`, `anyarray` |
 | `PgArrayView` | `anyarray`, with [borrowed native cells](/arrays/#borrowed-native-arrays) |
+| `PgArrayView<T>` | The scalar element's array type, with [checked lazy conversion](/arrays/#typed-borrowed-cells) |
+| `PgCString`, `PgCStringView` | `cstring`, as exact [owned or borrowed bytes](/text-and-binary/#c-strings-and-native-type-io) |
+| `PgHeapTuple` | `record`, or a named [composite type](/composites/) |
 | `[PgEnum]` C# enums | Generated PostgreSQL enum types |
+| `[PgType]` classes, structs and enums | Generated [custom base types](/custom-types/) |
 | `[PgDatumType]` classes, structs and enums | The converter's declared existing SQL type, also usable as an array element |
+| `PgDatum` with `[PgSqlType]` | The named PostgreSQL type, as a [raw value](/raw-values/#raw-sql-values) |
+| `PgInternal` | `internal` ([backend callback state](/internal-state/)) |
 | `void` result | `void` |
 
 `string` and `byte[]` inputs are managed copies. They remain valid after PostgreSQL

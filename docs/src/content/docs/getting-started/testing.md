@@ -98,7 +98,8 @@ public static void DivisionByZeroIsReported()
     PgAssert.AreEqual("division by zero", error.Message);
 }
 ```
- Methods accept no SQL arguments;
+
+Methods accept no SQL arguments;
 injected `PgFunctionContext` and `PgMemoryContext` parameters remain available.
 Methods and containing classes must be accessible to generated code and cannot
 be generic. Every containing class must be partial. Invalid declarations produce
@@ -359,8 +360,8 @@ every statement; add `log_statement = 'all'` to `PostgreSqlConfiguration` when a
 failure report should list each statement. Settings you supply follow the
 defaults, so they win.
 
-`StartupTimeout` bounds initialization, server start and creation of the test
-database together. Its 180-second default matches PostgreSQL's own TAP test
+`PostgresTestClusterOptions.StartupTimeout` bounds initialization, server start and
+creation of the test database together; extension fixtures use its default. Its 180-second default matches PostgreSQL's own TAP test
 timeout, so a busy shared disk does not fail an otherwise healthy startup.
 
 If another process takes an automatically selected TCP port during startup, the fixture

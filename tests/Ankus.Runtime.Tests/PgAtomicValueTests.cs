@@ -179,6 +179,10 @@ public sealed unsafe class PgAtomicValueTests
         Assert.AreEqual(T.CreateChecked(0x3A), value.Value, typeof(T).Name);
         Assert.AreEqual(T.CreateChecked(0x3A), value.Xor(T.CreateChecked(0x66)), typeof(T).Name);
         Assert.AreEqual(T.CreateChecked(0x5C), value.Value, typeof(T).Name);
+        Assert.AreEqual(T.CreateChecked(0x5C), value.Max(T.CreateChecked(0x10)), typeof(T).Name);
+        Assert.AreEqual(T.CreateChecked(0x5C), value.Min(T.CreateChecked(0x10)), typeof(T).Name);
+        Assert.AreEqual(T.CreateChecked(0x10), value.Max(T.CreateChecked(0x20)), typeof(T).Name);
+        Assert.AreEqual(T.CreateChecked(0x20), value.Value, typeof(T).Name);
     }
 
     private sealed class Owner

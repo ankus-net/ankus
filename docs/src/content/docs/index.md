@@ -46,4 +46,4 @@ SELECT add(40, 2);  -- 42
   </div>
 </div>
 
-<p class="platform-note">PostgreSQL 13 through 19 on Linux, macOS and Windows</p>
+<p class="platform-note">PostgreSQL 13 through 18 and 19 beta on Linux, macOS and Windows</p>

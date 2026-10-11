@@ -39,8 +39,8 @@ SELECT reverse_values(ARRAY[1, NULL, 3]); -- {3,NULL,1}
 `bytea[]`. Other jagged arrays and C# rectangular arrays are not SQL mappings;
 represent a multidimensional PostgreSQL array with `PgArray<T>`.
 
-An implicit conversion to `T[]` rejects multiple dimensions or a non-one lower
-bound. It never silently flattens the value.
+Converting an array to `T[]`, as a parameter, a result or `Get<T[]>()`, rejects
+multiple dimensions or a non-one lower bound. It never silently flattens the value.
 
 ## Dimensions and indexing
 
@@ -132,9 +132,10 @@ those inner byte arrays.
 
 A [`PgDatumType` mapping](/raw-values/#reusable-scalar-mappings) supplies the
 element conversion for `T[]`, `T?[]`, `PgArray<T>`, and `PgArray<T?>`. A reader
-supports generated inputs, explicit raw reads, SPI scalar-result helpers, and
-named/OID and native-address function-call results. A writer supports generated
-outputs and typed parameters. The same converter instance serves scalar and array conversions.
+supports generated inputs, explicit raw reads, SPI scalar-result helpers, `SpiRow`
+and `PgHeapTuple` cells, and named/OID and native-address function-call results.
+A writer supports generated outputs, typed parameters, row and tuple cells, and
+`PgDatum.Create`. The same converter instance serves scalar and array conversions.
 No separate array converter or type provider is needed.
 
 A bound with [`PgRangeType`](/ranges/#mapped-bounds) also supports arrays of
@@ -178,9 +179,10 @@ to Ankus. Copying the managed array container does not clone user reference
 objects returned by an element reader.
 
 Mapped arrays work in scalar, variadic, SETOF, TABLE and aggregate signatures,
-and through sessions and prepared statements. Ordinary `SpiRow.Get<T>()` and
-`PgHeapTuple.Get<T>()` do not select mapped element converters; use an owned raw
-cell's `Read<T[]>()` or `Read<PgArray<T>>()`. Nested mapped arrays and rectangular
+and through sessions and prepared statements. `SpiRow` and `PgHeapTuple` read
+`T[]` and `PgArray<T>` through the element mapping when the cell has exactly the
+mapped array type, and `Set<T>` writes through it; raw cells offer the same reads
+with `Read<T[]>()` and `Read<PgArray<T>>()`. Nested mapped arrays and rectangular
 CLR arrays are rejected. This follows pgrx's rejection of nested SQL array
 containers: represent multiple PostgreSQL dimensions in one `PgArray<T>`, with
 the mapped scalar as `T`, rather than nesting `PgArray` or vector types.

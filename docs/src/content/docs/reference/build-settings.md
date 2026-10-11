@@ -21,7 +21,7 @@ Set extension properties in your project file:
 | `AnkusVersionedLibrary` | `false` | Appends the extension version to the library name so versions install side by side; see [versioned libraries](#versioned-libraries) |
 | `EnableDefaultAnkusUpgradeScripts` | Enabled | Includes `sql/<extension>--<old>--<new>.sql` upgrade files; set to `false` for explicit items only |
 | `EnableDefaultAnkusVersionControlFiles` | Enabled | Includes `sql/<extension>--<version>.control` files; set to `false` for explicit items only |
-| `AnkusPostgresMajor` | `18` | Selects the server headers used to compile the native wrapper |
+| `AnkusPostgresMajor` | The major `AnkusPgConfigPath` reports, otherwise `18` | Selects the server headers used to compile the native wrapper |
 | `AnkusPgConfigPath` | Registered or discovered installation | Selects an exact `pg_config`; the tool sets this automatically |
 | `AnkusIncludeTests` | Disabled | Includes `[PgTest]` native exports and installation SQL and defines `ANKUS_TESTS`; the testing fixture enables it for declared backend tests |
 | `AnkusReuseSchema` | `false` | Reuses the last successful installation SQL and matching metadata for this target and publication mode while recompiling native code; missing or incompatible saved declarations fail explicitly |
@@ -35,8 +35,8 @@ when the property comes from an imported file. A bare executable name, such as
 executable's reported major when `AnkusPostgresMajor` is omitted. A major set in
 the project file, `Directory.Build.props` or `Directory.Build.targets` is an
 explicit selection, so the executable's major is not substituted for it. A direct
-`dotnet publish` uses the SDK's PostgreSQL 18 default, so pass both properties
-when publishing another major. A test project without its own PostgreSQL
+`dotnet publish` also takes the major from `AnkusPgConfigPath` when no major is
+set, so the path alone selects another major; without either property it uses 18. A test project without its own PostgreSQL
 selection inherits the extension project's evaluated installation.
 
 For a shared installation beside `Directory.Build.props`, anchor the path to that

@@ -155,6 +155,66 @@ Returns: <code>T</code>
 
 The incremented value.
 
+<a id="member-6f5dd7f94b230360"></a>
+
+### Max&lt;T&gt;(in PgAtomicValue&lt;T&gt;, T)
+
+Stores the larger of the current value and an operand and returns the previous value.
+
+```csharp
+public static T Max<T>(this in PgAtomicValue<T> storage, T value) where T : unmanaged, IBinaryInteger<T>
+```
+
+Type parameters:
+
+`T`
+
+A supported unmanaged binary integer.
+
+Parameters:
+
+`storage` — <code>PgAtomicValue&lt;T&gt;</code>
+
+The original inline storage.
+
+`value` — <code>T</code>
+
+The other operand.
+
+Returns: <code>T</code>
+
+The value before the update.
+
+<a id="member-698de278a5fdea68"></a>
+
+### Min&lt;T&gt;(in PgAtomicValue&lt;T&gt;, T)
+
+Stores the smaller of the current value and an operand and returns the previous value.
+
+```csharp
+public static T Min<T>(this in PgAtomicValue<T> storage, T value) where T : unmanaged, IBinaryInteger<T>
+```
+
+Type parameters:
+
+`T`
+
+A supported unmanaged binary integer.
+
+Parameters:
+
+`storage` — <code>PgAtomicValue&lt;T&gt;</code>
+
+The original inline storage.
+
+`value` — <code>T</code>
+
+The other operand.
+
+Returns: <code>T</code>
+
+The value before the update.
+
 <a id="member-caeb73099c8388e9"></a>
 
 ### Or(in PgAtomicValue&lt;bool&gt;, bool)
