@@ -124,6 +124,13 @@ replaces `file` on a containing type when no other type shares its name.
 callers' arguments, and leaves the source unchanged if a delegate, overload or
 interface still needs the reference. `ref` and `out` get no fix, because the
 caller would no longer see the method's writes.
+**Remove** deletes an attribute or option that cannot apply where it is written:
+`Conditional` or `UnmanagedCallersOnly` on any entry (ANKUS245, ANKUS246, ANKUS266,
+ANKUS267, ANKUS276, ANKUS277, ANKUS343, ANKUS524), SQL value metadata on a worker,
+initializer or trigger (ANKUS225, ANKUS248, ANKUS270, ANKUS271), `Rows` or `SetMode`
+without a set result (ANKUS053), operator options an operator cannot take (ANKUS070,
+ANKUS071) and `Schema` on a managed type provider (ANKUS384). It leaves the source
+unchanged if other code still needs what it would remove.
 
 Task and asynchronous iterator diagnostics are described in
 [execution constraints](/reference/execution/#backend-threads-and-tasks).

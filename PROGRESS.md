@@ -154,7 +154,13 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   callbacks, initializers, background workers, backend tests, native callback
   properties and handlers, enums, custom types, datum carriers and converters
   (resolved from the `typeof` argument) and output plugin initializers, 35
-  further diagnostics in all.
+  further diagnostics in all. **Remove** deletes an attribute or option that
+  cannot apply where it is written, for 16 more diagnostics: `Conditional` and
+  `UnmanagedCallersOnly` on entries, SQL value metadata where no SQL value
+  exists, set options on scalar functions, operator options an operator cannot
+  take and `Schema` on a managed type provider. It keeps comments and layout,
+  and leaves the source unchanged if other code still needs what it would
+  remove.
   Generator tests compare
   the complete corrected source, regenerate it without diagnostics, and check
   that no fix is offered where the result would not compile.
