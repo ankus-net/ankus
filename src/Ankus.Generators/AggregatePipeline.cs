@@ -61,7 +61,7 @@ internal static class AggregatePipeline
                 SqlDeclarationOptions.Read(helper.Method.GetAttributes().FirstOrDefault(static attribute =>
                     attribute.AttributeClass?.ToDisplayString() == "Ankus.PgFunctionAttribute"), compilation, cancellationToken),
                 GeneratorLocation.Create(helper.Method.Locations.FirstOrDefault(), compilation),
-                PgFunctionGenerator.GetCallbackName(type.ContainingAssembly.Identity + ":" + helper.Invocation.Identity,
+                PgFunctionGenerator.GetCallbackName(PgFunctionGenerator.SymbolScope(type.ContainingAssembly) + ":" + helper.Invocation.Identity,
                     "aggregate_" + SqlText.SnakeCase(helper.Role)))));
         return new(DeclarationIdentity.Create(type), MetadataName(type), type.ToDisplayString(), type.Name,
             declaration?.Freeze(), helpers, new(AggregateDeclaration.SelectedMethods(type).SelectMany(static method =>

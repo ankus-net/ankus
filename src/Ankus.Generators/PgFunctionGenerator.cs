@@ -1331,13 +1331,22 @@ public sealed class PgFunctionGenerator : IIncrementalGenerator
             name.All(static character => character is >= 'a' and <= 'z' or >= '0' and <= '9' or '_');
 
     /// <summary>
-    /// Derives a native callback identity from the exact assembly and managed overload.
+    /// Derives a native callback identity from the assembly name and managed overload.
     /// </summary>
     /// <param name="method">The attributed method.</param>
     /// <param name="sqlName">The selected unquoted SQL name.</param>
     /// <returns>The assembly-specific managed callback symbol.</returns>
     internal static string GetCallbackName(IMethodSymbol method, string sqlName)
-        => GetCallbackName(method.ContainingAssembly.Identity + ":" + method.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat), sqlName);
+        => GetCallbackName(SymbolScope(method.ContainingAssembly) + ":" + method.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat), sqlName);
+
+    /// <summary>
+    /// Scopes native symbols to an extension assembly by name alone. SQL catalog entries name these symbols, so they
+    /// must survive a new assembly version: an upgrade that replaces the library in place keeps the functions it does
+    /// not recreate, as pgrx's version-independent wrapper names do.
+    /// </summary>
+    /// <param name="assembly">The declaring assembly.</param>
+    /// <returns>The assembly's simple name.</returns>
+    internal static string SymbolScope(IAssemblySymbol assembly) => assembly.Identity.Name;
 
     /// <summary>
     /// Keeps managed entry symbols distinct across assemblies, including synthetic initialization entries.

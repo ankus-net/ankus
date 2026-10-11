@@ -35,7 +35,8 @@ public sealed partial class PgFunctionGeneratorTests
     }
 
     /// <summary>
-    /// Assembly identity changes refresh managed callback symbols while retaining the public native export.
+    /// An assembly rename refreshes managed callback symbols, while a new assembly version keeps them; either way the
+    /// public native export is retained.
     /// </summary>
     /// <param name="version">Whether the assembly version changes instead of its name.</param>
     [TestMethod]
@@ -52,13 +53,22 @@ public sealed partial class PgFunctionGeneratorTests
         driver = RunModule(driver, edited, out Compilation output);
         (BackgroundWorkerEmission emission, IncrementalStepRunReason reason) = TrackedWorkerEmission(driver, "Run");
 
-        Assert.AreEqual(IncrementalStepRunReason.Modified, reason);
         Assert.AreEqual(before.EntryPoint, emission.EntryPoint);
         Assert.AreEqual(before.Exports, emission.Exports);
-        Assert.AreNotEqual(before.Managed, emission.Managed);
-        Assert.AreNotEqual(before.Native, emission.Native);
         Assert.Contains(emission.Native.ReplaceLineEndings("\n"), ManifestValue(output, "Ankus.NativeSource"));
-        Assert.DoesNotContain(before.Native.ReplaceLineEndings("\n"), ManifestValue(output, "Ankus.NativeSource"));
+        if (version)
+        {
+            Assert.AreEqual(before.Managed, emission.Managed);
+            Assert.AreEqual(before.Native, emission.Native);
+        }
+        else
+        {
+            Assert.AreEqual(IncrementalStepRunReason.Modified, reason);
+            Assert.AreNotEqual(before.Managed, emission.Managed);
+            Assert.AreNotEqual(before.Native, emission.Native);
+            Assert.DoesNotContain(before.Native.ReplaceLineEndings("\n"), ManifestValue(output, "Ankus.NativeSource"));
+        }
+
         Assert.AreSequenceEqual(["Pg_magic_func", "_PG_init", "Run"], ManifestValue(output, "Ankus.Exports").Split('\n', StringSplitOptions.RemoveEmptyEntries));
     }
 

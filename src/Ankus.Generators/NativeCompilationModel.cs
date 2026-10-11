@@ -5,7 +5,7 @@ namespace Ankus.Generators;
 /// <summary>
 /// Detaches compilation-wide native capabilities before rendering or extension graph composition.
 /// </summary>
-/// <param name="Assembly">The exact extension assembly identity used by generated initialization symbols.</param>
+/// <param name="Assembly">The extension assembly name that scopes generated initialization symbols.</param>
 /// <param name="Binding">The unique measured binding constant, absent when unavailable or ambiguous.</param>
 /// <param name="Layouts">The unique measured node layout constant, absent when unavailable or ambiguous.</param>
 /// <param name="ReferencedCallbacks">Whether any resolved dependency requires native callback dispatch.</param>
@@ -22,7 +22,8 @@ internal sealed record NativeCompilationModel(string Assembly, string? Binding, 
     {
         cancellationToken.ThrowIfCancellationRequested();
         INamedTypeSymbol? binding = compilation.GetTypeByMetadataName("Ankus.Postgres.NativeBinding");
-        return new(compilation.Assembly.Identity.ToString(), Constant(binding, "Identity"), Constant(binding, "NodeLayouts"), referencedCallbacks);
+        return new(PgFunctionGenerator.SymbolScope(compilation.Assembly), Constant(binding, "Identity"), Constant(binding, "NodeLayouts"),
+            referencedCallbacks);
     }
 
     /// <summary>

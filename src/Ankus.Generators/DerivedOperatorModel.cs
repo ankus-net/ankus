@@ -85,7 +85,7 @@ internal sealed record DerivedOperatorModel(DeclarationIdentity Identity, string
         }
 
         using SHA256 hash = SHA256.Create();
-        byte[] digest = hash.ComputeHash(Encoding.UTF8.GetBytes(type.ContainingAssembly.Identity + ":" + managed));
+        byte[] digest = hash.ComputeHash(Encoding.UTF8.GetBytes(PgFunctionGenerator.SymbolScope(type.ContainingAssembly) + ":" + managed));
         string symbol = string.Concat(digest.Take(16).Select(static item => item.ToString("x2", CultureInfo.InvariantCulture)));
         return new(DeclarationIdentity.Create(type), type.ToDisplayString(), type.Name, managed, value, enumeration,
             type.EnumUnderlyingType?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ?? string.Empty, symbol,

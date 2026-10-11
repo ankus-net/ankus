@@ -70,7 +70,7 @@ internal sealed class CustomTypeDeclaration(INamedTypeSymbol type, INamedTypeSym
         get
         {
             using SHA256 hash = SHA256.Create();
-            byte[] bytes = hash.ComputeHash(Encoding.UTF8.GetBytes(Type.ContainingAssembly.Identity + ":" + Managed));
+            byte[] bytes = hash.ComputeHash(Encoding.UTF8.GetBytes(PgFunctionGenerator.SymbolScope(Type.ContainingAssembly) + ":" + Managed));
             return string.Concat(bytes.Take(16).Select(static value => value.ToString("x2", CultureInfo.InvariantCulture)));
         }
     }

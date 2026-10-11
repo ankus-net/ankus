@@ -191,6 +191,27 @@ public sealed partial class PgFunctionGeneratorTests
     }
 
     /// <summary>
+    /// A new assembly version keeps every SQL-visible native symbol, so an upgraded library still exports the functions an
+    /// installed version's catalog entries name; a rename still separates extensions.
+    /// </summary>
+    [TestMethod]
+    public void NativeSymbolsSurviveAssemblyVersionChanges()
+    {
+        const string Source = "public static class Functions { [Ankus.PgFunction] public static int Answer() => 42; }";
+        GeneratorDriver driver = ModuleDriver();
+        CSharpCompilation first = ModuleCompilation(Source).AddSyntaxTrees(CSharpSyntaxTree.ParseText(
+            "[assembly: System.Reflection.AssemblyVersion(\"1.0.0.0\")]", path: "Version.cs", cancellationToken: context.CancellationToken));
+        RunModule(driver, first, out Compilation before);
+        CSharpCompilation second = first.ReplaceSyntaxTree(first.SyntaxTrees.Last(), CSharpSyntaxTree.ParseText(
+            "[assembly: System.Reflection.AssemblyVersion(\"2.0.0.0\")]", path: "Version.cs", cancellationToken: context.CancellationToken));
+        RunModule(ModuleDriver(), second, out Compilation after);
+        RunModule(ModuleDriver(), first.WithAssemblyName("Renamed"), out Compilation renamed);
+
+        Assert.AreEqual(ManifestValue(before, "Ankus.Exports"), ManifestValue(after, "Ankus.Exports"));
+        Assert.AreNotEqual(ManifestValue(before, "Ankus.Exports"), ManifestValue(renamed, "Ankus.Exports"));
+    }
+
+    /// <summary>
     /// Requires exactly the module, accepted function and matching PostgreSQL information exports.
     /// </summary>
     /// <param name="compilation">The generated consumer carrying the linker manifest.</param>

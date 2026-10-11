@@ -135,6 +135,23 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- Native symbols no longer change with the extension's assembly version. Each
+  exported `ankus_fn_…` name hashed the full assembly identity, version
+  included, so a release that set a new `<Version>` (which
+  `AnkusExtensionVersion` follows by default) renamed every export. After an
+  in-place upgrade, functions the upgrade script did not recreate failed with
+  `42883: could not find function`. Symbols now hash the assembly's simple
+  name, which still separates extensions, as pgrx's wrapper names stay the same
+  across versions. A packaged test upgrades `1.0.0` to `2.0.0` in place and
+  calls an untouched function; it fails with the old naming and passes now.
+  The version had also been hiding a Linux linking hazard: PostgreSQL loads
+  libraries `RTLD_GLOBAL`, and each C wrapper calls its managed entry through
+  an exported symbol, so with equal names a second versioned library of the
+  same extension called the first one's code. Linux libraries now link with
+  `-Bsymbolic`, binding their own references locally as macOS and Windows
+  already do, and the side-by-side versioned library test passes again.
+  A documentation review of seventeen guides against the code also corrected
+  outdated names, diagnostics and behavioral claims.
 - Arrays of `bool`, `"char"`, `int2`, `int4`, `int8`, `oid`, `float4` and
   `float8` without NULLs now cross the call boundary as the packed block
   PostgreSQL stores, copied once, instead of one encoded record per element

@@ -139,6 +139,9 @@
       <NativeLibrary Include="@(_AnkusNativeLibrary)" />
       <LinkerArg Include="@(_AnkusNativeLibrary->'&quot;%(Identity)&quot;')" />
       <LinkerArg Include="-Wl,-undefined,dynamic_lookup" Condition="$([MSBuild]::IsOSPlatform('OSX'))" />
+      <!-- PostgreSQL loads libraries RTLD_GLOBAL. Bind each library's calls to its own exported managed entries, as
+           macOS and Windows already do, so two versioned libraries of one extension in a backend never call each other. -->
+      <LinkerArg Include="-Wl,-Bsymbolic" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
       <FileWrites Include="$(_AnkusArtifacts)**/*" />
     </ItemGroup>
   </Target>

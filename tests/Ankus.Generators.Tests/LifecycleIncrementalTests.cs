@@ -66,7 +66,8 @@ public sealed partial class PgFunctionGeneratorTests
     }
 
     /// <summary>
-    /// Assembly name and version changes refresh phase callback symbols while keeping the public loader export.
+    /// An assembly rename refreshes phase callback symbols, while a new assembly version keeps them, so an upgraded library
+    /// still exports the symbols an installed version's catalog entries name.
     /// </summary>
     /// <param name="moduleLoad">Whether this callback performs immediate registration.</param>
     /// <param name="version">Whether the version changes instead of the assembly name.</param>
@@ -86,11 +87,19 @@ public sealed partial class PgFunctionGeneratorTests
         driver = RunModule(driver, edited, out Compilation output);
         (LifecycleEmission emission, IncrementalStepRunReason reason) = TrackedLifecycleEmission(driver, moduleLoad, "Run");
 
-        Assert.AreEqual(IncrementalStepRunReason.Modified, reason);
         Assert.AreEqual(before.Declaration.Target, emission.Declaration.Target);
-        Assert.AreNotEqual(before.Declaration.Callback, emission.Declaration.Callback);
         Assert.Contains(emission.Declaration.Callback + "(AnkusError *", ManifestValue(output, "Ankus.NativeSource"));
-        Assert.DoesNotContain(before.Declaration.Callback, ManifestValue(output, "Ankus.NativeSource"));
+        if (version)
+        {
+            Assert.AreEqual(before.Declaration.Callback, emission.Declaration.Callback);
+        }
+        else
+        {
+            Assert.AreEqual(IncrementalStepRunReason.Modified, reason);
+            Assert.AreNotEqual(before.Declaration.Callback, emission.Declaration.Callback);
+            Assert.DoesNotContain(before.Declaration.Callback, ManifestValue(output, "Ankus.NativeSource"));
+        }
+
         Assert.AreSequenceEqual(["Pg_magic_func", "_PG_init"], ManifestValue(output, "Ankus.Exports").Split('\n', StringSplitOptions.RemoveEmptyEntries));
     }
 

@@ -153,6 +153,77 @@ public sealed partial class ToolCommandTests
         Assert.IsFalse(File.Exists(Path.Combine(shared, "extension", "unlisted.sql")));
     }
 
+    /// <summary>
+    /// A release that changes the assembly version and replaces the library in place keeps the functions its upgrade
+    /// script does not recreate: their catalog entries still name symbols the new library exports.
+    /// </summary>
+    [TestMethod]
+    public async Task InPlaceUpgradeKeepsUnchangedFunctionsAcrossAssemblyVersions()
+    {
+        CancellationToken token = context.CancellationToken;
+        string directory = CreateDirectory();
+        string project = Path.Combine(directory, "VersionProbe.csproj");
+        XDocument document = XDocument.Load(s_project);
+        document.Root!.Add(new XElement("PropertyGroup",
+            new XElement("AssemblyName", "Ankus.Version.Probe"),
+            new XElement("AnkusExtensionName", "ankus_version_probe"),
+            new XElement("Version", "1.0.0"),
+            new XElement("AnkusExtensionVersion", "1.0.0")));
+        document.Save(project);
+        await File.WriteAllTextAsync(Path.Combine(directory, "Functions.cs"), """
+            using Ankus;
+            public static class VersionFunctions
+            {
+                [PgFunction(Name = "stable_value")]
+                public static int Stable() => 42;
+            }
+            """, token);
+        string publication = Path.Combine(directory, "bin", "ankus", s_installation.Label,
+            RuntimeInformation.RuntimeIdentifier, "Release");
+        string package = CreateDirectory();
+        string[] arguments = ["package", "--home", s_home, "--pg", MajorText(), "--project", project, "--output", package];
+        (await InvokeAsync(arguments, token)).EnsureSuccess(s_tool, arguments);
+        PublishedExtension original = PublishedExtension.Read(publication);
+        PostgresInstallation installation = await ReserveCaseInstallationAsync(token);
+        CopyUpgradePackageToCaseInstallation(package, original);
+        List<string> configuration = ["dynamic_library_path = '" + EscapeSetting(PackageLibraryDirectory(package)) + "'"];
+        if (installation.Version.Major >= 18)
+        {
+            configuration.Add("extension_control_path = '" + EscapeSetting(PackageSharedDirectory(package)) + "'");
+        }
+
+        await using PostgresTestCluster cluster = await PostgresTestCluster.StartAsync(new PostgresTestClusterOptions
+        {
+            Installation = installation,
+            DataDirectoryBase = Path.Combine(s_root, "version-upgrade-pgdata"),
+            LogDirectory = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
+            PostgreSqlConfiguration = configuration,
+        }, token);
+        await using (NpgsqlConnection connection = await cluster.OpenConnectionAsync(token))
+        {
+            await ExecuteSqlPackageAsync(connection, "CREATE EXTENSION ankus_version_probe");
+            Assert.AreEqual(42, await SqlPackageScalarAsync<int>(connection, "SELECT stable_value()"));
+        }
+
+        // The next release has a new assembly version, the same library file, and an upgrade script that leaves
+        // stable_value in place.
+        XElement properties = document.Root.Elements("PropertyGroup").Last();
+        properties.Element("Version")!.Value = "2.0.0";
+        properties.Element("AnkusExtensionVersion")!.Value = "2.0.0";
+        document.Save(project);
+        string scripts = Path.Combine(directory, "sql");
+        Directory.CreateDirectory(scripts);
+        await File.WriteAllTextAsync(Path.Combine(scripts, "ankus_version_probe--1.0.0--2.0.0.sql"), "SELECT 1;\n", token);
+        (await InvokeAsync(arguments, token)).EnsureSuccess(s_tool, arguments);
+        PublishedExtension updated = PublishedExtension.Read(publication);
+        Assert.AreEqual(original.Library, updated.Library);
+        CopyUpgradePackageToCaseInstallation(package, updated);
+        await using NpgsqlConnection upgraded = await cluster.OpenConnectionAsync(token);
+        await ExecuteSqlPackageAsync(upgraded, "ALTER EXTENSION ankus_version_probe UPDATE TO '2.0.0'");
+        Assert.AreEqual(42, await SqlPackageScalarAsync<int>(upgraded, "SELECT stable_value()"));
+        await ExecuteSqlPackageAsync(upgraded, "DROP EXTENSION ankus_version_probe");
+    }
+
     private void CopyUpgradePackageToCaseInstallation(string package, PublishedExtension manifest)
     {
         if (_caseInstallation is null)

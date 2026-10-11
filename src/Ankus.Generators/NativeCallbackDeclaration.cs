@@ -49,7 +49,8 @@ internal sealed class NativeCallbackDeclaration(IPropertySymbol property, IMetho
         get
         {
             using SHA256 hash = SHA256.Create();
-            string identity = Property.ContainingAssembly.Identity + ":" + Property.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+            string identity = PgFunctionGenerator.SymbolScope(Property.ContainingAssembly) + ":" +
+                Property.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
             return string.Concat(hash.ComputeHash(Encoding.UTF8.GetBytes(identity)).Take(16)
                 .Select(static value => value.ToString("x2", CultureInfo.InvariantCulture)));
         }

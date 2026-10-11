@@ -338,6 +338,10 @@ extension version and `@GIT_HASH@` with the project's current commit. Git is
 required only when a script uses that token. PostgreSQL resolves
 `MODULE_PATHNAME` through the new control file when it executes the script.
 
+A function's native export name depends on the assembly name, the method's
+declaring type and its signature, not on the version, so functions you leave
+unchanged keep working when a new library replaces the old one in place.
+
 When native functions change, give the new version its own library and replace
 their SQL declarations in the upgrade script with
 `CREATE OR REPLACE FUNCTION ... AS 'MODULE_PATHNAME', 'native_export'`.
