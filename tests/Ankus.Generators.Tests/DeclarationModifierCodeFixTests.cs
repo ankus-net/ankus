@@ -18,7 +18,7 @@ public sealed partial class PgFunctionGeneratorTests
         using CompositionHost container = new ContainerConfiguration().WithAssembly(typeof(DeclarationModifierCodeFixProvider).Assembly).CreateContainer();
         DeclarationModifierCodeFixProvider provider =
             Assert.ContainsSingle(container.GetExports<CodeFixProvider>().OfType<DeclarationModifierCodeFixProvider>());
-        Assert.AreSequenceEqual(["ANKUS033", "ANKUS034", "ANKUS174", "ANKUS179"], provider.FixableDiagnosticIds);
+        Assert.AreSequenceEqual(["ANKUS033", "ANKUS043", "ANKUS034", "ANKUS174", "ANKUS178", "ANKUS179"], provider.FixableDiagnosticIds);
         Assert.AreSame(WellKnownFixAllProviders.BatchFixer, provider.GetFixAllProvider());
     }
 
@@ -129,6 +129,43 @@ public sealed partial class PgFunctionGeneratorTests
         (Compilation output, ImmutableArray<Diagnostic> after) = await GenerateCodeFixDocumentAsync(corrected);
         Assert.IsEmpty(after);
         Assert.IsEmpty(output.GetDiagnostics(context.CancellationToken).Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
+    }
+
+    /// <summary>
+    /// A file-local function or setting container becomes internal and then generates.
+    /// </summary>
+    /// <param name="source">The file-local container.</param>
+    /// <param name="id">The expected diagnostic.</param>
+    /// <param name="name">The container name.</param>
+    [TestMethod]
+    [DataRow("file static class Functions\n{\n    [Ankus.PgFunction]\n    public static int Add(int a, int b) => a + b;\n}\n", "ANKUS043", "Functions")]
+    [DataRow("file static partial class Settings\n{\n    [Ankus.PgGucInt(\"ankus_fix.value\", 1, \"Value\")]\n    public static partial int Value { get; }\n}\n",
+        "ANKUS178", "Settings")]
+    public async Task FileFixMakesContainerInternal(string source, string id, string name)
+    {
+        using var workspace = new AdhocWorkspace();
+        Document corrected = await ApplyFunctionFixAsync(workspace, source, id, $"Make '{name}' internal");
+        Assert.AreEqual("internal" + source["file".Length..], (await corrected.GetTextAsync(context.CancellationToken)).ToString());
+        (Compilation output, ImmutableArray<Diagnostic> after) = await GenerateCodeFixDocumentAsync(corrected);
+        Assert.IsEmpty(after);
+        Assert.IsEmpty(output.GetDiagnostics(context.CancellationToken).Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
+    }
+
+    /// <summary>
+    /// No file-local container is made internal while another file declares a type with the same name.
+    /// </summary>
+    [TestMethod]
+    public async Task FileFixKeepsSameNamedTypesApart()
+    {
+        using var workspace = new AdhocWorkspace();
+        Document document = CreateCodeFixDocument(workspace,
+            "file static class Functions\n{\n    [Ankus.PgFunction]\n    public static int Add(int a, int b) => a + b;\n}\n");
+        document = workspace.AddDocument(document.Project.Id, "Other.cs", Microsoft.CodeAnalysis.Text.SourceText.From("file static class Functions;\n"))
+            .Project.GetDocument(document.Id)!;
+        (_, ImmutableArray<Diagnostic> diagnostics) = await GenerateCodeFixDocumentAsync(document);
+        Diagnostic diagnostic = Assert.ContainsSingle(diagnostics);
+        Assert.AreEqual("ANKUS043", diagnostic.Id);
+        Assert.IsEmpty(await CodeFixActionsAsync(new DeclarationModifierCodeFixProvider(), document, diagnostic));
     }
 
     /// <summary>

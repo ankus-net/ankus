@@ -22,7 +22,8 @@ public static partial class Settings
 The property, its containing classes and any hooks must be accessible from
 generated code in the extension assembly. Use `public` or `internal`;
 `protected internal` also works for members and nested classes. Editors offer
-**Make internal** for a private or protected property or containing class.
+**Make internal** for a private or protected property or containing class, and
+for a file-local class when no other type shares its name.
 
 The source generator creates native PostgreSQL storage and implements the getters.
 PostgreSQL registers the settings when it loads the library, before calling an
@@ -198,6 +199,11 @@ defining assembly with a complete valid attribute.
 | `ANKUS198` | Give labels distinct names under PostgreSQL's ASCII case folding. |
 | `ANKUS199`–`ANKUS201` | Match the check, assignment, or display hook's exact typed signature. |
 | `ANKUS202` | Give each setting a distinct name under PostgreSQL's ASCII case folding. |
+
+Editors fix the common declaration mistakes: **Make static** and **Make
+partial** turn an automatic getter into the static partial definition Ankus
+implements, **Remove the implementation** deletes an authored getter, and
+**Make partial** on a class adds the modifier its generated part needs.
 
 ## Hooks
 

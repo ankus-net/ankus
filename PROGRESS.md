@@ -139,7 +139,12 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   implements nothing, and no caller uses an instance receiver; ANKUS034 offers
   **Make internal** for a private or protected method or containing type, on
   every partial declaration that states accessibility; ANKUS174 and ANKUS179
-  offer it for GUC properties and their classes. Generator tests compare
+  offer it for GUC properties and their classes, and ANKUS043 and ANKUS178
+  replace `file` on a container when no other type shares its name. A GUC
+  automatic getter also
+  gets **Make static** (ANKUS170) and **Make partial** (ANKUS173), an authored
+  getter can be removed (ANKUS175), and a container class made partial
+  (ANKUS180). Generator tests compare
   the complete corrected source, regenerate it without diagnostics, and check
   that no fix is offered where the result would not compile.
 - Binding catalogs can now be derived from the installed headers, as pgrx

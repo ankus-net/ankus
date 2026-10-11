@@ -5,7 +5,6 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.FindSymbols;
 
 namespace Ankus.CodeFixes;
 
@@ -27,9 +26,19 @@ public sealed class DeclarationModifierCodeFixProvider : CodeFixProvider
     private const string AccessId = "ANKUS034";
 
     /// <summary>
+    /// The file-local function container diagnostic.
+    /// </summary>
+    private const string FileLocalId = "ANKUS043";
+
+    /// <summary>
     /// The inaccessible-setting diagnostic.
     /// </summary>
     private const string SettingAccessId = "ANKUS174";
+
+    /// <summary>
+    /// The file-local setting container diagnostic.
+    /// </summary>
+    private const string SettingFileLocalId = "ANKUS178";
 
     /// <summary>
     /// The inaccessible setting-container diagnostic.
@@ -39,7 +48,8 @@ public sealed class DeclarationModifierCodeFixProvider : CodeFixProvider
     /// <summary>
     /// Gets the declaration diagnostics corrected by this provider.
     /// </summary>
-    public override ImmutableArray<string> FixableDiagnosticIds => [InstanceId, AccessId, SettingAccessId, SettingContainerAccessId];
+    public override ImmutableArray<string> FixableDiagnosticIds =>
+        [InstanceId, FileLocalId, AccessId, SettingAccessId, SettingFileLocalId, SettingContainerAccessId];
 
     /// <summary>
     /// Gets batch support for independent declaration corrections.
@@ -72,6 +82,13 @@ public sealed class DeclarationModifierCodeFixProvider : CodeFixProvider
                 context.RegisterCodeFix(CodeAction.Create($"Make '{instance.Name}' static",
                     token => MakeStaticAsync(context.Document, method, token), "Ankus.MakeStatic"), diagnostic);
             }
+            else if (diagnostic.Id is FileLocalId or SettingFileLocalId && identifier.Parent is TypeDeclarationSyntax local &&
+                model.GetDeclaredSymbol(local, cancellationToken) is { IsFileLocal: true } file &&
+                file.ContainingNamespace.GetTypeMembers(file.Name, file.Arity).Length == 1)
+            {
+                context.RegisterCodeFix(CodeAction.Create($"Make '{file.Name}' internal",
+                    token => ReplaceFileAsync(context.Document, local, token), "Ankus.MakeFileTypeInternal"), diagnostic);
+            }
             else if (diagnostic.Id is AccessId or SettingAccessId or SettingContainerAccessId && identifier.Parent is MemberDeclarationSyntax member &&
                 model.GetDeclaredSymbol(member, cancellationToken) is { } hidden && CanMakeInternal(hidden))
             {
@@ -101,22 +118,7 @@ public sealed class DeclarationModifierCodeFixProvider : CodeFixProvider
             return false;
         }
 
-        foreach (ReferencedSymbol referenced in await SymbolFinder.FindReferencesAsync(symbol, solution, cancellationToken).ConfigureAwait(false))
-        {
-            foreach (ReferenceLocation location in referenced.Locations)
-            {
-                SyntaxNode? root = await location.Document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
-                SemanticModel? callerModel = await location.Document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
-                SyntaxNode? name = root?.FindNode(location.Location.SourceSpan, getInnermostNodeForTie: true);
-                if (name?.Parent is MemberAccessExpressionSyntax access && access.Name == name && callerModel is not null &&
-                    callerModel.GetSymbolInfo(access.Expression, cancellationToken).Symbol is not INamedTypeSymbol)
-                {
-                    return false;
-                }
-            }
-        }
-
-        return true;
+        return !await DeclarationModifiers.HasInstanceReferenceAsync(solution, symbol, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -182,33 +184,22 @@ public sealed class DeclarationModifierCodeFixProvider : CodeFixProvider
     private static async Task<Document> MakeStaticAsync(Document document, MethodDeclarationSyntax method, CancellationToken cancellationToken)
     {
         SyntaxNode root = (await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false))!;
-        SyntaxTokenList modifiers = method.Modifiers;
-        int index = 0;
-        while (index < modifiers.Count && IsAccessibility(modifiers[index]))
-        {
-            index++;
-        }
+        return document.WithSyntaxRoot(root.ReplaceNode(method, DeclarationModifiers.AddStatic(method)));
+    }
 
-        MethodDeclarationSyntax corrected;
-        if (modifiers.Count == 0)
-        {
-            SyntaxToken keyword = SyntaxFactory.Token(method.ReturnType.GetLeadingTrivia(), SyntaxKind.StaticKeyword,
-                SyntaxFactory.TriviaList(SyntaxFactory.Space));
-            corrected = method.WithReturnType(method.ReturnType.WithoutLeadingTrivia()).WithModifiers(SyntaxFactory.TokenList(keyword));
-        }
-        else if (index == 0)
-        {
-            SyntaxToken keyword = SyntaxFactory.Token(modifiers[0].LeadingTrivia, SyntaxKind.StaticKeyword,
-                SyntaxFactory.TriviaList(SyntaxFactory.Space));
-            corrected = method.WithModifiers(modifiers.Replace(modifiers[0], modifiers[0].WithLeadingTrivia()).Insert(0, keyword));
-        }
-        else
-        {
-            corrected = method.WithModifiers(modifiers.Insert(index, SyntaxFactory.Token(SyntaxFactory.TriviaList(), SyntaxKind.StaticKeyword,
-                SyntaxFactory.TriviaList(SyntaxFactory.Space))));
-        }
-
-        return document.WithSyntaxRoot(root.ReplaceNode(method, corrected));
+    /// <summary>
+    /// Replaces <c>file</c> with <c>internal</c>, which keeps the type out of other assemblies.
+    /// </summary>
+    /// <param name="document">The document containing the type.</param>
+    /// <param name="type">The file-local declaration.</param>
+    /// <param name="cancellationToken">Cancels the edit.</param>
+    /// <returns>The corrected document.</returns>
+    private static async Task<Document> ReplaceFileAsync(Document document, TypeDeclarationSyntax type, CancellationToken cancellationToken)
+    {
+        SyntaxNode root = (await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false))!;
+        SyntaxToken file = type.Modifiers.First(static modifier => modifier.IsKind(SyntaxKind.FileKeyword));
+        return document.WithSyntaxRoot(root.ReplaceToken(file,
+            SyntaxFactory.Token(file.LeadingTrivia, SyntaxKind.InternalKeyword, file.TrailingTrivia)));
     }
 
     /// <summary>
@@ -233,7 +224,7 @@ public sealed class DeclarationModifierCodeFixProvider : CodeFixProvider
     {
         MemberDeclarationSyntax[] declarations = [.. symbol.DeclaringSyntaxReferences
             .Select(reference => reference.GetSyntax(cancellationToken)).OfType<MemberDeclarationSyntax>()];
-        MemberDeclarationSyntax[] stated = [.. declarations.Where(static declaration => declaration.Modifiers.Any(IsAccessibility))];
+        MemberDeclarationSyntax[] stated = [.. declarations.Where(static declaration => declaration.Modifiers.Any(DeclarationModifiers.IsAccessibility))];
         MemberDeclarationSyntax[] targets = stated.Length == 0 ? [diagnosed] : stated;
         foreach (IGrouping<SyntaxTree, MemberDeclarationSyntax> group in targets.GroupBy(static declaration => declaration.SyntaxTree))
         {
@@ -245,43 +236,9 @@ public sealed class DeclarationModifierCodeFixProvider : CodeFixProvider
 
             SyntaxNode root = await group.Key.GetRootAsync(cancellationToken).ConfigureAwait(false);
             solution = solution.WithDocumentSyntaxRoot(document.Id,
-                root.ReplaceNodes(group, static (original, _) => WithInternal(original)));
+                root.ReplaceNodes(group, static (original, _) => DeclarationModifiers.WithInternal(original)));
         }
 
         return solution;
     }
-
-    /// <summary>
-    /// Replaces accessibility keywords with one <c>internal</c> keyword, or states it first and keeps the indentation.
-    /// </summary>
-    /// <param name="declaration">The original declaration.</param>
-    /// <returns>The declaration with internal accessibility.</returns>
-    private static MemberDeclarationSyntax WithInternal(MemberDeclarationSyntax declaration)
-    {
-        SyntaxTokenList modifiers = declaration.Modifiers;
-        SyntaxToken[] access = [.. modifiers.Where(IsAccessibility)];
-        if (access.Length != 0)
-        {
-            SyntaxToken first = access[0];
-            SyntaxToken replacement = SyntaxFactory.Token(first.LeadingTrivia, SyntaxKind.InternalKeyword, access[access.Length - 1].TrailingTrivia);
-            return declaration.WithModifiers(SyntaxFactory.TokenList(modifiers.Where(token => !IsAccessibility(token) || token == first)
-                .Select(token => token == first ? replacement : token)));
-        }
-
-        // The first token after any attributes carries the declaration's indentation.
-        SyntaxToken next = declaration.AttributeLists.Count == 0
-            ? declaration.GetFirstToken()
-            : declaration.AttributeLists.Last().GetLastToken().GetNextToken();
-        SyntaxToken keyword = SyntaxFactory.Token(next.LeadingTrivia, SyntaxKind.InternalKeyword, SyntaxFactory.TriviaList(SyntaxFactory.Space));
-        MemberDeclarationSyntax moved = declaration.ReplaceToken(next, next.WithLeadingTrivia());
-        return moved.WithModifiers(moved.Modifiers.Insert(0, keyword));
-    }
-
-    /// <summary>
-    /// Identifies an accessibility modifier.
-    /// </summary>
-    /// <param name="token">A declaration modifier.</param>
-    /// <returns>Whether the modifier states accessibility.</returns>
-    private static bool IsAccessibility(SyntaxToken token)
-        => token.Kind() is SyntaxKind.PublicKeyword or SyntaxKind.PrivateKeyword or SyntaxKind.ProtectedKeyword or SyntaxKind.InternalKeyword;
 }
