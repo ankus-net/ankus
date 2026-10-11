@@ -76,6 +76,9 @@ internal static class ManagedConversion
             _ when result.IsRaw => $"*{target} = global::Ankus.CompilerServices.NativeValue.FromPolymorphic({value});",
             _ when result.IsInternal => $"*{target} = global::Ankus.CompilerServices.NativeValue.FromInternal({value});",
             _ when result.IsPolymorphic || result.IsBorrowedBuffer => $"*{target} = global::Ankus.CompilerServices.NativeValue.FromPolymorphic({value}.Datum);",
+            _ when result.Element is not null && result.IsVector &&
+                result.ElementManaged is "bool" or "sbyte" or "short" or "int" or "long" or "uint" or "float" or "double" =>
+                "*" + target + " = global::Ankus.CompilerServices.NativeValue.FromVector<" + result.ElementManaged + ">(" + value + ");",
             _ when result.Element is not null => "*" + target + " = global::Ankus.CompilerServices.NativeValue.FromArray(" +
                 (result.IsVector ? "new global::Ankus.PgArray<" + result.ElementManaged + ">(" + value + ")" : value) + ");",
             _ when result.GeometryName.Length != 0 => $"*{target} = global::Ankus.CompilerServices.NativeValue.From{result.GeometryName}({value});",

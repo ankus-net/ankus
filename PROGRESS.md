@@ -119,9 +119,9 @@ timings, rejected attempts and superseded
 results remain in the [acceptance history](docs/contributing/evidence/port-history.md#superseded-active-and-primary-acceptance-detail-before-sqldatetime-acceptance-2026-10-06).
 These results establish the named combinations, not full-port completion.
 
-Every row below uses the current runtime. Still pending: macOS x64 on 17 and
-19 beta; the [weekly Intel run](https://github.com/willibrandon/ankus/actions/runs/38115991171)
-passes 13, 14, 15 and 16.
+Every row below uses the current runtime. Still pending: macOS x64 on 19 beta;
+the [weekly Intel run](https://github.com/willibrandon/ankus/actions/runs/38115991171)
+passes 13, 14, 15, 16 and 17.
 
 | Earlier complete evidence | Platform / PostgreSQL | Result | Duration |
 | --- | --- | --- | --- |
@@ -140,8 +140,15 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   PostgreSQL stores, copied once, instead of one encoded record per element
   that each side parsed and managed code boxed. An `int[]` argument costs
   about 1 ns per element instead of 57 ns on a PostgreSQL 18.6 release build,
-  and results, SPI cells and parameters take the same path. Set, table and SPI
-  row costs are now measured too; see
+  and results, SPI cells and parameters take the same path. A function
+  returning such a vector writes the block directly, so an array result costs
+  185 ns per call instead of 400 ns. Reading a row,
+  tuple or array cell that already has the requested type now skips the
+  registry lookups that rule out `[PgDatumType]` mappings: SPI rows read in
+  1,000-row queries cost 106 ns each in total, below PL/pgSQL's `FOR` loop. In
+  a UTF-8 database, text arrays cross as each element's length and bytes, so a
+  `text[]` element costs 34 ns instead of 90 ns. Set and table row costs are
+  measured too; see
   [guard tiers](docs/contributing/evidence/guard-tiers.md#sets-arrays-and-spi).
 - Extensions can now be built for another architecture, as pgrx's
   `cargo pgrx cross pgrx-target` allows. `ankus target export`, run on the
@@ -159,7 +166,11 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   runs; altered files, another runtime, another Ankus version and a conflicting
   `--pg-config` are rejected. A manual Apple silicon publish for `osx-x64`
   produced an x86_64 library, confirming the host compiler payload carries
-  the x64 JIT. The Intel-from-Apple-silicon CI jobs have not run yet.
+  the x64 JIT, and Windows x64 passes the same round trip on PostgreSQL 17 in
+  CI. That run ([38137637601](https://github.com/willibrandon/ankus/actions/runs/38137637601))
+  failed only a new unit test whose Windows cppflags used backslashes, which
+  pg_config's shell words treat as escapes; it was fixed in **699d12a**. The
+  Intel-from-Apple-silicon CI jobs have not run yet.
 - Aggregate support calls now keep their per-call-site state in `fn_extra`, as
   PostgreSQL's own aggregates do. Each transition used to look up the catalog
   signature, rebuild the aggregate's metadata and create and delete a memory
@@ -730,13 +741,13 @@ Earlier entries in this log are in the
 ## Remaining work order
 
 Primary CI, the Linux, macOS ARM64 and Windows x64 version matrices, including
-PostgreSQL 19 beta, and Intel macOS on 13, 14, 15, 16 and 18 all pass on runtime **ankus.5**. The
+PostgreSQL 19 beta, and Intel macOS on 13–18 all pass on runtime **ankus.5**. The
 declaration audit against pgrx 0.19.3 has no open option, and the third code
 review's findings are fixed or kept by documented design.
 
 1. Resolve discovered correctness and CI failures before accepting affected work, including the intermittent macOS PostgreSQL 19 `AllocSetCheck` fault if it recurs.
 2. Complete every pgrx 0.19.3 release-delta gate, including deterministic header discovery/regeneration, newly exposed native contracts, all CLI/configuration/output forwarding and allocation/shared-memory/varlena audits. Refresh evidence against the corrected current source.
-3. Finish supported-major/platform coverage: Intel macOS on 17 and 19 beta (the weekly run is in progress; 16 passes).
+3. Finish supported-major/platform coverage: Intel macOS on 19 beta (the weekly run is in progress; 13–17 pass).
 4. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
 5. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees.
 6. Prove cross-target builds across architectures: the `target-export`, `target-build` and `target-verify` jobs build Intel macOS from Apple silicon and load the result; record their first run. Linux and Windows cross builds need a target sysroot and remain unverified.

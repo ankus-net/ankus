@@ -103,14 +103,34 @@ loop.
 | `IEnumerable<int>` set, per row | 77 ns |
 | `IEnumerable<(int, string)>` table, per row | 208 ns |
 | `Spi.ExecuteScalar<int>("SELECT 1")`, per query | 2.86 µs, against 2.0 µs for PL/pgSQL `EXECUTE` |
-| `Spi.Select` of one `int` column, per row | 228 ns |
+| `Spi.Select` of one `int` column, per row | See below |
 | `int[]` argument, per element | 1 ns, down from 57 ns |
-| `int[]` result, per element | 1–2 ns |
-| `int[]` argument or result, per call | 240 ns or 400 ns |
+| `int[]` result, per element | about 1 ns |
+| `int[]` argument or result, per call | 240 ns or 185 ns, down from 400 ns |
+| `string[]` argument of short text, per element | 34 ns, down from 90 ns |
+| `string[]` result of short text, per element | 72 ns |
+
+`Spi.Select` copies every row into managed memory, so its cost depends on how
+many rows one result retains. Reading `generate_series` rows and summing them
+costs 106 ns per row in total as 2,000 queries of 1,000 rows, including each
+query and `row.Get<int>(0)`, against 210 ns for a PL/pgSQL `FOR` loop over one
+two-million-row query. One two-million-row `Spi.Select` costs 290 ns per row,
+because the garbage collector promotes the retained rows; read results that
+large through a cursor. Reading a cell, or an array element, that already has
+the requested type now skips the four registry lookups that rule out
+`[PgDatumType]` mappings, which took the batched cost down from 134 ns.
 
 Arrays crossed the boundary as one 28-byte big-endian record per element,
 which native code wrote and managed code parsed, boxing each value. PostgreSQL
 stores `bool`, `"char"`, `int2`, `int4`, `int8`, `oid`, `float4` and `float8`
 elements as a packed native array, and an array without NULLs keeps them
 contiguous, so both directions now copy that block once. Arrays with NULLs,
-domain elements and other element types keep the per-element form.
+domain elements and other element types keep the per-element form. A function
+returning a vector of one of these primitives writes the block directly,
+without building a `PgArray<T>` and looking up its type mappings.
+
+In a UTF-8 database, `text`, `varchar` and `bpchar` arrays cross as each
+element's length and bytes, since neither side needs to transcode them, and
+reading an element of the requested type skips the general conversion's
+registry lookups. Other databases keep the per-element form, which converts
+each element to and from the database encoding.

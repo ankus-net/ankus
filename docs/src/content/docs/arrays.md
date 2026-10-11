@@ -44,9 +44,10 @@ multiple dimensions or a non-one lower bound. It never silently flattens the val
 
 Arrays of `bool`, `sbyte`, `short`, `int`, `long`, `uint`, `float` and `double`
 without NULL elements convert with one block copy in each direction, since
-PostgreSQL stores them as a packed native array. Other element types, and arrays
-containing NULL, convert element by element. To read the native elements without
-any copy, use a [contiguous native slice](#contiguous-native-slices).
+PostgreSQL stores them as a packed native array. In a UTF-8 database, text
+arrays copy each element's bytes without transcoding. Other element types, and
+primitive arrays containing NULL, convert element by element. To read the native
+elements without any copy, use a [contiguous native slice](#contiguous-native-slices).
 
 ## Dimensions and indexing
 

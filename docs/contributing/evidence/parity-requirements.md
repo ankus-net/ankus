@@ -42,8 +42,8 @@ only the first gate.
 Evidence on runtime 10.0.12-ankus.5: the complete suites, which include every
 source and backend case named above, pass on Linux x64 for PostgreSQL 13–19 beta,
 macOS ARM64 for 13–19 beta (19 with assertions enabled), Windows x64 for 13–19 beta
-and macOS x64 for 13, 14, 15, 16 and 18. macOS x64 on 17 and 19 beta remains; its
-weekly run is in progress.
+and macOS x64 for 13–18. macOS x64 on 19 beta remains; its weekly run is in
+progress.
 
 Work order: fix confirmed correctness and safety defects first; verify and finish
 the complete header/input refresh and its maintenance command; reconcile CLI,

@@ -96,6 +96,11 @@ public static unsafe class NativeMemoryContext
     }
 
     /// <summary>
+    /// Gets whether the current callback runs in a database whose text needs no transcoding; false outside a callback.
+    /// </summary>
+    internal static bool IsUtf8Database => s_api != 0 && ((NativeMemoryApi*)s_api)->_directReads >= 2;
+
+    /// <summary>
     /// Gets whether managed code may read flat values in place, and text as well as bytes.
     /// </summary>
     /// <param name="text">Whether the value is text.</param>

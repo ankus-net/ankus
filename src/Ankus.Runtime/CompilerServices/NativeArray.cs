@@ -38,6 +38,45 @@ public unsafe partial struct NativeValue
     public static NativeValue FromArray<T>(PgArray<T> value) => FromArray((IPgArray)value);
 
     /// <summary>
+    /// Copies a vector of a primitive that PostgreSQL stores as a packed native array straight into the transport,
+    /// without an intermediate <see cref="PgArray{T}"/>.
+    /// </summary>
+    /// <typeparam name="T"><see langword="bool"/>, <see langword="sbyte"/>, <see langword="short"/>, <see langword="int"/>,
+    /// <see langword="long"/>, <see langword="uint"/>, <see langword="float"/> or <see langword="double"/>.</typeparam>
+    /// <param name="value">The vector.</param>
+    /// <returns>The owned transport.</returns>
+    public static NativeValue FromVector<T>(T[] value) where T : unmanaged
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        uint oid = typeof(T) == typeof(bool) ? 16u : typeof(T) == typeof(sbyte) ? 18u : typeof(T) == typeof(short) ? 21u :
+            typeof(T) == typeof(int) ? 23u : typeof(T) == typeof(long) ? 20u : typeof(T) == typeof(uint) ? 26u :
+            typeof(T) == typeof(float) ? 700u : typeof(T) == typeof(double) ? 701u :
+            throw new NotSupportedException($"'{typeof(T)}' is not a packed PostgreSQL array element.");
+        int rank = value.Length == 0 ? 0 : 1;
+        long length = 12L + rank * 8L + (long)value.Length * Unsafe.SizeOf<T>();
+        if (length > 0x3FFFFFFF - 4)
+        {
+            throw new ArgumentOutOfRangeException(nameof(value), "The converted array exceeds PostgreSQL's buffer capacity.");
+        }
+
+        NativeValue result = Allocate((int)length);
+        Span<byte> data = new(result._data, result._length);
+        BinaryPrimitives.WriteInt32BigEndian(data, rank);
+        BinaryPrimitives.WriteInt32BigEndian(data[4..], value.Length);
+        BinaryPrimitives.WriteUInt32BigEndian(data[8..], oid);
+        if (rank == 1)
+        {
+            BinaryPrimitives.WriteInt32BigEndian(data[12..], value.Length);
+            BinaryPrimitives.WriteInt32BigEndian(data[16..], 1);
+        }
+
+        MemoryMarshal.AsBytes(value.AsSpan()).CopyTo(data[(12 + rank * 8)..]);
+        result._auxiliary1 = -1;
+        result._auxiliary2 = 4;
+        return result;
+    }
+
+    /// <summary>
     /// Serializes array shape and scalar elements into one allocator-matched native buffer.
     /// </summary>
     /// <param name="value">The source array.</param>
@@ -68,6 +107,15 @@ public unsafe partial struct NativeValue
             NativeValue packed = FromBytes(buffer.WrittenSpan);
             packed._auxiliary1 = -1;
             packed._auxiliary2 = 4;
+            return packed;
+        }
+
+        if (value is PgArray<string> { ElementTypeOid: 25 } texts && NativeMemoryContext.IsUtf8Database)
+        {
+            WritePackedText(texts, buffer);
+            NativeValue packed = FromBytes(buffer.WrittenSpan);
+            packed._auxiliary1 = -1;
+            packed._auxiliary2 = 5;
             return packed;
         }
 
@@ -117,7 +165,7 @@ public unsafe partial struct NativeValue
         }
 
         uint oid = CharacterTextElementOid(BinaryPrimitives.ReadUInt32BigEndian(new ReadOnlySpan<byte>(_data + 8, 4)));
-        if (_auxiliary2 == 0 || (_auxiliary2 == 4 && PackedWidth(oid) != 0))
+        if (_auxiliary2 == 0 || (_auxiliary2 == 4 && PackedWidth(oid) != 0) || (_auxiliary2 == 5 && oid == 25))
         {
             _ = SpiArray.ArrayOid(oid);
         }
@@ -152,8 +200,8 @@ public unsafe partial struct NativeValue
         int rank = BinaryPrimitives.ReadInt32BigEndian(data);
         int count = BinaryPrimitives.ReadInt32BigEndian(data[4..]);
         int width = _auxiliary2 == 4 ? PackedWidth(oid) : 0;
-        if (rank is < 0 or > 6 || count < 0 || (width == 0 ? 12L + rank * 8L + count * 28L > data.Length
-            : 12L + rank * 8L + (long)count * width != data.Length))
+        long minimum = 12L + rank * 8L + count * (width != 0 ? width : _auxiliary2 == 5 ? 4L : 28L);
+        if (rank is < 0 or > 6 || count < 0 || (width == 0 ? minimum > data.Length : minimum != data.Length))
         {
             throw new InvalidOperationException("Invalid native array shape or element count.");
         }
@@ -179,6 +227,10 @@ public unsafe partial struct NativeValue
             if (width != 0)
             {
                 ReadPackedElements(values, data[offset..], oid);
+            }
+            else if (_auxiliary2 == 5)
+            {
+                ReadPackedText(values, data[offset..]);
             }
             else
             {
@@ -252,6 +304,70 @@ public unsafe partial struct NativeValue
         }
     }
 
+    /// <summary>
+    /// Decodes UTF-8 text elements sent as a native length, or -1 for SQL NULL, followed by their bytes.
+    /// </summary>
+    private static void ReadPackedText<T>(T[] values, ReadOnlySpan<byte> data)
+    {
+        int offset = 0;
+        for (int index = 0; index < values.Length; index++)
+        {
+            if (data.Length - offset < 4)
+            {
+                throw new InvalidOperationException("Truncated native array element.");
+            }
+
+            int length = MemoryMarshal.Read<int>(data[offset..]);
+            offset += 4;
+            if (length == -1)
+            {
+                values[index] = SpiRow.Convert<T>(null);
+                continue;
+            }
+
+            if (length < 0 || length > data.Length - offset)
+            {
+                throw new InvalidOperationException("Invalid native array element.");
+            }
+
+            string text = s_utf8.GetString(data.Slice(offset, length));
+            offset += length;
+            values[index] = text is T typed ? typed : SpiRow.Convert<T>(text);
+        }
+
+        if (offset != data.Length)
+        {
+            throw new InvalidOperationException("Unexpected trailing native array data.");
+        }
+    }
+
+    /// <summary>
+    /// Encodes UTF-8 text elements as a native length, or -1 for SQL NULL, followed by their bytes.
+    /// </summary>
+    private static void WritePackedText(PgArray<string> value, ArrayBufferWriter<byte> buffer)
+    {
+        foreach (string? text in value)
+        {
+            if (text is null)
+            {
+                MemoryMarshal.Write(buffer.GetSpan(4), -1);
+                buffer.Advance(4);
+                continue;
+            }
+
+            int length = s_utf8.GetByteCount(text);
+            if ((long)buffer.WrittenCount + 4 + length > 0x3FFFFFFF - 4)
+            {
+                throw new ArgumentOutOfRangeException(nameof(value), "The converted array exceeds PostgreSQL's buffer capacity.");
+            }
+
+            Span<byte> target = buffer.GetSpan(4 + length);
+            MemoryMarshal.Write(target, length);
+            s_utf8.GetBytes(text, target[4..]);
+            buffer.Advance(4 + length);
+        }
+    }
+
     private static void CopyPacked<TElement, T>(T[] values, ReadOnlySpan<byte> data) where TElement : unmanaged
     {
         int width = Unsafe.SizeOf<TElement>();
@@ -282,6 +398,7 @@ public unsafe partial struct NativeValue
     private readonly void ReadArrayElements<T>(T[] values, ReadOnlySpan<byte> data, int offset, uint oid, EnumMapping? enumeration)
     {
         uint baseOid = _auxiliary2 == 2 && _integer != 0 ? (uint)_integer : oid;
+        // A scalar element of the requested type needs none of the mapped-array checks a general conversion makes.
         for (int index = 0; index < values.Length; index++)
         {
             if (data.Length - offset < 28)
@@ -314,7 +431,7 @@ public unsafe partial struct NativeValue
                 throw new InvalidOperationException("Composite array element identity does not match its array type.");
             }
 
-            values[index] = SpiRow.Convert<T>(element);
+            values[index] = element is T typed and not Array ? typed : SpiRow.Convert<T>(element);
             offset += 28 + length;
         }
 

@@ -83,6 +83,12 @@ public sealed class PgHeapTuple
                 : (T)(object)SpiRow.ReadRaw(cell, attribute.TypeOid);
         }
 
+        // As for rows, a scalar cell of the requested type needs no mapping.
+        if (cell is T typed && cell is not (DetachedDatum or Array))
+        {
+            return typed;
+        }
+
         if (PgDatumRegistry.Find(typeof(T)) is { } mapping)
         {
             return SpiRow.Convert<T>(mapping.ReadCell(cell, Descriptor.Attributes[ordinal].TypeOid));

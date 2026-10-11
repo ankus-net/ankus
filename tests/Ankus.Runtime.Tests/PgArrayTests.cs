@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text;
 
 namespace Ankus.Runtime.Tests;
 
@@ -375,6 +376,84 @@ public sealed class PgArrayTests
             {
                 value.Release();
             }
+        }
+    }
+
+    /// <summary>
+    /// A primitive vector result is written as the same packed block a <see cref="PgArray{T}"/> produces, and an empty
+    /// vector becomes PostgreSQL's zero-dimensional array.
+    /// </summary>
+    [TestMethod]
+    public void PrimitiveVectorsWriteThePackedBlock()
+    {
+        AssertVector<int>([int.MinValue, 0, int.MaxValue]);
+        AssertVector<bool>([true, false, true]);
+        AssertVector<double>([double.Epsilon, -1.5]);
+        AssertVector<long>([]);
+
+        static void AssertVector<T>(T[] values) where T : unmanaged
+        {
+            NativeValue vector = NativeValue.FromVector(values);
+            NativeValue array = NativeValue.FromArray(new PgArray<T>(values));
+            try
+            {
+                Assert.AreEqual(4, ElementKind(ref vector));
+                Assert.AreSequenceEqual(array.ReadBytes(), vector.ReadBytes());
+                PgArray<T> copy = vector.ReadArray<T>();
+                Assert.AreEqual(values.Length == 0 ? 0 : 1, copy.Rank);
+                Assert.AreSequenceEqual(values, copy);
+            }
+            finally
+            {
+                vector.Release();
+                array.Release();
+            }
+        }
+    }
+
+    /// <summary>
+    /// UTF-8 text arrives as a native length, -1 for SQL NULL, and the bytes; lengths must stay inside the block.
+    /// </summary>
+    [TestMethod]
+    public void PackedTextKeepsNullsAndRejectsOverruns()
+    {
+        byte[] text = Encoding.UTF8.GetBytes("héllo 😀");
+        using var stream = new MemoryStream();
+        Span<byte> header = stackalloc byte[20];
+        BinaryPrimitives.WriteInt32BigEndian(header, 1);
+        BinaryPrimitives.WriteInt32BigEndian(header[4..], 3);
+        BinaryPrimitives.WriteInt32BigEndian(header[8..], 25);
+        BinaryPrimitives.WriteInt32BigEndian(header[12..], 3);
+        BinaryPrimitives.WriteInt32BigEndian(header[16..], 1);
+        stream.Write(header);
+        stream.Write(BitConverter.GetBytes(text.Length));
+        stream.Write(text);
+        stream.Write(BitConverter.GetBytes(-1));
+        stream.Write(BitConverter.GetBytes(0));
+        byte[] bytes = stream.ToArray();
+        NativeValue value = NativeValue.FromBytes(bytes);
+        ArrayFlag(ref value) = -1;
+        ElementKind(ref value) = 5;
+        try
+        {
+            Assert.AreSequenceEqual(["héllo 😀", null, ""], value.ReadArray<string?>());
+        }
+        finally
+        {
+            value.Release();
+        }
+
+        BinaryPrimitives.WriteInt32LittleEndian(bytes.AsSpan(20), text.Length + 9);
+        NativeValue overrun = NativeValue.FromBytes(bytes);
+        ArrayFlag(ref overrun) = -1;
+        ElementKind(ref overrun) = 5;
+        try
+        {
+            Assert.ThrowsExactly<InvalidOperationException>(() => overrun.ReadArray<string?>());
+        }
+        finally
+        {
+            overrun.Release();
         }
     }
 

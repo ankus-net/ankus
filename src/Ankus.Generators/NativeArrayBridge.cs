@@ -101,6 +101,59 @@ internal static class NativeArrayBridge
 
             get_typlenbyvalalign(type, &length, &by_value, &alignment);
             deconstruct_array(array, type, length, by_value, alignment, &elements, &nulls, &count);
+            if ((base_type == TEXTOID || base_type == VARCHAROID || base_type == BPCHAROID) && GetDatabaseEncoding() == PG_UTF8)
+            {
+                /* UTF-8 text needs no transcoding: send each element as a native length, -1 for NULL, and its bytes. */
+                initStringInfo(&buffer);
+                pq_sendint32(&buffer, rank);
+                pq_sendint32(&buffer, count);
+                pq_sendint32(&buffer, base_type);
+                for (int index = 0; index < rank; index++)
+                {
+                    pq_sendint32(&buffer, ARR_DIMS(array)[index]);
+                    pq_sendint32(&buffer, ARR_LBOUND(array)[index]);
+                }
+
+                for (int index = 0; index < count; index++)
+                {
+                    int32 text_length = -1;
+                    if (nulls[index])
+                    {
+                        appendBinaryStringInfo(&buffer, (char *) &text_length, sizeof(text_length));
+                    }
+                    else
+                    {
+                        struct varlena *original = (struct varlena *) DatumGetPointer(elements[index]);
+                        struct varlena *text = pg_detoast_datum_packed(original);
+                        text_length = VARSIZE_ANY_EXHDR(text);
+                        appendBinaryStringInfo(&buffer, (char *) &text_length, sizeof(text_length));
+                        appendBinaryStringInfo(&buffer, VARDATA_ANY(text), text_length);
+                        if (text != original)
+                        {
+                            pfree(text);
+                        }
+                    }
+                }
+
+                if (elements != NULL)
+                {
+                    pfree(elements);
+                }
+
+                if (nulls != NULL)
+                {
+                    pfree(nulls);
+                }
+
+                owned->serialized = buffer.data;
+                value->data = (unsigned char *) buffer.data;
+                value->length = buffer.len;
+                value->auxiliary1 = -1;
+                value->auxiliary2 = 5;
+                value->integral = 0;
+                return;
+            }
+
             initStringInfo(&buffer);
             pq_sendint32(&buffer, rank);
             pq_sendint32(&buffer, count);
@@ -172,6 +225,8 @@ internal static class NativeArrayBridge
             Oid base_type = getBaseType(element_type);
             /* Managed code sends fixed-width primitives without NULLs as PostgreSQL's packed storage. */
             int packed = value->auxiliary2 == 4 ? ankus_array_packed_width(element_type) : 0;
+            /* Or UTF-8 text as native lengths and bytes, which only a UTF-8 database receives. */
+            bool packed_text = value->auxiliary2 == 5;
             check_stack_depth();
             if (value->auxiliary1 != -1 || value->length < 12 || value->data == NULL)
             {
@@ -187,7 +242,10 @@ internal static class NativeArrayBridge
                 !ankus_array_element_supported(element_type) ||
                 (value->auxiliary2 == 4 && (packed == 0 ||
                     (int64) 12 + rank * 8 + (int64) count * packed != value->length)) ||
-                (value->auxiliary2 != 4 && (int64) 12 + rank * 8 + (int64) count * 28 > value->length))
+                (packed_text && (GetDatabaseEncoding() != PG_UTF8 ||
+                    (base_type != TEXTOID && base_type != VARCHAROID && base_type != BPCHAROID) ||
+                    (int64) 12 + rank * 8 + (int64) count * 4 > value->length)) ||
+                (value->auxiliary2 != 4 && !packed_text && (int64) 12 + rank * 8 + (int64) count * 28 > value->length))
             {
                 ereport(ERROR, (errcode(ERRCODE_INVALID_BINARY_REPRESENTATION), errmsg("Invalid Ankus array shape or element type")));
             }
@@ -252,6 +310,26 @@ internal static class NativeArrayBridge
                 char *terminated = NULL;
                 CHECK_FOR_INTERRUPTS();
                 parameter.type_oid = element_type;
+                if (packed_text)
+                {
+                    int32 text_length;
+                    memcpy(&text_length, pq_getmsgbytes(&buffer, sizeof(text_length)), sizeof(text_length));
+                    if (text_length < -1)
+                    {
+                        ereport(ERROR, (errcode(ERRCODE_INVALID_BINARY_REPRESENTATION), errmsg("Invalid Ankus array element")));
+                    }
+
+                    nulls[index] = text_length == -1;
+                    if (!nulls[index])
+                    {
+                        parameter.value.data = (unsigned char *) pq_getmsgbytes(&buffer, text_length);
+                        parameter.value.length = text_length;
+                        elements[index] = ankus_parameter_datum(&parameter);
+                    }
+
+                    continue;
+                }
+
                 parameter.value.integral = pq_getmsgint64(&buffer);
                 parameter.value.auxiliary1 = pq_getmsgint(&buffer, 4);
                 parameter.value.auxiliary2 = pq_getmsgint(&buffer, 4);

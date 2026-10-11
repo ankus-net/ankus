@@ -120,6 +120,14 @@ public sealed class SpiRow
             return (T)(object)ReadRaw(_values[ordinal], GetTypeOid(ordinal));
         }
 
+        // A scalar cell that already has the requested type came from a built-in or generated conversion; mapped types
+        // are stored as their PostgreSQL representation, so no mapping applies. Copies without a conversion and arrays
+        // keep their checks.
+        if (_values[ordinal] is T cell && cell is not (DetachedDatum or Array))
+        {
+            return cell;
+        }
+
         if (PgDatumRegistry.Find(typeof(T)) is { } mapping)
         {
             return Convert<T>(mapping.ReadCell(_values[ordinal], GetTypeOid(ordinal)));
