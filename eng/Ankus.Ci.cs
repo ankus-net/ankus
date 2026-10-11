@@ -939,6 +939,30 @@ static void CleanRunnerWorkspace(string repositoryRoot)
     StopJobPostgreSqlServers();
     Run(GetDotNetHost(), ["build-server", "shutdown"], repositoryRoot);
     Run("git", ["clean", "-ffdx"], repositoryRoot);
+    RemoveAbandonedPackageTestDirectories();
+}
+
+// A cancelled or killed suite never reaches its own cleanup, so its package-test directory stays behind and the
+// disk eventually fills. Runners on one host share the temporary directory, so only directories older than any
+// job can run are removed; a live suite's directory is always newer.
+static void RemoveAbandonedPackageTestDirectories()
+{
+    DateTime cutoff = DateTime.UtcNow.AddHours(-12);
+    foreach (string directory in Directory.EnumerateDirectories(Path.GetTempPath(), "ankus package tests *"))
+    {
+        try
+        {
+            if (Directory.GetLastWriteTimeUtc(directory) < cutoff)
+            {
+                Directory.Delete(directory, recursive: true);
+                Console.WriteLine($"Removed abandoned package-test directory {Path.GetFileName(directory)}.");
+            }
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine($"Could not remove {Path.GetFileName(directory)}: {error.Message}");
+        }
+    }
 }
 
 // Shuts down the PostgreSQL servers this job left running, as a cancelled or timed-out job does. The runner would

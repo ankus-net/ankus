@@ -540,6 +540,14 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   as PostgreSQL's own test clusters do; direct tests cover the byte boundary,
   including multibyte names. PostgreSQL 13's job stopped when its runner service
   received a shutdown signal. The matrix is to be rerun with the fix.
+- The ankus.5 Linux version matrix
+  ([38102793609](https://github.com/willibrandon/ankus/actions/runs/38102793609))
+  passes PostgreSQL 14 and 15. The other four jobs were cancelled when the
+  shared runner host's disk filled: 26 GB of package-test directories from
+  suites cancelled on 2026-10-06 and 07 were still in its temporary directory,
+  and the runner aborts a job it cannot log. `runner-cleanup` now removes such
+  directories once they are older than any job can run. The four jobs are being
+  rerun.
 
 Earlier entries in this log are in the
 [evidence archive](docs/contributing/evidence/port-history.md#active-validation-log-through-2026-10-09).
