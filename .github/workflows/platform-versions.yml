@@ -5,6 +5,16 @@ on:
     - cron: '23 6 * * 4'
   workflow_dispatch:
     inputs:
+      platform:
+        description: Platform to test, or all
+        type: choice
+        default: all
+        options: [all, osx-arm64, win-x64]
+      postgresql:
+        description: PostgreSQL major to test, or all; primary CI covers macOS 18 and Windows 17
+        type: choice
+        default: all
+        options: [all, '13', '14', '15', '16', '17', '18', '19']
       package-test-concurrency:
         description: Package-consumer slots (empty uses each runner setting)
         type: string
@@ -89,41 +99,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - runner: ankus-macos-arm64
-            rid: osx-arm64
-            postgresql: 13
-          - runner: ankus-macos-arm64
-            rid: osx-arm64
-            postgresql: 14
-          - runner: ankus-macos-arm64
-            rid: osx-arm64
-            postgresql: 15
-          - runner: ankus-macos-arm64
-            rid: osx-arm64
-            postgresql: 16
-          - runner: ankus-macos-arm64
-            rid: osx-arm64
-            postgresql: 17
-          - runner: ankus-macos-arm64
-            rid: osx-arm64
-            postgresql: 19
-          - runner: ankus-windows-x64
-            rid: win-x64
-            postgresql: 13
-          - runner: ankus-windows-x64
-            rid: win-x64
-            postgresql: 14
-          - runner: ankus-windows-x64
-            rid: win-x64
-            postgresql: 15
-          - runner: ankus-windows-x64
-            rid: win-x64
-            postgresql: 16
-          - runner: ankus-windows-x64
-            rid: win-x64
+        rid: ${{ fromJSON((inputs.platform == '' || inputs.platform == 'all') && '["osx-arm64","win-x64"]' || format('["{0}"]', inputs.platform)) }}
+        postgresql: ${{ fromJSON((inputs.postgresql == '' || inputs.postgresql == 'all') && '[13,14,15,16,17,18,19]' || format('[{0}]', inputs.postgresql)) }}
+        # Primary CI runs the full suite on macOS ARM64 with 18 and Windows x64 with 17.
+        exclude:
+          - rid: osx-arm64
             postgresql: 18
-    runs-on: [self-hosted, '${{ matrix.runner }}']
+          - rid: win-x64
+            postgresql: 17
+    runs-on: [self-hosted, "${{ matrix.rid == 'win-x64' && 'ankus-windows-x64' || 'ankus-macos-arm64' }}"]
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v5

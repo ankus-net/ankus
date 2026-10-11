@@ -130,7 +130,7 @@ The `PostgreSQL platform versions` workflow runs weekly or on manual dispatch:
 | Platform | PostgreSQL majors | Purpose |
 | --- | --- | --- |
 | macOS ARM64 | 13 through 17 and 19 | Exercise every major that primary PG18 CI does not, including both sides of the `.so`/`.dylib` extension suffix change at 15 and 16. |
-| Windows x64 | 13 through 16 and 18 | Exercise every stable major that primary PG17 CI does not. |
+| Windows x64 | 13 through 16, 18 and 19 | Exercise every major that primary PG17 CI does not. |
 
 Install the Homebrew `postgresql@15` and `postgresql@16` formulae on the macOS
 runner. Build the other macOS majors with `ankus init --home <directory> --pg13
@@ -139,14 +139,18 @@ directory, and set repository variables `ANKUS_MACOS_PG13_PG_CONFIG`,
 `ANKUS_MACOS_PG14_PG_CONFIG`, `ANKUS_MACOS_PG17_PG_CONFIG` and
 `ANKUS_MACOS_PG19_PG_CONFIG` to their `pg_config` paths. On Windows, install each major with server headers and
 import libraries; PostgreSQL 16 must be 16.15 or later and 18 must be 18.6 or
-later. Configure repository secrets `ANKUS_WINDOWS_PG13_ROOT` through
-`ANKUS_WINDOWS_PG16_ROOT` and `ANKUS_WINDOWS_PG18_ROOT` with each installation's
-root, containing its `bin`, `include` and `lib` directories.
+later. EDB publishes no Windows beta, so build 19 beta from source with meson
+and MSVC (with winflexbison and Strawberry Perl on `PATH`) into the same layout.
+Configure repository secrets `ANKUS_WINDOWS_PG13_ROOT` through
+`ANKUS_WINDOWS_PG16_ROOT`, `ANKUS_WINDOWS_PG18_ROOT` and `ANKUS_WINDOWS_PG19_ROOT`
+with each installation's root, containing its `bin`, `include` and `lib`
+directories.
 The workflow selects the matching root for the build step. It does not change
 the runner's default `PGROOT` or store device paths in tracked files.
 
-Check every installation with `postgresql-check` before dispatch. Each matrix
-cell runs the entire suite against its selected real server, with a 120-minute
+Check every installation with `postgresql-check` before dispatch. Manual dispatch
+can select one `platform` and one `postgresql` major; the weekly run tests every
+cell. Each matrix cell runs the entire suite against its selected real server, with a 120-minute
 timeout and separate result artifacts. Runner capacity queues macOS ARM64 suites.
 Windows test commands use two machine-wide slots across the available runner
 services so independent cells overlap without saturating one physical host and
