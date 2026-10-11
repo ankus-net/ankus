@@ -565,6 +565,9 @@ internal static class NativeErrorBridge
                 HOLD_INTERRUPTS();
             }
 
+            /* A report can fail without raising, so status alone does not say whether the stack was flushed. */
+            volatile bool caught = false;
+            AnkusPendingError *volatile pending = ankus_pending_error_save();
             PG_TRY();
             {
                 PG_TRY();
@@ -605,6 +608,7 @@ internal static class NativeErrorBridge
                     MemoryContextSwitchTo(recovery);
                     MemoryContextDelete(diagnostic);
                     status = 1;
+                    caught = true;
                 }
                 PG_END_TRY();
             }
@@ -616,6 +620,10 @@ internal static class NativeErrorBridge
                 ereport(FATAL, (errmsg("Unable to recover an Ankus initializer logging failure")));
             }
             PG_END_TRY();
+            if (caught)
+                ankus_pending_error_restore(pending);
+            else
+                ankus_pending_error_release(pending);
             InterruptHoldoffCount = ankus_shared_restore_interrupts(interrupt_holdoff, shared_held_before);
             QueryCancelHoldoffCount = cancel_holdoff;
             return status;

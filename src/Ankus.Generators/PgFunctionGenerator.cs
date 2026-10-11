@@ -741,7 +741,7 @@ public sealed class PgFunctionGenerator : IIncrementalGenerator
                 native.AppendLine(NativeGucBridge.GetManagedSource(hasGucCheck, hasGucHooks, hasGucShow));
                 if (hasRuntimeGucs)
                 {
-                    native.AppendLine(NativeGucBridge.RuntimeDefinitionEntry);
+                    native.AppendLine(NativeGucBridge.GetRuntimeDefinitionEntry(hasBackend || hasGucHooks));
                 }
 
                 registration.Insert(0, (hasBackend ? "        ankus_read_guc = ankus_guc_read;\n" : string.Empty) +

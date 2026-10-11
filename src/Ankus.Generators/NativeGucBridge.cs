@@ -627,7 +627,24 @@ internal static class NativeGucBridge
     /// <summary>
     /// Gets the guarded entry point for run-time definitions, emitted after the read source's error capture.
     /// </summary>
-    internal const string RuntimeDefinitionEntry = """
+    /// <param name="preservePendingErrors">
+    /// Whether the bridge includes the general error bridge. Its other guarded code can then run while a caller's error is
+    /// pending, so a definition failure must not flush that error. Without it, definitions run only from module load.
+    /// </param>
+    /// <returns>The C entry point.</returns>
+    internal static string GetRuntimeDefinitionEntry(bool preservePendingErrors)
+        => RuntimeDefinitionEntry
+            .Replace("ANKUS_PENDING_SAVE", preservePendingErrors
+                ? "AnkusPendingError *volatile pending = ankus_pending_error_save();"
+                : "/* Without guarded backend code, definitions run only from module load. */")
+            .Replace("ANKUS_PENDING_FINISH", preservePendingErrors
+                ? "if (status != 0) ankus_pending_error_restore(pending); else ankus_pending_error_release(pending);"
+                : string.Empty);
+
+    /// <summary>
+    /// Gets the guarded entry point source, with placeholders for optional pending-error preservation.
+    /// </summary>
+    private const string RuntimeDefinitionEntry = """
         static int
         ankus_guc_define_runtime(const char *name, intptr_t request, AnkusError *error)
         {
@@ -636,6 +653,7 @@ internal static class NativeGucBridge
 
             MemoryContext caller = CurrentMemoryContext;
             volatile int status = 0;
+            ANKUS_PENDING_SAVE
             PG_TRY();
             {
                 PG_TRY();
@@ -662,6 +680,7 @@ internal static class NativeGucBridge
             }
             PG_END_TRY();
             MemoryContextSwitchTo(caller);
+            ANKUS_PENDING_FINISH
             return status;
         }
         """;

@@ -142,6 +142,7 @@ internal static class NativeAggregateBridge
 
             /* Both the operation and diagnostic recovery have native guards. Neither
              * allocation failures nor a user comparison ERROR may cross managed frames. */
+            AnkusPendingError *volatile pending = ankus_pending_error_save();
             PG_TRY();
             {
                 PG_TRY();
@@ -238,6 +239,10 @@ internal static class NativeAggregateBridge
                 ereport(FATAL, (errmsg("Unable to recover PostgreSQL state after a guarded aggregate failure")));
             }
             PG_END_TRY();
+            if (status != 0)
+                ankus_pending_error_restore(pending);
+            else
+                ankus_pending_error_release(pending);
             return status;
         }
 
