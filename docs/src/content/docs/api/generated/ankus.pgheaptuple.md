@@ -62,7 +62,8 @@ An owned record with a canonical registered type modifier.
 ### Get&lt;T&gt;(int)
 
 Reads a cell with the same strict type and SQL NULL rules as an SPI row.
-Reading PgRelation or its arrays opens fresh references that the caller must dispose.
+A [PgDatumTypeAttribute](/api/ankus.pgdatumtypeattribute/) type, or an array of one, uses its reader when the attribute has exactly the
+mapped PostgreSQL type. Reading PgRelation or its arrays opens fresh references that the caller must dispose.
 
 ```csharp
 public T Get<T>(int ordinal)
@@ -157,7 +158,8 @@ The typed replacement.
 
 Replaces a cell while preserving declared type, domain, collation, and type-modifier metadata.
 Native output applies current catalog and domain constraints before exposing the tuple to PostgreSQL.
-Raw datums are copied into independent managed values before assignment; relations retain only their OIDs.
+Raw datums and [PgDatumTypeAttribute](/api/ankus.pgdatumtypeattribute/) values are copied into independent managed storage before
+assignment; relations retain only their OIDs.
 
 ```csharp
 public void Set<T>(int ordinal, T value)
@@ -237,6 +239,7 @@ Value: [PgTupleDescriptor](/api/ankus.pgtupledescriptor/)
 ### this[int]
 
 Gets an owned cell by zero-based physical ordinal. SQL NULL and dropped attributes return null; unavailable fields throw.
+A cell whose type has no managed conversion throws; read it with its [PgDatumTypeAttribute](/api/ankus.pgdatumtypeattribute/) type.
 
 ```csharp
 public object? this[int ordinal] { get; }

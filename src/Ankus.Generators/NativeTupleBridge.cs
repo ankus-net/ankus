@@ -103,7 +103,7 @@ internal static class NativeTupleBridge
                 if (!cell.is_null)
                 {
                     ankus_check_result_enum(base_type);
-                    ankus_read_value(values[index], base_type, &cell, &cell_owned);
+                    ankus_read_cell(values[index], base_type, &cell, &cell_owned);
                 }
 
                 pq_sendint64(&buffer, cell.integral);

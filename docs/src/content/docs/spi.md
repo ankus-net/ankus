@@ -220,6 +220,13 @@ null. `Columns` exposes each column's name and PostgreSQL type OID, including fo
 queries that return no rows. Domain columns retain their declared OID and use the
 underlying base type's value conversion.
 
+A column whose type has no managed conversion, such as `tsvector` or a base type
+your extension declares, is copied exactly and converted only when you read it,
+as pgrx does. Read it with its [`PgDatumType`](/raw-values/#reusable-scalar-mappings),
+or an array of one: `row.Get<Unsigned24>("value")`. The cell must have exactly the
+mapped type. The indexer and other types throw `NotSupportedException` for such a
+cell, and the rest of the row stays readable. Use `SelectRaw` to read it as a `PgDatum`.
+
 Results are managed copies. Rows, text, and binary buffers remain valid after
 another SPI command or after the original SPI connection is released.
 PostgreSQL first materializes the complete result in SPI memory, as with pgrx's
@@ -311,9 +318,10 @@ managed object or null. Managed reference values, including byte arrays, follow
 ordinary .NET reference semantics when assigned to a row. The owned rows can be
 read or edited after returning from an extension callback, without a backend binding.
 
-Passing a `PgDatum` to `SpiRow.Set` or `PgHeapTuple.Set` copies a supported managed
-value. The copy remains usable after the raw result is disposed. A failed
-conversion leaves the previous cell unchanged.
+Passing a `PgDatum` to `SpiRow.Set` or `PgHeapTuple.Set` copies its value, including
+one without a managed conversion. A `PgDatumType` value is written through its
+mapping and copied the same way. The copy remains usable after the raw result is
+disposed. A failed conversion leaves the previous cell unchanged.
 
 ### Query options
 

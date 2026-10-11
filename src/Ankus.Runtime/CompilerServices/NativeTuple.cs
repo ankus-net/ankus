@@ -70,7 +70,7 @@ public unsafe partial struct NativeValue
                     (attribute.IsComposite ? 4 : 0) | (attribute.IsUnavailable ? 8 : 0));
                 WriteInt(buffer, name.Length);
                 buffer.Write(name);
-                object? cell = attribute.IsUnavailable ? null : value[index];
+                object? cell = attribute.IsUnavailable ? null : value.GetStoredCell(index);
                 NativeValue item = SpiType.ToNative(cell, PgTypeRegistry.FindValue(cell, attribute.BaseTypeOid),
                     cell is Array array ? PgTypeRegistry.FindArrayValue(array, attribute.BaseTypeOid) : null);
                 try

@@ -50,17 +50,11 @@ public sealed class PgHeapTuple
 
     /// <summary>
     /// Gets an owned cell by zero-based physical ordinal. SQL NULL and dropped attributes return null; unavailable fields throw.
+    /// A cell whose type has no managed conversion throws; read it with its <see cref="PgDatumTypeAttribute"/> type.
     /// </summary>
     /// <param name="ordinal">The physical ordinal.</param>
     /// <returns>The managed cell.</returns>
-    public object? this[int ordinal]
-    {
-        get
-        {
-            ValidateAvailable(ValidateOrdinal(ordinal));
-            return _values[ordinal];
-        }
-    }
+    public object? this[int ordinal] => DetachedDatum.Expose(GetStoredCell(ordinal));
 
     /// <summary>
     /// Gets the first live cell with the exact case-sensitive name.
@@ -71,15 +65,26 @@ public sealed class PgHeapTuple
 
     /// <summary>
     /// Reads a cell with the same strict type and SQL NULL rules as an SPI row.
-    /// Reading PgRelation or its arrays opens fresh references that the caller must dispose.
+    /// A <see cref="PgDatumTypeAttribute"/> type, or an array of one, uses its reader when the attribute has exactly the
+    /// mapped PostgreSQL type. Reading PgRelation or its arrays opens fresh references that the caller must dispose.
     /// </summary>
     /// <typeparam name="T">The requested managed type.</typeparam>
     /// <param name="ordinal">The zero-based physical ordinal.</param>
     /// <returns>The converted cell.</returns>
     public T Get<T>(int ordinal)
     {
-        PgDatumRegistry.RejectOrdinaryResult<T>();
-        return SpiRow.Convert<T>(this[ordinal]);
+        object? cell = GetStoredCell(ordinal);
+        if (PgDatumRegistry.Find(typeof(T)) is { } mapping)
+        {
+            return SpiRow.Convert<T>(mapping.ReadCell(cell, Descriptor.Attributes[ordinal].TypeOid));
+        }
+
+        if (PgDatumRegistry.FindArray(typeof(T)) is { } arrays)
+        {
+            return (T)arrays.ReadCell(cell, Descriptor.Attributes[ordinal].TypeOid, typeof(T))!;
+        }
+
+        return SpiRow.Convert<T>(cell);
     }
 
     /// <summary>
@@ -93,24 +98,40 @@ public sealed class PgHeapTuple
     /// <summary>
     /// Replaces a cell while preserving declared type, domain, collation, and type-modifier metadata.
     /// Native output applies current catalog and domain constraints before exposing the tuple to PostgreSQL.
-    /// Raw datums are copied into independent managed values before assignment; relations retain only their OIDs.
+    /// Raw datums and <see cref="PgDatumTypeAttribute"/> values are copied into independent managed storage before
+    /// assignment; relations retain only their OIDs.
     /// </summary>
     /// <typeparam name="T">The replacement's declared managed type, including its type when null.</typeparam>
     /// <param name="ordinal">The zero-based physical ordinal.</param>
     /// <param name="value">The replacement cell.</param>
     public void Set<T>(int ordinal, T value)
     {
-        PgDatumRegistry.RejectOrdinaryArray(typeof(T));
-        if (value is not null)
-        {
-            PgDatumRegistry.RejectOrdinaryArray(value.GetType());
-        }
-
         PgTupleAttributeInfo attribute = Descriptor.Attributes[ValidateOrdinal(ordinal)];
         ValidateAvailable(ordinal);
         if (attribute.IsDropped)
         {
             throw new InvalidOperationException("Dropped tuple attributes cannot be changed.");
+        }
+
+        if (PgDatumRegistry.Find(typeof(T)) is { } mapping)
+        {
+            uint mapped = mapping.GetOid();
+            RequireReplaceable(ordinal, mapped);
+            _values[ordinal] = mapping.WriteCell(value, mapped);
+            return;
+        }
+
+        if (PgDatumRegistry.FindArray(typeof(T)) is { } arrays)
+        {
+            uint mapped = arrays.GetOid();
+            RequireReplaceable(ordinal, mapped);
+            _values[ordinal] = arrays.WriteCell(value, mapped);
+            return;
+        }
+
+        if (value is not null)
+        {
+            PgDatumRegistry.RejectOrdinaryArray(value.GetType());
         }
 
         uint oid = value is PgDatum datum ? datum.TypeOid : value is PgHeapTuple tuple ? tuple.Descriptor.BaseTypeOid :
@@ -135,7 +156,14 @@ public sealed class PgHeapTuple
     /// <param name="value">The typed replacement.</param>
     public void Set(int ordinal, SpiParameter value)
     {
-        RejectMappedArray(value);
+        if (value.DatumMapping is not null || value.DatumArrayMapping is not null)
+        {
+            RequireReplaceable(ordinal, value.TypeOid);
+            _values[ordinal] = WriteMapped(value);
+            return;
+        }
+
+        RejectOrdinaryArray(value);
         SetCore(ordinal, value.TypeOid, value.Value);
     }
 
@@ -169,7 +197,11 @@ public sealed class PgHeapTuple
         for (int index = 0; index < fields.Length; index++)
         {
             (string name, SpiParameter value) = fields[index];
-            RejectMappedArray(value);
+            if (value.DatumMapping is null && value.DatumArrayMapping is null)
+            {
+                RejectOrdinaryArray(value);
+            }
+
             ArgumentException.ThrowIfNullOrEmpty(name);
             if (name.Contains('\0', StringComparison.Ordinal) || Encoding.UTF8.GetByteCount(name) > 63)
             {
@@ -178,29 +210,52 @@ public sealed class PgHeapTuple
 
             attributes[index] = new PgTupleAttributeInfo(name, value.TypeOid, value.TypeOid, -1, 0,
                 isComposite: value.Value is PgHeapTuple || value.TypeOid == 2249);
-            values[index] = value.Value;
+            values[index] = value.DatumMapping is null && value.DatumArrayMapping is null ? value.Value : WriteMapped(value);
         }
 
         return NativeBackend.CreateTuple(new PgHeapTuple(new PgTupleDescriptor(2249, -1, attributes), values));
     }
 
     /// <summary>
-    /// Keeps typed mapped array parameters out of the ordinary tuple materialization path.
+    /// Rejects an array of mapped elements whose parameter did not declare its mapping.
     /// </summary>
-    private static void RejectMappedArray(SpiParameter value)
+    private static void RejectOrdinaryArray(SpiParameter value)
     {
-        if (value.DatumArrayMapping is not null)
-        {
-            throw new NotSupportedException("Mapped datum array parameters cannot be stored in ordinary managed tuples.");
-        }
-
         if (value.Value is not null)
         {
             PgDatumRegistry.RejectOrdinaryArray(value.Value.GetType());
         }
     }
 
+    /// <summary>
+    /// Writes a mapped parameter through its declared mapping into independent managed storage.
+    /// </summary>
+    private static object? WriteMapped(SpiParameter value)
+        => value.DatumMapping is { } mapping
+            ? mapping.WriteCell(value.Value, value.TypeOid)
+            : value.DatumArrayMapping!.WriteCell(value.Value, value.TypeOid);
+
+    /// <summary>
+    /// Gets a stored cell, including one that has no managed conversion, after checking that the attribute has a value.
+    /// </summary>
+    /// <param name="ordinal">The zero-based physical ordinal.</param>
+    /// <returns>The stored cell.</returns>
+    internal object? GetStoredCell(int ordinal)
+    {
+        ValidateAvailable(ValidateOrdinal(ordinal));
+        return _values[ordinal];
+    }
+
     private void SetCore(int ordinal, uint oid, object? value)
+    {
+        RequireReplaceable(ordinal, oid);
+        _values[ordinal] = value is PgDatum datum ? NativeBackend.DetachDatum(datum) : PgRelationIdentity.Snapshot(value);
+    }
+
+    /// <summary>
+    /// Checks that a live attribute can hold a replacement of the given type before any conversion runs.
+    /// </summary>
+    private void RequireReplaceable(int ordinal, uint oid)
     {
         PgTupleAttributeInfo attribute = Descriptor.Attributes[ValidateOrdinal(ordinal)];
         ValidateAvailable(ordinal);
@@ -214,8 +269,6 @@ public sealed class PgHeapTuple
         {
             throw new InvalidCastException($"PostgreSQL type OID {oid} cannot replace tuple attribute '{attribute.Name}' of type OID {attribute.TypeOid}.");
         }
-
-        _values[ordinal] = value is PgDatum datum ? datum.Read<object?>() : PgRelationIdentity.Snapshot(value);
     }
 
     private int ValidateOrdinal(int ordinal)

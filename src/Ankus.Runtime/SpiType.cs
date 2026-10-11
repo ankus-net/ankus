@@ -281,6 +281,7 @@ internal static class SpiType
             _ when customArrayMapping is null && value is not null && PgDatumRegistry.FindArray(value.GetType()) is not null =>
                 throw new NotSupportedException("Mapped datum arrays require a declared mapped parameter or generated array slot."),
             PgDatum datum => datum.ToNative(),
+            DetachedDatum detached => NativeValue.FromDetachedDatum(detached),
             PgInternal state => state.ToNative(),
             null => new NativeValue { IsNull = 1 },
             _ when customMapping is not null => customMapping.Write(value),
@@ -397,6 +398,7 @@ internal static class SpiType
             _ when value.IsTuple => value.ReadTuple(),
             _ when value.IsEnum => PgEnumRegistry.FindOid(oid).FromLabel(value.ReadString()),
             _ when value.IsCustomType => PgTypeRegistry.FindOid(oid).Read(value),
+            _ when value.IsDetachedDatum => value.ReadDetachedDatum(oid),
             _ => throw new NotSupportedException($"SPI result type OID {oid} does not have a registered managed conversion."),
         };
     }

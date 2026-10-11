@@ -85,6 +85,48 @@ internal abstract class DatumTypeMapping(string name, string? schema, PgTypeOrig
     }
 
     /// <summary>
+    /// Reads a managed row or composite cell with the same exact type check as a raw read. A present cell is rebuilt as a
+    /// datum in a temporary context, which is deleted after the reader returns its independent value.
+    /// </summary>
+    internal object? ReadCell(object? cell, uint cellTypeOid)
+    {
+        RequireRead();
+        uint oid = GetOid();
+        if (cellTypeOid != oid)
+        {
+            throw new InvalidCastException($"PostgreSQL datum type OID {cellTypeOid} does not match mapped type OID {oid}.");
+        }
+
+        if (cell is null)
+        {
+            return null;
+        }
+
+        using PgMemoryContext temporary = PgMemoryContext.Create("Ankus mapped cell");
+        return ReadPresent(NativeBackend.RebuildCell(cell, oid, new PgDatumLifetime(temporary)));
+    }
+
+    /// <summary>
+    /// Writes a value for a managed row or composite cell, which keeps a copy independent of the writer's native storage.
+    /// </summary>
+    internal object? WriteCell(object? value, uint capturedOid)
+    {
+        RequireWrite();
+        if (GetOid() != capturedOid)
+        {
+            throw new InvalidOperationException("The mapped PostgreSQL type has changed since the value was created.");
+        }
+
+        if (value is null)
+        {
+            return null;
+        }
+
+        using PgMemoryContext temporary = PgMemoryContext.Create("Ankus mapped cell");
+        return NativeBackend.DetachDatum(WriteChecked(value, capturedOid, temporary));
+    }
+
+    /// <summary>
     /// Writes the declared managed contract while rejecting stale captured parameter identities.
     /// </summary>
     internal NativeValue Write(object? value, uint capturedOid = 0)

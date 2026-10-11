@@ -123,6 +123,55 @@ public static unsafe partial class NativeBackend
             value.TypeOid, result._text.IsNull != 0, lifetime));
 
     /// <summary>
+    /// Copies a datum into a managed row or composite cell, keeping an exact copy of a value with no managed conversion.
+    /// </summary>
+    /// <param name="value">The checked datum.</param>
+    /// <returns>The managed cell, or null for SQL NULL.</returns>
+    internal static object? DetachDatum(PgDatum value)
+        => RunDatum(value, 14, null, static result =>
+        {
+            uint typeOid = checked((uint)result._rowsAffected);
+            return result._text.IsEnum && result._text.IsNull == 0
+                ? PgEnumRegistry.FindOid(typeOid).FromLabel(result._text.ReadString())
+                : SpiType.FromNative(result._text, typeOid);
+        });
+
+    /// <summary>
+    /// Rebuilds a present managed row or composite cell as a datum of its exact type, for a mapped reader.
+    /// </summary>
+    /// <param name="value">The managed cell.</param>
+    /// <param name="typeOid">The cell's PostgreSQL type OID.</param>
+    /// <param name="lifetime">The destination, which owns the rebuilt datum.</param>
+    /// <returns>The rebuilt datum.</returns>
+    internal static PgDatum RebuildCell(object value, uint typeOid, PgDatumLifetime lifetime)
+    {
+        CheckAccess();
+        lifetime.Validate();
+        NativeSpiRequest request = new()
+        {
+            _operation = SpiOperation.Datum,
+            _scalarOperation = 15,
+            _resultContext = lifetime.ContextId,
+            _resultGeneration = lifetime.Generation,
+        };
+        NativeSpiResult result = default;
+        try
+        {
+            InvokeParameters(&request, [SpiParameter.CreateCell(typeOid, value)], &result);
+            if (result._text.IsNull != 0)
+            {
+                throw new InvalidOperationException("The native cell builder returned SQL NULL for a present value.");
+            }
+
+            return new PgDatum(unchecked((nuint)result._text.Integral), typeOid, false, lifetime);
+        }
+        finally
+        {
+            ReleaseResult(&result);
+        }
+    }
+
+    /// <summary>
     /// Executes raw SQL with result storage owned independently of the SPI connection.
     /// </summary>
     /// <param name="commandText">The SQL commands.</param>

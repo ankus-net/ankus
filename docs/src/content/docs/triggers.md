@@ -71,8 +71,10 @@ Rows, descriptors, strings, and arguments are managed copies. They remain valid
 after the callback and after further SPI calls. Use the [composite value APIs](/composites/)
 to read cells by name or zero-based physical ordinal, change values, and clone rows.
 `Clone()` copies cell slots and shares nested reference values.
-Row fields use Ankus's supported composite conversions; an unsupported field type
-raises an error during row conversion before the managed callback runs.
+Row fields use Ankus's composite conversions. A column whose type has no managed
+conversion, such as `tsvector`, is copied exactly: read it with a
+[`PgDatumType`](/raw-values/#reusable-scalar-mappings) mapping, and a returned row
+keeps its original value.
 
 ## Return behavior
 

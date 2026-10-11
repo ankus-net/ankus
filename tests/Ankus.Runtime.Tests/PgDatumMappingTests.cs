@@ -436,8 +436,7 @@ public sealed unsafe class PgDatumMappingTests
         Assert.AreEqual(message, Assert.ThrowsExactly<NotSupportedException>(absent.Read<PgArray<ArrayKind?>>).Message);
         int[] underlying = [0, 1];
         var row = new SpiRow([underlying], [new SpiColumn("value", 1007)]);
-        Assert.AreEqual("Mapped datum arrays require PgDatum.Read<T>(); ordinary array conversion is not supported.",
-            Assert.ThrowsExactly<NotSupportedException>(() => row.Get<ArrayKind[]>(0)).Message);
+        Assert.AreEqual(message, Assert.ThrowsExactly<NotSupportedException>(() => row.Get<ArrayKind[]>(0)).Message);
         Assert.AreSame(underlying, row.Get<int[]>(0));
         Assert.AreSequenceEqual<int>([0, 1], underlying);
         Assert.IsEmpty(backend.Operations);

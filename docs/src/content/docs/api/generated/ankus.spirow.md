@@ -36,6 +36,7 @@ Value: [int](https://learn.microsoft.com/dotnet/api/system.int32)
 ### this[int]
 
 Gets a cell by its zero-based column ordinal. SQL NULL is represented by null.
+A cell whose type has no managed conversion throws; read it with its [PgDatumTypeAttribute](/api/ankus.pgdatumtypeattribute/) type.
 
 ```csharp
 public object? this[int ordinal] { get; }
@@ -140,7 +141,8 @@ The cell's current type OID.
 
 Gets a typed cell without implicit numeric or textual conversion. Temporal cells also accept exact .NET conversions.
 SQL NULL is accepted for nullable value types and reference types.
-Reading PgRelation or its arrays opens fresh references that the caller must dispose.
+A [PgDatumTypeAttribute](/api/ankus.pgdatumtypeattribute/) type, or an array of one, uses its reader when the cell has exactly the mapped
+PostgreSQL type. Reading PgRelation or its arrays opens fresh references that the caller must dispose.
 
 ```csharp
 public T Get<T>(int ordinal)
@@ -193,7 +195,8 @@ The cell value.
 ### Set&lt;T&gt;(int, T)
 
 Replaces a local cell and its type with a supported managed datum. The edit does not update PostgreSQL or result metadata.
-Raw datums are converted to independent managed values before assignment; relations retain only their OIDs.
+Raw datums and [PgDatumTypeAttribute](/api/ankus.pgdatumtypeattribute/) values are copied into independent managed storage before
+assignment; relations retain only their OIDs.
 
 ```csharp
 public void Set<T>(int ordinal, T value)

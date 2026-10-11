@@ -55,6 +55,14 @@ public readonly struct SpiParameter
     internal static SpiParameter CreateType(uint typeOid) => new(typeOid, null);
 
     /// <summary>
+    /// Binds a managed row or composite cell with its stored type, as writing its row back to PostgreSQL does.
+    /// </summary>
+    /// <param name="typeOid">The cell's PostgreSQL type OID.</param>
+    /// <param name="value">The managed cell.</param>
+    /// <returns>The typed parameter.</returns>
+    internal static SpiParameter CreateCell(uint typeOid, object? value) => new(typeOid, value);
+
+    /// <summary>
     /// Creates a positional parameter using the declared CLR type, including nullable types.
     /// Parameters appear in SQL as $1, $2, and so on.
     /// </summary>

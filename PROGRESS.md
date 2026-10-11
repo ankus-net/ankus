@@ -135,6 +135,26 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- Rows and composites now match pgrx's lazy field reads. A cell whose type has
+  no managed conversion (`tsvector`, `macaddr`, `money`, a base type the
+  extension declares, or an array of one) is copied exactly instead of failing
+  the whole `Select`, composite argument or trigger row. Reading it with the
+  indexer or an ordinary type throws `NotSupportedException`; the rest of the
+  row stays readable. `SpiRow.Get<T>` and `PgHeapTuple.Get<T>` accept a
+  `PgDatumType`, or an array of one, when the cell has exactly the mapped type:
+  the copy is rebuilt as a temporary datum for the reader and freed when it
+  returns. `Set<T>`, `Set(SpiParameter)` and `PgHeapTuple.Create` write mapped
+  values and raw datums through the same copy, and a returned row writes every
+  unconverted field back unchanged. Backend tests cover by-value, fixed-length,
+  variable-length and array cells from SPI rows, composite arguments and
+  results, records and a BEFORE UPDATE trigger whose TOASTed `tsvector` column
+  survives exactly; runtime tests cover the transport and its validation.
+- Windows bridges now compile as C11. PostgreSQL 19's headers use `_Noreturn`
+  and `alignas`, which MSVC accepts only under `/std:c11`; the layout probe and
+  the extension bridge compile lacked it, so the Windows 19 cell failed before
+  testing. Two Windows tests that failed under load now wait for the condition
+  they check: a regression driver deleted right after it exits, and a parallel
+  aggregate whose late worker found no blocks left to scan.
 - Editors now fix the two most common entry-method errors. ANKUS033 offers
   **Make static** when the method reads no instance state, overrides or
   implements nothing, and no caller uses an instance receiver; ANKUS034 offers
@@ -642,7 +662,7 @@ review's findings are fixed or kept by documented design.
 1. Resolve discovered correctness and CI failures before accepting affected work, including the intermittent macOS PostgreSQL 19 `AllocSetCheck` fault if it recurs.
 2. Complete every pgrx 0.19.3 release-delta gate, including deterministic header discovery/regeneration, newly exposed native contracts, all CLI/configuration/output forwarding and allocation/shared-memory/varlena audits. Refresh evidence against the corrected current source.
 3. Finish supported-major/platform coverage: Intel macOS on 13–17 and 19 beta (now dispatched weekly) and Windows on 19 beta (a source build in progress).
-4. Finish the final API-by-API inventory audit, including mapped datum values in `SpiRow.Get<T>` and `PgHeapTuple.Get<T>`.
+4. Finish the final API-by-API inventory audit.
 5. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees.
 6. Close remaining CLI, account/privilege and platform-installation contracts.
 7. Complete framework/discovery support, representative samples and the final documentation review.

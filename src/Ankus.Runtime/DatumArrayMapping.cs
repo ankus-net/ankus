@@ -60,8 +60,59 @@ internal abstract class DatumArrayMapping(DatumTypeMapping element)
             return new NativeValue { IsNull = 1 };
         }
 
-        IPgArray array = Wrap(value);
-        PgMemoryContext destination = PgMemoryContext.Current;
+        return NativeValue.FromPolymorphic(Build(Wrap(value), elementOid, arrayOid, PgMemoryContext.Current));
+    }
+
+    /// <summary>
+    /// Reads a managed row or composite cell with the same exact type check as a raw read. A present cell is rebuilt as an
+    /// array in a temporary context, which is deleted after its elements are detached.
+    /// </summary>
+    internal object? ReadCell(object? cell, uint cellTypeOid, Type requested)
+    {
+        RequireRead();
+        uint elementOid = Element.GetOid();
+        uint arrayOid = NativeBackend.EnumArrayOid(elementOid);
+        if (cellTypeOid != arrayOid)
+        {
+            throw new InvalidCastException($"PostgreSQL datum type OID {cellTypeOid} does not match mapped array type OID {arrayOid}.");
+        }
+
+        if (cell is null)
+        {
+            return null;
+        }
+
+        using PgMemoryContext temporary = PgMemoryContext.Create("Ankus mapped cell");
+        return ReadPresent(NativeBackend.RebuildCell(cell, arrayOid, new PgDatumLifetime(temporary)), elementOid, requested);
+    }
+
+    /// <summary>
+    /// Writes an array for a managed row or composite cell, which keeps a copy independent of the writers' native storage.
+    /// </summary>
+    internal object? WriteCell(object? value, uint capturedOid)
+    {
+        RequireWrite();
+        uint elementOid = Element.GetOid();
+        uint arrayOid = NativeBackend.EnumArrayOid(elementOid);
+        if (capturedOid != arrayOid)
+        {
+            throw new InvalidOperationException("The mapped PostgreSQL type has changed since the value was created.");
+        }
+
+        if (value is null)
+        {
+            return null;
+        }
+
+        using PgMemoryContext temporary = PgMemoryContext.Create("Ankus mapped cell");
+        return NativeBackend.DetachDatum(Build(Wrap(value), elementOid, arrayOid, temporary));
+    }
+
+    /// <summary>
+    /// Builds an exactly typed native array in the destination, releasing the element writers' storage afterward.
+    /// </summary>
+    private PgDatum Build(IPgArray array, uint elementOid, uint arrayOid, PgMemoryContext destination)
+    {
         var lifetime = new PgDatumLifetime(destination);
         PgMemoryContext temporary = PgMemoryContext.Create("Ankus mapped array writer", PgMemoryContext.Callback);
         Exception? primary = null;
@@ -89,7 +140,7 @@ internal abstract class DatumArrayMapping(DatumTypeMapping element)
             PgResultCleanup.Dispose(temporary, primary);
         }
 
-        return NativeValue.FromPolymorphic(result);
+        return result;
     }
 
     /// <summary>

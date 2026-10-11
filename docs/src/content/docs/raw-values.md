@@ -832,8 +832,12 @@ The range has its own SQL identity and provider. NULL ranges, empty ranges and
 infinite ends skip scalar conversion; a finite bound writer returning SQL NULL
 is rejected. The backend verifies the declared range's exact scalar subtype.
 
-Use raw result owners and `Read<T>()` for mapped row fields. `SpiRow.Get<T>` and
-`PgHeapTuple.Get<T>` do not convert canonical cells through these converters.
+`SpiRow.Get<T>` and `PgHeapTuple.Get<T>` read mapped row fields and arrays of them.
+The cell must have exactly the mapped type. Ankus rebuilds the copied cell as a
+temporary datum, passes it to the reader, and frees it when the reader returns, so a
+reader must copy what it keeps. `Set<T>` writes through the mapping and stores a copy.
+Cells of types without any managed conversion are copied exactly and can only be
+read this way; writing their row back to PostgreSQL restores the original value.
 For native addresses, `DangerousCall<T>` selects the registered reader; use
 `DangerousCallRaw` for an explicit native owner or delayed mapped read. The caller
 must supply an address whose actual result matches the mapping's SQL type and

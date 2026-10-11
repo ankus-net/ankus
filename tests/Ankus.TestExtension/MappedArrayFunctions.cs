@@ -609,10 +609,10 @@ public static class MappedArrayFunctions
     }
 
     /// <summary>
-    /// Keeps ordinary erased row and tuple conversion outside target-directed mapped-array scope.
+    /// Reads a canonical row or tuple array through its mapped element reader.
     /// </summary>
-    [PgFunction(Name = "ordinary_denied")]
-    public static int OrdinaryDenied(bool tuple) => tuple
+    [PgFunction(Name = "ordinary_read")]
+    public static int OrdinaryRead(bool tuple) => tuple
         ? PgHeapTuple.Create(("value", SpiParameter.Create(s_ordinaryValues))).Get<PgArray<ArrayValue>>(0).Count
         : Spi.Query("SELECT ARRAY[7]")[0].Get<ArrayValue[]>(0).Length;
 

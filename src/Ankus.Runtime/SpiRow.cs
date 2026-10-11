@@ -22,17 +22,18 @@ public sealed class SpiRow
 
     /// <summary>
     /// Gets a cell by its zero-based column ordinal. SQL NULL is represented by null.
+    /// A cell whose type has no managed conversion throws; read it with its <see cref="PgDatumTypeAttribute"/> type.
     /// </summary>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The managed cell.</returns>
-    public object? this[int ordinal] => _values[ordinal];
+    public object? this[int ordinal] => DetachedDatum.Expose(_values[ordinal]);
 
     /// <summary>
     /// Gets a cell by its exact, case-sensitive column name. Duplicate names resolve to the first column.
     /// </summary>
     /// <param name="name">The column name.</param>
     /// <returns>The managed cell or null for SQL NULL.</returns>
-    public object? this[string name] => _values[GetOrdinal(name)];
+    public object? this[string name] => this[GetOrdinal(name)];
 
     /// <summary>
     /// Gets the number of cells in this row.
@@ -41,7 +42,8 @@ public sealed class SpiRow
 
     /// <summary>
     /// Replaces a local cell and its type with a supported managed datum. The edit does not update PostgreSQL or result metadata.
-    /// Raw datums are converted to independent managed values before assignment; relations retain only their OIDs.
+    /// Raw datums and <see cref="PgDatumTypeAttribute"/> values are copied into independent managed storage before
+    /// assignment; relations retain only their OIDs.
     /// </summary>
     /// <typeparam name="T">The replacement type, including its type when the value is null.</typeparam>
     /// <param name="ordinal">The zero-based column ordinal.</param>
@@ -50,23 +52,28 @@ public sealed class SpiRow
     {
         ArgumentOutOfRangeException.ThrowIfNegative(ordinal);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(ordinal, Count);
-        PgDatumRegistry.RejectOrdinaryArray(typeof(T));
-        if (value is not null)
-        {
-            PgDatumRegistry.RejectOrdinaryArray(value.GetType());
-        }
-
         uint typeOid;
         object? managedValue;
-        if (value is PgDatum datum)
+        if (PgDatumRegistry.Find(typeof(T)) is { } mapping)
         {
-            typeOid = datum.TypeOid;
-            managedValue = datum.Read<object?>();
+            typeOid = mapping.GetOid();
+            managedValue = mapping.WriteCell(value, typeOid);
+        }
+        else if (PgDatumRegistry.FindArray(typeof(T)) is { } arrays)
+        {
+            typeOid = arrays.GetOid();
+            managedValue = arrays.WriteCell(value, typeOid);
         }
         else
         {
-            typeOid = SpiType.GetOid(value);
-            managedValue = PgRelationIdentity.Snapshot(value);
+            if (value is not null)
+            {
+                PgDatumRegistry.RejectOrdinaryArray(value.GetType());
+            }
+
+            (typeOid, managedValue) = value is PgDatum datum
+                ? (datum.TypeOid, NativeBackend.DetachDatum(datum))
+                : (SpiType.GetOid(value), PgRelationIdentity.Snapshot(value));
         }
 
         _typeOids ??= [.. _columns.Select(static column => column.TypeOid)];
@@ -99,14 +106,24 @@ public sealed class SpiRow
     /// <summary>
     /// Gets a typed cell without implicit numeric or textual conversion. Temporal cells also accept exact .NET conversions.
     /// SQL NULL is accepted for nullable value types and reference types.
-    /// Reading PgRelation or its arrays opens fresh references that the caller must dispose.
+    /// A <see cref="PgDatumTypeAttribute"/> type, or an array of one, uses its reader when the cell has exactly the mapped
+    /// PostgreSQL type. Reading PgRelation or its arrays opens fresh references that the caller must dispose.
     /// </summary>
     /// <typeparam name="T">The expected managed type.</typeparam>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The cell value.</returns>
     public T Get<T>(int ordinal)
     {
-        PgDatumRegistry.RejectOrdinaryResult<T>();
+        if (PgDatumRegistry.Find(typeof(T)) is { } mapping)
+        {
+            return Convert<T>(mapping.ReadCell(_values[ordinal], GetTypeOid(ordinal)));
+        }
+
+        if (PgDatumRegistry.FindArray(typeof(T)) is { } arrays)
+        {
+            return (T)arrays.ReadCell(_values[ordinal], GetTypeOid(ordinal), typeof(T))!;
+        }
+
         return Convert<T>(_values[ordinal]);
     }
 
@@ -157,6 +174,11 @@ public sealed class SpiRow
     internal static T Convert<T>(object? value)
     {
         PgDatumRegistry.RejectOrdinaryArray(typeof(T));
+        if (value is DetachedDatum detached)
+        {
+            throw detached.Unsupported();
+        }
+
         if (value is not null)
         {
             PgDatumRegistry.RejectOrdinaryArray(value.GetType());

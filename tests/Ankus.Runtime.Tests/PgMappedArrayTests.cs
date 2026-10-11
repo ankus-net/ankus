@@ -449,7 +449,7 @@ public sealed unsafe class PgMappedArrayTests
     }
 
     /// <summary>
-    /// Typed scalar callers select raw array readers while erased row and native-address calls remain denied.
+    /// Typed scalar callers select raw array readers while native-address calls remain denied.
     /// </summary>
     [TestMethod]
     public void TypedCatalogAndSpiResultsKeepExactArraysAndDeferredBoundaries()
@@ -459,11 +459,7 @@ public sealed unsafe class PgMappedArrayTests
         Assert.AreSequenceEqual<Alias>([new(1003), new(1008)], PgFunctions.Call<Alias[]>(77));
         Assert.AreEqual(1, script.CallMode);
         Assert.AreEqual(9002U, script.CallExpectedOid);
-        int[] ordinary = [1, 2];
-        var row = new SpiRow([ordinary], [new SpiColumn("array", script.ArrayOid)]);
-        Assert.ThrowsExactly<NotSupportedException>(() => row.Get<Kind[]>(0));
         Assert.ThrowsExactly<NotSupportedException>(() => PgFunctions.DangerousCall<WriteOnly[]>(1, 0));
-        Assert.AreSequenceEqual<int>([1, 2], row.Get<int[]>(0));
     }
 
     /// <summary>
@@ -728,7 +724,8 @@ public sealed unsafe class PgMappedArrayTests
     }
 
     /// <summary>
-    /// Erased row, tuple and canonical-array routes reject mapped containers before losing type metadata.
+    /// Erased row, tuple and canonical-array routes reject mapped containers before losing type metadata. A declared
+    /// mapped array is written through its mapping instead, which the backend tests cover.
     /// </summary>
     [TestMethod]
     public void ErasedArrayPathsRejectPresentEmptyAndNullWithoutChangingOwners()
@@ -738,19 +735,12 @@ public sealed unsafe class PgMappedArrayTests
         Kind[] mapped = [Kind.One, (Kind)2];
         var row = new SpiRow([original], [new SpiColumn("array", 1007)]);
         var tuple = new PgHeapTuple(new PgTupleDescriptor(2249, -1, [new PgTupleAttributeInfo("array", 1007, 1007, -1, 0)]), [original]);
-        SpiParameter present = SpiParameter.Create(mapped);
-        SpiParameter absent = SpiParameter.Create<Kind[]?>(null);
         int lookups = script.Lookups;
         script.Memory.Requests.Clear();
-        Assert.ThrowsExactly<NotSupportedException>(() => row.Set(0, mapped));
-        Assert.ThrowsExactly<NotSupportedException>(() => row.Set<Kind[]?>(0, null));
         Assert.ThrowsExactly<NotSupportedException>(() => row.Set<object>(0, mapped));
-        Assert.ThrowsExactly<NotSupportedException>(() => tuple.Set(0, mapped));
-        Assert.ThrowsExactly<NotSupportedException>(() => tuple.Set<Kind[]?>(0, null));
-        Assert.ThrowsExactly<NotSupportedException>(() => tuple.Set(0, present));
-        Assert.ThrowsExactly<NotSupportedException>(() => tuple.Set(0, absent));
-        Assert.ThrowsExactly<NotSupportedException>(() => PgHeapTuple.Create(("array", present)));
-        Assert.ThrowsExactly<NotSupportedException>(() => PgHeapTuple.Create(("array", absent)));
+        Assert.ThrowsExactly<NotSupportedException>(() => tuple.Set<object>(0, mapped));
+        Assert.ThrowsExactly<NotSupportedException>(() => tuple.Set(0, SpiParameter.CreateCell(1007, mapped)));
+        Assert.ThrowsExactly<NotSupportedException>(() => PgHeapTuple.Create(("array", SpiParameter.CreateCell(1007, mapped))));
         Assert.ThrowsExactly<NotSupportedException>(() => SpiType.ToNative(mapped));
         Assert.ThrowsExactly<NotSupportedException>(() => SpiArray.Wrap(mapped));
         var empty = new PgArray<Kind>([]);

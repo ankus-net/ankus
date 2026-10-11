@@ -181,9 +181,11 @@ public sealed partial class AggregateTests
             const string query = "SELECT aggregate_values.first_poly(CASE WHEN value % 7=0 THEN NULL ELSE repeat('owned',1000) END) FROM aggregate_values.parallel_input";
 
             // A strict aggregate adopts the first partial state and combines only later ones, so count combinations
-            // in an execution where both workers ran. Concurrent tests can briefly hold the worker slots.
+            // in an execution where both workers ran. Concurrent tests can briefly hold the worker slots, and on a
+            // loaded host a worker can start after the others have scanned every block, leaving one state.
             int launched = 0;
-            for (int attempt = 0; attempt < 20 && launched < 2; attempt++)
+            int[] counts = [];
+            for (int attempt = 0; attempt < 20; attempt++)
             {
                 await Execute(connection, transaction, "SELECT aggregate_values.poly_aggregate_reset()", token);
                 string plan = await Scalar<string>(connection, transaction, "EXPLAIN(ANALYZE,FORMAT JSON) " + query, token);
@@ -191,14 +193,19 @@ public sealed partial class AggregateTests
                 JsonElement root = document.RootElement[0].GetProperty("Plan");
                 Assert.IsTrue(HasPartialAggregate(root));
                 launched = WorkersLaunched(root);
-                if (launched < 2)
+                if (launched == 2)
                 {
-                    await Task.Delay(100, token);
+                    counts = await Scalar<int[]>(connection, transaction, "SELECT aggregate_values.poly_aggregate_counts()", token);
+                    if (counts[1] > 0)
+                    {
+                        break;
+                    }
                 }
+
+                await Task.Delay(100, token);
             }
 
             Assert.AreEqual(2, launched, "Both planned workers must run to give the leader states to combine.");
-            int[] counts = await Scalar<int[]>(connection, transaction, "SELECT aggregate_values.poly_aggregate_counts()", token);
             Assert.IsGreaterThan(0, counts[1], "The leader must invoke the generated polymorphic combine callback.");
             Assert.AreEqual(string.Concat(Enumerable.Repeat("owned", 1000)), await Scalar<string>(connection, transaction, query, token));
         });

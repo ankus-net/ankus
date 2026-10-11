@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text;
 using Ankus.PgConfig;
 using Ankus.Testing;
@@ -54,7 +55,7 @@ public sealed class PostgresRegressionPrerequisiteTests(TestContext context)
             new Dictionary<string, string?> { ["PATH"] = owner.Installation.BinDirectory + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH") }, token);
         Assert.AreEqual(0, relocatedVersion.ExitCode, relocatedVersion.StandardError);
         Assert.AreEqual(version.StandardOutput, relocatedVersion.StandardOutput);
-        File.Delete(relocated);
+        await DeleteExecutable(relocated, token);
         Assert.IsFalse(File.Exists(staged));
         PostgresInstallation stillUsable = await PostgresInstallation.CreateAsync(owner.Installation.PgConfigPath, token);
         Assert.AreEqual(source.Version, stillUsable.Version);
@@ -283,6 +284,29 @@ public sealed class PostgresRegressionPrerequisiteTests(TestContext context)
         {
             await connection.DisposeAsync();
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Deletes an executable that has just exited. Windows can deny the deletion while the exited process's image is
+    /// still being released, so access and sharing failures are retried for up to ten seconds, as PostgreSQL's own
+    /// Windows unlink does.
+    /// </summary>
+    private static async Task DeleteExecutable(string path, CancellationToken token)
+    {
+        long started = Stopwatch.GetTimestamp();
+        while (true)
+        {
+            try
+            {
+                File.Delete(path);
+                return;
+            }
+            catch (Exception error) when (OperatingSystem.IsWindows() && error is IOException or UnauthorizedAccessException &&
+                Stopwatch.GetElapsedTime(started) < TimeSpan.FromSeconds(10))
+            {
+                await Task.Delay(100, token);
+            }
         }
     }
 }

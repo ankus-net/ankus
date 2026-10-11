@@ -49,6 +49,12 @@ cannot be changed, and do not resolve by name. An incompatible read or write
 throws; a failed write leaves the cell unchanged. NULL cells require reference
 or nullable value types when read.
 
+A field whose type has no managed conversion, such as `tsvector` or `macaddr`, is
+copied exactly. Read or write it with a [`PgDatumType`](/raw-values/#reusable-scalar-mappings)
+mapping, or an array of one, which must have exactly the field's type. The indexer
+and other types throw `NotSupportedException`. A tuple returned to PostgreSQL
+writes the copy back unchanged.
+
 `Descriptor.Attributes` records names, declared and base type OIDs, type
 modifiers, collations, dropped slots, and catalog `NOT NULL` metadata.
 Descriptors loaded for a domain retain its declared `TypeOid` and expose the

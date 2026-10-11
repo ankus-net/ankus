@@ -161,25 +161,51 @@ internal static class NativeDatumBridge
         }
 
         """ + NativeArrayViewBridge.Source + NativeBufferViewBridge.Source + """
+        /* A managed row or composite cell already satisfied its domain when it was read, so it is
+         * rebuilt as its base type for a mapped reader instead of being assigned to the domain again. */
+        static void
+        ankus_rebuild_cell(AnkusRequest *request, AnkusResult *result)
+        {
+            AnkusParameter base = request->parameters[0];
+            Oid type = base.type_oid;
+            if (get_typtype(type) == '\0')
+                ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT), errmsg("Parameter type OID %u does not exist", type)));
+            ankus_datum_context(request->result_context, request->result_generation);
+            base.type_oid = getBaseType(type);
+            result->processed = base.type_oid;
+            result->text.is_null = base.value.is_null;
+            if (!base.value.is_null)
+                result->text.integral = (int64) (uintptr_t) ankus_copy_raw_datum(ankus_parameter_datum(&base), type,
+                    request->result_context, request->result_generation);
+        }
+
         static void
         ankus_datum_operation(AnkusRequest *request, AnkusResult *result)
         {
-            if (request->scalar_operation < 0 || request->scalar_operation > 13)
+            if (request->scalar_operation < 0 || request->scalar_operation > 15)
                 ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("Unknown raw datum operation")));
             if (request->parameter_count != 1 || request->parameters == NULL)
                 ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("Datum operations require one value")));
+            if (request->scalar_operation == 15)
+            {
+                ankus_rebuild_cell(request, result);
+                return;
+            }
 
             const AnkusParameter *parameter = &request->parameters[0];
             const AnkusValue *value = &parameter->value;
+            /* Operations 5 through 13 borrow the datum. Operation 14 copies it like 0, keeping a value
+             * without a managed conversion for a row or composite cell. */
+            bool borrowed = request->scalar_operation >= 5 && request->scalar_operation <= 13;
             if (value->auxiliary1 != -5 || value->data == NULL ||
                 value->length != sizeof(AnkusDatumReference) || value->is_null > 1)
                 ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("Invalid raw datum parameter envelope")));
             if (get_typtype(parameter->type_oid) == '\0')
                 ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT), errmsg("Parameter type OID %u does not exist", parameter->type_oid)));
-            if (request->scalar_operation >= 2)
+            if (request->scalar_operation >= 2 && request->scalar_operation != 14)
                 ankus_datum_context(request->result_context, request->result_generation);
 
-            if (request->scalar_operation >= 5)
+            if (borrowed)
             {
                 AnkusDatumReference reference;
                 memcpy(&reference, value->data, sizeof(reference));
@@ -213,6 +239,10 @@ internal static class NativeDatumBridge
                 case 0:
                     ankus_check_result_enum(base);
                     ankus_result_value(datum, base, &result->text);
+                    break;
+                case 14:
+                    ankus_check_result_enum(base);
+                    ankus_result_cell(datum, base, &result->text);
                     break;
                 case 1:
                 {

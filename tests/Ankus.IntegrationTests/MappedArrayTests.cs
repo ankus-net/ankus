@@ -670,20 +670,17 @@ public sealed class MappedArrayTests(TestContext context)
     }
 
     /// <summary>
-    /// Erased row/tuple materialization remains excluded while explicit raw arrays succeed.
+    /// A canonical row or tuple array reads its elements through the requested mapping, as raw arrays do.
     /// </summary>
     /// <param name="tuple">Whether to select the ordinary heap tuple path.</param>
     [TestMethod]
     [DataRow(false)]
     [DataRow(true)]
-    public async Task MappedArraysDoNotExpandOrdinaryCellScope(bool tuple)
+    public async Task MappedArraysReadCanonicalRowAndTupleCells(bool tuple)
     {
         await using NpgsqlConnection connection = await Open();
-        PostgresException error = await Assert.ThrowsExactlyAsync<PostgresException>(() => Scalar<int>(connection,
-            $"SELECT mapped_arrays.ordinary_denied({tuple})"));
-        Assert.AreEqual("38000", error.SqlState);
-        Assert.AreEqual("Mapped datum arrays require PgDatum.Read<T>(); ordinary array conversion is not supported.", error.MessageText);
-        Assert.AreEqual("0|0|0", await Counts(connection));
+        Assert.AreEqual(1, await Scalar<int>(connection, $"SELECT mapped_arrays.ordinary_read({tuple})"));
+        Assert.AreEqual("1|1|0", await Counts(connection));
         Assert.AreEqual("23|1|1|1|1|7", await Raw(connection, "SELECT ARRAY[7]"));
     }
 

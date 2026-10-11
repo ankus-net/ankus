@@ -130,7 +130,10 @@ internal static class NativeSpiBridge
         static int ankus_cursor_operation(AnkusRequest *request, AnkusResult *result);
         static void ankus_register_session_plan(SPIPlanPtr plan);
         static void ankus_detach_session_plan(SPIPlanPtr plan);
+        static bool ankus_array_element_supported(Oid type);
         static void ankus_read_array(Datum datum, AnkusValue *value, AnkusInputBuffer *owned);
+        static void ankus_read_detached(Datum datum, Oid type, AnkusValue *value, AnkusInputBuffer *owned);
+        static Datum ankus_write_detached(const AnkusValue *value, Oid type);
         static Datum ankus_write_array(const AnkusValue *value, Oid element_type);
         static void ankus_read_range(Datum datum, AnkusValue *value, AnkusInputBuffer *owned);
         static Datum ankus_write_range(const AnkusValue *value, Oid type);
@@ -277,6 +280,8 @@ internal static class NativeSpiBridge
                 case POINTOID: case LSEGOID: case LINEOID: case BOXOID: case CIRCLEOID: case PATHOID: case POLYGONOID:
                     return ankus_write_typed_buffer(value, parameter->type_oid);
                 default:
+                    if (value->auxiliary1 == -9)
+                        return ankus_write_detached(value, parameter->type_oid);
                     if (parameter->type_oid == RECORDOID || get_typtype(parameter->type_oid) == TYPTYPE_COMPOSITE)
                         return ankus_write_tuple(value, parameter->type_oid, NULL);
                     if (get_typtype(parameter->type_oid) == TYPTYPE_ENUM)
@@ -441,7 +446,7 @@ internal static class NativeSpiBridge
         }
 
         static void
-        ankus_read_value(Datum datum, Oid type, AnkusValue *value, AnkusInputBuffer *owned)
+        ankus_convert_value(Datum datum, Oid type, AnkusValue *value, AnkusInputBuffer *owned, bool detach)
         {
             type = getBaseType(type);
             switch (type)
@@ -515,9 +520,15 @@ internal static class NativeSpiBridge
                         break;
                     }
 
-                    if (OidIsValid(get_element_type(type)))
+                    if (OidIsValid(get_element_type(type)) && (!detach || ankus_array_element_supported(get_element_type(type))))
                     {
                         ankus_read_array(datum, value, owned);
+                        break;
+                    }
+
+                    if (detach)
+                    {
+                        ankus_read_detached(datum, type, value, owned);
                         break;
                     }
 
@@ -527,11 +538,82 @@ internal static class NativeSpiBridge
         }
 
         static void
-        ankus_result_value(Datum datum, Oid type, AnkusValue *value)
+        ankus_read_value(Datum datum, Oid type, AnkusValue *value, AnkusInputBuffer *owned)
+        {
+            ankus_convert_value(datum, type, value, owned, false);
+        }
+
+        /* A row or composite cell keeps an exact copy of a value Ankus cannot convert, as pgrx reads a
+         * field only when asked. A mapped reader can use it, and writing the row back restores it. */
+        static void
+        ankus_read_cell(Datum datum, Oid type, AnkusValue *value, AnkusInputBuffer *owned)
+        {
+            ankus_convert_value(datum, type, value, owned, true);
+        }
+
+        /* A by-value datum keeps its word. Other storage keeps its bytes: a varlena without its header,
+         * a C string without its terminator, and fixed-length storage whole. */
+        static void
+        ankus_read_detached(Datum datum, Oid type, AnkusValue *value, AnkusInputBuffer *owned)
+        {
+            int16 length;
+            bool by_value;
+            get_typlenbyval(type, &length, &by_value);
+            value->auxiliary1 = -9;
+            value->auxiliary2 = (int32) type;
+            value->temporal_infinity = by_value;
+            if (by_value)
+            {
+                value->integral = (int64) datum;
+                return;
+            }
+
+            value->integral = length;
+            if (length == -1)
+            {
+                ankus_read_buffer(datum, value, owned, false);
+            }
+            else if (length == -2)
+            {
+                value->data = (unsigned char *) DatumGetCString(datum);
+                value->length = strlen((const char *) value->data);
+            }
+            else
+            {
+                value->data = (unsigned char *) DatumGetPointer(datum);
+                value->length = length;
+            }
+        }
+
+        static Datum
+        ankus_write_detached(const AnkusValue *value, Oid type)
+        {
+            int16 length;
+            bool by_value;
+            get_typlenbyval(type, &length, &by_value);
+            if ((Oid) value->auxiliary2 != type || value->temporal_infinity != (by_value ? 1 : 0) || value->length < 0 ||
+                (value->length != 0 && value->data == NULL) || (by_value ? value->length != 0 : value->integral != length) ||
+                (length > 0 && !by_value && value->length != length) ||
+                (length == -2 && value->length != 0 && memchr(value->data, '\0', value->length) != NULL))
+                ereport(ERROR, (errcode(ERRCODE_DATATYPE_MISMATCH),
+                    errmsg("Detached value does not match PostgreSQL type %s", format_type_be(type))));
+            if (by_value)
+                return (Datum) value->integral;
+            if (length == -1)
+                return ankus_write_buffer(value, false);
+            if (length == -2)
+                return CStringGetDatum(pnstrdup(value->length == 0 ? "" : (const char *) value->data, value->length));
+            char *copy = palloc(length);
+            memcpy(copy, value->data, length);
+            return PointerGetDatum(copy);
+        }
+
+        static void
+        ankus_result_converted(Datum datum, Oid type, AnkusValue *value, bool detach)
         {
             AnkusValue input = {0};
             AnkusInputBuffer owned = {0};
-            ankus_read_value(datum, type, &input, &owned);
+            ankus_convert_value(datum, type, &input, &owned, detach);
             *value = input;
             value->data = NULL;
             if (input.data != NULL)
@@ -540,6 +622,18 @@ internal static class NativeSpiBridge
             }
 
             ankus_free_input(&owned);
+        }
+
+        static void
+        ankus_result_value(Datum datum, Oid type, AnkusValue *value)
+        {
+            ankus_result_converted(datum, type, value, false);
+        }
+
+        static void
+        ankus_result_cell(Datum datum, Oid type, AnkusValue *value)
+        {
+            ankus_result_converted(datum, type, value, true);
         }
 
         static void
@@ -613,7 +707,7 @@ internal static class NativeSpiBridge
                             validated[column] = true;
                         }
 
-                        ankus_result_value(datum, result->columns[column].base_type_oid, value);
+                        ankus_result_cell(datum, result->columns[column].base_type_oid, value);
                     }
                 }
             }

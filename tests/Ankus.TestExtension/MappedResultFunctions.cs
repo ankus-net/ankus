@@ -327,12 +327,12 @@ public static class MappedResultFunctions
         : Spi.ExecuteScalar<ResultLive>("SELECT 42::mapped_result_live.value").Value;
 
     /// <summary>
-    /// Keeps untyped row and tuple materialization outside the new typed scalar scope.
+    /// Reads a canonical row or tuple cell through its mapped reader.
     /// </summary>
     /// <param name="tuple">Whether to read a heap tuple rather than an untyped SPI row.</param>
-    /// <returns>A sentinel only if canonical materialization unexpectedly gains a mapped converter.</returns>
-    [PgFunction(Name = "ordinary_denied")]
-    public static int OrdinaryDenied(bool tuple) => tuple
+    /// <returns>The value the reader returned.</returns>
+    [PgFunction(Name = "ordinary_read")]
+    public static int OrdinaryRead(bool tuple) => tuple
         ? PgHeapTuple.Create(("value", SpiParameter.Create(42))).Get<ResultInt>(0).Value
         : Spi.Query("SELECT 42")[0].Get<ResultInt>(0).Value;
 

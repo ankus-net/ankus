@@ -521,20 +521,19 @@ public sealed class MappedResultTests(TestContext context)
     }
 
     /// <summary>
-    /// Ordinary row and tuple cells remain canonical and do not acquire arbitrary mapped converter selection.
+    /// A canonical row or tuple cell selects the requested mapping only when read, and the reader's input expires with
+    /// its temporary owner.
     /// </summary>
     /// <param name="tuple">Whether to use a heap tuple.</param>
     [TestMethod]
     [DataRow(false)]
     [DataRow(true)]
-    public async Task TypedMappedResultsDoNotExpandOrdinaryCellScope(bool tuple)
+    public async Task TypedMappedReadsOfCanonicalCellsUseTemporaryOwners(bool tuple)
     {
         await using NpgsqlConnection connection = await Open();
-        PostgresException denied = await Assert.ThrowsExactlyAsync<PostgresException>(() => Scalar<int>(connection,
-            $"SELECT mapped_results.ordinary_denied({tuple})"));
-        Assert.AreEqual("38000", denied.SqlState);
-        Assert.AreEqual("Mapped datum results require PgDatum.Read<T>(); ordinary typed result conversion is not supported.", denied.MessageText);
-        Assert.AreEqual("0|0|0|0|0|0", await Counts(connection));
+        Assert.AreEqual(42, await Scalar<int>(connection, $"SELECT mapped_results.ordinary_read({tuple})"));
+        Assert.AreEqual("1|1|0|0|0|0", await Counts(connection));
+        Assert.IsFalse(await Scalar<bool>(connection, "SELECT mapped_results.captured_alive(false)"));
         Assert.AreEqual(42, await Probe<int>(connection, "required", 0, "SELECT 42"));
     }
 
