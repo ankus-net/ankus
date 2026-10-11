@@ -778,12 +778,14 @@ public sealed partial class ToolCommandTests
 
     /// <summary>
     /// <c>--to</c> writes an exact pin or a prerelease as given, as cargo-pgrx's <c>parse_to_accepts_exact_pin</c> and
-    /// <c>parse_to_accepts_prerelease</c> accept them.
+    /// <c>parse_to_accepts_prerelease</c> accept them. A two-part version is also kept as given; NuGet reads it as a
+    /// minimum version, where Cargo's <c>parse_to_accepts_partial_version</c> reads a caret requirement.
     /// </summary>
     /// <param name="target">The requested version.</param>
     [TestMethod]
     [DataRow("[0.2.0]")]
     [DataRow("0.3.0-beta.1")]
+    [DataRow("0.2")]
     public async Task UpgradeWritesExactPinsAndPrereleases(string target)
     {
         CancellationToken token = context.CancellationToken;
@@ -824,6 +826,8 @@ public sealed partial class ToolCommandTests
     [TestMethod]
     [DataRow("range")]
     [DataRow("emptyRange")]
+    [DataRow("caret")]
+    [DataRow("tilde")]
     [DataRow("cycle")]
     [DataRow("unknown")]
     [DataRow("duplicateSdk")]
@@ -846,6 +850,12 @@ public sealed partial class ToolCommandTests
                 break;
             case "emptyRange":
                 target = ["--to", ""];
+                break;
+            case "caret":
+                target = ["--to", "^0.2"];
+                break;
+            case "tilde":
+                target = ["--to", "~0.2"];
                 break;
             case "identityCycle":
                 await File.WriteAllTextAsync(project, "<Project><PropertyGroup><A>$(B)</A><B>$(A)</B></PropertyGroup><ItemGroup><PackageReference Include='$(A)' Version='0.1.0' /></ItemGroup></Project>", token);
@@ -885,6 +895,8 @@ public sealed partial class ToolCommandTests
         {
             "range" => "'not-a-version' is not a NuGet version or version range",
             "emptyRange" => "'' is not a NuGet version or version range",
+            "caret" => "'^0.2' is not a NuGet version or version range",
+            "tilde" => "'~0.2' is not a NuGet version or version range",
             "cycle" => "circular reference",
             "unknown" => "not a literal NuGet version or range",
             "duplicateSdk" => "one string version for Ankus.Sdk",

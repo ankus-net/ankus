@@ -56,7 +56,7 @@ differ where Ankus uses `--pg`, literal `--property` assignments, runner filters
 after `--` and NuGet version ranges in place of Cargo's positional arguments,
 flags and requirements. Download retries and `pg_config` vendor suffixes now
 match pgrx; `pg_config` values supplied through environment variables serve
-cross builds that Ankus's native layout probe does not allow. One row remains
+cross builds that Ankus's native layout probe does not allow. No row remains
 partial.
 
 ## pgrx
@@ -301,7 +301,7 @@ transaction with `ALTER EXTENSION ... ADD` statements unless
 | parse_to_accepts_bare_version | Covered | `--to 0.2.0`: IT ToolCommandFrameworkUpgradeTests UpgradePreservesUnrelatedVersionsAndFormatting, UpgradeSelectsProjectAndImportedVersions |
 | parse_to_defaults_to_none | Covered | Without `--to`, discovery selects the latest stable version, or a prerelease with `--include-prereleases`: IT ToolCommandFrameworkUpgradeTests UpgradeSelectsNuGetVersions |
 | parse_to_accepts_range | Different | `--to` takes NuGet range notation, so pgrx's `>=0.16, <0.17` is written `[0.16, 0.17)` (`reference/cli.md`, "Upgrade Ankus references"): IT ToolCommandFrameworkUpgradeTests UpgradeResolvesSdkRangeToConcreteVersion keeps `[0.2.0, 0.3.0)` on the package reference and resolves the SDK to 0.2.0 |
-| parse_to_accepts_partial_version, parse_to_accepts_caret, parse_to_accepts_tilde | Different | `--to` takes a NuGet version or range (`reference/cli.md`, "Upgrade Ankus references"). Cargo's `^` and `~` operators are not NuGet syntax and are rejected, and NuGet reads `0.16` as a minimum version where Cargo reads a caret requirement. No test passes these forms |
+| parse_to_accepts_partial_version, parse_to_accepts_caret, parse_to_accepts_tilde | Different | `--to` takes a NuGet version or range (`reference/cli.md`, "Upgrade Ankus references"). Cargo's `^` and `~` operators are not NuGet syntax and are rejected: IT ToolCommandFrameworkUpgradeTests UpgradeInvalidRequestsPreserveAllFiles (`caret`, `tilde`). NuGet reads `0.2` as a minimum version where Cargo reads a caret requirement, and `--to 0.2` writes it as given: UpgradeWritesExactPinsAndPrereleases |
 | parse_to_accepts_exact_pin, parse_to_accepts_prerelease | Covered | `--to` writes an exact pin `[0.2.0]` and a prerelease `0.3.0-beta.1` as given: IT ToolCommandFrameworkUpgradeTests UpgradeWritesExactPinsAndPrereleases; automatic updates keep an existing exact pin and select prereleases with `--include-prereleases`: UpgradeSelectsNuGetVersions |
 | parse_to_rejects_garbage, parse_to_rejects_empty | Covered | IT ToolCommandFrameworkUpgradeTests UpgradeInvalidRequestsPreserveAllFiles: `--to not-a-version` and `--to ""` fail with an error naming the rejected value and leave every file unchanged |
 
