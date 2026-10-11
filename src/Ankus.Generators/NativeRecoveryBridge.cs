@@ -29,14 +29,16 @@ internal static class NativeRecoveryBridge
             if (frame == NULL)
                 return;
 
-            int unrecovered = (frame->failure.flags | error->flags) & ANKUS_ERROR_UNRECOVERED;
+            /* A frame's failure holds diagnostics only once it has failed. */
+            int unrecovered = ((frame->failed ? frame->failure.flags : 0) | error->flags) & ANKUS_ERROR_UNRECOVERED;
             if (frame->failed && frame->failure.report_level >= error->report_level)
             {
                 frame->failure.flags |= unrecovered;
                 return;
             }
 
-            ankus_release_error(&frame->failure);
+            if (frame->failed)
+                ankus_release_error(&frame->failure);
             frame->failure = *error;
             frame->failure.flags |= unrecovered;
             for (int index = 0; index < ANKUS_ERROR_FIELD_COUNT; index++)
@@ -134,12 +136,15 @@ internal static class NativeRecoveryBridge
         }
 
         /* Managed entry points contain every exception. No PostgreSQL call or
-         * longjmp may occur between installing this stack frame and removing it. */
+         * longjmp may occur between installing this stack frame and removing it.
+         * The frame's failure is written before it is read, so only its link and
+         * flag are set: zeroing the diagnostic on every call is not free. */
         #define ANKUS_MANAGED_INVOKE(status, error, expression) \
             do \
             { \
                 ANKUS_SIGNAL_ROUTING_READY(); \
-                AnkusRecoveryFrame ankus_invocation = {0}; \
+                AnkusRecoveryFrame ankus_invocation; \
+                ankus_invocation.failed = false; \
                 ankus_invocation.previous = ankus_recovery_frame; \
                 ankus_recovery_frame = &ankus_invocation; \
                 (status) = (expression); \

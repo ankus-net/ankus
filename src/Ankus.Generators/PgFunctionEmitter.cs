@@ -168,9 +168,10 @@ internal static class PgFunctionEmitter
         }
 
         source.AppendLine("    AnkusValue result = {0};");
-        source.AppendLine("    AnkusError error = {0};");
+        source.AppendLine("    AnkusError error;");
         source.AppendLine("    int status;");
         source.AppendLine("    AnkusMemoryApi memory = {0};");
+        source.AppendLine("    ankus_error_clear(&error);");
         source.AppendLine("    ankus_memory_initialize(&memory);");
         source.AppendLine("    Oid previous_function;");
         source.AppendLine("    volatile Datum datum = (Datum) 0;");

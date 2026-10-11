@@ -65,6 +65,23 @@ internal static class NativeErrorBridge
             }
         }
 
+        /* Clears an error that is read only after a failure writes it. Readers treat the message
+         * as a C string, so an empty first byte stands for the whole buffer; zeroing all of it on
+         * every call cost more than the rest of a scalar call boundary. A macro, so extensions
+         * without a caller do not define an unused function. */
+        #define ankus_error_clear(error) \
+            do \
+            { \
+                (error)->sqlstate = 0; \
+                (error)->message[0] = '\0'; \
+                (error)->position = 0; \
+                (error)->internal_position = 0; \
+                (error)->line = 0; \
+                (error)->flags = 0; \
+                memset((error)->fields, 0, sizeof((error)->fields)); \
+                (error)->report_level = 0; \
+            } while (0)
+
         static void
         ankus_free_error_buffer(void *data)
         {

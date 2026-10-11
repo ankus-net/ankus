@@ -275,8 +275,9 @@ internal static class NativeSetBridge
         static bool
         ankus_set_next(AnkusSetState *state)
         {
-            AnkusError error = {0};
+            AnkusError error;
             volatile int status = 2;
+            ankus_error_clear(&error);
             Oid previous_function = ankus_function_oid;
             CHECK_FOR_INTERRUPTS();
             if (state->iterator == NULL)
