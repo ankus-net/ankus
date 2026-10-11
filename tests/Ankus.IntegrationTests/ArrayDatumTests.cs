@@ -300,6 +300,27 @@ public sealed class ArrayDatumTests(TestContext context)
             }, context.CancellationToken);
 
     /// <summary>
+    /// A text array result keeps NULLs past its first bitmap byte, empty and multibyte elements, its element type and
+    /// its element hashes, and an empty result is PostgreSQL's empty array.
+    /// </summary>
+    [TestMethod]
+    public Task TextArrayResultsKeepEveryElement()
+        => PostgresFixture.Cluster.RunInTransactionAsync(nameof(TextArrayResultsKeepEveryElement),
+            async (connection, transaction, token) =>
+            {
+                const string Values = "ARRAY['', 'a', NULL, 'ｱ😀', 'longer text', NULL, NULL, NULL, NULL, 'tail']::text[]";
+                Assert.AreEqual("{\"\",a,NULL,ｱ😀,\"longer text\",NULL,NULL,NULL,NULL,tail};t;t;[1:10];text", await Scalar<string>(connection, transaction,
+                    $"""
+                    SELECT concat_ws(';', r::text, r = {Values}, hash_array(r) = hash_array({Values}), array_dims(r), pg_typeof(r[1]))
+                    FROM (SELECT datatype.array_text_echo({Values}) AS r) s
+                    """, token));
+                Assert.AreEqual("{};t;0", await Scalar<string>(connection, transaction, """
+                    SELECT concat_ws(';', r::text, r = '{}'::text[], cardinality(r))
+                    FROM (SELECT datatype.array_text_echo(ARRAY[]::text[]) AS r) s
+                    """, token));
+            }, context.CancellationToken);
+
+    /// <summary>
     /// Reads compressed and external arrays and verifies binary payloads survive detoasting and later SPI operations.
     /// </summary>
     [TestMethod]
@@ -434,5 +455,11 @@ public sealed class ArrayDatumTests(TestContext context)
         Assert.IsTrue(reader.GetBoolean(0));
         Assert.AreEqual(backend, reader.GetInt32(1));
         Assert.IsFalse(await reader.ReadAsync(token));
+    }
+
+    private static async Task<T> Scalar<T>(NpgsqlConnection connection, NpgsqlTransaction transaction, string sql, CancellationToken token)
+    {
+        await using var command = new NpgsqlCommand(sql, connection, transaction);
+        return Assert.IsInstanceOfType<T>(await command.ExecuteScalarAsync(token));
     }
 }

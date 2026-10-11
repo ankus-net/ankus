@@ -142,6 +142,13 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- Text array results no longer look up each element's type twice and copy it
+  twice. Elements without a domain are checked as UTF-8 in one pass and
+  written straight into the array in a second, the same layout PostgreSQL's
+  `construct_md_array` produces, so a `string[]` result element costs 31 ns
+  instead of 75 ns on a PostgreSQL 18.6 release build. A backend test checks
+  NULLs past the first bitmap byte, empty and multibyte elements, element type,
+  hashes and the empty array; all 512 array backend tests pass on Linux x64.
 - The first release rehearsal ([38167639394](https://github.com/willibrandon/ankus/actions/runs/38167639394),
   **c51b0e4**) packed every managed package, but each runtime job checked
   out the Ankus repository instead of the runtime fork and failed with

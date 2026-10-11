@@ -110,7 +110,7 @@ loop.
 | `int[]` result, per element | about 1 ns |
 | `int[]` argument or result, per call | 196 ns or 185 ns, down from 240 ns and 400 ns |
 | `string[]` argument of short text, per element | 34 ns, down from 90 ns |
-| `string[]` result of short text, per element | 72 ns |
+| `string[]` result of short text, per element | 31 ns, down from 75 ns |
 
 `Spi.Select` copies every row into managed memory, so its cost depends on how
 many rows one result retains. Reading `generate_series` rows and summing them
@@ -136,4 +136,8 @@ In a UTF-8 database, `text`, `varchar` and `bpchar` arrays cross as each
 element's length and bytes, since neither side needs to transcode them, and
 reading an element of the requested type skips the general conversion's
 registry lookups. Other databases keep the per-element form, which converts
-each element to and from the database encoding.
+each element to and from the database encoding. Writing such an array used to
+look up each element's type twice, copy it into its own datum and copy it again
+into the array. Elements without a domain are now checked as UTF-8 in one pass
+and laid out in the array in a second, so a result element costs 31 ns instead
+of 75 ns; domain elements keep their per-element checks.

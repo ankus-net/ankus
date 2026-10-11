@@ -299,6 +299,86 @@ internal static class NativeArrayBridge
                 return PointerGetDatum(array);
             }
 
+            /* Plain text elements need no per-element catalog work: verify each, then lay the array out once. */
+            if (packed_text && element_type == base_type)
+            {
+                int start = buffer.cursor;
+                Size bytes = 0;
+                Size overhead;
+                Size size;
+                bool has_nulls = false;
+                bits8 *bitmap;
+                char *cursor;
+                for (int index = 0; index < count; index++)
+                {
+                    int32 text_length;
+                    CHECK_FOR_INTERRUPTS();
+                    memcpy(&text_length, pq_getmsgbytes(&buffer, sizeof(text_length)), sizeof(text_length));
+                    if (text_length < -1)
+                    {
+                        ereport(ERROR, (errcode(ERRCODE_INVALID_BINARY_REPRESENTATION), errmsg("Invalid Ankus array element")));
+                    }
+
+                    if (text_length == -1)
+                    {
+                        has_nulls = true;
+                        continue;
+                    }
+
+                    /* The same check pg_any_to_server makes for UTF-8 input in a UTF-8 database. */
+                    (void) pg_verify_mbstr(PG_UTF8, pq_getmsgbytes(&buffer, text_length), text_length, false);
+                    bytes += INTALIGN(VARHDRSZ + (Size) text_length);
+                    if (!AllocSizeIsValid(bytes))
+                    {
+                        ereport(ERROR, (errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED), errmsg("array size exceeds the maximum allowed (%d)", (int) MaxAllocSize)));
+                    }
+                }
+
+                pq_getmsgend(&buffer);
+                overhead = has_nulls ? ARR_OVERHEAD_WITHNULLS(rank, count) : ARR_OVERHEAD_NONULLS(rank);
+                size = overhead + bytes;
+                if (!AllocSizeIsValid(size))
+                {
+                    ereport(ERROR, (errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED), errmsg("array size exceeds the maximum allowed (%d)", (int) MaxAllocSize)));
+                }
+
+                /* Zeroed storage leaves NULL bits clear and alignment padding defined, as construct_md_array does. */
+                array = (ArrayType *) palloc0(size);
+                SET_VARSIZE(array, size);
+                array->ndim = rank;
+                array->dataoffset = has_nulls ? (int32) overhead : 0;
+                array->elemtype = element_type;
+                if (rank > 0)
+                {
+                    memcpy(ARR_DIMS(array), lengths, rank * sizeof(int));
+                    memcpy(ARR_LBOUND(array), bounds, rank * sizeof(int));
+                }
+
+                bitmap = ARR_NULLBITMAP(array);
+                cursor = ARR_DATA_PTR(array);
+                buffer.cursor = start;
+                for (int index = 0; index < count; index++)
+                {
+                    int32 text_length;
+                    memcpy(&text_length, pq_getmsgbytes(&buffer, sizeof(text_length)), sizeof(text_length));
+                    if (text_length == -1)
+                    {
+                        continue;
+                    }
+
+                    if (bitmap != NULL)
+                    {
+                        bitmap[index / 8] |= (bits8) (1 << (index % 8));
+                    }
+
+                    SET_VARSIZE(cursor, VARHDRSZ + text_length);
+                    memcpy(VARDATA(cursor), pq_getmsgbytes(&buffer, text_length), text_length);
+                    cursor += INTALIGN(VARHDRSZ + (Size) text_length);
+                }
+
+                return PointerGetDatum(array);
+            }
+
             get_typlenbyvalalign(element_type, &length, &by_value, &alignment);
             elements = palloc(sizeof(Datum) * (Size) Max(count, 1));
             nulls = palloc(sizeof(bool) * (Size) Max(count, 1));

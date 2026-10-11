@@ -246,6 +246,12 @@ public static class ArrayFunctions
     public static TimeSpan?[]? ArrayTimeSpan(TimeSpan?[]? value, int mode) => Exchange(value, mode);
 
     /// <summary>
+    /// Returns a text array unchanged, so its result crosses as lengths and bytes and is laid out in one pass.
+    /// </summary>
+    [PgFunction]
+    public static string?[] ArrayTextEcho(string?[] values) => values;
+
+    /// <summary>
     /// Reads domain and text-alias arrays through SPI while retaining ownership after later calls.
     /// </summary>
     [PgFunction]
