@@ -8,6 +8,26 @@ namespace Ankus.TestExtension;
 public static class BackendSignalFunctions
 {
     /// <summary>
+    /// Apple's signal number for <c>SIGUSR1</c>; Linux uses 10.
+    /// </summary>
+    private const int AppleUser1 = 30;
+
+    /// <summary>
+    /// The <c>SIGALRM</c> number on both Linux and Apple.
+    /// </summary>
+    private const int Alarm = 14;
+
+    /// <summary>
+    /// Apple's <c>SA_SIGINFO</c> flag.
+    /// </summary>
+    private const int AppleSigInfo = 0x40;
+
+    /// <summary>
+    /// The offset of <c>sa_flags</c> in Apple's 16-byte <c>struct sigaction</c>.
+    /// </summary>
+    private const int AppleFlagsOffset = 12;
+
+    /// <summary>
     /// Releases the parked managed and thread-pool threads.
     /// </summary>
     private static readonly ManualResetEventSlim s_release = new();
@@ -38,13 +58,48 @@ public static class BackendSignalFunctions
                 throw new InvalidOperationException("The parked managed threads did not start.");
             }
 
-            return Observe();
+            return Observe([OperatingSystem.IsMacOS() ? AppleUser1 : 10, Alarm]);
         }
         finally
         {
             s_release.Set();
             parked.Join();
         }
+    }
+
+    /// <summary>
+    /// Reinstalls the routed <c>SIGUSR1</c> handler as a plain function, as code that saves and restores handlers
+    /// through <c>signal</c> or older <c>pqsignal</c> results does on macOS.
+    /// </summary>
+    /// <returns>
+    /// Whether the installed handler took sender information, whether a blocked signal stayed pending and was then
+    /// delivered, and whether the next runtime thread restored that information.
+    /// </returns>
+    [PgFunction]
+    public static unsafe bool[] RestoredPlainBackendSignalHandler()
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            throw new PlatformNotSupportedException("Signal routing applies to macOS backends.");
+        }
+
+        byte* action = stackalloc byte[16];
+        Signals.Action(AppleUser1, null, action);
+        bool informed = (*(int*)(action + AppleFlagsOffset) & AppleSigInfo) != 0;
+        *(int*)(action + AppleFlagsOffset) &= ~AppleSigInfo;
+        Signals.Action(AppleUser1, action, null);
+
+        // The handler now runs without sender information on the backend thread.
+        Signals.Kill(Signals.GetProcessId(), AppleUser1);
+        bool[] observed = Observe([AppleUser1]);
+
+        // The runtime asks Ankus to prepare before it starts a thread.
+        var thread = new Thread(static () => { });
+        thread.Start();
+        thread.Join();
+        Signals.Action(AppleUser1, null, action);
+        bool restored = (*(int*)(action + AppleFlagsOffset) & AppleSigInfo) != 0;
+        return [informed, observed[0], observed[1], restored];
     }
 
     /// <summary>
@@ -58,73 +113,115 @@ public static class BackendSignalFunctions
     }
 
     /// <summary>
-    /// Blocks both signals on the backend thread, sends them to the process and inspects what remains pending.
+    /// Blocks the signals on the backend thread, sends them to the process and inspects what remains pending.
     /// </summary>
+    /// <param name="numbers">The signal numbers to send.</param>
     /// <returns>The held flags followed by the delivered flags.</returns>
-    private static unsafe bool[] Observe()
+    private static unsafe bool[] Observe(int[] numbers)
     {
-        nint program = NativeLibrary.GetMainProgramHandle();
-        var mask = (delegate* unmanaged<int, byte*, byte*, int>)NativeLibrary.GetExport(program, "pthread_sigmask");
-        var empty = (delegate* unmanaged<byte*, int>)NativeLibrary.GetExport(program, "sigemptyset");
-        var add = (delegate* unmanaged<byte*, int, int>)NativeLibrary.GetExport(program, "sigaddset");
-        var member = (delegate* unmanaged<byte*, int, int>)NativeLibrary.GetExport(program, "sigismember");
-        var pending = (delegate* unmanaged<byte*, int>)NativeLibrary.GetExport(program, "sigpending");
-        var kill = (delegate* unmanaged<int, int, int>)NativeLibrary.GetExport(program, "kill");
-        var getpid = (delegate* unmanaged<int>)NativeLibrary.GetExport(program, "getpid");
-
-        // Apple numbers SIGUSR1 and the mask operations differently from Linux; SIGALRM is 14 on both.
+        // Apple numbers the mask operations differently from Linux.
         bool apple = OperatingSystem.IsMacOS();
-        int[] signals = [apple ? 30 : 10, 14];
         int block = apple ? 1 : 0;
         int unblock = apple ? 2 : 1;
 
         // Large enough for Linux's 1024-bit set and Apple's 32-bit set.
         byte* set = stackalloc byte[128];
         byte* observed = stackalloc byte[128];
-        bool[] result = new bool[signals.Length * 2];
-        empty(set);
-        foreach (int signal in signals)
+        bool[] result = new bool[numbers.Length * 2];
+        Signals.Empty(set);
+        foreach (int number in numbers)
         {
-            add(set, signal);
+            Signals.Add(set, number);
         }
 
-        if (mask(block, set, null) != 0)
+        if (Signals.Mask(block, set, null) != 0)
         {
             throw new InvalidOperationException("Could not block the backend signals.");
         }
 
         try
         {
-            int process = getpid();
-            foreach (int signal in signals)
+            int process = Signals.GetProcessId();
+            foreach (int number in numbers)
             {
-                if (kill(process, signal) != 0)
+                if (Signals.Kill(process, number) != 0)
                 {
-                    throw new InvalidOperationException($"Could not send signal {signal}.");
+                    throw new InvalidOperationException($"Could not send signal {number}.");
                 }
             }
 
             Thread.Sleep(200);
-            empty(observed);
-            pending(observed);
-            for (int index = 0; index < signals.Length; index++)
+            Signals.Empty(observed);
+            Signals.Pending(observed);
+            for (int index = 0; index < numbers.Length; index++)
             {
-                result[index] = member(observed, signals[index]) == 1;
+                result[index] = Signals.Member(observed, numbers[index]) == 1;
             }
         }
         finally
         {
             // PostgreSQL's handlers run here, on the backend thread.
-            mask(unblock, set, null);
+            Signals.Mask(unblock, set, null);
         }
 
-        empty(observed);
-        pending(observed);
-        for (int index = 0; index < signals.Length; index++)
+        Signals.Empty(observed);
+        Signals.Pending(observed);
+        for (int index = 0; index < numbers.Length; index++)
         {
-            result[signals.Length + index] = member(observed, signals[index]) == 0;
+            result[numbers.Length + index] = Signals.Member(observed, numbers[index]) == 0;
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Holds the C library's signal functions, resolved from the backend executable.
+    /// </summary>
+    private static unsafe class Signals
+    {
+        /// <summary>
+        /// The backend executable, whose dependencies include the C library.
+        /// </summary>
+        private static readonly nint s_program = NativeLibrary.GetMainProgramHandle();
+
+        /// <summary>
+        /// Changes the calling thread's signal mask.
+        /// </summary>
+        internal static delegate* unmanaged<int, byte*, byte*, int> Mask { get; } = (delegate* unmanaged<int, byte*, byte*, int>)NativeLibrary.GetExport(s_program, "pthread_sigmask");
+
+        /// <summary>
+        /// Clears a signal set.
+        /// </summary>
+        internal static delegate* unmanaged<byte*, int> Empty { get; } = (delegate* unmanaged<byte*, int>)NativeLibrary.GetExport(s_program, "sigemptyset");
+
+        /// <summary>
+        /// Adds a signal to a set.
+        /// </summary>
+        internal static delegate* unmanaged<byte*, int, int> Add { get; } = (delegate* unmanaged<byte*, int, int>)NativeLibrary.GetExport(s_program, "sigaddset");
+
+        /// <summary>
+        /// Tests whether a set contains a signal.
+        /// </summary>
+        internal static delegate* unmanaged<byte*, int, int> Member { get; } = (delegate* unmanaged<byte*, int, int>)NativeLibrary.GetExport(s_program, "sigismember");
+
+        /// <summary>
+        /// Reads the calling thread's pending signals.
+        /// </summary>
+        internal static delegate* unmanaged<byte*, int> Pending { get; } = (delegate* unmanaged<byte*, int>)NativeLibrary.GetExport(s_program, "sigpending");
+
+        /// <summary>
+        /// Reads or replaces a signal disposition.
+        /// </summary>
+        internal static delegate* unmanaged<int, byte*, byte*, int> Action { get; } = (delegate* unmanaged<int, byte*, byte*, int>)NativeLibrary.GetExport(s_program, "sigaction");
+
+        /// <summary>
+        /// Sends a signal to a process.
+        /// </summary>
+        internal static delegate* unmanaged<int, int, int> Kill { get; } = (delegate* unmanaged<int, int, int>)NativeLibrary.GetExport(s_program, "kill");
+
+        /// <summary>
+        /// Gets the current process identifier.
+        /// </summary>
+        internal static delegate* unmanaged<int> GetProcessId { get; } = (delegate* unmanaged<int>)NativeLibrary.GetExport(s_program, "getpid");
     }
 }

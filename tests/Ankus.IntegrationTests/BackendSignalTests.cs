@@ -32,4 +32,21 @@ public sealed class BackendSignalTests(TestContext context)
         await using var identity = new NpgsqlCommand("SELECT pg_backend_pid()", connection);
         Assert.AreEqual(backend, await identity.ExecuteScalarAsync(context.CancellationToken));
     }
+
+    /// <summary>
+    /// A routed handler restored as a plain function still runs safely, holds blocked signals for the backend thread,
+    /// and regains its sender information when the runtime next starts a thread.
+    /// </summary>
+    [TestMethod]
+    [OSCondition(OperatingSystems.OSX)]
+    public async Task PlainRestoredHandlerKeepsRoutingSignals()
+    {
+        await using NpgsqlConnection connection = await PostgresFixture.Cluster.OpenConnectionAsync(context.CancellationToken);
+        int backend = connection.ProcessID;
+        await using var command = new NpgsqlCommand("SELECT datatype.restored_plain_backend_signal_handler()", connection);
+        bool[] observed = Assert.IsInstanceOfType<bool[]>(await command.ExecuteScalarAsync(context.CancellationToken));
+        Assert.AreSequenceEqual([true, true, true, true], observed);
+        await using var identity = new NpgsqlCommand("SELECT pg_backend_pid()", connection);
+        Assert.AreEqual(backend, await identity.ExecuteScalarAsync(context.CancellationToken));
+    }
 }

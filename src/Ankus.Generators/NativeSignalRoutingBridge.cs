@@ -42,10 +42,21 @@ internal static class NativeSignalRoutingBridge
         static void
         ankus_signal_route(int signo, siginfo_t *info, void *context)
         {
+            /* Code that saves a handler as a plain function and restores it later drops
+             * SA_SIGINFO, leaving no sender information; PostgreSQL then sees none. */
+            int save_errno = errno;
+            struct sigaction installed;
+            siginfo_t unknown = {0};
+            if (info == NULL || sigaction(signo, NULL, &installed) != 0 || (installed.sa_flags & SA_SIGINFO) == 0)
+            {
+                unknown.si_signo = signo;
+                info = &unknown;
+                context = NULL;
+            }
+
             if (!pthread_main_np())
             {
-                int save_errno = errno;
-                if (info != NULL && info->si_pid != 0)
+                if (info->si_pid != 0)
                 {
                     ankus_routed_uid[signo] = (sig_atomic_t) info->si_uid;
                     ankus_routed_pid[signo] = info->si_pid;
@@ -58,7 +69,7 @@ internal static class NativeSignalRoutingBridge
 
             /* Report the original sender, as PostgreSQL logs it for some signals. */
             siginfo_t routed;
-            if (info != NULL && ankus_routed_pid[signo] != 0 && (info->si_pid == 0 || info->si_pid == getpid()))
+            if (ankus_routed_pid[signo] != 0 && (info->si_pid == 0 || info->si_pid == getpid()))
             {
                 routed = *info;
                 routed.si_pid = ankus_routed_pid[signo];
@@ -67,6 +78,7 @@ internal static class NativeSignalRoutingBridge
             }
 
             ankus_routed_pid[signo] = 0;
+            errno = save_errno;
             if ((ankus_routed_actions[signo].sa_flags & SA_SIGINFO) != 0)
             {
                 ankus_routed_actions[signo].sa_sigaction(signo, info, context);
@@ -91,14 +103,22 @@ internal static class NativeSignalRoutingBridge
                     continue;
                 }
 
-                if ((current.sa_flags & SA_SIGINFO) != 0
-                    ? current.sa_sigaction == ankus_signal_route
-                    : current.sa_handler == SIG_DFL || current.sa_handler == SIG_IGN)
+                /* The handler fields share storage, so this finds the wrapper even when
+                 * restoring it as a plain function dropped SA_SIGINFO. */
+                bool routed_already = current.sa_sigaction == ankus_signal_route;
+                if (routed_already
+                    ? (current.sa_flags & SA_SIGINFO) != 0
+                    : (current.sa_flags & SA_SIGINFO) == 0 &&
+                        (current.sa_handler == SIG_DFL || current.sa_handler == SIG_IGN))
                 {
                     continue;
                 }
 
-                ankus_routed_actions[signo] = current;
+                if (!routed_already)
+                {
+                    ankus_routed_actions[signo] = current;
+                }
+
                 struct sigaction routed = current;
                 routed.sa_sigaction = ankus_signal_route;
                 routed.sa_flags |= SA_SIGINFO;
