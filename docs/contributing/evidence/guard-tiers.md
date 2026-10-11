@@ -45,3 +45,25 @@ comparable within the same build.
 Benchmark iterations run inside an explicit scope. Before PostgreSQL 16,
 `TryParse` recovers invalid input by nesting its own subtransaction in that
 scope; from 16, the soft input error needs none.
+
+## SQL call boundary and direct reads
+
+The call boundary was measured on 2026-10-11 with a scratch extension of
+trivial functions, called two million times from SQL on a PostgreSQL 16.15
+release build (Linux x64, 10 cores). Each figure is the cost per call above the
+same query calling a C built-in, or selecting the input alone.
+
+| Function | Before | After |
+|---|---:|---:|
+| `int AddOne(int)` against `int4pl` | 51 ns | 27 ns |
+| `string Echo(string)` | 171 ns | 148 ns |
+| `int Length(PgTextView)` | 2.96 µs | 0.41 µs |
+
+The scalar change stopped zero-filling two 2.8 KB error buffers on every call
+(commit 8ff1294). The view parameter cost fell when flat values began to be
+borrowed in place (2f9d971) and when a borrowed input captured its lifetime in
+one native call instead of three (aecc2c9). In-backend benchmarks of the same
+build give 154 ns for creating and disposing a text view over a datum, down from
+2.33 µs, and 185 ns for `PgDatum.Read<string>()`, down from 1.28 µs; a guarded
+datum operation runs in its own subtransaction, which is what those paths no
+longer need for flat values.
