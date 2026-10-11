@@ -29,22 +29,22 @@ rejected. [Postmaster](/api/ankus.pgguccontext/#member-34f544a17b8dfb73) paramet
 </p>
 <p>
 Prefer the [PgGucAttribute](/api/ankus.pggucattribute/) family for names known at compile time. Attributes add compile-time
-validation, typed C# enum settings and managed check, assign and show hooks; run-time definitions have no hooks,
-like pgrx's plain <code>define_*_guc</code> functions.
+validation and typed C# enum settings. Both forms accept check, assign and show hooks; pass
+[PgGucHooks&lt;T&gt;](/api/ankus.pgguchooks-1/) here, as pgrx's <code>define_*_guc_with_hooks</code> functions take hook functions.
 </p>
 
 Inheritance: [object](https://learn.microsoft.com/dotnet/api/system.object)
 
 ## Methods
 
-<a id="member-f1c2c3211274f17f"></a>
+<a id="member-140b35f346311217"></a>
 
-### DefineBool(string, bool, string, string?, PgGucContext, PgGucOptions)
+### DefineBool(string, bool, string, string?, PgGucContext, PgGucOptions, PgGucHooks&lt;bool&gt;?)
 
 Defines a Boolean configuration parameter.
 
 ```csharp
-public static PgGucSetting<bool> DefineBool(string name, bool defaultValue, string shortDescription, string? longDescription = null, PgGucContext context = PgGucContext.UserSet, PgGucOptions flags = PgGucOptions.None)
+public static PgGucSetting<bool> DefineBool(string name, bool defaultValue, string shortDescription, string? longDescription = null, PgGucContext context = PgGucContext.UserSet, PgGucOptions flags = PgGucOptions.None, PgGucHooks<bool>? hooks = null)
 ```
 
 Parameters:
@@ -73,6 +73,10 @@ When and by whom the parameter can be changed.
 
 PostgreSQL configuration flags.
 
+`hooks` — <code>PgGucHooks&lt;bool&gt;</code>
+
+Optional check, assign and show hooks.
+
 Returns: <code>PgGucSetting&lt;bool&gt;</code>
 
 A reader for the parameter's current value.
@@ -82,14 +86,14 @@ Exceptions:
 - [ArgumentException](https://learn.microsoft.com/dotnet/api/system.argumentexception): Text is blank or contains a zero character, or an option is undefined.
 - [PgException](/api/ankus.pgexception/): PostgreSQL rejected the definition.
 
-<a id="member-c6fe1b35120855db"></a>
+<a id="member-a8d82306c94cb782"></a>
 
-### DefineEnum(string, int, string, IReadOnlyList&lt;PgGucEnumOption&gt;, string?, PgGucContext, PgGucOptions)
+### DefineEnum(string, int, string, IReadOnlyList&lt;PgGucEnumOption&gt;, string?, PgGucContext, PgGucOptions, PgGucHooks&lt;int&gt;?)
 
 Defines an enumerated configuration parameter whose labels are supplied at run time.
 
 ```csharp
-public static PgGucSetting<int> DefineEnum(string name, int defaultValue, string shortDescription, IReadOnlyList<PgGucEnumOption> options, string? longDescription = null, PgGucContext context = PgGucContext.UserSet, PgGucOptions flags = PgGucOptions.None)
+public static PgGucSetting<int> DefineEnum(string name, int defaultValue, string shortDescription, IReadOnlyList<PgGucEnumOption> options, string? longDescription = null, PgGucContext context = PgGucContext.UserSet, PgGucOptions flags = PgGucOptions.None, PgGucHooks<int>? hooks = null)
 ```
 
 Parameters:
@@ -122,6 +126,10 @@ When and by whom the parameter can be changed.
 
 PostgreSQL configuration flags.
 
+`hooks` — <code>PgGucHooks&lt;int&gt;</code>
+
+Optional check, assign and show hooks; their values are label ordinals.
+
 Returns: <code>PgGucSetting&lt;int&gt;</code>
 
 A reader for the current ordinal.
@@ -134,14 +142,14 @@ Exceptions:
 
 Use [PgGucEnumAttribute](/api/ankus.pggucenumattribute/) for a typed C# enum known at compile time.
 
-<a id="member-cb1da3fd6b208860"></a>
+<a id="member-1bc863ff56949305"></a>
 
-### DefineInt(string, int, string, int, int, string?, PgGucContext, PgGucOptions, PgGucUnit)
+### DefineInt(string, int, string, int, int, string?, PgGucContext, PgGucOptions, PgGucUnit, PgGucHooks&lt;int&gt;?)
 
 Defines an integer configuration parameter.
 
 ```csharp
-public static PgGucSetting<int> DefineInt(string name, int defaultValue, string shortDescription, int minimum = -2147483648, int maximum = 2147483647, string? longDescription = null, PgGucContext context = PgGucContext.UserSet, PgGucOptions flags = PgGucOptions.None, PgGucUnit unit = PgGucUnit.None)
+public static PgGucSetting<int> DefineInt(string name, int defaultValue, string shortDescription, int minimum = -2147483648, int maximum = 2147483647, string? longDescription = null, PgGucContext context = PgGucContext.UserSet, PgGucOptions flags = PgGucOptions.None, PgGucUnit unit = PgGucUnit.None, PgGucHooks<int>? hooks = null)
 ```
 
 Parameters:
@@ -182,6 +190,10 @@ PostgreSQL configuration flags.
 
 The unit PostgreSQL accepts and displays.
 
+`hooks` — <code>PgGucHooks&lt;int&gt;</code>
+
+Optional check, assign and show hooks.
+
 Returns: <code>PgGucSetting&lt;int&gt;</code>
 
 A reader for the parameter's current value.
@@ -192,14 +204,14 @@ Exceptions:
 - [ArgumentOutOfRangeException](https://learn.microsoft.com/dotnet/api/system.argumentoutofrangeexception): The range is empty or excludes the default.
 - [PgException](/api/ankus.pgexception/): PostgreSQL rejected the definition.
 
-<a id="member-84946084503301c8"></a>
+<a id="member-92a1422dc190645f"></a>
 
-### DefineReal(string, double, string, double, double, string?, PgGucContext, PgGucOptions, PgGucUnit)
+### DefineReal(string, double, string, double, double, string?, PgGucContext, PgGucOptions, PgGucUnit, PgGucHooks&lt;double&gt;?)
 
 Defines a floating-point configuration parameter.
 
 ```csharp
-public static PgGucSetting<double> DefineReal(string name, double defaultValue, string shortDescription, double minimum = -1.7976931348623157E+308, double maximum = 1.7976931348623157E+308, string? longDescription = null, PgGucContext context = PgGucContext.UserSet, PgGucOptions flags = PgGucOptions.None, PgGucUnit unit = PgGucUnit.None)
+public static PgGucSetting<double> DefineReal(string name, double defaultValue, string shortDescription, double minimum = -1.7976931348623157E+308, double maximum = 1.7976931348623157E+308, string? longDescription = null, PgGucContext context = PgGucContext.UserSet, PgGucOptions flags = PgGucOptions.None, PgGucUnit unit = PgGucUnit.None, PgGucHooks<double>? hooks = null)
 ```
 
 Parameters:
@@ -240,6 +252,10 @@ PostgreSQL configuration flags.
 
 The unit PostgreSQL accepts and displays.
 
+`hooks` — <code>PgGucHooks&lt;double&gt;</code>
+
+Optional check, assign and show hooks.
+
 Returns: <code>PgGucSetting&lt;double&gt;</code>
 
 A reader for the parameter's current value.
@@ -250,14 +266,14 @@ Exceptions:
 - [ArgumentOutOfRangeException](https://learn.microsoft.com/dotnet/api/system.argumentoutofrangeexception): A bound or the default is not a number, the range is empty, or it excludes the default.
 - [PgException](/api/ankus.pgexception/): PostgreSQL rejected the definition.
 
-<a id="member-7f3925cd1178926a"></a>
+<a id="member-f7fbbcdbdd5994a9"></a>
 
-### DefineString(string, string?, string, string?, PgGucContext, PgGucOptions)
+### DefineString(string, string?, string, string?, PgGucContext, PgGucOptions, PgGucHooks&lt;string?&gt;?)
 
 Defines a string configuration parameter.
 
 ```csharp
-public static PgGucSetting<string?> DefineString(string name, string? defaultValue, string shortDescription, string? longDescription = null, PgGucContext context = PgGucContext.UserSet, PgGucOptions flags = PgGucOptions.None)
+public static PgGucSetting<string?> DefineString(string name, string? defaultValue, string shortDescription, string? longDescription = null, PgGucContext context = PgGucContext.UserSet, PgGucOptions flags = PgGucOptions.None, PgGucHooks<string?>? hooks = null)
 ```
 
 Parameters:
@@ -285,6 +301,10 @@ When and by whom the parameter can be changed.
 `flags` — [PgGucOptions](/api/ankus.pggucoptions/)
 
 PostgreSQL configuration flags.
+
+`hooks` — <code>PgGucHooks&lt;string&gt;</code>
+
+Optional check, assign and show hooks.
 
 Returns: <code>PgGucSetting&lt;string&gt;</code>
 

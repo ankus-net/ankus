@@ -212,9 +212,23 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   before any name check. The custom SQL sample now declares its files by path
   alone, as pgrx's `custom_sql` example does.
 
-  Still open: `pg_guard(unsafe_entry_thread)`, `pg_extern` options on
-  `#[pg_test]` functions (pgrx's own tests pass only `error` and `expected`),
-  hooks on GUCs defined at run time and `pgvarlena_inoutfuncs` over arbitrary
+  `PgGucRegistry` now takes optional `PgGucHooks<T>` check, assign and show
+  hooks, as pgrx's `define_*_guc_with_hooks` functions take hook functions.
+  PostgreSQL's hook signatures carry no parameter identity, so the bridge
+  prebuilds 64 hook slots; each slot's functions pass their definition to the
+  shared hook path, and one generated managed entry selects the delegates
+  registered for the slot. A repeated definition must pass the same hook
+  methods.
+
+  `pg_guard(unsafe_entry_thread)` needs no counterpart. pgrx latches the first
+  thread that enters and panics on any other unless a function opts out.
+  Ankus grants backend access per native entry, on whichever thread PostgreSQL
+  calls, and refuses it on managed threads the extension starts. So the misuse
+  pgrx guards against is already rejected, and the opt-out's case is already
+  allowed.
+
+  Still open: `pg_extern` options on `#[pg_test]` functions (pgrx's own tests
+  pass only `error` and `expected`) and `pgvarlena_inoutfuncs` over arbitrary
   `repr(C)` layouts.
 - Binding catalogs can now be derived from the installed headers, as pgrx
   runs bindgen at build time, instead of from pgrx's generated output.

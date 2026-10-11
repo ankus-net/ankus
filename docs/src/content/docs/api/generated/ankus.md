@@ -82,6 +82,7 @@ Assembly: `Ankus.Runtime.dll`
 - [PgGucCheckResult&lt;T&gt;](/api/ankus.pgguccheckresult-1/)
 - [PgGucEnumAttribute](/api/ankus.pggucenumattribute/)
 - [PgGucExtra](/api/ankus.pggucextra/)
+- [PgGucHooks&lt;T&gt;](/api/ankus.pgguchooks-1/)
 - [PgGucIntAttribute](/api/ankus.pggucintattribute/)
 - [PgGucLabelAttribute](/api/ankus.pgguclabelattribute/)
 - [PgGucPrefixAttribute](/api/ankus.pggucprefixattribute/)

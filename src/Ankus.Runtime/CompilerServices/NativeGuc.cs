@@ -145,6 +145,73 @@ public static unsafe class NativeGuc
     public static int ReadEnum(string name) => ReadOrdinal(name, 4);
 
     /// <summary>
+    /// Runs the hook registered for a run-time definition's slot, which the native hook passes as its third argument.
+    /// </summary>
+    /// <param name="phase">0 for check, 1 for assign and 2 for show.</param>
+    /// <param name="arguments">The current or proposed value, its extra data and the slot.</param>
+    /// <param name="results">The accepted value and extra data, or the display text.</param>
+    /// <param name="source">The <see cref="PgGucSource"/> of a proposed value.</param>
+    /// <param name="error">The native diagnostic buffer for a rejected check.</param>
+    /// <returns>0 when the hook completed, or 2 when the check rejected the value.</returns>
+    public static int DispatchRuntimeHook(int phase, NativeValue* arguments, NativeValue* results, int source, NativeCallError* error)
+    {
+        RuntimeGucHooks.Entry entry = RuntimeGucHooks.Get(checked((int)arguments[2].Integral));
+        return entry.Kind switch
+        {
+            0 => Dispatch((PgGucHooks<bool>)entry.Hooks, phase, arguments, results, source, error,
+                static value => value.Integral != 0, static value => new NativeValue { Integral = value ? 1 : 0 }),
+            1 => Dispatch((PgGucHooks<int>)entry.Hooks, phase, arguments, results, source, error,
+                static value => checked((int)value.Integral), static value => new NativeValue { Integral = value }),
+            2 => Dispatch((PgGucHooks<double>)entry.Hooks, phase, arguments, results, source, error,
+                static value => BitConverter.Int64BitsToDouble(value.Integral),
+                static value => new NativeValue { Integral = BitConverter.DoubleToInt64Bits(value) }),
+            3 => Dispatch((PgGucHooks<string?>)entry.Hooks, phase, arguments, results, source, error,
+                static value => value.IsNull != 0 ? null : value.ReadString(),
+                static value => value is null ? new NativeValue { IsNull = 1 } : NativeValue.FromString(value)),
+            _ => Dispatch((PgGucHooks<int>)entry.Hooks, phase, arguments, results, source, error,
+                static value => checked((int)value.Integral),
+                value => entry.Options!.Any(option => option.Value == value) ? new NativeValue { Integral = value }
+                    : throw new InvalidOperationException("A GUC check returned a value that is not one of the parameter's labels.")),
+        };
+    }
+
+    /// <summary>
+    /// Runs one typed hook phase.
+    /// </summary>
+    private static int Dispatch<T>(PgGucHooks<T> hooks, int phase, NativeValue* arguments, NativeValue* results, int source,
+        NativeCallError* error, Func<NativeValue, T> read, Func<T, NativeValue> write)
+    {
+        T value = read(arguments[0]);
+        switch (phase)
+        {
+            case 0 when hooks.Check is { } check:
+            {
+                PgGucCheckResult<T> result = check(value, (PgGucSource)source)
+                    ?? throw new InvalidOperationException("A GUC check hook returned null.");
+                if (!result.IsAccepted)
+                {
+                    WriteCheckError(result.Error, error);
+                    return 2;
+                }
+
+                results[0] = write(result.Value);
+                results[1] = FromExtra(result.Extra);
+                return 0;
+            }
+
+            case 1:
+                hooks.Assign?.Invoke(value, ReadExtra(arguments[1]));
+                return 0;
+            case 2 when hooks.Show is { } show:
+                results[0] = NativeValue.FromString(show(value, ReadExtra(arguments[1]))
+                    ?? throw new InvalidOperationException("A GUC show hook returned null."));
+                return 0;
+            default:
+                throw new InvalidOperationException("The native GUC hook phase is invalid.");
+        }
+    }
+
+    /// <summary>
     /// Copies borrowed native hook extra bytes into immutable managed ownership.
     /// </summary>
     /// <param name="value">The borrowed extra transport; its owner remains responsible for release.</param>

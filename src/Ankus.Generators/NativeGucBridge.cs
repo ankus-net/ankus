@@ -99,6 +99,8 @@ internal static class NativeGucBridge
             struct config_enum_entry *options;
             void *extra;
             char *show_buffer;
+            /* Nonzero for a run-time definition with hooks: the managed hook table entry it dispatches to. */
+            int runtime_slot;
         } AnkusGuc;
 
         """;
@@ -438,6 +440,11 @@ internal static class NativeGucBridge
 
         static bool ankus_guc_name_equal(const char *, const char *);
         static int ankus_guc_define_runtime(const char *, intptr_t, AnkusError *);
+        static void ankus_guc_runtime_bind(AnkusGuc *, int, int);
+
+        /* Run-time definitions with hooks dispatch through one of these prebuilt hook sets. */
+        #define ANKUS_GUC_RUNTIME_SLOTS 64
+        static AnkusGuc *ankus_guc_runtime_slots[ANKUS_GUC_RUNTIME_SLOTS + 1];
 
         typedef struct AnkusGucDefinitionRequest
         {
@@ -460,6 +467,9 @@ internal static class NativeGucBridge
             unsigned int flags;
             uint8 boot_boolean;
             uint8 boot_null;
+            /* Check, assign and show hook bits, and the managed hook table slot that serves them. */
+            int hooks;
+            int slot;
         } AnkusGucDefinitionRequest;
 
         typedef struct AnkusRuntimeGuc
@@ -505,7 +515,9 @@ internal static class NativeGucBridge
         {
             if (existing->kind != input->kind || existing->context != input->context || existing->flags != input->flags ||
                 existing->unit != input->unit || !ankus_guc_runtime_text_equal(existing->short_utf8, input->short_utf8) ||
-                !ankus_guc_runtime_text_equal(existing->long_utf8, input->long_utf8))
+                !ankus_guc_runtime_text_equal(existing->long_utf8, input->long_utf8) ||
+                existing->runtime_slot != (input->hooks == 0 ? 0 : input->slot) || existing->has_check != ((input->hooks & 1) != 0) ||
+                existing->has_assign != ((input->hooks & 2) != 0) || existing->has_show != ((input->hooks & 4) != 0))
                 return false;
             switch (input->kind)
             {
@@ -558,6 +570,11 @@ internal static class NativeGucBridge
                 ankus_guc_register(existing);
                 return;
             }
+
+            if (input->hooks < 0 || input->hooks > 7 ||
+                (input->hooks != 0 && (input->slot < 1 || input->slot > ANKUS_GUC_RUNTIME_SLOTS || ankus_guc_runtime_slots[input->slot] != NULL)))
+                ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                    errmsg("invalid hook slot for configuration parameter \"%s\"", name)));
 
             AnkusRuntimeGuc *runtime = ankus_guc_allocate(sizeof(AnkusRuntimeGuc));
             memset(runtime, 0, sizeof(AnkusRuntimeGuc));
@@ -616,6 +633,9 @@ internal static class NativeGucBridge
                 default: elog(ERROR, "invalid Ankus configuration kind");
             }
 
+            if (input->hooks != 0)
+                ankus_guc_runtime_bind(definition, input->hooks, input->slot);
+
             /* Link before registering: PostgreSQL may retain the storage even if registration then
              * fails, and an identical retry must reuse it rather than define a second owner. */
             runtime->next = ankus_guc_runtime;
@@ -625,26 +645,100 @@ internal static class NativeGucBridge
         """;
 
     /// <summary>
-    /// Gets the guarded entry point for run-time definitions, emitted after the read source's error capture.
+    /// Gets the prebuilt hook functions for run-time definitions, emitted after the managed hook source they call.
     /// </summary>
-    /// <param name="preservePendingErrors">
-    /// Whether the bridge includes the general error bridge. Its other guarded code can then run while a caller's error is
-    /// pending, so a definition failure must not flush that error. Without it, definitions run only from module load.
-    /// </param>
-    /// <returns>The C entry point.</returns>
-    internal static string GetRuntimeDefinitionEntry(bool preservePendingErrors)
-        => RuntimeDefinitionEntry
-            .Replace("ANKUS_PENDING_SAVE", preservePendingErrors
-                ? "AnkusPendingError *volatile pending = ankus_pending_error_save();"
-                : "/* Without guarded backend code, definitions run only from module load. */")
-            .Replace("ANKUS_PENDING_FINISH", preservePendingErrors
-                ? "if (status != 0) ankus_pending_error_restore(pending); else ankus_pending_error_release(pending);"
-                : string.Empty);
+    /// <remarks>
+    /// PostgreSQL's hook signatures carry no parameter identity, so each slot has its own check, assign and show
+    /// functions that pass the slot's definition to the shared hook path; the managed dispatcher then selects the
+    /// delegates registered for that slot.
+    /// </remarks>
+    internal static string RuntimeHooks => s_runtimeHooks;
 
     /// <summary>
-    /// Gets the guarded entry point source, with placeholders for optional pending-error preservation.
+    /// The composed run-time hook source.
     /// </summary>
-    private const string RuntimeDefinitionEntry = """
+    private static readonly string s_runtimeHooks = """
+        extern int ankus_guc_runtime_hook(int, AnkusValue *, AnkusValue *, int, AnkusError *, AnkusGucRead, AnkusExecute, AnkusGucLog,
+            AnkusMemoryApi *);
+
+        #define ANKUS_GUC_RUNTIME_SLOT(n) \
+            static bool ankus_guc_runtime_check_bool_##n(bool *value, void **extra, GucSource source) \
+            { return ankus_guc_check(ankus_guc_runtime_slots[n], value, extra, source); } \
+            static bool ankus_guc_runtime_check_int_##n(int *value, void **extra, GucSource source) \
+            { return ankus_guc_check(ankus_guc_runtime_slots[n], value, extra, source); } \
+            static bool ankus_guc_runtime_check_real_##n(double *value, void **extra, GucSource source) \
+            { return ankus_guc_check(ankus_guc_runtime_slots[n], value, extra, source); } \
+            static bool ankus_guc_runtime_check_string_##n(char **value, void **extra, GucSource source) \
+            { return ankus_guc_check(ankus_guc_runtime_slots[n], value, extra, source); } \
+            static void ankus_guc_runtime_assign_bool_##n(bool value, void *extra) \
+            { ankus_guc_assign(ankus_guc_runtime_slots[n], &value, extra); } \
+            static void ankus_guc_runtime_assign_int_##n(int value, void *extra) \
+            { ankus_guc_assign(ankus_guc_runtime_slots[n], &value, extra); } \
+            static void ankus_guc_runtime_assign_real_##n(double value, void *extra) \
+            { ankus_guc_assign(ankus_guc_runtime_slots[n], &value, extra); } \
+            static void ankus_guc_runtime_assign_string_##n(const char *value, void *extra) \
+            { ankus_guc_assign(ankus_guc_runtime_slots[n], &value, extra); } \
+            static const char *ankus_guc_runtime_show_##n(void) \
+            { return ankus_guc_show(ankus_guc_runtime_slots[n]); }
+
+        """ + string.Concat(Enumerable.Range(1, 64).Select(static slot => $"ANKUS_GUC_RUNTIME_SLOT({slot})\n")) + "\n" + Table("GucBoolCheckHook", "check_bool") +
+        Table("GucIntCheckHook", "check_int") + Table("GucRealCheckHook", "check_real") + Table("GucStringCheckHook", "check_string") +
+        Table("GucBoolAssignHook", "assign_bool") + Table("GucIntAssignHook", "assign_int") + Table("GucRealAssignHook", "assign_real") +
+        Table("GucStringAssignHook", "assign_string") + Table("GucShowHook", "show") + """
+
+        /* Enumerated settings use the integer hook shapes, as PostgreSQL's enum hooks take and return an int. */
+        static void
+        ankus_guc_runtime_bind(AnkusGuc *definition, int hooks, int slot)
+        {
+            definition->hook = ankus_guc_runtime_hook;
+            definition->runtime_slot = slot;
+            definition->has_check = (hooks & 1) != 0;
+            definition->has_assign = (hooks & 2) != 0;
+            definition->has_show = (hooks & 4) != 0;
+            switch (definition->kind)
+            {
+                case 0:
+                    definition->assign.boolean = ankus_guc_runtime_assign_bool[slot];
+                    if (definition->has_check) definition->check.boolean = ankus_guc_runtime_check_bool[slot];
+                    break;
+                case 1:
+                    definition->assign.integer = ankus_guc_runtime_assign_int[slot];
+                    if (definition->has_check) definition->check.integer = ankus_guc_runtime_check_int[slot];
+                    break;
+                case 2:
+                    definition->assign.real = ankus_guc_runtime_assign_real[slot];
+                    if (definition->has_check) definition->check.real = ankus_guc_runtime_check_real[slot];
+                    break;
+                case 3:
+                    definition->assign.string = ankus_guc_runtime_assign_string[slot];
+                    if (definition->has_check) definition->check.string = ankus_guc_runtime_check_string[slot];
+                    break;
+                default:
+                    definition->assign.enumeration = ankus_guc_runtime_assign_int[slot];
+                    if (definition->has_check) definition->check.enumeration = ankus_guc_runtime_check_int[slot];
+                    break;
+            }
+
+            if (definition->has_show)
+                definition->show = ankus_guc_runtime_show[slot];
+            ankus_guc_runtime_slots[slot] = definition;
+        }
+        """;
+
+    /// <summary>
+    /// Declares the table of one prebuilt hook kind, indexed by slot, with slot zero unused.
+    /// </summary>
+    /// <param name="type">The PostgreSQL hook type.</param>
+    /// <param name="name">The hook kind in the function names.</param>
+    /// <returns>The C table definition.</returns>
+    private static string Table(string type, string name)
+        => $"static const {type} ankus_guc_runtime_{name}[] = {{ NULL, " +
+            string.Join(", ", Enumerable.Range(1, 64).Select(slot => $"ankus_guc_runtime_{name}_{slot}")) + " };\n";
+
+    /// <summary>
+    /// Gets the guarded entry point for run-time definitions, emitted after the read source's error capture.
+    /// </summary>
+    internal const string RuntimeDefinitionEntry = """
         static int
         ankus_guc_define_runtime(const char *name, intptr_t request, AnkusError *error)
         {
@@ -653,7 +747,7 @@ internal static class NativeGucBridge
 
             MemoryContext caller = CurrentMemoryContext;
             volatile int status = 0;
-            ANKUS_PENDING_SAVE
+            AnkusPendingError *volatile pending = ankus_pending_error_save();
             PG_TRY();
             {
                 PG_TRY();
@@ -680,7 +774,10 @@ internal static class NativeGucBridge
             }
             PG_END_TRY();
             MemoryContextSwitchTo(caller);
-            ANKUS_PENDING_FINISH
+            if (status != 0)
+                ankus_pending_error_restore(pending);
+            else
+                ankus_pending_error_release(pending);
             return status;
         }
         """;
@@ -1044,7 +1141,8 @@ internal static class NativeGucBridge
 
         typedef struct AnkusGucFrame
         {
-            AnkusValue arguments[2];
+            /* The current or proposed value, its extra data, and the run-time hook slot. */
+            AnkusValue arguments[3];
             AnkusValue results[2];
             AnkusError error;
             void *pending_extra;
@@ -1209,6 +1307,8 @@ internal static class NativeGucBridge
                 ankus_guc_release_value(&frame->results[index]);
             }
 
+            ankus_guc_release_value(&frame->arguments[2]);
+
             ankus_release_error(&frame->error);
             ankus_guc_free(frame->pending_extra);
             ankus_guc_free(frame->pending_string);
@@ -1224,6 +1324,7 @@ internal static class NativeGucBridge
         ankus_guc_arguments(AnkusGuc *definition, const void *input, const void *extra, AnkusGucFrame *frame)
         {
             ankus_guc_value(definition, input, &frame->arguments[0]);
+            frame->arguments[2].integral = definition->runtime_slot;
             if (extra == NULL)
                 frame->arguments[1].is_null = 1;
             else

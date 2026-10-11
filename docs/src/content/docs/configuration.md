@@ -325,9 +325,25 @@ setting again with identical metadata returns another reader, so a retried
 declared by an attribute, fails with SQLSTATE `42710`. A `Postmaster` setting
 can be defined only while `shared_preload_libraries` is processed.
 
-Run-time definitions have no managed hooks, like pgrx's plain `define_*_guc`
-functions. Prefer the attributes for names known at compile time: they add
-compile-time validation, typed C# enums and check, assign and show hooks.
+Pass `PgGucHooks<T>` for check, assign and show hooks, as pgrx's
+`define_*_guc_with_hooks` functions take hook functions. They follow the
+[hook rules](#hooks) above; an enumerated setting's hooks see label values:
+
+```csharp
+s_limit = PgGucRegistry.DefineInt(prefix + ".limit", 100, "Maximum items", minimum: 1, maximum: 10000,
+    hooks: new()
+    {
+        Check = static (proposed, _) => proposed % 10 == 0
+            ? new(proposed)
+            : new(new PgGucCheckError("Use a multiple of 10.")),
+        Show = static (current, _) => $"{current} items",
+    });
+```
+
+An extension can define up to 64 run-time settings with hooks. Defining one
+again must pass the same hook methods; different hooks fail with `42710`.
+Prefer the attributes for names known at compile time: they add compile-time
+validation and typed C# enums.
 
 ## Parallel queries
 

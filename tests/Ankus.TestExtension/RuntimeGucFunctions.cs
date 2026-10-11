@@ -14,6 +14,12 @@ public static class RuntimeGucFunctions
     private static PgGucSetting<double>? s_ratio;
     private static PgGucSetting<string?>? s_label;
     private static PgGucSetting<int>? s_mode;
+    private static PgGucSetting<int>? s_hookedLimit;
+    private static PgGucSetting<string?>? s_hookedLabel;
+    private static PgGucSetting<int>? s_hookedMode;
+    private static PgGucSetting<bool>? s_hookedEnabled;
+    private static PgGucSetting<double>? s_hookedRatio;
+    private static readonly List<string> s_hookEvents = [];
 
     /// <summary>
     /// Defines one parameter of each kind; module load calls this on every load attempt.
@@ -27,7 +33,65 @@ public static class RuntimeGucFunctions
         s_label = PgGucRegistry.DefineString(Name("label"), null, "Run-time string", context: PgGucContext.SuperuserSet);
         s_mode = PgGucRegistry.DefineEnum(Name("mode"), 1, "Run-time enumeration",
             [new PgGucEnumOption("off", 0), new PgGucEnumOption("on", 1), new PgGucEnumOption("true", 1, Hidden: true), new PgGucEnumOption("auto", 2)]);
+        DefineHookedAtLoad();
     }
+
+    /// <summary>
+    /// Defines one parameter of each kind with hooks, as pgrx's define_*_guc_with_hooks functions do.
+    /// </summary>
+    private static void DefineHookedAtLoad()
+    {
+        static string Name(string suffix) => Prefix + ".hooked_" + suffix;
+        s_hookedLimit = PgGucRegistry.DefineInt(Name("limit"), 4, "Run-time integer with hooks", minimum: 0, maximum: 100, hooks: new()
+        {
+            Check = static (proposed, _) => proposed % 2 != 0
+                ? new(new PgGucCheckError("The limit must be even.", hint: "Use an even number."))
+                : new(proposed, new PgGucExtra([(byte)(proposed / 2)])),
+            Assign = static (accepted, extra) => s_hookEvents.Add($"limit:{accepted}:{extra?[0]}"),
+            Show = static (current, extra) => $"{current} units ({extra?[0]} pairs)",
+        });
+        s_hookedLabel = PgGucRegistry.DefineString(Name("label"), "plain", "Run-time string with hooks", hooks: new()
+        {
+            Check = static (proposed, _) => new(proposed?.Trim()),
+        });
+        s_hookedMode = PgGucRegistry.DefineEnum(Name("mode"), 0, "Run-time enumeration with hooks",
+            [new PgGucEnumOption("low", 0), new PgGucEnumOption("high", 1)], hooks: new()
+        {
+            Show = static (current, _) => current == 0 ? "LOW" : "HIGH",
+        });
+        s_hookedEnabled = PgGucRegistry.DefineBool(Name("enabled"), false, "Run-time Boolean with hooks", hooks: new()
+        {
+            Assign = static (accepted, _) => s_hookEvents.Add($"enabled:{accepted}"),
+        });
+        s_hookedRatio = PgGucRegistry.DefineReal(Name("ratio"), 0.5, "Run-time real with hooks", minimum: 0, maximum: 1, hooks: new()
+        {
+            Check = static (proposed, source) => source == PgGucSource.Session && proposed == 1
+                ? new(new PgGucCheckError(detail: "A session cannot claim the whole ratio."))
+                : new(Math.Round(proposed, 1)),
+        });
+    }
+
+    /// <summary>
+    /// Reads every hooked parameter and the assign events recorded since the last call.
+    /// </summary>
+    /// <returns>The values and events separated by vertical bars.</returns>
+    [PgFunction]
+    public static string RuntimeGucHookedValues()
+    {
+        string events = string.Join(',', s_hookEvents);
+        s_hookEvents.Clear();
+        return string.Join('|', s_hookedLimit!.Value, s_hookedLabel!.Value ?? "<null>", s_hookedMode!.Value, s_hookedEnabled!.Value,
+            s_hookedRatio!.Value.ToString(CultureInfo.InvariantCulture), events);
+    }
+
+    /// <summary>
+    /// Defines the hooked integer again with a different check, which must be rejected.
+    /// </summary>
+    /// <returns>Never returns normally.</returns>
+    [PgFunction]
+    public static int RuntimeGucRedefineHooks()
+        => PgGucRegistry.DefineInt(Prefix + ".hooked_limit", 4, "Run-time integer with hooks", minimum: 0, maximum: 100,
+            hooks: new() { Check = static (proposed, _) => new(proposed) }).Value;
 
     /// <summary>
     /// Reads every load-time parameter through its managed reader.

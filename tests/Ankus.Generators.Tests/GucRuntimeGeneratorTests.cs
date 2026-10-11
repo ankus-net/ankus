@@ -39,6 +39,16 @@ public sealed partial class PgFunctionGeneratorTests
         int capture = native.IndexOf("ankus_guc_capture_error(ErrorData *data, AnkusError *error)", StringComparison.Ordinal);
         Assert.IsGreaterThanOrEqualTo(0, capture);
         Assert.IsGreaterThan(capture, native.IndexOf("ankus_guc_define_runtime(const char *name, intptr_t request, AnkusError *error)", StringComparison.Ordinal));
+        // Hooks on run-time definitions dispatch through prebuilt slots, emitted after the shared hook path they call.
+        int hookPath = native.IndexOf("ankus_guc_show(AnkusGuc *definition)", StringComparison.Ordinal);
+        Assert.IsGreaterThanOrEqualTo(0, native.IndexOf("ankus_guc_check(AnkusGuc *definition, void *proposed", StringComparison.Ordinal));
+        Assert.IsGreaterThan(hookPath, native.IndexOf("ANKUS_GUC_RUNTIME_SLOT(1)\n", StringComparison.Ordinal));
+        Assert.Contains("ANKUS_GUC_RUNTIME_SLOT(64)\n", native);
+        Assert.DoesNotContain("ANKUS_GUC_RUNTIME_SLOT(65)", native);
+        Assert.Contains("ankus_guc_runtime_bind(AnkusGuc *definition, int hooks, int slot)", native);
+        Assert.Contains("extern int ankus_guc_runtime_hook(", native);
+        Assert.ContainsSingle(compilation.SyntaxTrees.Where(tree =>
+            tree.GetText(context.CancellationToken).ToString().Contains("EntryPoint = \"ankus_guc_runtime_hook\"", StringComparison.Ordinal)));
     }
 
     /// <summary>
@@ -58,6 +68,7 @@ public sealed partial class PgFunctionGeneratorTests
         string native = ManifestValue(compilation, "Ankus.NativeSource");
         Assert.DoesNotContain("ANKUS_GUC_RUNTIME", native);
         Assert.DoesNotContain("ankus_guc_define_runtime", native);
+        Assert.DoesNotContain("ankus_guc_runtime_hook", native);
     }
 
     /// <summary>

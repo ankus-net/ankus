@@ -106,4 +106,14 @@ internal unsafe struct NativeGucDefinition
     /// Nonzero when the string default is absent.
     /// </summary>
     internal byte _bootNull;
+
+    /// <summary>
+    /// The hook bits: 1 for check, 2 for assign and 4 for show.
+    /// </summary>
+    internal int _hooks;
+
+    /// <summary>
+    /// The hook slot, or zero without hooks.
+    /// </summary>
+    internal int _slot;
 }

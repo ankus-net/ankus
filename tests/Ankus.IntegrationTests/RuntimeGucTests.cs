@@ -20,7 +20,7 @@ public sealed class RuntimeGucTests(TestContext context)
         await using (var metadata = new NpgsqlCommand("""
             SELECT string_agg(concat_ws(',', name, vartype, context, coalesce(unit, '-'), coalesce(min_val, '-'), coalesce(max_val, '-'),
                 short_desc, coalesce(extra_desc, '-'), coalesce(array_to_string(enumvals, '/'), '-'), coalesce(boot_val, '<null>')), ';' ORDER BY name)
-            FROM pg_catalog.pg_settings WHERE name LIKE 'ankus_runtime.%'
+            FROM pg_catalog.pg_settings WHERE name LIKE 'ankus_runtime.%' AND name NOT LIKE 'ankus_runtime.hooked\_%'
             """, connection))
         {
             Assert.AreEqual(
@@ -47,6 +47,45 @@ public sealed class RuntimeGucTests(TestContext context)
         Assert.AreEqual(PostgresErrorCodes.InvalidParameterValue, range.SqlState);
         PostgresException label = await Assert.ThrowsExactlyAsync<PostgresException>(() => ExecuteAsync(connection, "SET \"ankus_runtime.mode\" = maybe"));
         Assert.AreEqual(PostgresErrorCodes.InvalidParameterValue, label.SqlState);
+    }
+
+    /// <summary>
+    /// Hooks on run-time definitions check, normalize, record and display values as attribute hooks do, for every kind.
+    /// </summary>
+    [TestMethod]
+    public async Task RuntimeDefinitionHooksCheckAssignAndShow()
+    {
+        await using NpgsqlConnection connection = await OpenAsync();
+        // The boot values were checked and assigned while the library loaded.
+        Assert.AreEqual("4|plain|0|False|0.5|limit:4:2,enabled:False", await ScalarAsync(connection, "SELECT datatype.runtime_guc_hooked_values()"));
+        Assert.AreEqual("4 units (2 pairs)", await ScalarAsync(connection, "SHOW \"ankus_runtime.hooked_limit\""));
+        Assert.AreEqual("LOW", await ScalarAsync(connection, "SHOW \"ankus_runtime.hooked_mode\""));
+
+        await ExecuteAsync(connection, "SET \"ankus_runtime.hooked_limit\" = 10; SET \"ankus_runtime.hooked_label\" = '  padded  '; " +
+            "SET \"ankus_runtime.hooked_mode\" = high; SET \"ankus_runtime.hooked_enabled\" = on; SET \"ankus_runtime.hooked_ratio\" = 0.26");
+        Assert.AreEqual("10|padded|1|True|0.3|limit:10:5,enabled:True", await ScalarAsync(connection, "SELECT datatype.runtime_guc_hooked_values()"));
+        Assert.AreEqual("10 units (5 pairs)", await ScalarAsync(connection, "SHOW \"ankus_runtime.hooked_limit\""));
+        Assert.AreEqual("HIGH", await ScalarAsync(connection, "SHOW \"ankus_runtime.hooked_mode\""));
+        Assert.AreEqual("padded", await ScalarAsync(connection, "SHOW \"ankus_runtime.hooked_label\""));
+
+        PostgresException odd = await Assert.ThrowsExactlyAsync<PostgresException>(() => ExecuteAsync(connection, "SET \"ankus_runtime.hooked_limit\" = 7"));
+        Assert.AreEqual(PostgresErrorCodes.InvalidParameterValue, odd.SqlState);
+        Assert.AreEqual("The limit must be even.", odd.MessageText);
+        Assert.AreEqual("Use an even number.", odd.Hint);
+        PostgresException whole = await Assert.ThrowsExactlyAsync<PostgresException>(() => ExecuteAsync(connection, "SET \"ankus_runtime.hooked_ratio\" = 1"));
+        Assert.AreEqual("A session cannot claim the whole ratio.", whole.Detail);
+        Assert.AreEqual("10|padded|1|True|0.3|", await ScalarAsync(connection, "SELECT datatype.runtime_guc_hooked_values()"));
+
+        // Rolling back restores the earlier value through assign with its earlier extra data, without checking again.
+        await ExecuteAsync(connection, "BEGIN; SET LOCAL \"ankus_runtime.hooked_limit\" = 20");
+        Assert.AreEqual("20 units (10 pairs)", await ScalarAsync(connection, "SHOW \"ankus_runtime.hooked_limit\""));
+        await ExecuteAsync(connection, "ROLLBACK");
+        Assert.AreEqual("10|padded|1|True|0.3|limit:20:10,limit:10:5", await ScalarAsync(connection, "SELECT datatype.runtime_guc_hooked_values()"));
+
+        PostgresException conflict = await Assert.ThrowsExactlyAsync<PostgresException>(() =>
+            ScalarAsync(connection, "SELECT datatype.runtime_guc_redefine_hooks()"));
+        Assert.AreEqual(PostgresErrorCodes.DuplicateObject, conflict.SqlState);
+        Assert.AreEqual(42, await ScalarAsync(connection, "SELECT 42"));
     }
 
     /// <summary>

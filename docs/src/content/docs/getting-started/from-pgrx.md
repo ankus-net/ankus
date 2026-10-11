@@ -168,7 +168,8 @@ Check, assign and show hooks are ordinary named methods selected by the
 attribute. Their phase and SQL-access restrictions still apply. When a name is
 computed at run time, as with `GucRegistry::define_int_guc` in `_PG_init`, call
 `PgGucRegistry.DefineInt` and its siblings from a `[PgModuleLoad]` method and read
-the returned `PgGucSetting<T>`. See
+the returned `PgGucSetting<T>`. The `define_*_guc_with_hooks` variants map to the
+optional `PgGucHooks<T>` argument. See
 [configuration settings](/configuration/#run-time-definitions).
 
 ## Extension workflow

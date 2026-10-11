@@ -254,6 +254,48 @@ internal static class PgGucEmitter
     }
 
     /// <summary>
+    /// Gets the single managed entry for hooks on run-time definitions, which selects the delegates registered for the
+    /// slot that the native hook passes as its third argument.
+    /// </summary>
+    internal const string RuntimeHookDispatcher = """
+                [global::System.Runtime.InteropServices.UnmanagedCallersOnly(
+                    EntryPoint = "ankus_guc_runtime_hook", CallConvs = new[] { typeof(global::System.Runtime.CompilerServices.CallConvCdecl) })]
+                private static int AnkusGucRuntimeHook(int phase, global::Ankus.CompilerServices.NativeValue* arguments,
+                    global::Ankus.CompilerServices.NativeValue* results, int source, global::Ankus.CompilerServices.NativeCallError* error,
+                    nint read, nint execute, nint log, nint memory)
+                {
+                    nint previousBackend = global::Ankus.CompilerServices.NativeBackend.Enter(execute);
+                    nint previousRead = global::Ankus.CompilerServices.NativeGuc.Enter(read);
+                    nint previousLog = global::Ankus.CompilerServices.NativeLog.Enter(log);
+                    nint previousMemory = 0;
+                    bool memoryEntered = false;
+                    try
+                    {
+                        previousMemory = global::Ankus.CompilerServices.NativeMemoryContext.Enter(memory);
+                        memoryEntered = true;
+                        return global::Ankus.CompilerServices.NativeGuc.DispatchRuntimeHook(phase, arguments, results, source, error);
+                    }
+                    catch (global::System.Exception exception)
+                    {
+                        global::Ankus.CompilerServices.NativeError.Write(exception, error);
+                        return 1;
+                    }
+                    finally
+                    {
+                        if (memoryEntered)
+                        {
+                            global::Ankus.CompilerServices.NativeMemoryContext.Exit(previousMemory);
+                        }
+
+                        global::Ankus.CompilerServices.NativeLog.Exit(previousLog);
+                        global::Ankus.CompilerServices.NativeGuc.Exit(previousRead);
+                        global::Ankus.CompilerServices.NativeBackend.Exit(previousBackend);
+                    }
+                }
+
+        """;
+
+    /// <summary>
     /// Converts a native proposed/current value without reflection or lossy enum casts.
     /// </summary>
     private static string ReadValue(GucModel declaration, string slot) => declaration.Kind switch

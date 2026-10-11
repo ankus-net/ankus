@@ -20,8 +20,8 @@ namespace Ankus;
 /// </para>
 /// <para>
 /// Prefer the <see cref="PgGucAttribute"/> family for names known at compile time. Attributes add compile-time
-/// validation, typed C# enum settings and managed check, assign and show hooks; run-time definitions have no hooks,
-/// like pgrx's plain <c>define_*_guc</c> functions.
+/// validation and typed C# enum settings. Both forms accept check, assign and show hooks; pass
+/// <see cref="PgGucHooks{T}"/> here, as pgrx's <c>define_*_guc_with_hooks</c> functions take hook functions.
 /// </para>
 /// </remarks>
 public static class PgGucRegistry
@@ -39,14 +39,15 @@ public static class PgGucRegistry
     /// <param name="longDescription">An optional long description.</param>
     /// <param name="context">When and by whom the parameter can be changed.</param>
     /// <param name="flags">PostgreSQL configuration flags.</param>
+    /// <param name="hooks">Optional check, assign and show hooks.</param>
     /// <returns>A reader for the parameter's current value.</returns>
     /// <exception cref="ArgumentException">Text is blank or contains a zero character, or an option is undefined.</exception>
     /// <exception cref="PgException">PostgreSQL rejected the definition.</exception>
     public static PgGucSetting<bool> DefineBool(string name, bool defaultValue, string shortDescription, string? longDescription = null,
-        PgGucContext context = PgGucContext.UserSet, PgGucOptions flags = PgGucOptions.None)
+        PgGucContext context = PgGucContext.UserSet, PgGucOptions flags = PgGucOptions.None, PgGucHooks<bool>? hooks = null)
     {
         var definition = new NativeGucDefinition { _kind = 0, _bootBoolean = defaultValue ? (byte)1 : (byte)0 };
-        return Define<bool>(name, shortDescription, longDescription, context, flags, PgGucUnit.None, ref definition, null, null);
+        return Define(name, shortDescription, longDescription, context, flags, PgGucUnit.None, ref definition, null, null, hooks);
     }
 
     /// <summary>
@@ -61,19 +62,20 @@ public static class PgGucRegistry
     /// <param name="context">When and by whom the parameter can be changed.</param>
     /// <param name="flags">PostgreSQL configuration flags.</param>
     /// <param name="unit">The unit PostgreSQL accepts and displays.</param>
+    /// <param name="hooks">Optional check, assign and show hooks.</param>
     /// <returns>A reader for the parameter's current value.</returns>
     /// <exception cref="ArgumentException">Text is blank or contains a zero character, or an option is undefined.</exception>
     /// <exception cref="ArgumentOutOfRangeException">The range is empty or excludes the default.</exception>
     /// <exception cref="PgException">PostgreSQL rejected the definition.</exception>
     public static PgGucSetting<int> DefineInt(string name, int defaultValue, string shortDescription, int minimum = int.MinValue,
         int maximum = int.MaxValue, string? longDescription = null, PgGucContext context = PgGucContext.UserSet,
-        PgGucOptions flags = PgGucOptions.None, PgGucUnit unit = PgGucUnit.None)
+        PgGucOptions flags = PgGucOptions.None, PgGucUnit unit = PgGucUnit.None, PgGucHooks<int>? hooks = null)
     {
         ArgumentOutOfRangeException.ThrowIfGreaterThan(minimum, maximum);
         ArgumentOutOfRangeException.ThrowIfLessThan(defaultValue, minimum);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(defaultValue, maximum);
         var definition = new NativeGucDefinition { _kind = 1, _bootInteger = defaultValue, _minimumInteger = minimum, _maximumInteger = maximum };
-        return Define<int>(name, shortDescription, longDescription, context, flags, unit, ref definition, null, null);
+        return Define(name, shortDescription, longDescription, context, flags, unit, ref definition, null, null, hooks);
     }
 
     /// <summary>
@@ -88,13 +90,14 @@ public static class PgGucRegistry
     /// <param name="context">When and by whom the parameter can be changed.</param>
     /// <param name="flags">PostgreSQL configuration flags.</param>
     /// <param name="unit">The unit PostgreSQL accepts and displays.</param>
+    /// <param name="hooks">Optional check, assign and show hooks.</param>
     /// <returns>A reader for the parameter's current value.</returns>
     /// <exception cref="ArgumentException">Text is blank or contains a zero character, or an option is undefined.</exception>
     /// <exception cref="ArgumentOutOfRangeException">A bound or the default is not a number, the range is empty, or it excludes the default.</exception>
     /// <exception cref="PgException">PostgreSQL rejected the definition.</exception>
     public static PgGucSetting<double> DefineReal(string name, double defaultValue, string shortDescription, double minimum = double.MinValue,
         double maximum = double.MaxValue, string? longDescription = null, PgGucContext context = PgGucContext.UserSet,
-        PgGucOptions flags = PgGucOptions.None, PgGucUnit unit = PgGucUnit.None)
+        PgGucOptions flags = PgGucOptions.None, PgGucUnit unit = PgGucUnit.None, PgGucHooks<double>? hooks = null)
     {
         if (double.IsNaN(defaultValue) || double.IsNaN(minimum) || double.IsNaN(maximum))
         {
@@ -106,7 +109,7 @@ public static class PgGucRegistry
         ArgumentOutOfRangeException.ThrowIfLessThan(defaultValue, minimum);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(defaultValue, maximum);
         var definition = new NativeGucDefinition { _kind = 2, _bootReal = defaultValue, _minimumReal = minimum, _maximumReal = maximum };
-        return Define<double>(name, shortDescription, longDescription, context, flags, unit, ref definition, null, null);
+        return Define(name, shortDescription, longDescription, context, flags, unit, ref definition, null, null, hooks);
     }
 
     /// <summary>
@@ -118,14 +121,15 @@ public static class PgGucRegistry
     /// <param name="longDescription">An optional long description.</param>
     /// <param name="context">When and by whom the parameter can be changed.</param>
     /// <param name="flags">PostgreSQL configuration flags.</param>
+    /// <param name="hooks">Optional check, assign and show hooks.</param>
     /// <returns>A reader for the parameter's current value.</returns>
     /// <exception cref="ArgumentException">Text is blank or contains a zero character, or an option is undefined.</exception>
     /// <exception cref="PgException">PostgreSQL rejected the definition.</exception>
     public static PgGucSetting<string?> DefineString(string name, string? defaultValue, string shortDescription, string? longDescription = null,
-        PgGucContext context = PgGucContext.UserSet, PgGucOptions flags = PgGucOptions.None)
+        PgGucContext context = PgGucContext.UserSet, PgGucOptions flags = PgGucOptions.None, PgGucHooks<string?>? hooks = null)
     {
         var definition = new NativeGucDefinition { _kind = 3, _bootNull = defaultValue is null ? (byte)1 : (byte)0 };
-        return Define<string?>(name, shortDescription, longDescription, context, flags, PgGucUnit.None, ref definition, defaultValue, null);
+        return Define(name, shortDescription, longDescription, context, flags, PgGucUnit.None, ref definition, defaultValue, null, hooks);
     }
 
     /// <summary>
@@ -138,13 +142,15 @@ public static class PgGucRegistry
     /// <param name="longDescription">An optional long description.</param>
     /// <param name="context">When and by whom the parameter can be changed.</param>
     /// <param name="flags">PostgreSQL configuration flags.</param>
+    /// <param name="hooks">Optional check, assign and show hooks; their values are label ordinals.</param>
     /// <returns>A reader for the current ordinal.</returns>
     /// <remarks>Use <see cref="PgGucEnumAttribute"/> for a typed C# enum known at compile time.</remarks>
     /// <exception cref="ArgumentException">Text is blank or contains a zero character, an option is undefined, or no label is supplied.</exception>
     /// <exception cref="ArgumentOutOfRangeException">No label has the default ordinal.</exception>
     /// <exception cref="PgException">PostgreSQL rejected the definition.</exception>
     public static PgGucSetting<int> DefineEnum(string name, int defaultValue, string shortDescription, IReadOnlyList<PgGucEnumOption> options,
-        string? longDescription = null, PgGucContext context = PgGucContext.UserSet, PgGucOptions flags = PgGucOptions.None)
+        string? longDescription = null, PgGucContext context = PgGucContext.UserSet, PgGucOptions flags = PgGucOptions.None,
+        PgGucHooks<int>? hooks = null)
     {
         ArgumentNullException.ThrowIfNull(options);
         if (options.Count == 0)
@@ -165,7 +171,7 @@ public static class PgGucRegistry
         }
 
         var definition = new NativeGucDefinition { _kind = 4, _bootInteger = defaultValue };
-        return Define<int>(name, shortDescription, longDescription, context, flags, PgGucUnit.None, ref definition, null, options);
+        return Define(name, shortDescription, longDescription, context, flags, PgGucUnit.None, ref definition, null, options, hooks);
     }
 
     /// <summary>
@@ -203,7 +209,8 @@ public static class PgGucRegistry
     /// Validates shared metadata, copies text to native memory for the call and registers the parameter.
     /// </summary>
     private static unsafe PgGucSetting<T> Define<T>(string name, string shortDescription, string? longDescription, PgGucContext context,
-        PgGucOptions flags, PgGucUnit unit, ref NativeGucDefinition definition, string? bootString, IReadOnlyList<PgGucEnumOption>? options)
+        PgGucOptions flags, PgGucUnit unit, ref NativeGucDefinition definition, string? bootString, IReadOnlyList<PgGucEnumOption>? options,
+        PgGucHooks<T>? hooks)
     {
         byte[] encodedName = NativeGuc.EncodeName(name);
         if (!IsCustomName(name))
@@ -227,6 +234,14 @@ public static class PgGucRegistry
         if (!Enum.IsDefined(unit))
         {
             throw new ArgumentException("The configuration unit is not defined.", nameof(unit));
+        }
+
+        // PostgreSQL runs the check on the default while it registers the parameter, so the hooks are reserved first.
+        bool reserved = false;
+        if (hooks is { Bits: not 0 })
+        {
+            definition._slot = RuntimeGucHooks.Reserve(name, definition._kind, hooks, options, out reserved);
+            definition._hooks = hooks.Bits;
         }
 
         int count = options?.Count ?? 0;
@@ -263,6 +278,7 @@ public static class PgGucRegistry
                 NativeGuc.Define(encodedName, native);
             }
 
+            reserved = false;
             return new PgGucSetting<T>(name, definition._kind);
         }
         finally
@@ -281,6 +297,10 @@ public static class PgGucRegistry
             NativeMemory.Free(optionNames);
             NativeMemory.Free(optionValues);
             NativeMemory.Free(optionHidden);
+            if (reserved)
+            {
+                RuntimeGucHooks.Release(name, definition._slot);
+            }
         }
     }
 }

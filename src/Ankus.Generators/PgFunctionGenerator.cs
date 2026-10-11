@@ -359,7 +359,7 @@ public sealed class PgFunctionGenerator : IIncrementalGenerator
         bool hasRuntimeGucs = propertyInputs.RuntimeSettings && hasBackend;
         bool hasDispatchers = hasFunctionCallbacks || hasGucHooks;
         var aggregateMethods = new HashSet<DeclarationIdentity>(aggregateOutputs.SelectMany(static value => value.Analysis.Selected));
-        bool hasMemoryFunctionCallbacks = !methodInputs.Lifecycle.IsEmpty || hasWorkers || hasNativeCallbacks || hasGucHooks ||
+        bool hasMemoryFunctionCallbacks = !methodInputs.Lifecycle.IsEmpty || hasWorkers || hasNativeCallbacks || hasGucHooks || hasRuntimeGucs ||
             benchmarks.Count != 0 || !aggregateOutputs.IsEmpty || !customTypes.IsEmpty || !selectedDerivedTypes.IsEmpty ||
             methods.Any(method => !aggregateMethods.Contains(method.Identity));
         if (hasMemoryFunctionCallbacks)
@@ -474,7 +474,9 @@ public sealed class PgFunctionGenerator : IIncrementalGenerator
 
             if (hasDispatchers || hasRuntimeGucs)
             {
-                native.AppendLine(NativeGucBridge.GetManagedDeclarations(hasGucCheck, hasGucHooks, hasGucShow));
+                // A run-time definition may supply any hook, so it needs the complete hook transport.
+                native.AppendLine(NativeGucBridge.GetManagedDeclarations(hasGucCheck || hasRuntimeGucs, hasGucHooks || hasRuntimeGucs,
+                    hasGucShow || hasRuntimeGucs));
             }
         }
 
@@ -738,10 +740,13 @@ public sealed class PgFunctionGenerator : IIncrementalGenerator
                     native.AppendLine(NativeGucBridge.RuntimeDefinitions);
                 }
 
-                native.AppendLine(NativeGucBridge.GetManagedSource(hasGucCheck, hasGucHooks, hasGucShow));
+                native.AppendLine(NativeGucBridge.GetManagedSource(hasGucCheck || hasRuntimeGucs, hasGucHooks || hasRuntimeGucs,
+                    hasGucShow || hasRuntimeGucs));
                 if (hasRuntimeGucs)
                 {
-                    native.AppendLine(NativeGucBridge.GetRuntimeDefinitionEntry(hasBackend || hasGucHooks));
+                    native.AppendLine(NativeGucBridge.RuntimeHooks);
+                    native.AppendLine(NativeGucBridge.RuntimeDefinitionEntry);
+                    managed.Append(PgGucEmitter.RuntimeHookDispatcher);
                 }
 
                 registration.Insert(0, (hasBackend ? "        ankus_read_guc = ankus_guc_read;\n" : string.Empty) +
@@ -774,7 +779,7 @@ public sealed class PgFunctionGenerator : IIncrementalGenerator
         {
             PgInitializeEmitter.Emit(initializer, initializer is null
                     ? GetCallbackName(nativeCompilation.Analysis.Assembly, "initialize") : initializer.Declaration.Callback,
-                hasGucHooks, registration.ToString(), managed, native, exports, hasNativeCallbacks || hasWorkers, moduleLoad is not null);
+                hasGucHooks || hasRuntimeGucs, registration.ToString(), managed, native, exports, hasNativeCallbacks || hasWorkers, moduleLoad is not null);
         }
 
         if (hasNativeCallbacks)
