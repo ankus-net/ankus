@@ -87,6 +87,11 @@ approving an external run because approval also permits its changed workflow.
 Keep the runner services online before dispatching dedicated jobs.
 CI selects the latest stable .NET 10 SDK allowed by `global.json`.
 
+Publishing a GitHub release runs the `Release` workflow, which packs the managed
+packages and every runtime and compiler package, then publishes them to NuGet.
+Dispatching it with a `tag` input such as `v0.1.0` rehearses the same build and
+packing from the dispatched commit and skips publishing.
+
 The `Additional platforms` workflow runs the complete suite on the dedicated
 Intel macOS runner, covering the release-only macOS x64 architecture. The weekly
 run tests PostgreSQL 13–17, 18 and 19 beta in turn; manual dispatch takes a

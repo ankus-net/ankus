@@ -3,6 +3,13 @@ name: Release
 on:
   release:
     types: [published]
+  # A dry run builds and packs every package from the dispatched commit without publishing.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to rehearse, such as v0.1.0
+        type: string
+        default: v0.1.0
 
 permissions:
   contents: read
@@ -34,7 +41,7 @@ jobs:
       - name: Read release metadata
         id: metadata
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
         run: dotnet run --file ./eng/Ankus.Ci.cs -- release-metadata
 
   managed-packages:
@@ -121,6 +128,7 @@ jobs:
 
   publish:
     needs: [metadata, managed-packages, runtime-packages]
+    if: github.event_name == 'release'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     environment: release
