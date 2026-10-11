@@ -12,6 +12,11 @@ namespace Ankus.Testing;
 /// </summary>
 public sealed class PostgresTestCluster : IAsyncDisposable
 {
+    /// <summary>
+    /// The allowance for a <c>pg_ctl status</c> check, which only reads the server's PID file.
+    /// </summary>
+    private static readonly TimeSpan s_statusTimeout = TimeSpan.FromSeconds(30);
+
     private readonly PostgresTestClusterOptions _options;
     private readonly IReadOnlyDictionary<string, string?> _environment;
 
@@ -500,8 +505,11 @@ public sealed class PostgresTestCluster : IAsyncDisposable
         if (_requiresShutdown)
         {
             using var timeout = new CancellationTokenSource(_options.ShutdownTimeout);
+            // A status check reads postmaster.pid and returns at once, so it gets its own allowance; a short shutdown
+            // timeout on a slow host must not cancel the check before pg_ctl has even started.
+            using var probe = new CancellationTokenSource(s_statusTimeout);
             ProcessResult status = await _account.RunAsync(
-                Installation.PgCtlPath, ["status", "-D", DataDirectory], _environment, timeout.Token).ConfigureAwait(false);
+                Installation.PgCtlPath, ["status", "-D", DataDirectory], _environment, probe.Token).ConfigureAwait(false);
             if (status.ExitCode == 0)
             {
                 TimeSpan fastDuration = TimeSpan.FromTicks(Math.Min(
@@ -535,8 +543,9 @@ public sealed class PostgresTestCluster : IAsyncDisposable
                         timeout.Token).ConfigureAwait(false);
                     if (immediate.ExitCode != 0)
                     {
+                        using var stoppedProbe = new CancellationTokenSource(s_statusTimeout);
                         ProcessResult stopped = await _account.RunAsync(
-                            Installation.PgCtlPath, ["status", "-D", DataDirectory], _environment, timeout.Token).ConfigureAwait(false);
+                            Installation.PgCtlPath, ["status", "-D", DataDirectory], _environment, stoppedProbe.Token).ConfigureAwait(false);
                         if (stopped.ExitCode != 3)
                         {
                             immediate.EnsureSuccess(Installation.PgCtlPath, immediateArguments);

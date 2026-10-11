@@ -161,8 +161,7 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   medium and low finding has a fix with tests, except these, which remain open:
   SQL that opens a subtransaction inside `Start` and subtransaction `PreCommit`
   callbacks still ends the session as PostgreSQL does, and only the guide says
-  so; three guarded catches (aggregate scopes, run-time GUC definition and
-  initializer logging) still flush a caller's pending error; FATAL after a
+  so; FATAL after a
   parallel-worker commit has no test; per-call SPI subtransactions remain the
   default, with `Atomic` scopes as the opt-in; and ANKUS483 points at the whole
   attribute. Two leftovers are now fixed. A `Default` that PostgreSQL's scanner
@@ -170,7 +169,19 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   name or dollar quote, unbalanced parentheses or a semicolon) is ANKUS060 at
   the value, under both `standard_conforming_strings` settings, instead of a
   broken `CREATE EXTENSION`. ANKUS497–499 escape quotes, backslashes and
-  control characters in dependency identifiers.
+  control characters in dependency identifiers. The last three guarded catches
+  that flushed a caller's pending error (aggregate scopes, run-time GUC
+  definition and initializer logging) now save and restore it like every other
+  guard; their bridges compile cleanly under Clang 23 against PostgreSQL 13, 18
+  and 19 headers. The pending-error fixture covers the shared mechanism, not
+  these three entry points individually.
+- The Intel run ([38102775489](https://github.com/willibrandon/ankus/actions/runs/38102775489))
+  failed one of 5,438 integration tests: a retried shutdown with a 500 ms
+  timeout cancelled its `pg_ctl status` check before the slower host had
+  started `pg_ctl`. Status checks now have their own allowance; the timeout
+  bounds only the server's stop. The Intel runner and the Linux version runners
+  now have the `ankus-runas` rule, so their run-as cases run instead of being
+  inconclusive.
 - PgFunction's options were audited against pgrx 0.19.3's `#[pg_extern]`.
   Each has an equivalent: `raw` maps to raw SQL value parameters and results,
   and `should_panic` to `PgTest.ExpectedError`. Only `no_guard` is absent,

@@ -147,6 +147,9 @@ public sealed class PostgresTestClusterOptions
     /// <summary>
     /// Gets the independent timeout used for shutdown, even when a test's cancellation token has been canceled.
     /// </summary>
+    /// <remarks>
+    /// It bounds the server's stop. Checking whether the server is still running has its own allowance.
+    /// </remarks>
     public TimeSpan ShutdownTimeout
     {
         get;
