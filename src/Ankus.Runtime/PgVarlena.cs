@@ -103,10 +103,12 @@ public sealed unsafe class PgVarlena<T> : IDisposable, IPgVarlena where T : unma
             if (_allocation is { } allocation)
             {
                 allocation.Write(value, _offset);
+                ClearPadding(allocation, _offset);
             }
             else if (_inputWritable)
             {
                 MemoryMarshal.Write(InputBytes, in value);
+                NativeLayoutPadding.Clear(InputBytes, PgTypeRegistry.RequireVarlena<T>().Padding);
             }
             else
             {
@@ -220,6 +222,20 @@ public sealed unsafe class PgVarlena<T> : IDisposable, IPgVarlena where T : unma
     private Span<byte> InputBytes => new((void*)_inputPayload, sizeof(T));
 
     /// <summary>
+    /// Zeroes the layout's padding in a written native payload.
+    /// </summary>
+    /// <param name="allocation">The payload's allocation.</param>
+    /// <param name="offset">The payload's offset in it.</param>
+    private static void ClearPadding(PgAllocation allocation, nuint offset)
+    {
+        int[] padding = PgTypeRegistry.RequireVarlena<T>().Padding;
+        if (padding.Length != 0)
+        {
+            NativeLayoutPadding.Clear(new Span<byte>((byte*)allocation.DangerousGetPointer() + offset, sizeof(T)), padding);
+        }
+    }
+
+    /// <summary>
     /// Allocates a native header and initializes the payload before publishing ownership.
     /// </summary>
     private (PgAllocation Allocation, nuint Offset) Allocate(T value)
@@ -228,6 +244,7 @@ public sealed unsafe class PgVarlena<T> : IDisposable, IPgVarlena where T : unma
         try
         {
             allocation.Write(value, offset);
+            ClearPadding(allocation, offset);
             return (allocation, offset);
         }
         catch (Exception primary)

@@ -260,12 +260,13 @@ generic codec types are supported. Constructors for codecs with C# `required`
 members need `[SetsRequiredMembers]`. `TextCodec` cannot be combined with the
 positional full storage codec option.
 
-## Packed native storage
+## Native storage
 
-Use `NativeLayout = true` with `TextCodec` when the stored value should be a
-densely packed unmanaged struct. Every struct in the layout must explicitly
-declare `[StructLayout(LayoutKind.Sequential, Pack = 1)]`. For example, this
-variant of the color above stores exactly three payload bytes:
+Use `NativeLayout = true` with `TextCodec` when the stored value should be an
+unmanaged struct's own bytes, as pgrx's `pgvarlena_inoutfuncs` stores a
+`repr(C)` struct. Structs in the layout are sequential, which is the C# default;
+an explicit `StructLayout` may set `Pack`. For example, this variant of the color
+above stores exactly three payload bytes:
 
 ```csharp
 using System.Runtime.InteropServices;
@@ -295,14 +296,18 @@ SELECT encode(packed_color_send('#12abef'::packed_color), 'hex'); -- 12abef
 ```
 
 Supported fields are `byte`, `sbyte`, `short`, `ushort`, `int`, `uint`, `long`,
-`ulong`, `float`, `double`, enums, nested packed structs declared in the same
-assembly, and fixed buffers of these numeric primitives. All instance fields
+`ulong`, `float`, `double`, enums, nested sequential structs declared in the
+same assembly, and fixed buffers of these numeric primitives. All instance fields
 participate, including private fields and auto-property backing fields; JSON
 member attributes do not change the layout. Empty structs, reference fields,
 booleans, characters, pointers, native-sized integers, generic structs, opaque
 framework or external structs, explicit layouts, size overrides and inline
-arrays are rejected. These constraints exclude padding and process-dependent
-values from copied managed transport.
+arrays are rejected, so no field holds a process-dependent value.
+
+Fields are aligned as C aligns them, limited by `Pack`, so a struct with a `byte`
+followed by an `int` stores eight bytes. Every write sets the padding bytes to
+zero, because .NET does not preserve them when it copies a struct; equal values
+therefore store equal bytes. `Pack = 1` removes the padding.
 
 Storage uses field order and the host's native byte order. Floating-point bit
 patterns and unnamed enum values are retained without text conversion. Binary

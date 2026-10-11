@@ -38,12 +38,14 @@ public static class PgTypeRegistry
     /// <typeparam name="T">The statically validated native payload.</typeparam>
     /// <param name="name">The SQL type name.</param>
     /// <param name="schema">The fixed schema, or null for the installation schema.</param>
-    /// <param name="size">The statically computed packed size.</param>
+    /// <param name="size">The statically computed size.</param>
+    /// <param name="padding">Offset and length pairs of the layout's padding.</param>
     /// <param name="createCodec">The single shared codec factory.</param>
-    public static void RegisterNative<T>(string name, string? schema, int size, Func<PgTypeCodec<T>> createCodec) where T : unmanaged
+    public static void RegisterNative<T>(string name, string? schema, int size, int[] padding, Func<PgTypeCodec<T>> createCodec)
+        where T : unmanaged
     {
         Register<T, T?>(name, schema, createCodec);
-        var mapping = new PgVarlenaTypeMapping<T>(name, schema, size, Require(typeof(T)));
+        var mapping = new PgVarlenaTypeMapping<T>(name, schema, size, NativeLayoutPadding.Validate(padding, size), Require(typeof(T)));
         s_scalars[typeof(PgVarlena<T>)] = mapping;
         s_arrays[typeof(PgVarlena<T>[])] = mapping;
         s_arrays[typeof(PgArray<PgVarlena<T>>)] = mapping;

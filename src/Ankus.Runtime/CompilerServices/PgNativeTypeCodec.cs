@@ -6,16 +6,19 @@ using System.Runtime.InteropServices;
 namespace Ankus.CompilerServices;
 
 /// <summary>
-/// Implements statically validated, densely packed custom-type storage without structural serialization.
+/// Implements statically validated native-layout custom-type storage without structural serialization.
 /// </summary>
 /// <typeparam name="T">The generated unmanaged native layout.</typeparam>
-/// <param name="expectedSize">The complete packed size computed by the generator.</param>
+/// <param name="expectedSize">The complete size computed by the generator.</param>
+/// <param name="padding">Offset and length pairs of the layout's padding, which every write sets to zero.</param>
 /// <param name="createTextCodec">The lazy factory for SQL text conversion.</param>
 [EditorBrowsable(EditorBrowsableState.Never)]
-public sealed class PgNativeTypeCodec<T>(int expectedSize, Func<PgTypeTextCodec<T>> createTextCodec) : PgTypeCodec<T> where T : unmanaged
+public sealed class PgNativeTypeCodec<T>(int expectedSize, int[] padding, Func<PgTypeTextCodec<T>> createTextCodec) : PgTypeCodec<T>
+    where T : unmanaged
 {
     private readonly int _size = expectedSize == Unsafe.SizeOf<T>() ? expectedSize :
-        throw new ArgumentException("The managed native layout does not match the generated packed size.", nameof(expectedSize));
+        throw new ArgumentException("The managed native layout does not match the generated size.", nameof(expectedSize));
+    private readonly int[] _padding = NativeLayoutPadding.Validate(padding, expectedSize);
     private readonly Func<PgTypeTextCodec<T>> _createTextCodec = createTextCodec ?? throw new ArgumentNullException(nameof(createTextCodec));
     private Lazy<PgTypeTextCodec<T>>? _textCodec;
 
@@ -53,7 +56,9 @@ public sealed class PgNativeTypeCodec<T>(int expectedSize, Func<PgTypeTextCodec<
     public override void Write(T value, IBufferWriter<byte> destination)
     {
         ArgumentNullException.ThrowIfNull(destination);
-        MemoryMarshal.Write(destination.GetSpan(_size), in value);
+        Span<byte> payload = destination.GetSpan(_size)[.._size];
+        MemoryMarshal.Write(payload, in value);
+        NativeLayoutPadding.Clear(payload, _padding);
         destination.Advance(_size);
     }
 }

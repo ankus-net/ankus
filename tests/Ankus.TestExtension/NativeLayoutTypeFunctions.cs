@@ -186,6 +186,90 @@ public static class NativeLayoutTypeFunctions
     }
 
     /// <summary>
+    /// Has three padding bytes between its fields, as a naturally aligned C struct does.
+    /// </summary>
+    [PgType(NativeLayout = true, TextCodec = typeof(AlignedText), BinaryProtocol = true)]
+    public struct Aligned
+    {
+        /// <summary>
+        /// Gets or sets the leading byte.
+        /// </summary>
+        public byte Tag
+        {
+            readonly get;
+            set;
+        }
+
+        /// <summary>
+        /// Gets or sets the integer, aligned at offset four.
+        /// </summary>
+        public int Number
+        {
+            readonly get;
+            set;
+        }
+    }
+
+    /// <summary>
+    /// Formats the aligned value as its tag and number.
+    /// </summary>
+    public sealed class AlignedText : PgTypeTextCodec<Aligned>
+    {
+        /// <inheritdoc />
+        public override Aligned Parse(string text)
+        {
+            string[] parts = text.Split(':');
+            return new Aligned { Tag = byte.Parse(parts[0], CultureInfo.InvariantCulture), Number = int.Parse(parts[1], CultureInfo.InvariantCulture) };
+        }
+
+        /// <inheritdoc />
+        public override string Format(Aligned value) => string.Create(CultureInfo.InvariantCulture, $"{value.Tag}:{value.Number}");
+    }
+
+    /// <summary>
+    /// Builds an aligned value whose padding bytes are 0xFF, as a value copied from uninitialized memory can be.
+    /// </summary>
+    /// <param name="tag">The tag.</param>
+    /// <param name="number">The number.</param>
+    /// <returns>The value, stored with zero padding.</returns>
+    [PgFunction]
+    public static Aligned NativeAlignedDirty(int tag, int number) => Dirty(checked((byte)tag), number);
+
+    /// <summary>
+    /// Builds the same dirty value as a native varlena.
+    /// </summary>
+    /// <param name="tag">The tag.</param>
+    /// <param name="number">The number.</param>
+    /// <returns>The native varlena, written with zero padding.</returns>
+    [PgFunction]
+    public static PgVarlena<Aligned> NativeAlignedVarlena(int tag, int number) => new(Dirty(checked((byte)tag), number));
+
+    /// <summary>
+    /// Replaces the number in place in a copied native varlena.
+    /// </summary>
+    /// <param name="value">The varlena.</param>
+    /// <param name="number">The new number.</param>
+    /// <returns>The updated varlena.</returns>
+    [PgFunction]
+    public static PgVarlena<Aligned> NativeAlignedSetNumber(PgVarlena<Aligned> value, int number)
+    {
+        value.Value = Dirty(value.Value.Tag, number);
+        return value;
+    }
+
+    /// <summary>
+    /// Reads a value from bytes whose padding is 0xFF.
+    /// </summary>
+    private static Aligned Dirty(byte tag, int number)
+    {
+        Span<byte> bytes = stackalloc byte[8];
+        bytes.Fill(0xFF);
+        bytes[0] = tag;
+        MemoryMarshal.Write(bytes[4..], in number);
+        return MemoryMarshal.Read<Aligned>(bytes);
+    }
+
+    /// <summary>
     /// Builds exact nested, enum, buffer and floating-point fields without text conversion.
     /// </summary>
     [PgFunction]

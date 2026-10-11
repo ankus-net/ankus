@@ -15,11 +15,12 @@ namespace Ankus.Generators;
 /// <param name="TextCodec">The optional explicitly authored text codec.</param>
 /// <param name="Serializer">The optional statically validated serialization graph.</param>
 /// <param name="NativeSize">The proved native payload size, or zero for serialized storage.</param>
+/// <param name="NativePadding">Comma-separated offset and length pairs of the native layout's padding.</param>
 /// <param name="BinaryProtocol">Whether binary send and receive functions are generated.</param>
 /// <param name="Alignment">The validated PostgreSQL storage alignment.</param>
 /// <param name="NullInputErrorMessage">The optional error for a null text input.</param>
 internal sealed record CustomTypeModel(string Name, string? Schema, string Managed, string Symbol, bool IsValueType,
-    string? Codec, string? TextCodec, SerializationModel? Serializer, int NativeSize, bool BinaryProtocol,
+    string? Codec, string? TextCodec, SerializationModel? Serializer, int NativeSize, string NativePadding, bool BinaryProtocol,
     string Alignment, string? NullInputErrorMessage)
 {
     /// <summary>
@@ -53,6 +54,13 @@ internal sealed record CustomTypeModel(string Name, string? Schema, string Manag
     internal string NativeFunction(string role) => Io.NativeFunction(role);
 
     /// <summary>
+    /// Renders native padding pairs as the generated array argument.
+    /// </summary>
+    /// <param name="padding">Comma-separated offset and length pairs.</param>
+    /// <returns>The C# array expression.</returns>
+    private static string Padding(string padding) => padding.Length == 0 ? "[]" : "new int[] { " + padding.Replace(",", ", ") + " }";
+
+    /// <summary>
     /// Emits closed registration with nullable and collection instantiations visible to Native AOT.
     /// </summary>
     /// <param name="contract">The immutable registration inputs.</param>
@@ -62,8 +70,8 @@ internal sealed record CustomTypeModel(string Name, string? Schema, string Manag
         source.AppendLine("        global::Ankus.CompilerServices.PgTypeRegistry.Register" + (contract.NativeSize != 0 ? "Native" : contract.IsValueType ? "Value" : "Reference") + "<" + contract.Managed + ">(" +
             Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(contract.Name, true) + ", " +
             (contract.Schema is null ? "null" : Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(contract.Schema, true)) + ", " +
-            (contract.NativeSize != 0 ? contract.NativeSize.ToString(CultureInfo.InvariantCulture) + ", " : string.Empty) + "static () => new " +
-            contract.Codec + "());");
+            (contract.NativeSize != 0 ? contract.NativeSize.ToString(CultureInfo.InvariantCulture) + ", " + Padding(contract.NativePadding) + ", " : string.Empty) +
+            "static () => new " + contract.Codec + "());");
     }
 
     /// <summary>
@@ -78,7 +86,8 @@ internal sealed record CustomTypeModel(string Name, string? Schema, string Manag
             source.AppendLine("    private sealed class Codec_" + contract.Symbol + " : global::Ankus.PgTypeCodec<" + contract.Managed + ">");
             source.AppendLine("    {");
             source.AppendLine("        private readonly global::Ankus.CompilerServices.PgNativeTypeCodec<" + contract.Managed + "> _codec = new(" +
-                contract.NativeSize.ToString(CultureInfo.InvariantCulture) + ", static () => new " + contract.TextCodec + "());");
+                contract.NativeSize.ToString(CultureInfo.InvariantCulture) + ", " + Padding(contract.NativePadding) + ", static () => new " +
+                contract.TextCodec + "());");
             source.AppendLine("        public override " + contract.Managed + " Parse(string text) => _codec.Parse(text);");
             source.AppendLine("        public override string Format(" + contract.Managed + " value) => _codec.Format(value);");
             source.AppendLine("        public override " + contract.Managed + " Read(global::System.ReadOnlySpan<byte> payload) => _codec.Read(payload);");
@@ -120,8 +129,10 @@ internal sealed record CustomTypeModel(string Name, string? Schema, string Manag
     /// <param name="Managed">The globally qualified payload.</param>
     /// <param name="IsValueType">Whether nullable value registrations are required.</param>
     /// <param name="NativeSize">The native payload size, or zero for serialized storage.</param>
+    /// <param name="NativePadding">Comma-separated offset and length pairs of the native layout's padding.</param>
     /// <param name="Codec">The exact constructed codec name.</param>
-    internal sealed record RegistrationContract(string Name, string? Schema, string Managed, bool IsValueType, int NativeSize, string Codec);
+    internal sealed record RegistrationContract(string Name, string? Schema, string Managed, bool IsValueType, int NativeSize, string NativePadding,
+        string Codec);
 
     /// <summary>
     /// Defines only the graph and codec constants consumed by storage rendering.
@@ -129,9 +140,11 @@ internal sealed record CustomTypeModel(string Name, string? Schema, string Manag
     /// <param name="Managed">The globally qualified payload.</param>
     /// <param name="Symbol">The generated codec identity.</param>
     /// <param name="NativeSize">The native payload size, or zero for serialized storage.</param>
+    /// <param name="NativePadding">Comma-separated offset and length pairs of the native layout's padding.</param>
     /// <param name="TextCodec">The optional explicitly authored text codec.</param>
     /// <param name="Serializer">The optional immutable serialization graph.</param>
-    internal sealed record SerializerContract(string Managed, string Symbol, int NativeSize, string? TextCodec, SerializationModel? Serializer);
+    internal sealed record SerializerContract(string Managed, string Symbol, int NativeSize, string NativePadding, string? TextCodec,
+        SerializationModel? Serializer);
 
     /// <summary>
     /// Defines only the catalog identity consumed by native supported-type checking.

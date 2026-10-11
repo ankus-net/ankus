@@ -9,7 +9,8 @@ namespace Ankus.Generators;
 /// Validates a generated base type and its statically constructed storage codec.
 /// </summary>
 internal sealed class CustomTypeDeclaration(INamedTypeSymbol type, INamedTypeSymbol? codec, INamedTypeSymbol? textCodec,
-    SerializationModel? serializer, int nativeSize, AttributeData attribute, string name, string? schema, string? nullInputErrorMessage)
+    SerializationModel? serializer, int nativeSize, string nativePadding, AttributeData attribute, string name, string? schema,
+    string? nullInputErrorMessage)
 {
     /// <summary>
     /// Gets the attributed managed type.
@@ -175,9 +176,10 @@ internal sealed class CustomTypeDeclaration(INamedTypeSymbol type, INamedTypeSym
         }
 
         int nativeSize = 0;
+        string nativePadding = string.Empty;
         if (nativeLayout)
         {
-            nativeSize = NativeTypeLayout.Validate(type, out CustomTypeValidationFailure? failure, token);
+            nativeSize = NativeTypeLayout.Validate(type, out CustomTypeValidationFailure? failure, out nativePadding, token);
             if (failure is not null)
             {
                 return InvalidFailure(failure);
@@ -233,7 +235,8 @@ internal sealed class CustomTypeDeclaration(INamedTypeSymbol type, INamedTypeSym
             return Invalid(CustomTypeDiagnosticKind.SchemaName, schemaLocation, type.Name);
         }
 
-        return new(type, codec, textCodec, serializer, nativeSize, attribute, name, schema, options.Property("NullInputErrorMessage", null));
+        return new(type, codec, textCodec, serializer, nativeSize, nativePadding, attribute, name, schema,
+            options.Property("NullInputErrorMessage", null));
 
         Location? Option(string name) => FunctionDeclarationDiagnostics.Option(attribute, name, token);
 
@@ -352,6 +355,6 @@ internal sealed class CustomTypeDeclaration(INamedTypeSymbol type, INamedTypeSym
     /// <returns>The immutable custom-type model.</returns>
     internal CustomTypeModel Freeze() => new(Name, Schema, Managed, Symbol, Type.IsValueType,
         codec?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-        textCodec?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat), serializer, nativeSize,
+        textCodec?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat), serializer, nativeSize, nativePadding,
         BinaryProtocol, Alignment, NullInputErrorMessage);
 }

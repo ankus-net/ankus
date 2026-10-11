@@ -23,10 +23,11 @@ internal static class CustomTypePipeline
             .WithTrackingName("CustomTypeModel");
         IncrementalValuesProvider<CustomTypeModel.RegistrationContract?> registrationModels = models.Select(static (value, _) =>
             value is null ? null : new CustomTypeModel.RegistrationContract(value.Name, value.Schema, value.Managed,
-                value.IsValueType, value.NativeSize, value.Codec ?? "Codec_" + value.Symbol))
+                value.IsValueType, value.NativeSize, value.NativePadding, value.Codec ?? "Codec_" + value.Symbol))
             .WithTrackingName("CustomTypeRegistrationModel");
         IncrementalValuesProvider<CustomTypeModel.SerializerContract?> serializerModels = models.Select(static (value, _) =>
-            value is null ? null : new CustomTypeModel.SerializerContract(value.Managed, value.Symbol, value.NativeSize, value.TextCodec, value.Serializer))
+            value is null ? null : new CustomTypeModel.SerializerContract(value.Managed, value.Symbol, value.NativeSize, value.NativePadding, value.TextCodec,
+                value.Serializer))
             .WithTrackingName("CustomTypeSerializerModel");
         IncrementalValuesProvider<CustomTypeModel.CatalogContract?> catalogModels = models.Select(static (value, _) =>
             value is null ? null : new CustomTypeModel.CatalogContract(value.Name, value.Schema))

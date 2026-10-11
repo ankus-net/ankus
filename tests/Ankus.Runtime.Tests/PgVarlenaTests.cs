@@ -17,15 +17,15 @@ public sealed unsafe class PgVarlenaTests
     /// </summary>
     static PgVarlenaTests()
     {
-        PgTypeRegistry.RegisterNative<Value>("ownership_value", null, 4, static () => throw new InvalidOperationException("Unexpected codec construction."));
-        PgTypeRegistry.RegisterNative<ConstructedValue>("ownership_constructed", null, 4, static () => throw new InvalidOperationException("Unexpected codec construction."));
-        PgTypeRegistry.RegisterNative<Payload125>("ownership_125", null, 125, static () => throw new InvalidOperationException("Unexpected codec construction."));
-        PgTypeRegistry.RegisterNative<Payload126>("ownership_126", null, 126, static () => throw new InvalidOperationException("Unexpected codec construction."));
-        PgTypeRegistry.RegisterNative<Payload127>("ownership_127", null, 127, static () => throw new InvalidOperationException("Unexpected codec construction."));
-        PgTypeRegistry.RegisterNative<WrongSize>("ownership_wrong_size", null, 3, static () => throw new InvalidOperationException("Unexpected codec construction."));
+        PgTypeRegistry.RegisterNative<Value>("ownership_value", null, 4, [], static () => throw new InvalidOperationException("Unexpected codec construction."));
+        PgTypeRegistry.RegisterNative<ConstructedValue>("ownership_constructed", null, 4, [], static () => throw new InvalidOperationException("Unexpected codec construction."));
+        PgTypeRegistry.RegisterNative<Payload125>("ownership_125", null, 125, [], static () => throw new InvalidOperationException("Unexpected codec construction."));
+        PgTypeRegistry.RegisterNative<Payload126>("ownership_126", null, 126, [], static () => throw new InvalidOperationException("Unexpected codec construction."));
+        PgTypeRegistry.RegisterNative<Payload127>("ownership_127", null, 127, [], static () => throw new InvalidOperationException("Unexpected codec construction."));
+        PgTypeRegistry.RegisterNative<WrongSize>("ownership_wrong_size", null, 3, [], static () => throw new InvalidOperationException("Unexpected codec construction."));
         PgTypeRegistry.RegisterValue<NonNative>("ownership_non_native", null, static () => throw new InvalidOperationException("Unexpected codec construction."));
-        PgTypeRegistry.RegisterNative<ArrayValue>("ownership_array_value", null, 4,
-            static () => new PgNativeTypeCodec<ArrayValue>(4, static () => throw new InvalidOperationException("Unexpected text construction.")));
+        PgTypeRegistry.RegisterNative<ArrayValue>("ownership_array_value", null, 4, [],
+            static () => new PgNativeTypeCodec<ArrayValue>(4, [], static () => throw new InvalidOperationException("Unexpected text construction.")));
     }
 
     /// <summary>

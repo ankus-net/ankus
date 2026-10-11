@@ -375,8 +375,8 @@ Use `[JsonDerivedType]` and optional `[JsonPolymorphic]` to declare tagged varia
 with their concrete types and inherited state preserved in both formats.
 
 Set `TextCodec` to a `PgTypeTextCodec<T>` for custom SQL text with generated CBOR
-storage. Add `NativeLayout = true` for densely packed unmanaged structs with
-custom text and exact native bytes. Use `PgVarlena<T>` to borrow native-layout
+storage. Add `NativeLayout = true` to store an unmanaged struct's own bytes, as
+pgrx's `pgvarlena_inoutfuncs` does, with custom text and zeroed padding. Use `PgVarlena<T>` to borrow native-layout
 inputs with checked lifetimes, copy-on-write mutation, explicit cloning and datum
 transfer, or supply a `PgTypeCodec<T>` for both storage and text. See
 [custom types](docs/src/content/docs/custom-types.md).

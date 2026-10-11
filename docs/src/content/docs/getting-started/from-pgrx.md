@@ -22,6 +22,7 @@ counterpart of each pgrx example in [pgrx examples](/reference/pgrx-examples/).
 | `#[pg_aggregate]` and `Aggregate` | `[PgAggregate]`, `IPgAggregate<TState, TArgs>` and optional capability interfaces | [Aggregates](/aggregates/) |
 | `PostgresEnum` | `[PgEnum]` and optional `[PgEnumLabel]` | [Enums](/enums/) |
 | `PostgresType` | `[PgType]` with generated storage or an explicit codec | [Custom types](/custom-types/) |
+| `#[pgvarlena_inoutfuncs]` with `PgVarlena<T>` | `[PgType(NativeLayout = true, TextCodec = ...)]` with `PgVarlena<T>` | [Custom types](/custom-types/#native-storage) |
 | `PostgresEq`, `PostgresOrd`, `PostgresHash` | `[PgEquality]`, `[PgOrdering]`, `[PgHashing]` with .NET comparison/hash contracts | [Operators](/operators-and-casts/) |
 | `#[pg_operator]`, `#[pg_cast]` | `[PgOperator]`, `[PgCast]` | [Operators and casts](/operators-and-casts/) |
 | `extension_sql!`, `extension_sql_file!` | Assembly-level `[PgSql]`, `[PgSqlFile]` | [Custom SQL](/custom-sql/) |

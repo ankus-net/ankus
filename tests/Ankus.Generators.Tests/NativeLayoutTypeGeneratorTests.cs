@@ -181,9 +181,6 @@ public sealed partial class PgFunctionGeneratorTests
     /// <param name="declaration">The unsupported root or field graph.</param>
     /// <param name="id">The precise native-layout diagnostic.</param>
     [TestMethod]
-    [DataRow("public struct Value { public int Number; }", "ANKUS438")]
-    [DataRow("[L(K.Sequential,Pack=2)] public struct Value { public byte A; public int B; }", "ANKUS438")]
-    [DataRow("[L(K.Sequential)] public struct Value { public int Number; }", "ANKUS438")]
     [DataRow("[L(K.Auto,Pack=1)] public struct Value { public int Number; }", "ANKUS438")]
     [DataRow("[L(K.Explicit,Pack=1)] public struct Value { [System.Runtime.InteropServices.FieldOffset(0)] public int A; [System.Runtime.InteropServices.FieldOffset(0)] public int B; }", "ANKUS438")]
     [DataRow("[L(K.Sequential,Pack=1,Size=8)] public struct Value { public int Number; }", "ANKUS438")]
@@ -203,7 +200,6 @@ public sealed partial class PgFunctionGeneratorTests
     [DataRow("[L(K.Sequential,Pack=1)] public struct Value { public System.Guid Item; }", "ANKUS437")]
     [DataRow("[L(K.Sequential,Pack=1)] public struct Value { public System.DateTime Item; }", "ANKUS437")]
     [DataRow("[L(K.Sequential,Pack=1)] public struct Value { public int? Item; }", "ANKUS437")]
-    [DataRow("[L(K.Sequential,Pack=1)] public struct Value { public Leaf Item; } public struct Leaf { public int Number; }", "ANKUS438")]
     [DataRow("[L(K.Sequential,Pack=1)] public struct Value { public Leaf<int> Item; } [L(K.Sequential,Pack=1)] public struct Leaf<T> where T:unmanaged { public T Number; }", "ANKUS437")]
     [DataRow("[L(K.Sequential,Pack=1)] public unsafe struct Value { public fixed bool Items[2]; }", "ANKUS440")]
     [DataRow("[L(K.Sequential,Pack=1)] public unsafe struct Value { public fixed char Items[2]; }", "ANKUS440")]
@@ -224,6 +220,42 @@ public sealed partial class PgFunctionGeneratorTests
             """);
         Diagnostic diagnostic = Assert.ContainsSingle(diagnostics.Where(value => value.Id == id));
         Assert.AreEqual(DiagnosticSeverity.Error, diagnostic.Severity);
+    }
+
+    /// <summary>
+    /// Sequential layouts with natural alignment, an explicit Pack, nested structs and fixed buffers have the size .NET
+    /// gives them, and every padding run is passed to registration and storage so writes set it to zero.
+    /// </summary>
+    /// <param name="declaration">The layout.</param>
+    /// <param name="size">The expected size.</param>
+    /// <param name="padding">The expected padding argument.</param>
+    [TestMethod]
+    [DataRow("public struct Value { public int A; public int B; }", 8, "[]")]
+    [DataRow("public struct Value { public byte A; public int B; }", 8, "new int[] { 1, 3 }")]
+    [DataRow("[L(K.Sequential,Pack=2)] public struct Value { public byte A; public int B; }", 6, "new int[] { 1, 1 }")]
+    [DataRow("[L(K.Sequential)] public struct Value { public int A; public byte B; }", 8, "new int[] { 5, 3 }")]
+    [DataRow("public struct Value { public byte A; public Leaf L; public byte C; } public struct Leaf { public short S; public long N; }",
+        32, "new int[] { 1, 7, 10, 6, 25, 7 }")]
+    [DataRow("[L(K.Sequential,Pack=4)] public struct Value { public byte A; public long B; }", 12, "new int[] { 1, 3 }")]
+    [DataRow("public unsafe struct Value { public byte A; public fixed long Items[2]; }", 24, "new int[] { 1, 7 }")]
+    public void NativeLayoutsFollowSequentialAlignment(string declaration, int size, string padding)
+    {
+        (Compilation compilation, ImmutableArray<Diagnostic> diagnostics) = Generate("""
+            using L=System.Runtime.InteropServices.StructLayoutAttribute;
+            using K=System.Runtime.InteropServices.LayoutKind;
+            [Ankus.PgType(NativeLayout=true, TextCodec=typeof(TextCodec))]
+            """ + declaration + """
+            public sealed class TextCodec : Ankus.PgTypeTextCodec<Value>
+            {
+                public override Value Parse(string text)=>default!;
+                public override string Format(Value value)=>"native";
+            }
+            """);
+        Assert.IsEmpty(diagnostics);
+        string generated = string.Concat(compilation.SyntaxTrees.Select(tree => tree.GetText(context.CancellationToken).ToString()));
+        string count = size.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Contains("RegisterNative<global::Value>(\"value\", null, " + count + ", " + padding + ", static", generated);
+        Assert.Contains("_codec = new(" + count + ", " + padding + ", static", generated);
     }
 
     /// <summary>

@@ -119,15 +119,16 @@ timings, rejected attempts and superseded
 results remain in the [acceptance history](docs/contributing/evidence/port-history.md#superseded-active-and-primary-acceptance-detail-before-sqldatetime-acceptance-2026-10-06).
 These results establish the named combinations, not full-port completion.
 
-Additional-platform results below are older revisions. Refreshing them against
-the current source remains required, alongside the never-covered combinations.
+The Linux version and Intel rows below use the current runtime; the macOS and
+Windows version rows are older revisions. Refreshing those against the current
+source remains required, alongside the never-covered combinations.
 
 | Earlier complete evidence | Platform / PostgreSQL | Result | Duration |
 | --- | --- | --- | --- |
-| [Version CI 37154140634](https://github.com/willibrandon/ankus/actions/runs/37154140634), **c24297f / ankus.4** | Linux x64 / each of 13–17 and 19 beta 4 | 11,640 total per major; 11,623 passed; 17 platform skips; zero failures | 38m20s–40m57s jobs |
+| [Version CI 38102793609](https://github.com/willibrandon/ankus/actions/runs/38102793609), **be3fbcd / ankus.5** | Linux x64 / each of 13–17 and 19 beta 4 | 14,512 total per major; 14,457–14,460 passed; 52–55 platform skips; zero failures | 27m31s–35m27s jobs; 1h24m for three reruns sharing one host |
 | [Version CI 37145038020](https://github.com/willibrandon/ankus/actions/runs/37145038020), **b9b7eb5 / ankus.4** | macOS ARM64 / 15 and 16 | 11,609 total per major; 11,580 passed; 29 platform skips; zero failures | 26m17s / 26m32s jobs |
 | Same version CI / revision / runtime | Windows x64 / 13 and 18 | 11,609 total per major; 11,584 passed; 25 platform skips; zero failures | 33m51s / 31m46s jobs |
-| [Intel CI 37536883192](https://github.com/willibrandon/ankus/actions/runs/37536883192), **8b7e33b / ankus.4** | macOS x64 / 18.6 | 13,422 total; 13,362 passed; 60 platform skips; zero failures | 1h46m04s job |
+| [Intel CI 38109391178](https://github.com/willibrandon/ankus/actions/runs/38109391178), **660ea5e / ankus.5** | macOS x64 / 18.6 | 14,642 total; 14,577 passed; 65 platform skips; zero failures; run-as cases run | 1h24m04s job |
 
 Earlier timings, outcomes, failed checks and superseded acceptance details remain
 in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-table-before-spi-flow-acceptance-2026-10-05).
@@ -180,13 +181,14 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   guard; their bridges compile cleanly under Clang 23 against PostgreSQL 13, 18
   and 19 headers. The pending-error fixture covers the shared mechanism, not
   these three entry points individually.
-- The Intel run ([38102775489](https://github.com/willibrandon/ankus/actions/runs/38102775489))
+- The earlier Intel run ([38102775489](https://github.com/willibrandon/ankus/actions/runs/38102775489))
   failed one of 5,438 integration tests: a retried shutdown with a 500 ms
   timeout cancelled its `pg_ctl status` check before the slower host had
   started `pg_ctl`. Status checks now have their own allowance; the timeout
   bounds only the server's stop. The Intel runner and the Linux version runners
   now have the `ankus-runas` rule, so their run-as cases run instead of being
-  inconclusive.
+  inconclusive. The Intel rerun on **660ea5e** passes completely, and the
+  ankus.5 Linux version matrix passes PostgreSQL 13–17 and 19 after the rerun.
 - PgFunction's options were audited against pgrx 0.19.3's `#[pg_extern]`.
   Each has an equivalent: `raw` maps to raw SQL value parameters and results,
   and `should_panic` to `PgTest.ExpectedError`. Only `no_guard` is absent,
@@ -227,9 +229,15 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   pgrx guards against is already rejected, and the opt-out's case is already
   allowed.
 
+  `NativeLayout` types, the counterpart of `pgvarlena_inoutfuncs`, no longer
+  need `Pack = 1`: sequential structs are laid out as C lays them out, limited by
+  `Pack`, and every write zeroes the padding in the destination, since .NET does
+  not preserve padding through struct copies. Equal values therefore store equal
+  bytes. Booleans and characters stay excluded because arbitrary input bytes are
+  not valid values of those types.
+
   Still open: `pg_extern` options on `#[pg_test]` functions (pgrx's own tests
-  pass only `error` and `expected`) and `pgvarlena_inoutfuncs` over arbitrary
-  `repr(C)` layouts.
+  pass only `error` and `expected`).
 - Binding catalogs can now be derived from the installed headers, as pgrx
   runs bindgen at build time, instead of from pgrx's generated output.
   `binding-catalog-headers` reads the header manifest through the compiler's

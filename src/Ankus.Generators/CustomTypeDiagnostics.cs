@@ -267,9 +267,9 @@ internal static class CustomTypeDiagnostics
     private static readonly DiagnosticDescriptor s_nativeRoot = new("ANKUS436", "Native layout requires a struct",
         "'{0}' must be an unmanaged struct to use NativeLayout", "Ankus", DiagnosticSeverity.Error, true, helpLinkUri: HelpLink);
     private static readonly DiagnosticDescriptor s_nativeField = new("ANKUS437", "Unsupported native-layout field",
-        "Native field type '{0}' is not a fixed-width numeric value, enum, or packed unmanaged struct from the same assembly", "Ankus", DiagnosticSeverity.Error, true, helpLinkUri: HelpLink);
+        "Native field type '{0}' is not a fixed-width numeric value, enum, or sequential unmanaged struct from the same assembly", "Ankus", DiagnosticSeverity.Error, true, helpLinkUri: HelpLink);
     private static readonly DiagnosticDescriptor s_nativeStructLayout = new("ANKUS438", "Invalid native struct layout",
-        "'{0}' and every nested struct must use StructLayout(LayoutKind.Sequential, Pack = 1) without Size, CharSet, or InlineArray overrides", "Ankus", DiagnosticSeverity.Error, true, helpLinkUri: HelpLink);
+        "'{0}' and every nested struct must use sequential layout, with an optional power-of-two Pack and without Size, CharSet, or InlineArray overrides", "Ankus", DiagnosticSeverity.Error, true, helpLinkUri: HelpLink);
     private static readonly DiagnosticDescriptor s_nativeRecursive = new("ANKUS439", "Recursive native value layout",
         "'{0}' contains a recursive native value layout", "Ankus", DiagnosticSeverity.Error, true, helpLinkUri: HelpLink);
     private static readonly DiagnosticDescriptor s_nativeFixedBuffer = new("ANKUS440", "Unsupported native fixed buffer",

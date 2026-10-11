@@ -268,7 +268,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(IncrementalStepRunReason.Modified, TrackedCustomTypeArtifact(driver, "CustomTypeSerializerEmission", "value").Reason);
         Assert.AreEqual(IncrementalStepRunReason.Cached, TrackedCustomTypeArtifact(driver, "CustomTypeCatalogEmission", "value").Reason);
         Assert.AreEqual(IncrementalStepRunReason.Cached, TrackedCustomTypeArtifact(driver, "CustomTypeIoEmission", "value").Reason);
-        Assert.Contains(", 8, static", Assert.IsInstanceOfType<string>(TrackedCustomTypeArtifact(driver, "CustomTypeRegistrationEmission", "value").Value));
+        Assert.Contains(", 8, [], static", Assert.IsInstanceOfType<string>(TrackedCustomTypeArtifact(driver, "CustomTypeRegistrationEmission", "value").Value));
         Assert.Contains("_codec = new(8,", Assert.IsInstanceOfType<string>(TrackedCustomTypeArtifact(driver, "CustomTypeSerializerEmission", "value").Value));
         Assert.AreEqual(InstallationBody(first), InstallationBody(second));
         Assert.AreEqual(ManifestValue(first, "Ankus.NativeSource"), ManifestValue(second, "Ankus.NativeSource"));

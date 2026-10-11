@@ -5,14 +5,19 @@ namespace Ankus;
 /// <summary>
 /// Maps checked native views to a canonical packed value without duplicating its text codec.
 /// </summary>
-internal sealed class PgVarlenaTypeMapping<T>(string name, string? schema, int size, CustomTypeMapping valueMapping)
+internal sealed class PgVarlenaTypeMapping<T>(string name, string? schema, int size, int[] padding, CustomTypeMapping valueMapping)
     : CustomTypeMapping(name, schema) where T : unmanaged
 {
     /// <summary>
     /// Gets the validated managed payload width on first use inside the managed error boundary.
     /// </summary>
     internal int Size => size == Unsafe.SizeOf<T>() ? size :
-        throw new InvalidOperationException("The managed native layout does not match the generated packed size.");
+        throw new InvalidOperationException("The managed native layout does not match the generated size.");
+
+    /// <summary>
+    /// Gets the offset and length pairs of the layout's padding, which every write sets to zero.
+    /// </summary>
+    internal int[] Padding => padding;
 
     /// <inheritdoc />
     internal override bool IsReferenceType => true;

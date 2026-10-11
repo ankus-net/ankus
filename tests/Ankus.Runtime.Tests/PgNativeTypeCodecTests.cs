@@ -23,7 +23,7 @@ public sealed class PgNativeTypeCodecTests
     public void ConstructorRejectsMismatchedSize(int expectedSize)
     {
         int constructions = 0;
-        ArgumentException error = Assert.ThrowsExactly<ArgumentException>(() => new PgNativeTypeCodec<PackedRecord>(expectedSize, () =>
+        ArgumentException error = Assert.ThrowsExactly<ArgumentException>(() => new PgNativeTypeCodec<PackedRecord>(expectedSize, [], () =>
         {
             constructions++;
             throw new InvalidOperationException("Text construction must remain deferred.");
@@ -38,7 +38,7 @@ public sealed class PgNativeTypeCodecTests
     [TestMethod]
     public void ConstructorRejectsAbsentTextFactory()
     {
-        Assert.AreEqual("createTextCodec", Assert.ThrowsExactly<ArgumentNullException>(() => new PgNativeTypeCodec<PackedRecord>(15, null!)).ParamName);
+        Assert.AreEqual("createTextCodec", Assert.ThrowsExactly<ArgumentNullException>(() => new PgNativeTypeCodec<PackedRecord>(15, [], null!)).ParamName);
     }
 
     /// <summary>
@@ -192,7 +192,7 @@ public sealed class PgNativeTypeCodecTests
         var text = new CountingTextCodec(
             static value => uint.Parse(value.AsSpan("value=".Length), CultureInfo.InvariantCulture),
             static value => "value=" + value.ToString(CultureInfo.InvariantCulture));
-        var codec = new PgNativeTypeCodec<uint>(4, () =>
+        var codec = new PgNativeTypeCodec<uint>(4, [], () =>
         {
             constructions++;
             return text;
@@ -232,7 +232,7 @@ public sealed class PgNativeTypeCodecTests
     {
         int constructions = 0;
         var failure = new FormatException("Cannot initialize domain text.");
-        var codec = new PgNativeTypeCodec<uint>(4, () =>
+        var codec = new PgNativeTypeCodec<uint>(4, [], () =>
         {
             constructions++;
             throw failure;
@@ -258,7 +258,7 @@ public sealed class PgNativeTypeCodecTests
     public void NullFactoryResultsAreRejectedAndCached()
     {
         int constructions = 0;
-        var codec = new PgNativeTypeCodec<uint>(4, () =>
+        var codec = new PgNativeTypeCodec<uint>(4, [], () =>
         {
             constructions++;
             return null!;
@@ -288,7 +288,7 @@ public sealed class PgNativeTypeCodecTests
             ? new PgException("22003", "Outside the native domain.", "Value is too large.", "Use a smaller value.")
             : new FormatException("Domain syntax failed.");
         var text = new CountingTextCodec(_ => throw failure, _ => throw failure);
-        var codec = new PgNativeTypeCodec<uint>(4, () => text);
+        var codec = new PgNativeTypeCodec<uint>(4, [], () => text);
         Action action = format ? () => codec.Format(42) : () => codec.Parse("42");
         if (postgresError)
         {
@@ -316,7 +316,7 @@ public sealed class PgNativeTypeCodecTests
     {
         int constructions = 0;
         var text = new CountingTextCodec(static _ => 42, static _ => null!);
-        var codec = new PgNativeTypeCodec<uint>(4, () =>
+        var codec = new PgNativeTypeCodec<uint>(4, [], () =>
         {
             constructions++;
             return text;
@@ -376,7 +376,7 @@ public sealed class PgNativeTypeCodecTests
     /// Supplies a factory that makes any unexpected text dependency fail a binary-only test.
     /// </summary>
     private static PgNativeTypeCodec<T> BinaryCodec<T>(int size) where T : unmanaged =>
-        new(size, static () => throw new InvalidOperationException("Native storage must not construct a text codec."));
+        new(size, [], static () => throw new InvalidOperationException("Native storage must not construct a text codec."));
 
     /// <summary>
     /// Captures actual codec output through the standard buffer-writer contract.
@@ -387,6 +387,37 @@ public sealed class PgNativeTypeCodecTests
         codec.Write(value, writer);
         return writer.WrittenSpan.ToArray();
     }
+
+    /// <summary>
+    /// A naturally aligned layout stores zero in its padding even when the written value carries other bytes there,
+    /// and reading ignores the padding; misplaced padding ranges are rejected.
+    /// </summary>
+    [TestMethod]
+    public void PaddedLayoutsStoreZeroPadding()
+    {
+        var codec = new PgNativeTypeCodec<PaddedRecord>(8, [1, 3], static () => throw new InvalidOperationException("Unexpected text construction."));
+        byte[] dirty = [0x2A, 0xFF, 0xFF, 0xFF, 0x07, 0x00, 0x00, 0x00];
+        if (!BitConverter.IsLittleEndian)
+        {
+            dirty = [0x2A, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x07];
+        }
+
+        PaddedRecord value = MemoryMarshal.Read<PaddedRecord>(dirty);
+        Assert.AreEqual(new PaddedRecord(42, 7), value);
+        byte[] stored = Encode(codec, value);
+        byte[] expected = [.. dirty[..1], 0, 0, 0, .. dirty[4..]];
+        Assert.AreSequenceEqual(expected, stored);
+        Assert.AreEqual(value, codec.Read(stored));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => new PgNativeTypeCodec<PaddedRecord>(8, [6, 3], static () => null!));
+        Assert.ThrowsExactly<ArgumentException>(() => new PgNativeTypeCodec<PaddedRecord>(8, [1], static () => null!));
+    }
+
+    /// <summary>
+    /// Has three padding bytes between a byte and a naturally aligned integer.
+    /// </summary>
+    /// <param name="Tag">The one-byte field.</param>
+    /// <param name="Count">The four-byte field, at offset four.</param>
+    private readonly record struct PaddedRecord(byte Tag, int Count);
 
     /// <summary>
     /// Carries an unaligned two-byte member with no padding.

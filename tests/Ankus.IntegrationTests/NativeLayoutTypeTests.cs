@@ -103,6 +103,24 @@ public sealed class NativeLayoutTypeTests(TestContext context)
     }
 
     /// <summary>
+    /// A naturally aligned layout stores zero padding whether a value is returned, built as a varlena or changed in place,
+    /// and its text and binary forms round-trip.
+    /// </summary>
+    [TestMethod]
+    public async Task AlignedNativeLayoutsStoreZeroPadding()
+    {
+        await using NpgsqlConnection connection = await PostgresFixture.Cluster.OpenConnectionAsync(context.CancellationToken);
+        byte[] expected = BitConverter.IsLittleEndian ? [5, 0, 0, 0, 7, 0, 0, 0] : [5, 0, 0, 0, 0, 0, 0, 7];
+        Assert.AreSequenceEqual(expected, await Scalar<byte[]>(connection, "SELECT native_layout.aligned_send(native_layout.native_aligned_dirty(5, 7))"));
+        Assert.AreSequenceEqual(expected, await Scalar<byte[]>(connection, "SELECT native_layout.aligned_send(native_layout.native_aligned_varlena(5, 7))"));
+        Assert.AreSequenceEqual(expected, await Scalar<byte[]>(connection,
+            "SELECT native_layout.aligned_send(native_layout.native_aligned_set_number(native_layout.native_aligned_varlena(5, 1), 7))"));
+        Assert.AreEqual("5:7", await Scalar<string>(connection, "SELECT '5:7'::native_layout.aligned::text"));
+        Assert.IsTrue(await Scalar<bool>(connection,
+            "SELECT native_layout.aligned_send('5:7'::native_layout.aligned) = native_layout.aligned_send(native_layout.native_aligned_dirty(5, 7))"));
+    }
+
+    /// <summary>
     /// Constructs the custom text adapter once and keeps all binary operations independent of it.
     /// </summary>
     [TestMethod]
