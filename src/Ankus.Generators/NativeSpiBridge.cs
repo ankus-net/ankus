@@ -142,6 +142,7 @@ internal static class NativeSpiBridge
         static Datum ankus_coerce_value(Datum value, bool *is_null, Oid source_type, Oid target_type,
             int32 modifier, Oid collation);
         static Datum ankus_raw_parameter(const AnkusParameter *parameter);
+        static Datum ankus_parameter_datum_resolved(const AnkusParameter *parameter, Oid base_type);
         static Datum ankus_copy_raw_datum(Datum datum, Oid type, intptr_t context, uintptr_t generation);
         static MemoryContext ankus_datum_context(intptr_t identity, uintptr_t generation);
         static void ankus_raw_range(AnkusRequest *request, AnkusResult *result, Datum datum, Oid type);
@@ -196,7 +197,6 @@ internal static class NativeSpiBridge
         ankus_parameter_datum(const AnkusParameter *parameter)
         {
             const AnkusValue *value = &parameter->value;
-            Oid base_type;
             if (value->auxiliary1 == -6 && value->data != NULL)
             {
                 if ((Oid) value->integral != parameter->type_oid)
@@ -210,7 +210,16 @@ internal static class NativeSpiBridge
 
             if (get_typtype(parameter->type_oid) == '\0')
                 ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT), errmsg("Parameter type OID %u does not exist", parameter->type_oid)));
-            base_type = getBaseType(parameter->type_oid);
+            return ankus_parameter_datum_resolved(parameter, getBaseType(parameter->type_oid));
+        }
+
+        /* Converts a value whose type the caller has checked and resolved once, such as a set's result column. */
+        static Datum
+        ankus_parameter_datum_resolved(const AnkusParameter *parameter, Oid base_type)
+        {
+            const AnkusValue *value = &parameter->value;
+            if (value->auxiliary1 == -6 && value->data != NULL)
+                return ankus_parameter_datum(parameter);
             if (base_type != parameter->type_oid)
             {
                 AnkusParameter base = *parameter;

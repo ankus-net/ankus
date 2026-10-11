@@ -142,6 +142,11 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- Set and table rows no longer look up each column's type for every row. The
+  types are fixed for the call, so they are resolved when the set starts, and
+  domain columns still check every value. An `int` set row costs 50 ns instead
+  of 77 ns and an `(int, string)` table row 142 ns instead of 208 ns on a
+  PostgreSQL 18.6 release build.
 - Text array results no longer look up each element's type twice and copy it
   twice. Elements without a domain are checked as UTF-8 in one pass and
   written straight into the array in a second, the same layout PostgreSQL's

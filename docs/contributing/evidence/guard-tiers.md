@@ -102,8 +102,8 @@ loop.
 
 | Path | Cost |
 |---|---:|
-| `IEnumerable<int>` set, per row | 77 ns |
-| `IEnumerable<(int, string)>` table, per row | 208 ns |
+| `IEnumerable<int>` set, per row | 50 ns, down from 77 ns |
+| `IEnumerable<(int, string)>` table, per row | 142 ns, down from 208 ns |
 | `Spi.ExecuteScalar<int>("SELECT 1")`, per query | 2.86 µs, against 2.0 µs for PL/pgSQL `EXECUTE` |
 | `Spi.Select` of one `int` column, per row | See below |
 | `int[]` argument, per element | 1 ns, down from 57 ns |
@@ -111,6 +111,11 @@ loop.
 | `int[]` argument or result, per call | 196 ns or 185 ns, down from 240 ns and 400 ns |
 | `string[]` argument of short text, per element | 34 ns, down from 90 ns |
 | `string[]` result of short text, per element | 31 ns, down from 75 ns |
+
+Each set row used to check that every column's type exists and resolve its base
+type in the catalog caches before converting the value. A call's column types
+cannot change while it runs, so they are resolved once when the set starts;
+domain columns still run their checks on every value.
 
 `Spi.Select` copies every row into managed memory, so its cost depends on how
 many rows one result retains. Reading `generate_series` rows and summing them

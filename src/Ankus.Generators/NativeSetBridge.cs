@@ -28,6 +28,7 @@ internal static class NativeSetBridge
             TupleDesc descriptor;
             TupleDesc composite_descriptor;
             Oid *argument_types;
+            Oid *base_types;
             int columns;
             AnkusValue *row;
             Datum *values;
@@ -227,6 +228,15 @@ internal static class NativeSetBridge
                         state->result_owner = info->econtext->ecxt_per_query_memory;
 
             state->row = palloc0(sizeof(AnkusValue) * columns);
+            /* Result column types are fixed for the call, so each row skips the catalog lookups. A missing
+             * type stays unresolved and still fails when a row needs it. */
+            state->base_types = palloc(sizeof(Oid) * columns);
+            for (int index = 0; index < columns; index++)
+            {
+                Oid type = TupleDescAttr(state->descriptor, index)->atttypid;
+                state->base_types[index] = get_typtype(type) == '\0' ? InvalidOid : getBaseType(type);
+            }
+
             state->values = palloc0(sizeof(Datum) * columns);
             state->nulls = palloc0(sizeof(bool) * columns);
             RegisterExprContextCallback(info->econtext, ankus_set_shutdown, PointerGetDatum(state));
@@ -296,6 +306,8 @@ internal static class NativeSetBridge
                         state->nulls[index] = cell.value.is_null != 0;
                         if (state->composite_result && !state->nulls[index] && cell.value.auxiliary1 != -6)
                             state->values[index] = ankus_write_tuple(&cell.value, cell.type_oid, state->composite_descriptor);
+                        else if (OidIsValid(state->base_types[index]))
+                            state->values[index] = ankus_parameter_datum_resolved(&cell, state->base_types[index]);
                         else
                             state->values[index] = ankus_parameter_datum(&cell);
                     }
