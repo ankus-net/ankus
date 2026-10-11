@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using Microsoft.CodeAnalysis;
 
 namespace Ankus.Generators;
@@ -74,6 +76,32 @@ internal static class SqlGraphDiagnostics
     /// </summary>
     internal static readonly DiagnosticDescriptor s_referenceUnicode = Create("ANKUS496", "SQL dependency reference requires well-formed Unicode",
         "Replace unpaired UTF-16 surrogate characters in the Requires or Before entry", GraphHelp);
+
+    /// <summary>
+    /// Escapes an authored dependency identifier for a diagnostic message, so a quote, backslash or line break in it
+    /// cannot end the quoted name or start a new line. Ordinary identifiers are unchanged.
+    /// </summary>
+    /// <param name="name">The authored identifier.</param>
+    /// <returns>The identifier with C#-style escapes for backslash, single quote and control characters.</returns>
+    internal static string Quote(string name)
+    {
+        var builder = new StringBuilder(name.Length);
+        foreach (char value in name)
+        {
+            _ = value switch
+            {
+                '\\' => builder.Append("\\\\"),
+                '\'' => builder.Append("\\'"),
+                '\n' => builder.Append("\\n"),
+                '\r' => builder.Append("\\r"),
+                '\t' => builder.Append("\\t"),
+                _ when char.IsControl(value) => builder.Append("\\u").Append(((int)value).ToString("x4", CultureInfo.InvariantCulture)),
+                _ => builder.Append(value),
+            };
+        }
+
+        return builder.ToString();
+    }
 
     /// <summary>
     /// Requires each dependency identifier to name one SQL declaration.

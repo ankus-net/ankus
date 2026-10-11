@@ -47,6 +47,67 @@ public sealed partial class PgFunctionGeneratorTests
     }
 
     /// <summary>
+    /// A default that PostgreSQL's scanner would not close inside its parentheses is rejected at the value, under either
+    /// <c>standard_conforming_strings</c> setting, instead of breaking CREATE EXTENSION.
+    /// </summary>
+    /// <param name="expression">The authored default.</param>
+    [TestMethod]
+    [DataRow("1 /* open")]
+    [DataRow("1 /* outer /* inner */")]
+    [DataRow("'open")]
+    [DataRow("E'it\\'s")]
+    [DataRow("\"open")]
+    [DataRow("$$open")]
+    [DataRow("$tag$open$$")]
+    [DataRow("1)")]
+    [DataRow("(1")]
+    [DataRow("1); DROP TABLE t; --")]
+    [DataRow("1; SELECT 2")]
+    [DataRow("-- only a comment")]
+    [DataRow("/* only a comment */")]
+    [DataRow("'a\\' || 'b'")]
+    public void IncompleteSqlDefaultsAreRejected(string expression)
+    {
+        string literal = Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(expression, quote: true);
+        (Compilation output, ImmutableArray<Diagnostic> diagnostics) = Generate("public static class Functions { [Ankus.PgFunction] " +
+            "public static int Value([Ankus.PgParameter(Default = " + literal + ")] int value) => 0; }");
+        Diagnostic diagnostic = Assert.ContainsSingle(diagnostics);
+        Assert.AreEqual("ANKUS060", diagnostic.Id);
+        Assert.AreEqual(literal, diagnostic.Location.SourceTree!.GetText(context.CancellationToken).ToString(diagnostic.Location.SourceSpan));
+        Assert.IsEmpty(output.GetDiagnostics(context.CancellationToken).Where(static value => value.Severity == DiagnosticSeverity.Error));
+    }
+
+    /// <summary>
+    /// Quoted text, nested block comments, dollar quotes and prefixed strings that close are emitted unchanged.
+    /// </summary>
+    /// <param name="expression">The authored default.</param>
+    [TestMethod]
+    [DataRow("'a''b'")]
+    [DataRow("E'a\\'b'")]
+    [DataRow("$$x$$")]
+    [DataRow("$f$ $$ $f$")]
+    [DataRow("U&'d\\0061t'")]
+    [DataRow("B'101'::int")]
+    [DataRow("X'1F'::int")]
+    [DataRow("length(\"x\"\"y\")")]
+    [DataRow("(1 + (2))")]
+    [DataRow("1 /* a /* b */ c */ + 2")]
+    [DataRow("'-- not a comment'")]
+    [DataRow("'/* not a comment'")]
+    [DataRow("'a;b'")]
+    [DataRow("n'x'")]
+    [DataRow("a$b$c")]
+    public void CompleteSqlDefaultsAreEmittedExactly(string expression)
+    {
+        string literal = Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(expression, quote: true);
+        (Compilation output, ImmutableArray<Diagnostic> diagnostics) = Generate("public static class Functions { [Ankus.PgFunction] " +
+            "public static int Value([Ankus.PgParameter(Default = " + literal + ")] int value) => 0; }");
+        Assert.IsEmpty(diagnostics);
+        Assert.Contains("\"value\" integer DEFAULT (" + expression + (expression.Contains("--", StringComparison.Ordinal) ? "\n)" : ")"),
+            InstallationBody(output));
+    }
+
+    /// <summary>
     /// Matches PostgreSQL's scanner rule for a line comment, which continues until a carriage return or line feed.
     /// </summary>
     /// <returns>The comment pattern for test inputs without quoted text.</returns>

@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -158,6 +159,29 @@ public sealed partial class PgFunctionGeneratorTests
         Diagnostic diagnostic = Assert.ContainsSingle(diagnostics);
         Assert.AreEqual(expected, diagnostic.Id);
         Assert.Contains(message, diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>
+    /// Dependency identifiers are escaped in graph messages, so a quote, backslash or line break cannot end the quoted
+    /// name or split the message, while ordinary identifiers read as written.
+    /// </summary>
+    /// <param name="source">The declarations.</param>
+    /// <param name="expected">The diagnostic.</param>
+    /// <param name="message">The exact message.</param>
+    [TestMethod]
+    [DataRow("[assembly: Ankus.PgSql(\"a'b\\nc\", \"SELECT 1;\")] [assembly: Ankus.PgSql(\"a'b\\nc\", \"SELECT 2;\")]", "ANKUS497",
+        "Dependency identifier 'a\\'b\\nc' is already declared in this extension; give each SQL declaration a distinct Id or PgSql name")]
+    [DataRow("[assembly: Ankus.PgSql(\"one\", \"SELECT 1;\", Requires = [\"tab\\there\\\\\"])]", "ANKUS498",
+        "No SQL declaration in this extension has dependency identifier 'tab\\there\\\\'; declare it with Id, PgSql or PgSqlFile, or correct this entry")]
+    [DataRow("[assembly: Ankus.PgSql(\"x'\", \"SELECT 1;\", Requires = [\"y\"])] [assembly: Ankus.PgSql(\"y\", \"SELECT 2;\", Requires = [\"x'\"])]",
+        "ANKUS499", "Installation SQL dependencies form the cycle x\\' -> y -> x\\'; remove or reverse one explicit dependency in it")]
+    public void GraphMessagesEscapeDependencyIdentifiers(string source, string expected, string message)
+    {
+        (Compilation output, ImmutableArray<Diagnostic> diagnostics) = Generate(source);
+        Diagnostic diagnostic = Assert.ContainsSingle(diagnostics);
+        Assert.AreEqual(expected, diagnostic.Id);
+        Assert.AreEqual(message, diagnostic.GetMessage(CultureInfo.InvariantCulture));
+        Assert.IsEmpty(output.GetDiagnostics(context.CancellationToken).Where(static value => value.Severity == DiagnosticSeverity.Error));
     }
 
     /// <summary>

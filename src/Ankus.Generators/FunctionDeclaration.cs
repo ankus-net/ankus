@@ -307,7 +307,8 @@ internal sealed record FunctionDeclaration
             }
 
             string? expression = parameterOptions?.Default;
-            if (expression is not null && (string.IsNullOrWhiteSpace(expression) || !SqlText.IsText(expression)))
+            if (expression is not null && (string.IsNullOrWhiteSpace(expression) || !SqlText.IsText(expression) ||
+                !SqlText.IsCompleteExpression(expression)))
             {
                 return Invalid(FunctionDeclarationDiagnostics.SqlDefault, ParameterOption("Default"));
             }

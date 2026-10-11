@@ -157,6 +157,20 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   Generator tests compare
   the complete corrected source, regenerate it without diagnostics, and check
   that no fix is offered where the result would not compile.
+- The third code review was re-checked against the current source. Every high,
+  medium and low finding has a fix with tests, except these, which remain open:
+  SQL that opens a subtransaction inside `Start` and subtransaction `PreCommit`
+  callbacks still ends the session as PostgreSQL does, and only the guide says
+  so; three guarded catches (aggregate scopes, run-time GUC definition and
+  initializer logging) still flush a caller's pending error; FATAL after a
+  parallel-worker commit has no test; per-call SPI subtransactions remain the
+  default, with `Atomic` scopes as the opt-in; and ANKUS483 points at the whole
+  attribute. Two leftovers are now fixed. A `Default` that PostgreSQL's scanner
+  would not close inside its parentheses (an open block comment, string, quoted
+  name or dollar quote, unbalanced parentheses or a semicolon) is ANKUS060 at
+  the value, under both `standard_conforming_strings` settings, instead of a
+  broken `CREATE EXTENSION`. ANKUS497–499 escape quotes, backslashes and
+  control characters in dependency identifiers.
 - PgFunction's options were audited against pgrx 0.19.3's `#[pg_extern]`.
   Each has an equivalent: `raw` maps to raw SQL value parameters and results,
   and `should_panic` to `PgTest.ExpectedError`. Only `no_guard` is absent,

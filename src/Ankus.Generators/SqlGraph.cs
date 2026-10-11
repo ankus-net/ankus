@@ -168,7 +168,7 @@ internal sealed partial class SqlGraph
             {
                 if (names.ContainsKey(name))
                 {
-                    Error(entity.NameLocations[name], SqlGraphDiagnostics.s_duplicateId, name);
+                    Error(entity.NameLocations[name], SqlGraphDiagnostics.s_duplicateId, SqlGraphDiagnostics.Quote(name));
                 }
                 else
                 {
@@ -197,7 +197,7 @@ internal sealed partial class SqlGraph
                     {
                         if (missing.Add((name, reference.Value)))
                         {
-                            Error(reference.Value, SqlGraphDiagnostics.s_missingDependency, name);
+                            Error(reference.Value, SqlGraphDiagnostics.s_missingDependency, SqlGraphDiagnostics.Quote(name));
                         }
                     }
                     else if (before)
@@ -414,7 +414,7 @@ internal sealed partial class SqlGraph
         }
 
         names.Add(names[0]);
-        Error(location ?? first.Location, SqlGraphDiagnostics.s_cycle, string.Join(" -> ", names));
+        Error(location ?? first.Location, SqlGraphDiagnostics.s_cycle, string.Join(" -> ", names.Select(SqlGraphDiagnostics.Quote)));
     }
 
     private static bool ValidName(string? name) => !string.IsNullOrWhiteSpace(name) && SqlText.IsText(name!);

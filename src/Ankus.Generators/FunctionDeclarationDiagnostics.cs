@@ -71,7 +71,7 @@ internal static class FunctionDeclarationDiagnostics
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: HelpLink);
 
     private static readonly DiagnosticDescriptor s_sqlDefault = new("ANKUS060", "Invalid PostgreSQL default expression",
-        "A SQL default must be a nonempty expression with valid Unicode and no zero characters",
+        "A SQL default must be one complete expression: valid Unicode without zero characters, balanced parentheses, closed strings, quoted names, dollar quotes and block comments, and no semicolon outside them",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: HelpLink);
 
     private static readonly DiagnosticDescriptor s_optionalDefault = new("ANKUS061", "Managed default needs an explicit SQL expression",

@@ -434,7 +434,7 @@ constructor arguments. These errors replace the former general `ANKUS004` code.
 | ANKUS057 | Use one ordinary `PgParameter` attribute. `Element` and `Variadic` options belong to typed aggregate arguments; ordinary functions use C# `params`. |
 | ANKUS058 | Give the SQL parameter a valid identifier of at most 63 UTF-8 bytes. |
 | ANKUS059 | Give each SQL parameter a distinct name, including names produced by snake-case conversion. |
-| ANKUS060 | Supply a nonempty SQL default expression with valid Unicode and no zero characters. |
+| ANKUS060 | Supply one complete SQL default expression: valid Unicode without zero characters, balanced parentheses, closed strings, quoted names, dollar quotes and block comments, and no semicolon outside them. Both `standard_conforming_strings` settings must read it the same way. |
 | ANKUS061 | Supply `PgParameter.Default` when the C# optional value has no exact SQL translation. |
 | ANKUS062 | Give every input after a defaulted SQL argument its own SQL default. |
 | ANKUS063 | Create schemas outside PostgreSQL's reserved `pg_` namespace. As in PostgreSQL, only the exact lowercase prefix is reserved; quoted names such as `PG_Stage` are allowed. Use `Create = false` when referencing an existing schema. |
