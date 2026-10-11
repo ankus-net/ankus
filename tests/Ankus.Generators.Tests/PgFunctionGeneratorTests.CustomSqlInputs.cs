@@ -159,6 +159,98 @@ public sealed partial class PgFunctionGeneratorTests
     }
 
     /// <summary>
+    /// A file block declared with only its path is named after the file, as pgrx's <c>extension_sql_file!</c> names it,
+    /// and the runtime attribute reports the same name.
+    /// </summary>
+    /// <param name="path">The authored path.</param>
+    /// <param name="name">The expected dependency name.</param>
+    [TestMethod]
+    [DataRow("seed.sql", "seed")]
+    [DataRow("sql/seed.sql", "seed")]
+    [DataRow("archive.tar.sql", "archive.tar")]
+    [DataRow("sql/.sql", ".sql")]
+    [DataRow("seed", "seed")]
+    public void PathOnlySqlFileTakesTheFileStem(string path, string name)
+    {
+        string project = Path.Combine(AppContext.BaseDirectory, "sql-input-contracts");
+        (Compilation output, ImmutableArray<Diagnostic> errors) = Generate(
+            "[assembly: Ankus.PgSqlFile(" + Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(path, quote: true) + ")]",
+            [new SqlInput(Path.Combine(project, path), "SELECT 1;")], new SqlOptions(project));
+        Assert.IsEmpty(errors);
+        Assert.AreEqual("SELECT 1;\n", InstallationBody(output));
+        Ankus.PgConfig.ExtensionSchemaGraph graph = Ankus.PgConfig.ExtensionSchemaGraph.Parse(ManifestValue(output, "Ankus.SqlGraph"));
+        Assert.AreEqual(name, Assert.ContainsSingle(Assert.ContainsSingle(graph.Items).Names));
+        Assert.AreEqual(name, new PgSqlFileAttribute(path).Name);
+    }
+
+    /// <summary>
+    /// The derived name treats both directory separators alike on every build host, in the generator and at run time.
+    /// </summary>
+    /// <param name="path">The authored path.</param>
+    /// <param name="name">The expected dependency name.</param>
+    [TestMethod]
+    [DataRow("sql\\seed.sql", "seed")]
+    [DataRow("sql/nested\\seed.sql", "seed")]
+    [DataRow("C:\\sql\\seed.v2.sql", "seed.v2")]
+    [DataRow("..sql", ".")]
+    [DataRow("seed.", "seed")]
+    [DataRow("sql/", "")]
+    public void PathOnlySqlFileStemIgnoresHostSeparators(string path, string name)
+    {
+        Assert.AreEqual(name, CustomSqlPipeline.FileStem(path));
+        Assert.AreEqual(name, new PgSqlFileAttribute(path).Name);
+    }
+
+    /// <summary>
+    /// Other blocks can depend on the derived name, and installation follows that dependency.
+    /// </summary>
+    [TestMethod]
+    public void PathOnlySqlFileIsADependencyTarget()
+    {
+        string project = Path.Combine(AppContext.BaseDirectory, "sql-input-contracts");
+        (Compilation output, ImmutableArray<Diagnostic> errors) = Generate("""
+            [assembly: Ankus.PgSql("after", "SELECT 2;", Requires = ["seed"])]
+            [assembly: Ankus.PgSqlFile("sql/seed.sql")]
+            """, [new SqlInput(Path.Combine(project, "sql", "seed.sql"), "SELECT 1;")], new SqlOptions(project));
+        Assert.IsEmpty(errors);
+        Assert.AreEqual("SELECT 1;\nSELECT 2;\n", InstallationBody(output));
+    }
+
+    /// <summary>
+    /// An invalid path is reported as a path error at the path, never as the empty or invalid name derived from it.
+    /// </summary>
+    /// <param name="expression">The authored path expression.</param>
+    /// <param name="expected">The required diagnostic identity.</param>
+    [TestMethod]
+    [DataRow("null!", "ANKUS362")]
+    [DataRow("\"\"", "ANKUS362")]
+    [DataRow("\"bad\\0.sql\"", "ANKUS363")]
+    [DataRow("\"\\uD800.sql\"", "ANKUS364")]
+    [DataRow("\"missing.sql\"", "ANKUS367")]
+    public void PathOnlySqlFileReportsPathBeforeName(string expression, string expected)
+    {
+        (Compilation output, ImmutableArray<Diagnostic> errors) = Generate("[assembly: Ankus.PgSqlFile(" + expression + ")]",
+            options: new SqlOptions(Path.Combine(AppContext.BaseDirectory, "sql-input-contracts")));
+        AssertCustomSqlInputError(output, errors, expression, expected);
+    }
+
+    /// <summary>
+    /// A derived name that another block already uses is a duplicate identifier reported at the file's path.
+    /// </summary>
+    [TestMethod]
+    public void PathOnlySqlFileNameMustBeUnique()
+    {
+        string project = Path.Combine(AppContext.BaseDirectory, "sql-input-contracts");
+        (_, ImmutableArray<Diagnostic> errors) = Generate("""
+            [assembly: Ankus.PgSql("seed", "SELECT 2;")]
+            [assembly: Ankus.PgSqlFile("seed.sql")]
+            """, [new SqlInput(Path.Combine(project, "seed.sql"), "SELECT 1;")], new SqlOptions(project));
+        Assert.IsTrue(errors.All(static error => error.Id == "ANKUS497"), string.Join("\n", errors));
+        Assert.Contains(error => error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan) == "\"seed.sql\"",
+            errors);
+    }
+
+    /// <summary>
     /// Checks the externally visible diagnostic boundary and rejects an incomplete installation manifest.
     /// </summary>
     /// <param name="output">The actual generated compilation.</param>

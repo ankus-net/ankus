@@ -32,6 +32,8 @@ counterpart of each pgrx example in [pgrx examples](/reference/pgrx-examples/).
 | `#[pg_test]` | `[PgTest]` with generated backend test cases | [Testing](/getting-started/testing/) |
 | `#[cfg(feature = "pg_test")]` | `#if ANKUS_TESTS` | [Testing](/getting-started/testing/) |
 | `assert!` and `assert_eq!` in `#[pg_test]` | `PgAssert.IsTrue`, `PgAssert.AreEqual` and `PgAssert.ThrowsSqlState` | [Testing](/getting-started/testing/#declare-tests-inside-the-extension) |
+| `pg_test::postgresql_conf_options()` | `PostgresExtensionTestOptions.PostgreSqlConfiguration` | [Testing](/getting-started/testing/#declare-tests-inside-the-extension) |
+| `pg_test::setup(options)` | Host code in the data-driven test method before `RunTestAsync`, which receives each `PgTestCase` | [Testing](/getting-started/testing/#declare-tests-inside-the-extension) |
 | `pgrx_tests::proptest::PgTestRunner` and proptest strategies | `PgPropertyRunner` and `PgGenerators` | [Property tests](/getting-started/testing/#property-tests) |
 | `#[pg_bench]`, `Bencher`, `BatchSize` | `[PgBenchmark]`, `PgBencher`, `PgBenchmarkBatchSize` | [Benchmarks](/benchmarks/) |
 

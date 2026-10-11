@@ -50,14 +50,47 @@ internal static class CustomSqlPipeline
     /// </summary>
     private static EquatableArray<Analysis> Read(Compilation compilation, CancellationToken cancellationToken)
         => new(compilation.Assembly.GetAttributes().Where(static attribute => attribute.AttributeClass?.ToDisplayString() is
-            "Ankus.PgSqlAttribute" or "Ankus.PgSqlFileAttribute").Select(attribute => new Analysis(
-                new(attribute.ConstructorArguments.Length == 2, attribute.ConstructorArguments.ElementAtOrDefault(0).Value as string,
-                    attribute.ConstructorArguments.ElementAtOrDefault(1).Value as string, attribute.AttributeClass?.Name == "PgSqlFileAttribute"),
-                AttributeValues.Get(attribute, "Order", 0), AttributeValues.Get(attribute, "Relocatable", false),
-                SqlDeclarationOptions.Read(attribute, compilation, cancellationToken)!,
-                GeneratorLocation.Create(attribute.ApplicationSyntaxReference?.GetSyntax(cancellationToken).GetLocation(), compilation),
-                ArgumentLocation(attribute, 0, compilation, cancellationToken), ArgumentLocation(attribute, 1, compilation, cancellationToken),
-                GeneratorLocation.Create(FunctionDeclarationDiagnostics.Option(attribute, "Order", cancellationToken), compilation))));
+            "Ankus.PgSqlAttribute" or "Ankus.PgSqlFileAttribute").Select(attribute => Read(attribute, compilation, cancellationToken)));
+
+    /// <summary>
+    /// Reads one block, naming a path-only file block after the file as pgrx's <c>extension_sql_file!</c> does.
+    /// </summary>
+    /// <param name="attribute">The transient authored attribute.</param>
+    /// <param name="compilation">The current compilation owning the source.</param>
+    /// <param name="cancellationToken">The current generator token.</param>
+    /// <returns>The detached block.</returns>
+    private static Analysis Read(AttributeData attribute, Compilation compilation, CancellationToken cancellationToken)
+    {
+        bool file = attribute.AttributeClass?.Name == "PgSqlFileAttribute";
+        bool derived = file && attribute.ConstructorArguments.Length == 1;
+        int content = derived ? 0 : 1;
+        string? text = attribute.ConstructorArguments.ElementAtOrDefault(content).Value as string;
+        return new(new(attribute.ConstructorArguments.Length == 2 || derived,
+                derived ? FileStem(text) : attribute.ConstructorArguments.ElementAtOrDefault(0).Value as string, text, file, derived),
+            AttributeValues.Get(attribute, "Order", 0), AttributeValues.Get(attribute, "Relocatable", false),
+            SqlDeclarationOptions.Read(attribute, compilation, cancellationToken)!,
+            GeneratorLocation.Create(attribute.ApplicationSyntaxReference?.GetSyntax(cancellationToken).GetLocation(), compilation),
+            ArgumentLocation(attribute, 0, compilation, cancellationToken), ArgumentLocation(attribute, content, compilation, cancellationToken),
+            GeneratorLocation.Create(FunctionDeclarationDiagnostics.Option(attribute, "Order", cancellationToken), compilation));
+    }
+
+    /// <summary>
+    /// Returns the last path segment without its final extension, treating both separators alike so the name does not
+    /// depend on the build host. This matches <c>PgSqlFileAttribute.Name</c>.
+    /// </summary>
+    /// <param name="path">The authored path.</param>
+    /// <returns>The file stem, or null for a null path.</returns>
+    internal static string? FileStem(string? path)
+    {
+        if (path is null)
+        {
+            return null;
+        }
+
+        string file = path.Substring(path.LastIndexOfAny(['/', '\\']) + 1);
+        int extension = file.LastIndexOf('.');
+        return extension > 0 ? file.Substring(0, extension) : file;
+    }
 
     /// <summary>
     /// Locates a constructor value by its semantic parameter, preserving named and reordered arguments.
@@ -84,11 +117,12 @@ internal static class CustomSqlPipeline
     /// <summary>
     /// Contains only values needed to select and validate one SQL block's exact text.
     /// </summary>
-    /// <param name="ValidArguments">Whether the constructor supplies the required two arguments.</param>
-    /// <param name="Name">The authored dependency name, retaining invalid values.</param>
+    /// <param name="ValidArguments">Whether the constructor supplies the required arguments.</param>
+    /// <param name="Name">The authored or file-derived dependency name, retaining invalid values.</param>
     /// <param name="Content">The authored inline SQL or additional-file path.</param>
     /// <param name="File">Whether content is a file path.</param>
-    internal sealed record Input(bool ValidArguments, string? Name, string? Content, bool File);
+    /// <param name="DerivedName">Whether the name comes from the file path, which is then validated first.</param>
+    internal sealed record Input(bool ValidArguments, string? Name, string? Content, bool File, bool DerivedName = false);
 
     /// <summary>
     /// Retains graph-only settings and current diagnostic coordinates separately from content resolution.

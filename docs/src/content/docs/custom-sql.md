@@ -414,6 +414,16 @@ Then reference the project-relative path:
 [assembly: PgSqlFile("seed-reports", "Sql/seed.sql", Requires = ["report-table"])]
 ```
 
+Without a name, the block is named after the file without its final extension,
+as with `extension_sql_file!`. This block is named `seed`:
+
+```csharp
+[assembly: PgSqlFile("Sql/seed.sql")]
+```
+
+Both `/` and `\` separate directories in the derived name, whatever the build
+host. Path errors are reported before any problem with the derived name.
+
 Paths can also be absolute. The SDK supplies the project directory to the
 generator; only files registered as `AdditionalFiles` can be included. Changes
 to those files trigger generation and appear in the next published installation
@@ -498,7 +508,7 @@ manifest.
 
 | Diagnostic | Correction |
 |---|---|
-| `ANKUS354` | Supply both constructor arguments. |
+| `ANKUS354` | Supply a name and SQL text for `PgSql`, or a path, with or without a name, for `PgSqlFile`. |
 | `ANKUS355` | Supply a nonnull, non-whitespace dependency name. |
 | `ANKUS356` | Remove zero characters from the dependency name. |
 | `ANKUS357` | Replace unpaired UTF-16 surrogates in the dependency name. |

@@ -13,6 +13,20 @@ namespace Ankus;
 public sealed class PgSqlFileAttribute(string name, string path) : Attribute
 {
     /// <summary>
+    /// Initializes a file block whose dependency identifier is the file name without its final extension,
+    /// as pgrx's <c>extension_sql_file!</c> names a file without an explicit name.
+    /// </summary>
+    /// <param name="path">The project-relative or absolute path of an AdditionalFiles input.</param>
+    /// <remarks>
+    /// Both <c>/</c> and <c>\</c> separate directories, so the identifier does not depend on the build host.
+    /// A name that starts with its only dot, such as <c>.sql</c>, is kept whole.
+    /// </remarks>
+    public PgSqlFileAttribute(string path)
+        : this(FileStem(path), path)
+    {
+    }
+
+    /// <summary>
     /// Gets the file block's dependency identifier.
     /// </summary>
     public string Name { get; } = name;
@@ -57,5 +71,22 @@ public sealed class PgSqlFileAttribute(string name, string path) : Attribute
     {
         get;
         set;
+    }
+
+    /// <summary>
+    /// Returns the last path segment without its final extension, as Rust's <c>Path::file_stem</c> does on Windows.
+    /// </summary>
+    /// <param name="path">The authored path.</param>
+    /// <returns>The file stem, or an empty string when the path ends with a separator or is null.</returns>
+    private static string FileStem(string? path)
+    {
+        if (path is null)
+        {
+            return string.Empty;
+        }
+
+        string file = path[(path.LastIndexOfAny(['/', '\\']) + 1)..];
+        int extension = file.LastIndexOf('.');
+        return extension > 0 ? file[..extension] : file;
     }
 }

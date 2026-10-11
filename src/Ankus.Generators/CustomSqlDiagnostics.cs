@@ -98,7 +98,7 @@ internal static class CustomSqlDiagnostics
     /// </summary>
     private static readonly DiagnosticDescriptor s_arguments = new(
         "ANKUS354", "Custom SQL requires both constructor arguments",
-        "Supply a dependency name and SQL text for PgSql, or a dependency name and file path for PgSqlFile",
+        "Supply a dependency name and SQL text for PgSql, or a file path, optionally after a dependency name, for PgSqlFile",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
         helpLinkUri: "https://willibrandon.github.io/ankus/custom-sql/#custom-sql-input-diagnostics");
 

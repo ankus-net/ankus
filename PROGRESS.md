@@ -78,7 +78,7 @@ defines the full scope; family-level implementation is not API-by-API completion
 | Values and ownership | Documented scalar, array, composite, temporal, JSON, network, geometry, custom codec and raw datum contracts. Interval equality, hashing and ordering agree with PostgreSQL while retaining exact components; complete primary-platform CI passes. | Remaining mapped/container contracts, parsing/formatting ergonomics and complete source-case mapping remain required. |
 | Runtime performance | Owned binary PgNumeric, direct decimal coefficient encoding, constant-time fixed-width array indexing, and a measured native guard for allowlisted pure built-ins. Catalog-miss errors require actual rollback; real-resource regressions and complete primary-platform CI pass. Persistent in-backend benchmarks provide batching, transaction modes and statistical baseline comparisons. | Complete current guard supported-version acceptance. Extend that tier only where ownership proofs and measurements justify it. Never weaken error recovery to reduce overhead. |
 | Native bindings | pgrx 0.19.3 inventories, matching PostgreSQL 19 beta 4 inputs and target-compiler ABI checks; typed pointers and ANKUS129 make raw caller obligations explicit. Complete current primary-platform compositions pass, with focused binding checks on all seven majors. | Full supported-major/platform tests and final inventory audit. |
-| Development CLI | Version/project selection, installation/registration, cluster lifecycle, run/connect, test/regress/bench, property forwarding, environment selection, scriptable info and package prefixes. Benchmarks are measured inside PostgreSQL and retained in named comparison groups. `install --sudo`, `test --runas` and `regress --runas` follow cargo-pgrx with real-account evidence. | Run-as provisioning of the macOS and version runners, and remaining inventoried CLI/platform contracts. Persistent clusters already retain Windows event-log diagnostics through `PostgresServerLog`. |
+| Development CLI | Version/project selection, installation/registration, cluster lifecycle, run/connect, test/regress/bench, property forwarding, environment selection, scriptable info and package prefixes. Benchmarks are measured inside PostgreSQL and retained in named comparison groups. `install --sudo`, `test --runas` and `regress --runas` follow cargo-pgrx with real-account evidence. | Confirm run-as cases now execute on the Linux version runners, whose runner account has just been given the run-as rule the macOS runner already had, and remaining inventoried CLI/platform contracts. Persistent clusters already retain Windows event-log diagnostics through `PostgresServerLog`. |
 | .NET templates | Version-matched ordinary extension and worker templates reuse the CLI assets and pin local tools. Optional xUnit/NUnit consumers exercise managed and named backend cases, ignore reasons, worker processes and cleanup alongside default MSTest consumers. Complete primary-platform CI passes. | Remaining discovery contracts and complete version/platform acceptance. |
 | API discoverability | Idiomatic attributed declarations, documented runtime APIs, named logging helpers and typed SPI interpolation. Compiler transport helpers are isolated in Ankus.CompilerServices and hidden from IntelliSense; complete primary-platform CI passes. | Remaining value/assertion helpers and final inventory audit. |
 | Packages and release | MIT license, Brandon Williams copyright, author/repository/project metadata and deliberate SDK/runtime boundaries. | Full release gates and supported-platform packages before publishing 0.1.0. |
@@ -157,18 +157,35 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   Generator tests compare
   the complete corrected source, regenerate it without diagnostics, and check
   that no fix is offered where the result would not compile.
-- The PgFunction options were audited against pgrx 0.19.3's `#[pg_extern]`
-  attributes. Each option has an equivalent: `raw` maps to raw SQL value
-  parameters and results, and `should_panic` to `PgTest.ExpectedError`. Only
-  `no_guard` is absent, deliberately, because every entry runs behind the
-  native guard. Leakproof, rows, SET clauses and search paths go beyond pgrx's
-  set. The aggregate, trigger, type, enum, derive, operator, cast, schema,
-  SQL, GUC and worker-builder options also have equivalents. Still open:
-  `pg_guard(unsafe_entry_thread)`, `pg_extern` options on `#[pg_test]`
-  functions, `pg_test::setup`, hooks on GUCs defined at run time, a startup
-  hook from `enable_shmem_access`, alignment derived from the type for
-  `alignment = "on"`, `extension_sql_file!`'s default name, `creates = [Enum]`
-  and `pgvarlena_inoutfuncs` over arbitrary `repr(C)` layouts.
+- PgFunction's options were audited against pgrx 0.19.3's `#[pg_extern]`.
+  Each has an equivalent: `raw` maps to raw SQL value parameters and results,
+  and `should_panic` to `PgTest.ExpectedError`. Only `no_guard` is absent,
+  deliberately, because every entry runs behind the native guard. Leakproof,
+  rows, SET clauses and search paths go beyond pgrx's set.
+- The other declaration surfaces were audited the same way: aggregate, trigger,
+  type, enum, derive, operator, cast, schema, SQL, GUC, test and worker-builder
+  options. Most map directly. Some map to a different model:
+  - `creates = [Enum(T)]` is `PgEnum(GenerateSql = false)` plus an ordered
+    `PgSql` block that creates the type.
+  - `enable_shmem_access(startup)` is a `PgSharedMemory` initializer, which
+    runs when PostgreSQL creates the value.
+  - `pg_test::setup` is host code in the data-driven test method, which
+    receives each `PgTestCase`; the migration guide lists it with
+    `postgresql_conf_options()`.
+  - `alignment = "on"` derives alignment from the Rust type. Ankus takes an
+    explicit `Alignment`, because a CLR carrier's alignment does not determine
+    the datum's (see the custom-type alignment review above).
+
+  `extension_sql_file!` names a file block after the file. `[PgSqlFile(path)]`
+  now does the same; the generator and the runtime attribute derive the same
+  name with either separator, and a bad path is reported as a path error
+  before any name check. The custom SQL sample now declares its files by path
+  alone, as pgrx's `custom_sql` example does.
+
+  Still open: `pg_guard(unsafe_entry_thread)`, `pg_extern` options on
+  `#[pg_test]` functions (pgrx's own tests pass only `error` and `expected`),
+  hooks on GUCs defined at run time and `pgvarlena_inoutfuncs` over arbitrary
+  `repr(C)` layouts.
 - Binding catalogs can now be derived from the installed headers, as pgrx
   runs bindgen at build time, instead of from pgrx's generated output.
   `binding-catalog-headers` reads the header manifest through the compiler's

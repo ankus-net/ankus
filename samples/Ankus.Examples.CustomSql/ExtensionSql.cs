@@ -20,10 +20,11 @@ using Ankus.Examples.CustomSql;
 [assembly: PgRequires(typeof(Home.Ball), DeclarationId = "multiple_raw")]
 
 // SQL files are AdditionalFiles inputs. Their text is read at build time and included in the installation script.
-[assembly: PgSqlFile("single", "sql/single.sql", Requires = ["single_raw"])]
-[assembly: PgSqlFile("multiple", "sql/multiple.sql", Requires = ["single_raw", "single", "multiple_raw"])]
+// Without an explicit name, a file block is named after the file: these are "single" and "multiple".
+[assembly: PgSqlFile("sql/single.sql", Requires = ["single_raw"])]
+[assembly: PgSqlFile("sql/multiple.sql", Requires = ["single_raw", "single", "multiple_raw"])]
 [assembly: PgRequires(typeof(Home.Dogs.Dog), DeclarationId = "multiple")]
 [assembly: PgRequires(typeof(Home.Ball), DeclarationId = "multiple")]
 
 // Final SQL runs after every generated and custom declaration. An extension has at most one final block.
-[assembly: PgSqlFile("finalizer", "sql/finalizer.sql", Order = PgSqlOrder.Finalize)]
+[assembly: PgSqlFile("sql/finalizer.sql", Order = PgSqlOrder.Finalize)]

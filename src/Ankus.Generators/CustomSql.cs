@@ -72,6 +72,15 @@ internal static class CustomSql
             return new(input.Name, null, CustomSqlDiagnosticKind.Arguments);
         }
 
+        // A name taken from the path is reported only after the path itself is valid.
+        CustomSqlPipeline.FileSelection? selection = input.DerivedName
+            ? SelectFilePath(input.Content, trackedPaths ?? files.Select(static file => file.Path), projectDirectory)
+            : null;
+        if (selection?.Error is { } pathError)
+        {
+            return new(input.Name, null, pathError);
+        }
+
         if (TextError(input.Name, CustomSqlDiagnosticKind.EmptyName, CustomSqlDiagnosticKind.NameZero, CustomSqlDiagnosticKind.NameUnicode) is { } nameError)
         {
             return new(input.Name, null, nameError);
@@ -82,7 +91,7 @@ internal static class CustomSql
             return new(input.Name, input.Content, null);
         }
 
-        CustomSqlPipeline.FileSelection selection = SelectFilePath(input.Content, trackedPaths ?? files.Select(static file => file.Path), projectDirectory);
+        selection ??= SelectFilePath(input.Content, trackedPaths ?? files.Select(static file => file.Path), projectDirectory);
         if (selection.Error is not null)
         {
             return new(input.Name, null, selection.Error);

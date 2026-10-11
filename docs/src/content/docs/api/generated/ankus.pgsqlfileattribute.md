@@ -23,6 +23,26 @@ Inheritance: [object](https://learn.microsoft.com/dotnet/api/system.object), [At
 
 ## Constructors
 
+<a id="member-aed25ea424187ad4"></a>
+
+### PgSqlFileAttribute(string)
+
+Initializes a file block whose dependency identifier is the file name without its final extension,
+as pgrx's <code>extension_sql_file!</code> names a file without an explicit name.
+
+```csharp
+public PgSqlFileAttribute(string path)
+```
+
+Parameters:
+
+`path` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+The project-relative or absolute path of an AdditionalFiles input.
+
+Both <code>/</code> and <code>\</code> separate directories, so the identifier does not depend on the build host.
+A name that starts with its only dot, such as <code>.sql</code>, is kept whole.
+
 <a id="member-0db0a2df944453fa"></a>
 
 ### PgSqlFileAttribute(string, string)

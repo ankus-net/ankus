@@ -25,7 +25,7 @@ SELECT '{"last_chomp":"Nami"}'::home.ball;
 | pgrx | Ankus |
 | --- | --- |
 | `extension_sql!("...", name = "single_raw")` | `[assembly: PgSql("single_raw", "...")]` |
-| `extension_sql_file!("../sql/single.sql")` | `[assembly: PgSqlFile("single", "sql/single.sql")]`, with the file in `AdditionalFiles` |
+| `extension_sql_file!("../sql/single.sql")` | `[assembly: PgSqlFile("sql/single.sql")]`, with the file in `AdditionalFiles`; both name the block `single` |
 | `bootstrap` | `Order = PgSqlOrder.Bootstrap` |
 | `finalize` | `Order = PgSqlOrder.Finalize` |
 | `requires = ["single_raw"]` | `Requires = ["single_raw"]` |
