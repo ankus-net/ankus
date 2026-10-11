@@ -5,6 +5,10 @@ on:
     - cron: '17 5 * * 2'
   workflow_dispatch:
     inputs:
+      postgresql:
+        description: PostgreSQL major to test on macOS x64, or all
+        type: string
+        default: '18'
       package-test-concurrency:
         description: Package-consumer slots (empty uses the fixture default)
         type: string
@@ -71,6 +75,13 @@ jobs:
   macos-x64:
     needs: runtime
     if: github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: false
+      # One Intel runner serves every major in turn.
+      max-parallel: 1
+      matrix:
+        postgresql: ${{ fromJSON((github.event_name == 'schedule' || inputs.postgresql == 'all') && '[13,14,15,16,17,18,19]' || format('[{0}]', inputs.postgresql || '18')) }}
+    name: macos-x64 (${{ matrix.postgresql }})
     runs-on: [self-hosted, macOS, X64, ankus-macos-x64]
     timeout-minutes: 360
     steps:
@@ -110,11 +121,19 @@ jobs:
         id: binding-cache
         with:
           path: artifacts/binding-cache
-          key: bindings-v1-${{ runner.os }}-${{ runner.arch }}-pg18-${{ github.sha }}
-          restore-keys: bindings-v1-${{ runner.os }}-${{ runner.arch }}-pg18-
+          key: bindings-v1-${{ runner.os }}-${{ runner.arch }}-pg${{ matrix.postgresql }}-${{ github.sha }}
+          restore-keys: bindings-v1-${{ runner.os }}-${{ runner.arch }}-pg${{ matrix.postgresql }}-
 
       - name: Build PostgreSQL tests
-        run: dotnet run --file ./eng/Ankus.Ci.cs -- runtime-test-build osx-x64 18
+        env:
+          # MacPorts provides 18 on PATH; other majors are named by repository variables.
+          PG13_PG_CONFIG: ${{ vars.ANKUS_MACOS_X64_PG13_PG_CONFIG }}
+          PG14_PG_CONFIG: ${{ vars.ANKUS_MACOS_X64_PG14_PG_CONFIG }}
+          PG15_PG_CONFIG: ${{ vars.ANKUS_MACOS_X64_PG15_PG_CONFIG }}
+          PG16_PG_CONFIG: ${{ vars.ANKUS_MACOS_X64_PG16_PG_CONFIG }}
+          PG17_PG_CONFIG: ${{ vars.ANKUS_MACOS_X64_PG17_PG_CONFIG }}
+          PG19_PG_CONFIG: ${{ vars.ANKUS_MACOS_X64_PG19_PG_CONFIG }}
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- runtime-test-build osx-x64 ${{ matrix.postgresql }}
 
       - name: Save native binding cache
         if: runner.environment != 'self-hosted' && steps.binding-cache.outputs.cache-hit != 'true'
@@ -137,7 +156,7 @@ jobs:
         if: always() && steps.reports.outcome == 'success'
         uses: actions/upload-artifact@v7
         with:
-          name: test-results-osx-x64
+          name: test-results-osx-x64-pg${{ matrix.postgresql }}
           path: |
             artifacts/ci-reports/test-results/*.trx
             artifacts/ci-reports/test-results/process-timings.log
@@ -148,7 +167,7 @@ jobs:
         if: (failure() || cancelled()) && steps.reports.outcome == 'success'
         uses: actions/upload-artifact@v7
         with:
-          name: test-logs-osx-x64
+          name: test-logs-osx-x64-pg${{ matrix.postgresql }}
           path: artifacts/ci-reports/test-logs/**
           if-no-files-found: ignore
           retention-days: 7

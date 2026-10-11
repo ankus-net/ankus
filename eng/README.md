@@ -87,12 +87,16 @@ approving an external run because approval also permits its changed workflow.
 Keep the runner services online before dispatching dedicated jobs.
 CI selects the latest stable .NET 10 SDK allowed by `global.json`.
 
-The `Additional platforms` workflow runs the complete PostgreSQL 18 suite on a
-GitHub-hosted Intel macOS runner weekly and on manual dispatch. This covers the
-release architecture unavailable on the dedicated machines. Runtime, NuGet and
-binding caches are saved before tests so later runs reuse successful preparation.
-Each run retains test results and timings; both jobs allow 360 minutes.
-Successful execution is required before counting Intel macOS as validated.
+The `Additional platforms` workflow runs the complete suite on the dedicated
+Intel macOS runner, covering the release-only macOS x64 architecture. The weekly
+run tests PostgreSQL 13–17, 18 and 19 beta in turn; manual dispatch takes a
+`postgresql` input of one major (18 by default) or `all`. MacPorts supplies 13–18,
+with 18 on `PATH`, and 19 beta is an `ankus init` build; repository variables
+`ANKUS_MACOS_X64_PG<major>_PG_CONFIG` name every major except 18. Runtime, NuGet
+and binding caches are saved before tests so later runs reuse successful
+preparation. Each major retains its test results and timings and allows 360
+minutes. Successful execution is required before counting Intel macOS as
+validated.
 
 The `PostgreSQL versions` workflow runs complete Linux x64 suites for PostgreSQL
 13–17 and 19 weekly. Manual dispatch selects one major, including 18, or all six
