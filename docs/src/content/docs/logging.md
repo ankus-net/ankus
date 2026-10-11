@@ -32,8 +32,8 @@ Nonterminal message emission temporarily holds PostgreSQL interrupts. Pending
 cancellation is processed at a later interrupt check, after the report finishes.
 Call `PgInterrupts.Check()` periodically in loops that only log messages. Native
 reporting errors, such as an encoding failure, still follow normal error recovery.
-A report below `Error` needs no subtransaction unless another extension has
-installed an `emit_log_hook`. With a hook, each report runs in one, so a failure
+A report below `Error` needs no subtransaction unless an `emit_log_hook` is
+installed, including your own. With a hook, each report runs in one, so a failure
 inside the hook rolls back whatever the hook had done.
 
 Messages convert exactly to the database encoding, including outside a
@@ -166,7 +166,8 @@ PostgreSQL interrupt holdoffs still apply. A retained cancellation remains pendi
 on subsequent checks even after a managed catch.
 
 Call it on the active backend thread. A task or thread-pool continuation has no
-backend capability. Release spinlock and shared-memory guards before polling.
+backend capability. Release spinlocks and leave `Read` and `Mutate` callbacks
+before polling; a lightweight-lock guard defers cancellation until its release.
 
 `PgInterrupts.IsPending` reports whether an interrupt is waiting without processing
 it, as pgrx's `interrupt_pending()` does. Reading it never enters PostgreSQL, so it

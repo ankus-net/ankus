@@ -66,7 +66,7 @@ public static class Pairs
 }
 ```
 
-The provider block also follows a matching declared schema. Repeat the attribute
+The provider block is also ordered after a `[PgSchema]` with the same name. Repeat the attribute
 when one block supplies several types. Its first argument must name a SQL block,
 including a tracked SQL file, rather than a function or schema dependency alias.
 
@@ -83,8 +83,9 @@ aggregate helpers, operators and casts receive these dependencies. Raw whole
 arrays and composite arrays use the element type's provider. Existing external
 types need no provider. Generated `PgType` and `PgEnum` declarations already
 supply their catalog identities, even when their SQL is disabled or replaced;
-claiming the same identity again is an error. To supply a disabled declaration,
-keep its explicit `Requires` dependency on the supplying SQL block.
+claiming the same identity again is an error. When a SQL block creates a type
+whose `PgType` or `PgEnum` SQL is disabled, list that block in the declaration's
+`Requires`.
 
 Provider metadata describes ordering. It does not parse the SQL, generate a
 managed conversion, or verify the type's native storage layout. PostgreSQL
@@ -173,12 +174,12 @@ A manual base type often needs a shell declaration, native input/output
 functions, then a completed type declaration. The completed block can be the
 provider when it explicitly requires those functions, and the functions
 explicitly require the shell. Ankus preserves that order and places ordinary
-consumers after completion. See the [raw type example](../raw-values/).
+consumers after completion. See the [raw type example](/raw-values/#custom-type-representation).
 
 An inferred type dependency is deferred only when an explicit `Requires` or
 `Before` path already orders the consumer before the provider. The early consumer
-must be valid with the objects created by those prerequisites. Bootstrap/final
-positioning alone cannot authorize this deferral. Explicit dependency cycles
+must be valid with the objects created by those prerequisites. `PgSqlOrder.Bootstrap`
+or `PgSqlOrder.Finalize` alone does not allow it. Explicit dependency cycles
 and unresolved cycles still produce `ANKUS499` with no installation manifest.
 
 Alternatively, declare the shell block as the provider. Consumers needing the
@@ -215,10 +216,11 @@ different blocks claiming the same catalog identity are errors. Generated
 `PgType`/`PgEnum` identities remain reserved, including when their SQL is replaced
 or disabled.
 
-Managed providers follow the same shell/completion, explicit reverse-path,
-schema, file-tracking, and hard-cycle rules above. Provider metadata never
-inspects SQL or constructs converters. See
-[reusable scalar mappings](../raw-values/#reusable-scalar-mappings) for reader,
+Managed providers follow the ordering rules above in
+[shell types and completion](#shell-types-and-completion), including deferred
+dependencies and cycles, and the schema and file rules for SQL blocks. Provider
+metadata never inspects SQL or constructs converters. See
+[reusable scalar mappings](/raw-values/#reusable-scalar-mappings) for reader,
 writer, lifetime, and supported-path contracts.
 
 ## Replace function SQL
@@ -294,8 +296,9 @@ public static int OptionalFunction(int value) => checked(value * 2);
 
 The declaration remains a dependency target and retains its prerequisites.
 Dependent declarations are still generated, so provide any SQL objects they need
-through explicitly ordered custom SQL. The generated `exports.txt` records native
-entry points when a wrapper needs manual SQL registration.
+through explicitly ordered custom SQL. The build writes the native entry points
+to `ankus/exports.txt` in the native intermediate output directory, under `obj`,
+for registering a wrapper with manual SQL.
 
 `GenerateSql = false` cannot be combined with a non-null `Sql`, including empty
 text (`ANKUS502`). `SqlRelocatable` is consulted only for replacement strings;
@@ -567,7 +570,7 @@ For an overloaded method, supply its exact managed parameter types:
 
 ```csharp
 [assembly: PgRequires(typeof(Functions), nameof(Functions.Convert),
-    ParameterTypes = new[] { typeof(int) }, DeclarationId = "converted-view")]
+    ParameterTypes = [typeof(int)], DeclarationId = "converted-view")]
 ```
 
 An empty `ParameterTypes` array selects a parameterless overload. Omitting it,
@@ -608,7 +611,7 @@ the resulting policy into the extension control file.
 ## Enum type dependencies
 
 `[PgEnum(Id = "status-type")]` makes an enum available as a named dependency.
-Use `Requires = new[] { "status-type" }` on SQL that creates tables or other
+Use `Requires = ["status-type"]` on SQL that creates tables or other
 objects using it. Function signatures automatically depend on their enum types,
 including array parameters and results. Enums can also declare `Requires` for
 SQL or schema prerequisites. See [enumerated types](/enums/).

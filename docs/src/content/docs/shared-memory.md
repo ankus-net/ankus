@@ -81,8 +81,8 @@ exclusive guard to publish the update. Writes take effect immediately; a SQL
 rollback or exception does not undo them. Readers in other backends see the
 updated value after the writer releases its lock.
 
-Use a guard's `Read` callback when you need original inline atomic or spinlock
-fields. Both shared and exclusive guards support it:
+Use a guard's `Read` callback to operate on inline atomic or spinlock fields in
+shared storage, not on a copy. Both shared and exclusive guards support it:
 
 ```csharp
 public readonly struct LiveCounters(long initial)
@@ -149,7 +149,7 @@ storage immediately and remain visible if the callback throws or the SQL
 transaction rolls back. The callback can return an owned result; its reference
 and any collection views borrowing that reference cannot escape.
 
-During mutation, `Value` can return a snapshot. Other references to the same
+During mutation, `Value` still returns a copy. Other references to the same
 guard cannot start `Read` or another `Mutate`, assign `Value`, or dispose the
 guard. A mutation also cannot start while that guard has an active reader.
 Backend calls remain unavailable until the mutable callback returns.
@@ -160,7 +160,7 @@ shared reader covers the same storage. This prevents overwriting a child lock
 while a child guard still owns it. The parent stays held between callbacks, so
 ordinary field updates and child-lock operations can remain within one parent
 acquisition. Prepare initialized spinlock values before acquiring a spinlock
-parent; do not publish copies of a held lock's state.
+parent; never assign a spinlock field copied while it was held.
 
 ## Lock ownership and errors
 
@@ -244,7 +244,7 @@ public readonly struct RequestState(int version)
     public int Version { get; } = version;
 }
 
-public static class SharedRequests
+public static class SharedRequestState
 {
     private static readonly PgShared<RequestState> State = new("my_extension.state");
 
@@ -482,7 +482,7 @@ public struct MapIndices
     private int _element;
 }
 
-public struct Counters
+public struct CounterMap
 {
     private MapEntries _entries;
     private MapIndices _indices;

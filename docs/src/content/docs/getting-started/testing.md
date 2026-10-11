@@ -17,7 +17,7 @@ and use an asynchronous fixture to dispose the cluster and published extension.
 Reports retain each backend test's managed identity; xUnit also shows its theory
 arguments after that name.
 
-The MSTest project contains two kinds of tests. Managed tests call ordinary C#
+The test project contains two kinds of tests. Managed tests call ordinary C#
 methods directly. Backend tests publish the extension with Native AOT, start an
 isolated PostgreSQL cluster, and exercise its generated SQL functions.
 
@@ -186,9 +186,10 @@ identifier limit, even for long C# method names. An explicit `[PgSchema]` select
 the function schema; otherwise the fixture uses the installed extension schema,
 including a schema supplied by its control file.
 
-Normal `dotnet publish` excludes test functions. The fixture explicitly sets
-`AnkusIncludeTests=true` only when `IncludeTests` is enabled, which also defines
-the `ANKUS_TESTS` compilation symbol. Put SQL functions that only backend tests
+Normal `dotnet publish` excludes test functions. The fixture sets
+`AnkusIncludeTests` to match `IncludeTests` and rejects a conflicting
+`BuildProperties` value; `true` also defines the `ANKUS_TESTS` compilation
+symbol. Put SQL functions that only backend tests
 call inside `#if ANKUS_TESTS`, as pgrx code uses `#[cfg(feature = "pg_test")]`. Other test hosts
 can consume the same framework-neutral catalog and fixture. Use
 [`[PgBenchmark]` and `ankus bench`](/benchmarks/) for measured backend work.
@@ -335,9 +336,11 @@ lines and, when its backend died, the server's report about that process. The
 cluster and temporary published library are removed on disposal. A failed build or extension load fails initialization and cleans up
 the resources it created.
 
-While a test runs, messages it raises that contain `TMSG: ` go to the test's
-output as they arrive, as in pgrx. Use `PgLog.Info("TMSG: ...")` to trace a
-backend test; other messages stay in the server log.
+While a test runs, INFO, NOTICE and WARNING messages from the test's own session
+that contain `TMSG: ` go to the test's output as they arrive. Use
+`PgLog.Info("TMSG: ...")` to trace a backend test; other messages stay in the
+server log. pgrx scans the server log instead, so it also echoes LOG-level
+messages and messages from other processes.
 
 On Windows, the fixture also collects its server's Windows Event Log messages.
 Older PostgreSQL versions use that destination when the test host runs as a
@@ -361,8 +364,9 @@ failure report should list each statement. Settings you supply follow the
 defaults, so they win.
 
 `PostgresTestClusterOptions.StartupTimeout` bounds initialization, server start and
-creation of the test database together; extension fixtures use its default. Its 180-second default matches PostgreSQL's own TAP test
-timeout, so a busy shared disk does not fail an otherwise healthy startup.
+creation of the test database together. Extension fixtures use the 180-second
+default, which matches PostgreSQL's own TAP test timeout, so a busy shared disk
+does not fail an otherwise healthy startup; Valgrind adds another minute.
 
 If another process takes an automatically selected TCP port during startup, the fixture
 retries with a new isolated cluster and port. It allows up to three attempts

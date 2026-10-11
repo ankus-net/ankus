@@ -53,11 +53,15 @@ public static class Startup
 For native registration, see the complete
 [executor hook example](/raw-values/#managed-native-callbacks-and-hooks).
 Ankus registers configuration settings before calling `PgModuleLoad`, then calls
-`PgInitialize`. On PostgreSQL versions before 18, a parallel worker loads
-libraries before restoring its settings and transaction state. `PgModuleLoad`
-runs immediately, while `PgInitialize` waits until restoration finishes.
-SQL is unavailable during that early registration phase, including in nested
-native callbacks. Use `PgInitialize` for work that needs restored worker settings.
+`PgInitialize`. A parallel worker loads libraries before it restores the
+leader's settings, and `PgModuleLoad` runs during that load. On PostgreSQL
+13–17, where the worker restores libraries and settings together before starting
+its parallel transaction, `PgInitialize` waits until restoration finishes. On 18
+and later it runs during the load, before the leader's settings are restored, as
+pgrx's `_PG_init` does on every version. SQL is unavailable during early
+registration, including in nested native callbacks. To see the leader's session
+settings on every version, read them when a function runs rather than during
+initialization.
 On PostgreSQL 13–16, worker SQL follows the parallel error boundary described in
 [SPI queries](/spi/#errors-and-transactions).
 
@@ -120,7 +124,7 @@ returning from a preload callback. Timers and queued work resume when the runtim
 reenters or a backend starts; a continuously running postmaster thread does not fit
 PostgreSQL's Unix process model.
 
-To share values across backends, register static `PgLwLock<T>` or `PgAtomic<T>` descriptors from
+To share values across backends, register static `PgShared<T>`, `PgLwLock<T>` or `PgAtomic<T>` descriptors from
 `PgModuleLoad` using `PgSharedMemory.Initialize`. See
 [shared memory, locks and atomics](/shared-memory/) for storage and guard lifetimes.
 

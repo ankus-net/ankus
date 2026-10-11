@@ -16,13 +16,14 @@ namespace Ankus;
 /// without a generated signature. It takes precedence over the optional default declaration on that type.
 /// Exact declarations can assign distinct SQL identities and converters to different closed constructions.
 /// Supported paths are scalar and array generated callbacks, set/TABLE and aggregate slots, declared SPI/function
-/// parameters, typed SPI scalar and catalog/native-address function results, and explicit PgDatum.Read&lt;T&gt; calls.
+/// parameters, typed SPI scalar and catalog/native-address function results, SpiRow and PgHeapTuple cells read or
+/// written with the mapped type, PgDatum.Create, and explicit PgDatum.Read&lt;T&gt; calls.
 /// One array layer uses the scalar converter with exact element and array identity, preserving NULL and shape.
 /// Value-type mappings can add PgRangeType to compose the same converter into finite PgRange&lt;T&gt; bounds
 /// and arrays of those ranges. Range and scalar SQL identities and ownership remain independent.
 /// Readable mappings may declare PgEquality, PgOrdering and PgHashing; generated helpers require no writer.
 /// Native-address calls retain the caller's responsibility for the actual result type and representation.
-/// Ordinary SPI/tuple row conversions are not supported.
+/// A row or tuple cell must have exactly the mapped PostgreSQL type; the indexer and other types do not read it.
 /// A reader must return independent managed data; retaining a checked PgDatum does not detach its storage.
 /// </remarks>
 /// <param name="name">The exact unquoted PostgreSQL type identifier.</param>

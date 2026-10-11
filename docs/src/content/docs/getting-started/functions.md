@@ -42,16 +42,18 @@ results are ignored by Git; authored SQL and expected results remain tracked.
 The generated `src/Hello/Hello.csproj` uses `Ankus.Sdk`:
 
 ```xml
-<Project Sdk="Ankus.Sdk/0.1.0">
+<Project Sdk="Ankus.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
     <AnkusExtensionName>hello</AnkusExtensionName>
     <AnkusExtensionVersion>0.1.0</AnkusExtensionVersion>
+    <AssemblyName>hello</AssemblyName>
   </PropertyGroup>
 </Project>
 ```
+
+The SDK version is pinned in the solution's `global.json`, and shared settings
+such as the target framework and nullable annotations are in
+`Directory.Build.props`.
 
 The SDK enables Native AOT and includes matching runtime and source-generator
 packages. It works with ordinary NuGet configuration and Central Package Management.
@@ -125,7 +127,8 @@ callers' arguments, and leaves the source unchanged if a delegate, overload or
 interface still needs the reference. `ref` and `out` get no fix, because the
 caller would no longer see the method's writes.
 **Remove** deletes an attribute or option that cannot apply where it is written:
-`Conditional` or `UnmanagedCallersOnly` on any entry (ANKUS245, ANKUS246, ANKUS266,
+`Conditional` on any entry, or `UnmanagedCallersOnly` on an initializer, worker,
+callback handler or output-plugin initializer (ANKUS245, ANKUS246, ANKUS266,
 ANKUS267, ANKUS276, ANKUS277, ANKUS343, ANKUS524), SQL value metadata on a worker,
 initializer or trigger (ANKUS225, ANKUS248, ANKUS270, ANKUS271), `Rows` or `SetMode`
 without a set result (ANKUS053), operator options an operator cannot take (ANKUS070,
@@ -220,8 +223,9 @@ SQL NULL.
 
 ## Errors
 
-An unhandled managed exception becomes PostgreSQL ERROR. The managed stack
-unwinds first, so `finally` blocks and `using` scopes run normally.
+An unhandled managed exception becomes a PostgreSQL ERROR with SQLSTATE `38000`
+(`external_routine_exception`). The managed stack unwinds first, so `finally`
+blocks and `using` scopes run normally.
 
 Use [`PgException`](/logging/#errors) when the error needs a particular SQLSTATE,
 detail, or hint.

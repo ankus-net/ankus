@@ -150,7 +150,7 @@ SELECT key FROM products ORDER BY key;
 | Attribute | Required managed contract | Generated PostgreSQL objects |
 | --- | --- | --- |
 | `PgEquality` | `IEquatable<T>` for the exact declared type | `=` and `<>`, backed by `<type>_eq` and `<type>_ne` |
-| `PgOrdering` | `IEquatable<T>` and `IComparable<T>` | `<`, `>`, `<=`, `>=`, `<type>_cmp`, and a default B-tree family/class `<type>_btree_ops` |
+| `PgOrdering` | `IEquatable<T>` and `IComparable<T>` | `<`, `>`, `<=` and `>=`, backed by `<type>_lt`, `<type>_gt`, `<type>_le` and `<type>_ge`, plus `<type>_cmp` and a default B-tree family/class `<type>_btree_ops` |
 | `PgHashing` | `IEquatable<T>` and `IPgHashable` | `<type>_hash` and a default hash family/class `<type>_hash_ops` |
 
 Each attribute is independent. Ordering and hashing require a compatible boolean
@@ -194,14 +194,13 @@ the generated support functions and families. Ordinary input/output functions
 can follow a shell type; a completed family cannot precede its type provider.
 Multiple CLR wrappers may share one SQL type, but conflicting generated SQL
 signatures are rejected rather than choosing one wrapper's reader.
-For a generic datum mapping, fully constructed roots selected by a generated
-signature, exact managed type provider or explicit closed mapping declaration
-can emit derived helpers. Explicit declarations with independent SQL identities
-can generate independent families. Constructions sharing a default declaration
-inherit its fixed SQL identity, so selecting two with the same generated family
-attributes causes a SQL-object collision diagnostic.
-An open converter definition is inferred and constraint-checked for each selected
-root before any derived helper is emitted; its closed reader supplies the operands.
+A generic datum mapping emits helpers only for closed types that a function
+signature, managed type provider or closed mapping declaration selects. Closed
+declarations with their own SQL identities generate independent families. Closed
+types sharing one default declaration share its SQL name, so giving two of them
+the same generated attributes reports `ANKUS510` or `ANKUS511`. An open converter
+is inferred and checked against its constraints for each selected type before any
+helper is emitted; its closed reader supplies the operands.
 
 External mappings can also opt in. Helpers, operators and families use the mapped
 SQL type's schema and belong to the extension; the external type remains
@@ -258,7 +257,8 @@ enum comparison can otherwise resolve to PostgreSQL's built-in enum operator.
 
 Generated functions, operators, families and classes belong to the type's schema.
 Names use the SQL type name; when a suffix would exceed PostgreSQL's 63-byte
-identifier limit, Ankus uses a deterministic hashed name. Installation dependencies
+identifier limit, Ankus uses a name hashed from the extension assembly's name and
+the managed type, which stays the same across assembly versions. Installation dependencies
 put completed types before support functions, operators and classes. Each attribute
 has `Id` and `Requires`: an equality ID identifies both equality operators, and
 an ordering or hashing ID identifies the completed family and class. Custom SQL
@@ -387,19 +387,19 @@ operators while retaining its casts.
 The [operators sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Operators)
 ports pgrx's `operators` example. It declares a manual `=` operator, generated
 equality, B-tree and hash operators for a JSON-text type and a packed native
-type, and the enum operators and cast shown above.
+type, and `===`/`!==` operators and a cast for its `Priority` enum.
 
 ## Declaration diagnostics
 
 These errors identify the affected attribute value, result type, operand type,
 `params` modifier or argument list. Injected contexts do not count as SQL
 arguments. The same diagnostics apply to ordinary methods, C# operators and
-conversion declarations. They replace the former general `ANKUS007` code.
+conversion declarations.
 
 | Diagnostic | Required correction |
 | --- | --- |
 | ANKUS064 | Return one value instead of a set. |
-| ANKUS065 | Use a valid PostgreSQL operator token containing 1–63 ASCII punctuation characters. |
+| ANKUS065 | Use 1–63 characters from PostgreSQL's operator set (`+-*/<>=~!@#%^&\|?` and the backtick), without `--`, `/*`, an ambiguous trailing `+` or `-`, or the reserved `=>`. |
 | ANKUS066 | Declare one prefix operand or two binary operands. |
 | ANKUS067 | Replace the variadic parameter with fixed SQL arguments. |
 | ANKUS068 | Return a supported SQL value instead of `void`. |

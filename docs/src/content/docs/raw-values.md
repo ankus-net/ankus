@@ -123,7 +123,7 @@ The allocation uses the generated representation's complete measured size and
 alignment, writes the supplied tag, and runs no C# constructor. The caller must
 choose the correct tag and initialize fields required by subsequent native
 operations. A base `Node` or `Expr` accepting a descendant's tag is not large
-enough to allocate that descendant. Omit `owner` to use the current context.
+enough to allocate that descendant. Omit `context` to use the current context.
 Dispose the box to free the allocation, or call `ReleaseToContext()` to transfer
 individual release rights to its context; the normal allocator restrictions apply.
 
@@ -144,8 +144,6 @@ The diagnostic text follows the selected PostgreSQL version. For example,
 `CollateExpr` renders as `COLLATE` on PostgreSQL 13/14 and `COLLATEEXPR` on 15+.
 Before PostgreSQL 16, empty and null string members both render as `<>`; newer
 versions distinguish an empty string as `""`.
-Planner/executor integration, broader raw bindings and complete version/platform
-validation remain in progress.
 
 Projects built against the same generated contract share a companion assembly
 and can exchange its native types directly. Use the same selected installation
@@ -176,7 +174,7 @@ native bodies only for methods referenced by the extension.
 Raw calls, raw global accesses and native function-pointer invocations require
 an explicit unsafe context. Pointer signatures enforce this through the C#
 compiler; `ANKUS129` also checks operations whose signatures contain only
-scalars. Use an `unsafe` block for those calls. Assigning a raw method to a
+scalars. Use an `unsafe` block or member for those calls. Assigning a raw method to a
 delegate requires the same acknowledgment. The native error guard still applies;
 `unsafe` acknowledges the caller's native storage and backend obligations.
 
@@ -215,7 +213,7 @@ unsafe
 
 Signatures follow the selected PostgreSQL version, including native `const` and
 `volatile` contracts. For example, `PageValidateSpecialPointer` returns `bool`
-on PostgreSQL 13–17 and `void` on 18–19; `SpinLockFree` is unavailable on 19.
+on PostgreSQL 13–15 and `void` on 16–19; `SpinLockFree` is unavailable on 19.
 Page and tuple helpers require valid native storage with the original owner's
 lifetime. `PgMemoryContext.Id` is an opaque validation token, not a native
 `MemoryContext` address. `GetMemoryChunkContext` obtains the native owner address
@@ -268,7 +266,7 @@ loads and stores use C value operations; reading a compound value does not make
 it an atomic snapshot. Follow PostgreSQL's synchronization and ownership rules.
 
 `DangerousAddressOf_name()` returns the original object's address. Incomplete
-objects and arrays expose only this address; Ankus does not invent an unknown
+objects, including arrays of unknown bound, expose only this address; Ankus does not invent an unknown
 size or array bound. These addresses retain native const/volatile, ownership and
 lifetime requirements. A thread-local address belongs to the current backend
 thread. Data pointers retain their pointee types; function pointers use the typed borrowed values
@@ -375,8 +373,7 @@ the conditional symbol is currently defined.
 #### Native callback declaration diagnostics
 
 Callback errors identify the property, containing type, pointer type or
-handler signature that needs correction. They preserve the native prototype
-and reject an invalid declaration before emitting its callable boundary.
+handler signature that needs correction.
 
 | Diagnostics | Correction |
 | --- | --- |
@@ -391,11 +388,8 @@ and reject an invalid declaration before emitting its callable boundary.
 
 Editors offer **Make static** for `ANKUS312` and `ANKUS332`, **Make partial**
 for `ANKUS317` and `ANKUS322`, **Make internal** for `ANKUS321`, **Remove** for
-`ANKUS276` and `ANKUS343`, and **Pass by value** for an `in` or `ref readonly` handler argument (`ANKUS341`).
-
-These checks preserve valid overload selection, private handlers and exact
-pointer, enum and native-structure values. `ANKUS276` continues to reject
-conditional handlers whose managed invocation could disappear.
+`ANKUS276` and `ANKUS343`, and **Pass by value** for an `in` or `ref readonly`
+handler argument (`ANKUS341`).
 
 For example, install an executor hook and retain the previous hook explicitly:
 
@@ -478,7 +472,8 @@ itself through such a cycle anyway, the native callback boundary raises
 PostgreSQL's `stack depth limit exceeded` error (SQLSTATE `54001`) instead of
 overflowing the native stack. The
 [hooks sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Hooks)
-ports pgrx's `hooks` example with three independently recorded installations.
+ports three of pgrx's four `hooks` example hooks; it omits
+`ClientAuthentication_hook`.
 
 `[PgOutputPlugin]` exports a static method as `_PG_output_plugin_init`, which
 receives PostgreSQL's logical decoding callback table and assigns callback
@@ -556,13 +551,13 @@ Explicit Ankus parameter and result assignments still check current domain
 constraints. Formatting invokes the selected output function, and mapped readers
 retain their own conversion behavior.
 
-`PgDatum.Create(value, context)` converts a managed value to a datum of its
-PostgreSQL type, allocated in `context`, as pgrx's `IntoDatum` does. The value's
+`PgDatum.Create(value, context)`, Ankus's counterpart to pgrx's `IntoDatum`,
+converts a managed value to a datum of its PostgreSQL type allocated in `context`. The value's
 type selects the PostgreSQL type, as for `SpiParameter.Create<T>`, including a
 `PgDatumType` mapping; a null value gives SQL NULL of that type. Pass an
 `SpiParameter` to choose the type explicitly. A domain's constraints apply, as
 they do to an assignment. Use the datum wherever a raw value is accepted, including
-`DangerousCall` arguments:
+`PgFunctionArgument.Create` and `DangerousCall` arguments:
 
 ```csharp
 PgDatum text = PgDatum.Create("héllo", PgMemoryContext.Current);
@@ -578,7 +573,7 @@ sets. For TABLE results, set `Column` to each raw column's SQL name.
 When your extension creates the bound type, declare its SQL block with
 `PgSqlTypeProvider` to order these signatures automatically. Type names and
 optional schemas match exactly; a provider does not change datum conversion or
-ownership. See [custom SQL](../custom-sql/#declare-supplied-types).
+ownership. See [custom SQL](/custom-sql/#declare-supplied-types).
 
 ## Custom type representation
 
@@ -627,9 +622,9 @@ public static class U24
 SELECT '16777215'::u24; -- 16777215
 ```
 
-The provider places other `u24` signatures after the completed type. Its explicit
-requirements preserve shell → input/output → completion ordering for the two
-functions needed to define the type. Additional consumers do not need to repeat
+The provider places other `u24` signatures after the completed type. The
+`Requires` lists on the `PgSql` blocks and the two I/O functions preserve shell →
+input/output → completion ordering. Additional consumers do not need to repeat
 `Requires = ["u24-type"]`.
 
 `DangerousCreate` requires an explicit `unsafe` context and a representation
@@ -683,10 +678,10 @@ constructor and implements either interface or both for the exact managed type.
 Ankus creates one converter lazily when a present value needs it. Registration
 does not construct user code or access PostgreSQL catalogs.
 
-A default generic declaration such as `Box<T>` can provide finite managed views
-of one SQL type. The generator selects fully constructed roots found in supported
-function or aggregate signatures, or in an exact managed `PgSqlTypeProvider`
-declaration. For example, `Box<int>` and `Box<long>` can share the fixed name,
+A default declaration on a generic type such as `Box<T>` maps several closed
+types to one SQL type. The generator maps each closed type, such as `Box<int>`,
+that appears in a supported function or aggregate signature or in an exact
+managed `PgSqlTypeProvider` declaration. For example, `Box<int>` and `Box<long>` can share the fixed name,
 schema and origin on `Box<T>` while a closed converter
 implements `IPgDatumReader<Box<int>>` and `IPgDatumReader<Box<long>>` separately.
 Each requested CLR construction selects its own lazy registration; an unused
@@ -850,8 +845,8 @@ is rejected. The backend verifies the declared range's exact scalar subtype.
 The cell must have exactly the mapped type. Ankus rebuilds the copied cell as a
 temporary datum, passes it to the reader, and frees it when the reader returns, so a
 reader must copy what it keeps. `Set<T>` writes through the mapping and stores a copy.
-Cells of types without any managed conversion are copied exactly and can be read
-only through their mapping or with `Get<PgDatum>`; writing their row back to
+Cells with no built-in conversion, such as `u24`, are copied exactly; read them
+through a `PgDatumType` mapping or `Get<PgDatum>`, and writing the row back to
 PostgreSQL restores the original value.
 For native addresses, `DangerousCall<T>` selects the registered reader; use
 `DangerousCallRaw` for an explicit native owner or delayed mapped read. The caller
@@ -895,7 +890,6 @@ an attribute with the same metadata name in another assembly cannot replace it.
 | `ANKUS137` | Add a mapping for the selected closed managed type or declare a default mapping. |
 | `ANKUS138` | Supply a valid PostgreSQL type identifier of at most 63 UTF-8 bytes. |
 | `ANKUS139` | Supply a valid PostgreSQL schema identifier of at most 63 UTF-8 bytes. |
-| `ANKUS204` | Rebuild the defining assembly so its mapping attribute contains complete, valid UTF-8 metadata. |
 | `ANKUS140` | Set `Origin` to `ThisExtension` or `External`. |
 | `ANKUS141` | Specify `Schema` for an external SQL type. |
 | `ANKUS142` | Supply a concrete converter class or struct with a finite closed construction. |
@@ -910,10 +904,11 @@ an attribute with the same metadata name in another assembly cannot replace it.
 | `ANKUS151` | Remove a slot's `PgSqlType` or `PgCompositeType` override. |
 | `ANKUS152` | Implement `IPgDatumReader<T>` for a SQL input. |
 | `ANKUS153` | Implement `IPgDatumWriter<T>` for a SQL result. |
-| `ANKUS154` | Use a scalar or one array layer instead of a nested mapped container. |
+| `ANKUS154` | Use a scalar, `T[]` or `PgArray<T>`, not a nested array or other container. |
 | `ANKUS155` | Keep only one default mapping declaration. |
 | `ANKUS156` | Select a closed construction of the annotated managed type. |
 | `ANKUS157` | Keep only one exact mapping for each closed managed target. |
+| `ANKUS204` | Rebuild the defining assembly so its mapping attribute contains complete, valid UTF-8 metadata. |
 
 Editors offer **Make internal** for a private, protected or file-local carrier
 (`ANKUS135`) or converter (`ANKUS143`).
