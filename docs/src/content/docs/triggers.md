@@ -107,8 +107,10 @@ value would have been ignored.
 A stored generated column in NEW is unavailable during BEFORE triggers because
 PostgreSQL computes it afterward. Virtual generated columns, supported by
 PostgreSQL 18+, have no physical value in OLD or NEW trigger tuples.
-Their descriptor attributes have `IsUnavailable = true`; reading or assigning
-these cells throws `InvalidOperationException`. This differs from SQL NULL.
+In `Old.Descriptor` or `New.Descriptor`, those attributes have
+`IsUnavailable = true`; `context.Descriptor` does not mark them. Reading or
+assigning these cells throws `InvalidOperationException`. This differs from SQL
+NULL.
 
 Change ordinary source columns and return the row. PostgreSQL preserves or
 recomputes generated values at the appropriate stage. An unavailable trigger
@@ -178,10 +180,11 @@ Row callbacks return `PgHeapTuple` or `PgHeapTuple?`; event callbacks return
 | `ANKUS224` | Choose one row/event callback or operator/cast export role. |
 | `ANKUS225` | Remove SQL value binding attributes from the context and result. |
 | `ANKUS226`, `ANKUS227` | Remove `Rows` and `SetMode`, which describe ordinary set-returning functions. |
+| `ANKUS277` | Remove `[Conditional]`, so every invocation runs the callback. |
 
 Editors offer **Make static** for `ANKUS208`, **Make internal** for `ANKUS213`,
-`ANKUS222` and `ANKUS223`, **Remove** for `ANKUS225`, and **Pass by value** for an `in` or `ref readonly`
-context (`ANKUS216`).
+`ANKUS222` and `ANKUS223`, **Remove** for `ANKUS225` and `ANKUS277`, and **Pass
+by value** for an `in` or `ref readonly` context (`ANKUS216`).
 
 Invalid callback declarations do not prevent unrelated valid functions from
 receiving their generated dispatchers. Shared `[PgFunction]` names, schemas,

@@ -65,8 +65,9 @@ The default serializer supports:
   set is rejected because CBOR decimal fractions cannot preserve that sign bit.
 - `Guid`, `DateOnly`, `TimeOnly`, `DateTime`, `DateTimeOffset` and `TimeSpan`,
   written as strings in System.Text.Json's formats: lowercase `D` for a `Guid`,
-  `yyyy-MM-dd` for a date, the constant `hh:mm:ss[.fffffff]` form for a time or
-  duration, and ISO 8601 for a `DateTime`, with its kind, or a `DateTimeOffset`,
+  `yyyy-MM-dd` for a date, `hh:mm:ss[.fffffff]` for a `TimeOnly`, the constant
+  `[-][d.]hh:mm:ss[.fffffff]` form for a `TimeSpan`, and ISO 8601 for a
+  `DateTime`, with its kind, or a `DateTimeOffset`,
   with its offset. CBOR stores a `Guid` as a tagged 16-byte UUID (tag 37), a date
   as a tagged full-date (tag 1004) and a `DateTimeOffset` as a tagged date/time
   string (tag 0). A time of day must be under 24 hours.
@@ -145,8 +146,8 @@ values because JSON has no exact representation.
 
 Malformed JSON input raises SQLSTATE `22P02`; malformed CBOR raises `22P03`.
 Trailing data, numeric overflow or underflow, required null values, and invalid Unicode are
-errors. Ankus deliberately reports invalid JSON instead of adopting pgrx's
-current default input wrapper's conversion of a parse failure to SQL NULL.
+errors. pgrx's default input function returns SQL NULL when JSON parsing fails;
+Ankus deliberately raises `22P02` instead.
 
 ## Tagged variants
 
@@ -420,10 +421,14 @@ public sealed class DistanceCodec : PgTypeCodec<Distance>
 {
     public override Distance Parse(string text)
     {
-        if (!text.EndsWith("mm", StringComparison.Ordinal))
-            throw new PgException("22P02", "Distance must end with mm.");
+        if (!text.EndsWith("mm", StringComparison.Ordinal) ||
+            !long.TryParse(text.AsSpan(0, text.Length - 2), NumberStyles.AllowLeadingSign,
+                CultureInfo.InvariantCulture, out long millimeters))
+        {
+            throw new PgException("22P02", "Distance must be an integer followed by mm.");
+        }
 
-        return new(long.Parse(text.AsSpan(0, text.Length - 2), CultureInfo.InvariantCulture));
+        return new(millimeters);
     }
 
     public override string Format(Distance value) =>
@@ -432,7 +437,9 @@ public sealed class DistanceCodec : PgTypeCodec<Distance>
     public override Distance Read(ReadOnlySpan<byte> payload)
     {
         if (payload.Length != sizeof(long))
+        {
             throw new PgException("22P03", "Invalid distance payload.");
+        }
 
         return new(BinaryPrimitives.ReadInt64BigEndian(payload));
     }

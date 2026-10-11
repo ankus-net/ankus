@@ -98,7 +98,7 @@ Register a static worker from `[PgModuleLoad]`:
 [PgModuleLoad]
 public static void Register()
 {
-    PgBackgroundWorker.Register(new("Database observer", "MyExtension", nameof(Run))
+    PgBackgroundWorker.Register(new("Database observer", "MyExtension", nameof(Workers.Run))
     {
         DatabaseAccess = true,
         Argument = 42,
@@ -119,10 +119,10 @@ the extension's state without registering another static worker. Set
 `max_worker_processes` high enough for your extensions and PostgreSQL's other
 workers.
 
-`DatabaseAccess` permits database initialization and defaults the startup phase
-to `RecoveryFinished`. Workers without database access default to
-`PostmasterStart`. `ConsistentState` is also available; database workers cannot
-start at `PostmasterStart`.
+`DatabaseAccess` permits database initialization. `StartTime` defaults to
+`RecoveryFinished` for a database worker and to `PostmasterStart` otherwise;
+`ConsistentState` is also available. Registering a database worker that starts at
+`PostmasterStart` throws `ArgumentException`.
 
 `RestartDelay` accepts whole seconds. `null` disables restart, zero requests an
 immediate restart after failure, and a positive value delays it. Successful
@@ -135,7 +135,7 @@ A backend callback can register a worker at runtime, after shared preload has
 completed:
 
 ```csharp
-var options = new PgBackgroundWorkerOptions("Database observer", "MyExtension", "Run")
+var options = new PgBackgroundWorkerOptions("Database observer", "MyExtension", nameof(Workers.Run))
 {
     DatabaseAccess = true,
     Argument = 42,
@@ -247,8 +247,9 @@ transaction rolls back and the worker exits with FATAL `57P01`, so
 transactions, termination is only an observation: `Wait` returns false, and a
 final cleanup transaction started after that still runs.
 Attaching `Interrupt` makes SIGINT an observation rather than PostgreSQL query
-cancellation. With the default handlers, SIGINT can cancel a worker's wait or
-active transaction, including through `pg_cancel_backend`.
+cancellation. Otherwise a `DatabaseAccess` worker keeps PostgreSQL's handler, so
+SIGINT, including `pg_cancel_backend`, cancels its wait or active transaction;
+a worker without database access ignores SIGINT.
 The reload and termination handlers also set PostgreSQL's corresponding native
 flags, so backend helpers see the same requests. Reloading configuration is
 explicit through `ReloadConfiguration()`, which clears the native reload flag

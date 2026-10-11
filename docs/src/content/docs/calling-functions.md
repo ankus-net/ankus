@@ -23,8 +23,12 @@ int? result = PgFunctions.Call<int?>(
 ```
 
 Strict functions are not invoked when an argument is NULL. For a function
-returning `void`, use `PgFunctions.Call` without a type argument. These methods
-return one value; use `Spi.Query` to consume a set of rows.
+returning `void`, use `PgFunctions.Call` without a type argument. Only ordinary
+functions that return one value can be called. Procedures, aggregates, window and
+set-returning functions fail with SQLSTATE `42809`; run them through SQL, and use
+`Spi.Select` to read a set of rows. `internal` arguments or results fail with
+`0A000`; a C function taking them can be called by address through
+[`DangerousCall`](#native-entry-points).
 
 Use `Call<PgAnyElement>` when the result's PostgreSQL type is determined at
 runtime, or `Call<PgAnyArray>` for an array. These wrappers retain the actual
@@ -91,7 +95,7 @@ The explicit `PgMemoryContext` owns both the list and its nodes. Dispose the lis
 to release its container; its pointees remain until that context resets or is
 deleted. List operations reject an expired context. Raw pointers require the
 selected PostgreSQL version's node declarations and must not outlive their
-owner. Use [`PgNodes`](/raw-values/) to view these pointers as checked generated
+owner. Use [`PgNodes`](/raw-values/#native-postgresql-declarations) to view these pointers as checked generated
 node types.
 
 ## Default arguments

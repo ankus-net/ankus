@@ -22,8 +22,8 @@ public static IEnumerable<int> Series(int start, int count)
 SELECT * FROM series(10, 3); -- 10, 11, 12
 ```
 
-The declared return type must be `IEnumerable<T>`. Existing scalar mappings keep
-their meaning: `int[]` returns a PostgreSQL integer array, while
+The declared return type must be `IEnumerable<T>`. Scalar mappings work unchanged
+inside sets: `int[]` returns a PostgreSQL integer array, while
 `IEnumerable<int[]>` returns a set of integer arrays. Each element can use any
 supported [function type](/function-declarations/), including generated enums,
 shaped arrays, ranges, numeric values, and full-range temporal values.
@@ -93,7 +93,7 @@ nullable to represent SQL NULL. `ValueTuple<T>` is supported with an explicit
 single column name.
 
 Invalid result shapes report the precise declaration contract. `ANKUS396`
-requires `PgColumnNames` to accompany `IEnumerable<T>`, `ANKUS397` rejects an
+rejects `PgColumnNames` on a method that does not return `IEnumerable<T>`, `ANKUS397` rejects an
 unsupported element or tuple shape, `ANKUS398` rejects a null names array,
 `ANKUS399` requires names for unnamed table columns, and `ANKUS400` rejects
 invalid, duplicate, missing, or excess column names.
@@ -111,7 +111,7 @@ public static IEnumerable<int?>? OptionalValues(bool absent)
 
 Strict NULL-input handling returns an empty set without invoking the method.
 For a mixed nullable/non-nullable signature, a NULL for any required parameter
-also returns an empty set. Existing `PgNullInput` options continue to apply.
+also returns an empty set. `PgNullInput` options apply as for scalar functions.
 
 ## Streaming and materialization
 
@@ -196,5 +196,5 @@ set. TABLE fields can be rescaled explicitly in the iterator. Operators and
 casts cannot return sets. SQL graph IDs, prerequisites, enum dependencies, and
 function execution options work as they do for scalar functions.
 
-See the sets sample in `samples/Ankus.Examples.Sets`
+See the [sets sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Sets)
 for streaming integers and streaming/materialized word tables.

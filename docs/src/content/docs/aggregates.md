@@ -124,9 +124,8 @@ inputs do not accept SQL defaults.
 ## Support methods and declaration options
 
 Every callback receives `PgAggregateContext` first, followed by the interface's
-state and argument group. The context is not an SQL argument. A `ValueTuple`
-input group defines a zero-argument aggregate. Scalar and tuple argument groups
-retain their declared SQL types; mark a trailing array input variadic with
+state and argument group. Scalar and tuple argument groups retain their declared
+SQL types; mark a trailing array input variadic with
 `PgParameter.Variadic` or a scalar array group's `params` parameter.
 
 | Method | Managed parameters after the context | Result |
@@ -134,7 +133,7 @@ retain their declared SQL types; mark a trailing array input variadic with
 | `Transition` | State, aggregated inputs | State |
 | `Final` | State, direct argument group | SQL result |
 | `Combine` | Destination state, partial state | Destination state |
-| `Serialize` | Managed state | `byte[]` |
+| `Serialize` | Managed state | `byte[]`, or null for SQL NULL |
 | `Deserialize` | `byte[]` | New managed state |
 | `MovingTransition` | Moving state, aggregated inputs | Moving state |
 | `MovingInverse` | Moving state, departing inputs | Moving state or NULL to restart |
@@ -160,7 +159,9 @@ helpers in a compatible aggregate declaration. See
 
 `PgAggregateAttribute` configures the aggregate's name, schema, dependency ID,
 `Requires`/`Before` edges, `ParallelSafety`, `StateSize`, and `MovingStateSize`.
-`InitialCondition` and `MovingInitialCondition` are PostgreSQL input strings for
+`SortOperator` names an ordering operator, such as `<` for a MIN-like aggregate,
+so PostgreSQL can answer the aggregate from an index; it requires exactly one
+input. `InitialCondition` and `MovingInitialCondition` are PostgreSQL input strings for
 the declared state type. Omitted, empty text, and the string `NULL` are distinct.
 The generator quotes strings and orders support functions before their aggregate.
 Aggregate `Requires` dependencies also precede its support functions, so a custom
@@ -316,15 +317,15 @@ with PostgreSQL's `datumIsEqual` through the generated native bindings.
 
 ## Ordered and hypothetical sets
 
-Set `Kind = PgAggregateKind.OrderedSet` for `WITHIN GROUP` syntax. Parameters
-after the final method's state, excluding extra NULL input slots, are direct
-arguments. They are evaluated once per group and are not transition inputs.
+Set `Kind = PgAggregateKind.OrderedSet` for `WITHIN GROUP` syntax. The final
+capability's `TDirect` group, a scalar or tuple, declares the direct arguments.
+They are evaluated once per group and are not transition inputs.
 
-PostgreSQL does not sort ordered-set input for the transition method. Accept a
-leading `PgAggregateContext` to inspect `SortKeys` and compare values with
+PostgreSQL does not sort ordered-set input for the transition method. Use the
+callback's `PgAggregateContext` to inspect `SortKeys` and compare values with
 `context.Compare(left, right, sortKey)`. The native comparator honors the key's
-operator, collation, direction, and NULL placement. Sort copies when declaring a
-read-only final method.
+operator, collation, direction, and NULL placement. With
+`FinalModify = ReadOnly`, sort a copy of the state, as `DiscretePercentile` does.
 
 Use the `SpiParameter` overload when NULL operands need an explicit named type.
 For a named composite, load its descriptor and bind both operands with it:
@@ -349,7 +350,8 @@ SELECT integer_percentile(0.4) WITHIN GROUP (ORDER BY value DESC)
 FROM (VALUES (30), (10), (20)) AS inputs(value);
 ```
 
-`HypotheticalSet` adds PostgreSQL's hypothetical argument matching rules. The
+`PgAggregateKind.HypotheticalSet` adds PostgreSQL's hypothetical argument
+matching rules. The
 implementation still supplies the rank/distribution logic; PostgreSQL does not
 insert the hypothetical row. Ordered-set aggregates cannot be used as windows.
 
@@ -371,8 +373,7 @@ does not cross managed frames. State cleanup still runs when a query fails.
 
 Aggregate errors identify the option, callback, or parameter that needs correction.
 An invalid aggregate does not emit its SQL or support functions; independent valid
-declarations still generate normally. These diagnostics replace the general
-`ANKUS012` error.
+declarations still generate normally.
 
 | Diagnostic | Correction |
 |---|---|

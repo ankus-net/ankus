@@ -99,7 +99,8 @@ PostgreSQL's infrastructure contexts, including its transaction, portal, cache,
 message and error contexts, cannot be reset or deleted through these checked
 APIs. Create a child context to own storage that your extension can reclaim.
 
-PostgreSQL error recovery resets `ErrorContext` and deletes its children. If a
+PostgreSQL error recovery resets `ErrorContext` (`PgMemoryContextKind.Error`)
+and deletes its children. If a
 guarded operation fails while one of those children is current, Ankus resumes in
 the surviving `ErrorContext`; the child and its allocations become stale. The
 enclosing `Run` restores its original caller when that caller remains alive.
@@ -175,10 +176,10 @@ alignment, or a power of two below 128 MiB. Alignment above the server's native
 default requires PostgreSQL 16 or later. Aligned `TryAllocate` and `TryReallocate`
 require PostgreSQL 16.15, 17.11, 18.6, or 19 beta 3 or later because earlier releases have
 unsafe native no-OOM handling. PostgreSQL 19 development snapshots are also
-rejected for these no-OOM requests because their version cannot establish the fix.
-Unsupported requests throw a feature error with SQLSTATE `0A000`, including
-no-OOM requests. They do not return null or acquire an over-aligned allocation;
-ordinary alignment remains available on older servers.
+rejected for these requests, because their version number cannot show whether
+the fix is present. These requests raise SQLSTATE `0A000` instead of returning
+null or acquiring an over-aligned allocation; ordinary alignment remains
+available on older servers.
 
 `AllocateUtf8String` copies strict UTF-8 bytes followed by one zero byte. It rejects
 embedded NUL and malformed UTF-16. This is raw UTF-8 copying, including in a
@@ -224,8 +225,11 @@ becomes stale when the context is deleted. `DangerousGetOwner(allocation)` finds
 context that owns a palloc'd address, as `GetMemoryChunkContext` does, and
 `DangerousGetPointer()` returns a handle's address for raw PostgreSQL calls. Ankus
 checks only the context's node tag, so the address must belong to a live context
-or allocation in this backend. These three calls need an `unsafe` block (ANKUS129). A Bump context does not record its chunks' owner, so
-`DangerousGetOwner` cannot be used with its allocations.
+or allocation in this backend. A Bump context does not record its chunks' owner,
+so `DangerousGetOwner` cannot be used with its allocations.
+
+These three calls require an unsafe context, such as an `unsafe` block or method
+(ANKUS129).
 
 `Create` and `RunTransient` construct AllocSet contexts. Borrowed handles can also
 refer to PostgreSQL's Slab, Generation, or Bump contexts created by native code.
@@ -255,6 +259,26 @@ Ordinary PostgreSQL builds omit Bump chunk headers, so attempting pointer-based
 free or resize first would be unsafe even inside an error guard. Reset and deletion
 still invalidate checked allocations and borrowed generations before later access.
 
+## Raw allocation pointers
+
+A checked allocation's `DangerousGetPointer()` returns its address for unsafe
+interop. The pointer is valid only until free, resize, or context cleanup. The caller must enforce its lifetime and
+alignment; checked managed operations do not make a retained raw pointer safe.
+
+`DangerousDetach()` consumes the checked owner and transfers its raw pointer
+without freeing the allocation. PostgreSQL still owns the storage through its
+context. A recipient can take exclusive individual ownership with
+`context.DangerousAdopt(pointer, length, huge, alignment)`. Adoption checks the
+native context and rejects a pointer that already has a checked owner. Failed
+adoption leaves ownership with the caller.
+
+These are unsafe interoperability operations: the caller must guarantee a live
+`palloc`-family pointer compatible with `pfree`, the accessible byte length,
+original alignment and size policy, and exclusive ownership. A context lookup
+cannot validate an arbitrary pointer. Do not free or resize a raw pointer while
+a checked owner remains live. Context-only allocators such as PostgreSQL's Bump
+context do not provide the individual-free contract required here.
+
 ## Native boxes and borrowed values
 
 Use a typed wrapper when one allocation holds one unmanaged value:
@@ -280,8 +304,8 @@ reference.Value = 42; // snapshot.Value remains 21
 ```
 
 `CreateBox` and `CreateContextValue` copy an initialized unmanaged value into
-native memory. Their `TryCreate` variants return null only when the native
-allocator returns null; initialization and other errors still throw.
+native memory. `TryCreateBox` and `TryCreateContextValue` return null only when
+the native allocator returns null; initialization and other errors still throw.
 `AllocateZeroedBox<T>` starts with zero bytes.
 `DangerousAllocateUninitializedBox<T>` requires initialization before reading.
 These factories do not run a constructor in native storage. Reclamation never
@@ -371,14 +395,15 @@ PostgreSQL error after the managed callback returns. An explicit managed
 the surrounding subtransaction to roll back before retrying.
 
 Commit and abort cleanup must finish draining the transaction's callbacks.
-A secondary callback failure is written to PostgreSQL's server log as an Ankus
-cleanup warning with its SQLSTATE and diagnostic fields. This emergency path does
+A secondary callback failure is written to standard error, which is the server
+log when PostgreSQL captures it, as lines prefixed `ANKUS CLEANUP [backend <pid>]`
+with its SQLSTATE and diagnostic fields. This emergency path does
 not allocate PostgreSQL diagnostic state, convert through the client encoding,
 invoke `emit_log_hook`, or flush an active PostgreSQL error. It therefore cannot
 replace the original SQL error, interrupt rollback, or turn a completed commit or
-`PREPARE TRANSACTION` into a cluster restart. Control characters and non-ASCII
-UTF-8 bytes are escaped exactly, and the backend process identifier labels every
-line.
+`PREPARE TRANSACTION` into a cluster restart. Backslashes, newlines, carriage
+returns and tabs are written as `\\`, `\n`, `\r` and `\t`, and other control
+characters and non-ASCII bytes as `\xNN`.
 
 A real native cancellation request remains pending until a later interrupt
 boundary. A callback exception with SQLSTATE `57014` is logged without creating a
@@ -388,9 +413,9 @@ requests PostgreSQL crash recovery. After a durable commit or preparation,
 transaction during backend exit. Durable changes remain durable. See the
 [transaction-completion contract](/transaction-callbacks/).
 Write callbacks to release their resources without throwing.
-`PgLog.Write(PgLogLevel.Fatal, ...)` and `PgLog.Write(PgLogLevel.Panic, ...)` retain terminal intent
-through the callback's own memory capability, even if its managed exception is
-caught. This does not grant ordinary logging or SQL access during cleanup.
+A `Fatal` or `Panic` `PgLog.Write` inside a cleanup callback still terminates the
+backend or requests crash recovery, even if managed code catches its exception.
+This does not grant ordinary logging or SQL access during cleanup.
 
 Cleanup permits checked native allocation access and disposal of retained SPI
 plans and cursors when the registration was created with backend access. Queries,
@@ -409,28 +434,11 @@ or idle backend execution retains its existing native-call and error contract.
 
 A callback owned by `ErrorContext` or one of its children runs inside the error
 handler's cleanup phase. It can release managed resources, but guarded memory
-operations and SPI resource disposal return SQLSTATE `55006` in that phase.
+operations and SPI resource disposal throw `PgException` with SQLSTATE `55006`
+in that phase.
 Those operations could otherwise consume PostgreSQL's active error stack or
 recursively reclaim the callback's own storage. A failed disposal leaves the
 resource available for a later allowed phase. Choose an ordinary owned context
 for cleanup that needs native memory or SPI resources. PostgreSQL 19 also resets
 `ErrorContext` after an emitted outermost notice or warning; earlier supported
 versions reset it during error recovery.
-
-Unsafe interop can use `DangerousGetPointer()`. The pointer is valid only until
-free, resize, or context cleanup. The caller must enforce its lifetime and
-alignment; checked managed operations do not make a retained raw pointer safe.
-
-`DangerousDetach()` consumes the checked owner and transfers its raw pointer
-without freeing the allocation. PostgreSQL still owns the storage through its
-context. A recipient can take exclusive individual ownership with
-`context.DangerousAdopt(pointer, length, huge, alignment)`. Adoption checks the
-native context and rejects a pointer that already has a checked owner. Failed
-adoption leaves ownership with the caller.
-
-These are unsafe interoperability operations: the caller must guarantee a live
-`palloc`-family pointer compatible with `pfree`, the accessible byte length,
-original alignment and size policy, and exclusive ownership. A context lookup
-cannot validate an arbitrary pointer. Do not free or resize a raw pointer while
-a checked owner remains live. Context-only allocators such as PostgreSQL's Bump
-context do not provide the individual-free contract required here.

@@ -74,8 +74,8 @@ dollar-quoted strings. Construction rejects these contexts with
 `ArgumentException`. It also rejects literal positional parameter tokens such
 as `$1`; use interpolations for every binding in a `Spi.Sql` command. Dollar
 text inside literal strings, identifiers and comments remains unchanged.
-Separate SQL expressions with valid SQL syntax: a digit immediately after a
-hole does not become part of its parameter number.
+Separate SQL expressions with valid SQL syntax: a digit immediately after an
+interpolation does not become part of its parameter number.
 
 Do not use interpolations for object names or SQL fragments.
 Values are sent separately from SQL. Formatting and alignment specifiers are
@@ -222,8 +222,9 @@ underlying base type's value conversion.
 
 A column whose type has no managed conversion, such as `tsvector` or a base type
 your extension declares, is copied exactly and converted only when you read it,
-as pgrx does. Read it with its [`PgDatumType`](/raw-values/#reusable-scalar-mappings),
-or an array of one: `row.Get<Unsigned24>("value")`. The cell must have exactly the
+as pgrx does. Read it with its [`PgDatumType`](/raw-values/#reusable-scalar-mappings)
+mapping, or an array of that type, for example `row.Get<Unsigned24>("value")` with
+the `Unsigned24` mapping from that section. The cell must have exactly the
 mapped type. The indexer and other types throw `NotSupportedException` for such a
 cell, and the rest of the row stays readable. `row.Get<PgDatum>("value")` rebuilds any
 cell, including SQL NULL, as a raw datum of its type owned by the current callback.
@@ -232,7 +233,7 @@ cell, including SQL NULL, as a raw datum of its type owned by the current callba
 Results are managed copies. Rows, text, and binary buffers remain valid after
 another SPI command or after the original SPI connection is released.
 PostgreSQL first materializes the complete result in SPI memory, as with pgrx's
-`Spi::select`, and Ankus then copies it. One result is limited to 2,147,483,647
+`SpiClient::select`, and Ankus then copies it. One result is limited to 2,147,483,647
 rows and to the backend's maximum allocation; a larger result fails with SQLSTATE
 `54000` instead of being truncated. Use a [cursor](#cursors-and-batched-results)
 to stream large results in batches.
@@ -365,8 +366,9 @@ bind values separately with positional parameters, as above.
 The [PGLZ inspection sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.PglzInspect)
 samples a caller-selected table and column this way.
 
-Quoted fragments can also be accumulated in a loop or joined after selecting
-an actual `Spi.QuoteIdentifier` or `Spi.QuoteLiteral` method. Every dynamic
+Quoted fragments can also be accumulated in a loop or joined after passing
+`Spi.QuoteIdentifier` or `Spi.QuoteLiteral` as a method group, as in
+`names.Select(Spi.QuoteIdentifier)`. Every dynamic
 fragment must stay a complete SQL atom:
 
 ```csharp
@@ -416,7 +418,8 @@ An incorrect parameter count or SQL type throws `ArgumentException` before the
 plan executes.
 
 `SpiPreparedStatement` provides `Select`, `SelectRaw`, `Execute`, `Query`, `ExecuteScalar`, and `ExecuteScalars` with the
-same result semantics as `Spi`. `Query` also accepts `readOnly` and `limit` options.
+same result semantics as `Spi`. `Select` and `SelectRaw` accept `limit`; `Query`,
+`QueryRaw` and `OpenCursor` also accept `readOnly`.
 Preparation supports multiple SQL commands; each execution's internal subtransaction
 covers all commands, and results describe the final command.
 
@@ -594,8 +597,8 @@ not consume IDs. For bulk changes, prefer one set-based statement, such as
 per row.
 
 When per-row statements are unavoidable, run them in an atomic scope. Its
-statements share the scope's single subtransaction, as SPI statements do in
-pgrx, so 200 writes consume one subtransaction ID instead of 200:
+statements share one subtransaction; like pgrx's SPI calls, they do not create
+one per statement, so 200 writes consume one subtransaction ID instead of 200:
 
 ```csharp
 PgTransaction.RunInSubtransaction(() =>
