@@ -634,22 +634,19 @@ Earlier entries in this log are in the
 
 ## Remaining work order
 
-The accepted declaration milestones have complete primary-platform CI evidence.
-The earlier editor composition passes its full native suite and replacement primary CI.
-The current cold-load/reload correction also passes complete Linux/18.6 acceptance;
-its replacement primary CI passes all three complete platform suites.
-The Intel diagnostic retry exposed six path-related failures; the corrected
-complete Intel suite now passes. An explanation of the earlier hosted-runner
-disconnect and remaining version/platform acceptance are still required.
+Primary CI, the Linux and macOS ARM64 version matrices, the Windows majors
+other than 19 and Intel macOS on 18 all pass on runtime **ankus.5**. The
+declaration audit against pgrx 0.19.3 has no open option, and the third code
+review's findings are fixed or kept by documented design.
 
-1. Resolve discovered correctness and CI failures before accepting affected work. Finish the remaining declaration/source-case audits. Malformed AssemblyRef handling and the owner index already pass all eight regressions in the current complete suite.
+1. Resolve discovered correctness and CI failures before accepting affected work, including the intermittent macOS PostgreSQL 19 `AllocSetCheck` fault if it recurs.
 2. Complete every pgrx 0.19.3 release-delta gate, including deterministic header discovery/regeneration, newly exposed native contracts, all CLI/configuration/output forwarding and allocation/shared-memory/varlena audits. Refresh evidence against the corrected current source.
-3. Verify the dedicated Intel runner with a complete live run and finish supported-major/platform coverage, including Intel macOS and the macOS 15/16 library-suffix boundary.
-4. Complete declaration diagnostics/code fixes, API discoverability and unsafe raw-call contracts.
+3. Finish supported-major/platform coverage: Intel macOS on 13–17 and 19 beta (now dispatched weekly) and Windows on 19 beta (a source build in progress).
+4. Finish the final API-by-API inventory audit, including mapped datum values in `SpiRow.Get<T>` and `PgHeapTuple.Get<T>`.
 5. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees.
 6. Close remaining CLI, account/privilege and platform-installation contracts.
-7. Complete framework/discovery support, parsing/formatting helpers, representative samples and documentation.
-8. Complete .NET servicing and every release requirement in the full inventory before publishing 0.1.0. If .NET 11 reaches GA first, complete its acceptance for that release; preview validation does not block the initial .NET 10 release.
+7. Complete framework/discovery support, representative samples and the final documentation review.
+8. Complete .NET servicing and every release requirement in the full inventory, using the release rehearsal, before publishing 0.1.0. If .NET 11 reaches GA first, complete its acceptance for that release; preview validation does not block the initial .NET 10 release.
 
 Continue independent work while CI runs. Before every commit and push, check and
 record previous run outcomes, including live runs, and resolve reported failures.
