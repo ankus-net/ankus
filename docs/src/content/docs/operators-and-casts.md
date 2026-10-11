@@ -419,4 +419,6 @@ conversion declarations.
 
 `ANKUS508` and `ANKUS509` point at the later `PgOperator` or `PgCast` attribute
 and name the duplicated catalog signature. Editors offer **Remove** for the
-option reported by `ANKUS070` or `ANKUS071`.
+option reported by `ANKUS069`, `ANKUS070` or `ANKUS071`, **Remove `params`** for
+`ANKUS067`, and **Change the type** to `int` or `bool` for a cast's type modifier
+or explicit-conversion parameter (`ANKUS076`, `ANKUS077`).

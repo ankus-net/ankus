@@ -18,7 +18,7 @@ public sealed partial class PgFunctionGeneratorTests
         using CompositionHost container = new ContainerConfiguration().WithAssembly(typeof(RemoveInapplicableCodeFixProvider).Assembly).CreateContainer();
         RemoveInapplicableCodeFixProvider provider =
             Assert.ContainsSingle(container.GetExports<CodeFixProvider>().OfType<RemoveInapplicableCodeFixProvider>());
-        Assert.HasCount(16, provider.FixableDiagnosticIds);
+        Assert.HasCount(29, provider.FixableDiagnosticIds);
         Assert.AreSame(WellKnownFixAllProviders.BatchFixer, provider.GetFixAllProvider());
     }
 
@@ -79,6 +79,61 @@ public sealed partial class PgFunctionGeneratorTests
     [DataRow("public static class Functions\n{\n    /// <summary>\n    /// Loads.\n    /// </summary>\n    [System.Diagnostics.Conditional(\"DEBUG\")]\n    [Ankus.PgModuleLoad]\n    public static void Load() { }\n}\n",
         "ANKUS245", "Remove 'System.Diagnostics.Conditional'",
         "public static class Functions\n{\n    /// <summary>\n    /// Loads.\n    /// </summary>\n    [Ankus.PgModuleLoad]\n    public static void Load() { }\n}\n")]
+    [DataRow("public static class Functions { [Ankus.PgOperator(\"@=\", Negator = \"@=\")] public static bool Bad(int value) => true; }",
+        "ANKUS069", "Remove 'Negator'",
+        "public static class Functions { [Ankus.PgOperator(\"@=\")] public static bool Bad(int value) => true; }")]
+    [DataRow("[Ankus.PgAggregate(SortOperator = \"pg_catalog.<\", InitialCondition = \"0\")] public sealed class Pairs : Ankus.IPgAggregate<int, (int Left, int Right)> " +
+        "{ public static int Transition(Ankus.PgAggregateContext context, int state, (int Left, int Right) arguments) => state; }",
+        "ANKUS104", "Remove 'SortOperator'",
+        "[Ankus.PgAggregate(InitialCondition = \"0\")] public sealed class Pairs : Ankus.IPgAggregate<int, (int Left, int Right)> " +
+        "{ public static int Transition(Ankus.PgAggregateContext context, int state, (int Left, int Right) arguments) => state; }")]
+    [DataRow("[Ankus.PgAggregate(InitialCondition = \"0\")] public sealed class Counter : Ankus.IPgAggregate<Ankus.PgAggregateState<int>?, int>, " +
+        "Ankus.IPgFinalizingAggregate<Ankus.PgAggregateState<int>?, System.ValueTuple, int> { public static Ankus.PgAggregateState<int>? Transition(" +
+        "Ankus.PgAggregateContext context, Ankus.PgAggregateState<int>? state, int value) => state; public static int Final(Ankus.PgAggregateContext context, " +
+        "Ankus.PgAggregateState<int>? state, System.ValueTuple arguments) => 0; }",
+        "ANKUS106", "Remove 'InitialCondition'",
+        "[Ankus.PgAggregate] public sealed class Counter : Ankus.IPgAggregate<Ankus.PgAggregateState<int>?, int>, " +
+        "Ankus.IPgFinalizingAggregate<Ankus.PgAggregateState<int>?, System.ValueTuple, int> { public static Ankus.PgAggregateState<int>? Transition(" +
+        "Ankus.PgAggregateContext context, Ankus.PgAggregateState<int>? state, int value) => state; public static int Final(Ankus.PgAggregateContext context, " +
+        "Ankus.PgAggregateState<int>? state, System.ValueTuple arguments) => 0; }")]
+    [DataRow("[Ankus.PgAggregate(InitialCondition = \"0\")] public sealed class Total : Ankus.IPgAggregate<int, int> " +
+        "{ public static int Transition(Ankus.PgAggregateContext context, int state, [Ankus.PgParameter(Name = \"amount\", Default = \"42\")] int value) => state; }",
+        "ANKUS127", "Remove 'Default'",
+        "[Ankus.PgAggregate(InitialCondition = \"0\")] public sealed class Total : Ankus.IPgAggregate<int, int> " +
+        "{ public static int Transition(Ankus.PgAggregateContext context, int state, [Ankus.PgParameter(Name = \"amount\")] int value) => state; }")]
+    [DataRow("[Ankus.PgAggregate(InitialCondition = \"0\")] public sealed class Total : Ankus.IPgAggregate<int, int> " +
+        "{ public static int Transition(Ankus.PgAggregateContext context, int state, [Ankus.PgParameter(Element = \"member\")] int value) => state; }",
+        "ANKUS128", "Remove 'Element'",
+        "[Ankus.PgAggregate(InitialCondition = \"0\")] public sealed class Total : Ankus.IPgAggregate<int, int> " +
+        "{ public static int Transition(Ankus.PgAggregateContext context, int state, [Ankus.PgParameter] int value) => state; }")]
+    [DataRow("[Ankus.PgDatumType(\"int4\", typeof(Converter), Origin = Ankus.PgTypeOrigin.External, Schema = \"pg_catalog\")] public struct Value { } " +
+        "public sealed class Converter : Ankus.IPgDatumReader<Value> { public Value Read(Ankus.PgDatum value) => default; } " +
+        "public static class Functions { [Ankus.PgFunction] public static int Read([Ankus.PgSqlType(\"text\")] Value value) => 1; }",
+        "ANKUS151", "Remove 'Ankus.PgSqlType'",
+        "[Ankus.PgDatumType(\"int4\", typeof(Converter), Origin = Ankus.PgTypeOrigin.External, Schema = \"pg_catalog\")] public struct Value { } " +
+        "public sealed class Converter : Ankus.IPgDatumReader<Value> { public Value Read(Ankus.PgDatum value) => default; } " +
+        "public static class Functions { [Ankus.PgFunction] public static int Read(Value value) => 1; }")]
+    [DataRow("public static partial class Settings { [Ankus.PgGucBool(\"demo.value\", true, \"Value\", Unit = Ankus.PgGucUnit.Bytes)] public static partial bool Value { get; } }",
+        "ANKUS189", "Remove 'Unit'",
+        "public static partial class Settings { [Ankus.PgGucBool(\"demo.value\", true, \"Value\")] public static partial bool Value { get; } }")]
+    [DataRow("public static class Functions { [Ankus.PgTrigger, Ankus.PgFunction(Rows = 1000)] public static Ankus.PgHeapTuple? Audit(Ankus.PgTriggerContext context) => null; }",
+        "ANKUS226", "Remove 'Rows'",
+        "public static class Functions { [Ankus.PgTrigger, Ankus.PgFunction] public static Ankus.PgHeapTuple? Audit(Ankus.PgTriggerContext context) => null; }")]
+    [DataRow("public static class Functions { [Ankus.PgEventTrigger, Ankus.PgFunction(SetMode = Ankus.PgSetMode.Auto)] public static void Audit(Ankus.PgEventTriggerContext context) { } }",
+        "ANKUS227", "Remove 'SetMode'",
+        "public static class Functions { [Ankus.PgEventTrigger, Ankus.PgFunction] public static void Audit(Ankus.PgEventTriggerContext context) { } }")]
+    [DataRow("[System.Flags, Ankus.PgEnum] public enum Mood { Happy = 1, Sad = 2 }",
+        "ANKUS279", "Remove 'System.Flags'",
+        "[Ankus.PgEnum] public enum Mood { Happy = 1, Sad = 2 }")]
+    [DataRow("public static class Functions { [Ankus.PgFunction] [return: Ankus.PgColumnNames(\"value\")] public static int Value() => 0; }",
+        "ANKUS396", "Remove 'Ankus.PgColumnNames'",
+        "public static class Functions { [Ankus.PgFunction] public static int Value() => 0; }")]
+    [DataRow("public static class Functions { [Ankus.PgFunction] [return: Ankus.PgSqlType(\"int4\", Column = \"a\")] public static Ankus.PgDatum Value() => null!; }",
+        "ANKUS411", "Remove 'Column'",
+        "public static class Functions { [Ankus.PgFunction] [return: Ankus.PgSqlType(\"int4\")] public static Ankus.PgDatum Value() => null!; }")]
+    [DataRow("public static class Functions { [Ankus.PgFunction] public static int Value([Ankus.PgSqlType(\"int4\", Element = \"missing\")] Ankus.PgDatum value) => 0; }",
+        "ANKUS412", "Remove 'Element'",
+        "public static class Functions { [Ankus.PgFunction] public static int Value([Ankus.PgSqlType(\"int4\")] Ankus.PgDatum value) => 0; }")]
     public async Task RemoveInapplicableFixRemovesTheDiagnosedElement(string source, string id, string title, string expected)
     {
         string prefix = FixTypesSource(source);

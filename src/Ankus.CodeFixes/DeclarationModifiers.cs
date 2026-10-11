@@ -63,6 +63,24 @@ internal static class DeclarationModifiers
     }
 
     /// <summary>
+    /// Removes one modifier, moving its leading trivia to the next token when it comes first.
+    /// </summary>
+    /// <param name="declaration">The declaration to edit.</param>
+    /// <param name="index">The modifier position.</param>
+    /// <returns>The edited declaration.</returns>
+    internal static MemberDeclarationSyntax Remove(MemberDeclarationSyntax declaration, int index)
+    {
+        SyntaxToken modifier = declaration.Modifiers[index];
+        if (index == 0)
+        {
+            SyntaxToken next = modifier.GetNextToken();
+            declaration = declaration.ReplaceToken(next, next.WithLeadingTrivia(modifier.LeadingTrivia));
+        }
+
+        return declaration.WithModifiers(declaration.Modifiers.RemoveAt(index));
+    }
+
+    /// <summary>
     /// Finds whether any reference reaches the member through an instance receiver, which a static member cannot have.
     /// </summary>
     /// <param name="solution">The solution searched for references.</param>

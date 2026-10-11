@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CodeActions;
 
 namespace Ankus.CodeFixes;
 
@@ -8,6 +9,24 @@ namespace Ankus.CodeFixes;
 /// </summary>
 internal static class CompilerErrorComparison
 {
+    /// <summary>
+    /// Creates an action that keeps a single-document edit only if it adds no compiler error, as when other code still
+    /// assigns a removed setter or needs a removed attribute. The comparison runs when the action is previewed or applied.
+    /// </summary>
+    /// <param name="document">The document before the correction.</param>
+    /// <param name="corrected">The edited document root.</param>
+    /// <param name="title">The action title.</param>
+    /// <param name="equivalenceKey">The key that groups equivalent actions.</param>
+    /// <returns>The checked action.</returns>
+    internal static CodeAction CreateAction(Document document, SyntaxNode corrected, string title, string equivalenceKey)
+        => CodeAction.Create(title, async token =>
+        {
+            Compilation? original = await document.Project.GetCompilationAsync(token).ConfigureAwait(false);
+            Document edited = document.WithSyntaxRoot(corrected);
+            Compilation? result = await edited.Project.GetCompilationAsync(token).ConfigureAwait(false);
+            return original is null || result is null || IntroducesErrors(original, result, token) ? document : edited;
+        }, equivalenceKey);
+
     /// <summary>
     /// Compares compiler errors only after the user requests a correction or its preview.
     /// </summary>

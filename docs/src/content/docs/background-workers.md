@@ -85,10 +85,11 @@ continue to generate their own output.
 | ANKUS274 | Avoid C keywords, PostgreSQL loader symbols, and the `ankus_` or `pg_finfo_` prefixes. |
 | ANKUS275 | Give every worker a distinct method name or explicit `EntryPoint`. |
 
-Editors offer **Make static** for ANKUS251, **Make internal** for ANKUS261,
-ANKUS264 and ANKUS265, **Remove** for ANKUS266, ANKUS267, ANKUS270 and ANKUS271,
-and **Pass by value** for an `in` or `ref readonly`
-argument (ANKUS259).
+Editors offer **Make static** for ANKUS251, **Make synchronous** for ANKUS252,
+**Make internal** for ANKUS261, ANKUS264 and ANKUS265, **Remove** for ANKUS266,
+ANKUS267, ANKUS270 and ANKUS271, **Add the parameter** `nuint argument` for
+ANKUS258, **Change the type** to `nuint` for ANKUS260, and **Pass by value**
+for an `in` or `ref readonly` argument (ANKUS259).
 
 ## Register during preload
 

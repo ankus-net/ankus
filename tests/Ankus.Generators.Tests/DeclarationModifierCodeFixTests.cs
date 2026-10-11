@@ -20,11 +20,11 @@ public sealed partial class PgFunctionGeneratorTests
             Assert.ContainsSingle(container.GetExports<CodeFixProvider>().OfType<DeclarationModifierCodeFixProvider>());
         Assert.AreSequenceEqual(
         [
-            "ANKUS033", "ANKUS208", "ANKUS232", "ANKUS251", "ANKUS291", "ANKUS332", "ANKUS516",
+            "ANKUS033", "ANKUS130", "ANKUS208", "ANKUS232", "ANKUS251", "ANKUS291", "ANKUS332", "ANKUS516",
             "ANKUS034", "ANKUS043", "ANKUS135", "ANKUS143", "ANKUS174", "ANKUS178", "ANKUS179", "ANKUS213", "ANKUS222", "ANKUS223",
             "ANKUS240", "ANKUS243", "ANKUS244", "ANKUS261", "ANKUS264", "ANKUS265", "ANKUS281", "ANKUS282", "ANKUS296", "ANKUS302",
             "ANKUS303", "ANKUS321", "ANKUS428", "ANKUS522", "ANKUS523",
-            "ANKUS180", "ANKUS304", "ANKUS322",
+            "ANKUS180", "ANKUS304", "ANKUS322", "ANKUS425",
         ], provider.FixableDiagnosticIds);
         Assert.AreSame(WellKnownFixAllProviders.BatchFixer, provider.GetFixAllProvider());
     }
@@ -216,5 +216,38 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.IsEmpty(after);
         Assert.IsEmpty(output.GetDiagnostics(context.CancellationToken).Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
         Assert.Contains("CREATE FUNCTION \"add\"", InstallationBody(output));
+    }
+
+    /// <summary>
+    /// A benchmark becomes static or internal, and a PostgreSQL type stops being static, after which each generates.
+    /// </summary>
+    /// <param name="source">The declaration before the correction.</param>
+    /// <param name="id">The expected diagnostic.</param>
+    /// <param name="title">The expected action title.</param>
+    /// <param name="expected">The exact corrected declaration.</param>
+    [TestMethod]
+    [DataRow("public class Benchmarks { [Ankus.PgBenchmark] public void Run(Ankus.PgBencher bencher) => bencher.Iterate(static () => 1); }",
+        "ANKUS130", "Make 'Run' static",
+        "public class Benchmarks { [Ankus.PgBenchmark] public static void Run(Ankus.PgBencher bencher) => bencher.Iterate(static () => 1); }")]
+    [DataRow("public static class Benchmarks { [Ankus.PgBenchmark] private static void Run(Ankus.PgBencher bencher) => bencher.Iterate(static () => 1); }",
+        "ANKUS130", "Make 'Run' internal",
+        "public static class Benchmarks { [Ankus.PgBenchmark] internal static void Run(Ankus.PgBencher bencher) => bencher.Iterate(static () => 1); }")]
+    [DataRow("[Ankus.PgType] public static class Value { }", "ANKUS425", "Make 'Value' non-static", "[Ankus.PgType] public class Value { }")]
+    public async Task ModifierFixCorrectsBenchmarksAndTypes(string source, string id, string title, string expected)
+    {
+        using var workspace = new AdhocWorkspace();
+        Document document = CreateCodeFixDocument(workspace, source);
+        (_, ImmutableArray<Diagnostic> diagnostics) = await GenerateCodeFixDocumentAsync(document);
+        Diagnostic diagnostic = Assert.ContainsSingle(diagnostics);
+        Assert.AreEqual(id, diagnostic.Id);
+        CodeAction action = Assert.ContainsSingle(await CodeFixActionsAsync(new DeclarationModifierCodeFixProvider(), document, diagnostic));
+        Assert.AreEqual(title, action.Title);
+        Solution solution = Assert.IsInstanceOfType<ApplyChangesOperation>(
+            Assert.ContainsSingle(await action.GetOperationsAsync(context.CancellationToken))).ChangedSolution;
+        Document corrected = solution.GetDocument(document.Id)!;
+        Assert.AreEqual(expected, (await corrected.GetTextAsync(context.CancellationToken)).ToString());
+        (Compilation output, ImmutableArray<Diagnostic> after) = await GenerateCodeFixDocumentAsync(corrected);
+        Assert.IsEmpty(after);
+        Assert.IsEmpty(output.GetDiagnostics(context.CancellationToken).Where(static value => value.Severity == DiagnosticSeverity.Error));
     }
 }

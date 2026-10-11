@@ -204,6 +204,13 @@ Editors fix the common declaration mistakes: **Make static** and **Make
 partial** turn an automatic getter into the static partial definition Ankus
 implements, **Remove the implementation** deletes an authored getter, and
 **Make partial** on a class adds the modifier its generated part needs.
+**Remove the `set` accessor** leaves only the getter (`ANKUS171`), **Return by
+value** removes `ref` (`ANKUS172`), and **Change the type** uses the type the
+attribute requires (`ANKUS183`) or `string?` for a null default (`ANKUS195`).
+**Swap `Minimum` and `Maximum`** corrects reversed bounds (`ANKUS190`,
+`ANKUS192`), and **Remove** deletes `Unit` from a setting that has no units
+(`ANKUS189`). A correction that would break other code, such as an assignment to
+the removed setter, leaves the source unchanged.
 
 ## Hooks
 

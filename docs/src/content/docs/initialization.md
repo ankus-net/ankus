@@ -154,9 +154,9 @@ nongeneric, parameterless static `void` method with a managed implementation.
 | `ANKUS247`, `ANKUS248` | Declare separate SQL exports and remove SQL result metadata from initialization. |
 | `ANKUS249` | Keep one callback per phase in the extension assembly. |
 
-Editors offer **Make static** for `ANKUS232`, **Make internal** for
-`ANKUS240`, `ANKUS243` and `ANKUS244`, and **Remove** for `ANKUS245`, `ANKUS246`
-and `ANKUS248`.
+Editors offer **Make static** for `ANKUS232`, **Make synchronous** for
+`ANKUS233`, **Make internal** for `ANKUS240`, `ANKUS243` and `ANKUS244`, and
+**Remove** for `ANKUS245`, `ANKUS246` and `ANKUS248`.
 
 Invalid initialization declarations do not remove unrelated valid SQL
 dispatchers. A rejected phase does not receive a PostgreSQL loader export.

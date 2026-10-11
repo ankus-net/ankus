@@ -98,7 +98,7 @@ and SQL; unrelated valid declarations still generate normally.
 | `ANKUS506` | Give the enum a `Name` or `Schema` that no other `[PgEnum]` in the extension generates. The error points at the later enum's name. A clash with a `[PgType]` reports `ANKUS507` on that type. |
 
 Editors offer **Make internal** for `ANKUS281` and `ANKUS282`, on the enum or on
-the containing type that hides it.
+the containing type that hides it, and **Remove** for `Flags` (`ANKUS279`).
 
 Invalid label text from a referenced assembly is rejected as well; unreadable
 referenced attribute metadata reports `ANKUS206`.

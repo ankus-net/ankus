@@ -182,9 +182,13 @@ Row callbacks return `PgHeapTuple` or `PgHeapTuple?`; event callbacks return
 | `ANKUS226`, `ANKUS227` | Remove `Rows` and `SetMode`, which describe ordinary set-returning functions. |
 | `ANKUS277` | Remove `[Conditional]`, so every invocation runs the callback. |
 
-Editors offer **Make static** for `ANKUS208`, **Make internal** for `ANKUS213`,
-`ANKUS222` and `ANKUS223`, **Remove** for `ANKUS225` and `ANKUS277`, and **Pass
-by value** for an `in` or `ref readonly` context (`ANKUS216`).
+Editors offer **Make static** for `ANKUS208`, **Make synchronous** for
+`ANKUS209`, **Return by value** for `ANKUS212`, **Make internal** for
+`ANKUS213`, `ANKUS222` and `ANKUS223`, and **Remove** for `ANKUS225`–`ANKUS227`
+and `ANKUS277`. For the context parameter they offer **Add the parameter**
+(`ANKUS215`), **Remove the default value** or `Optional` (`ANKUS218`),
+**Change the type** to the non-nullable context (`ANKUS219`) and **Pass by
+value** for an `in` or `ref readonly` context (`ANKUS216`).
 
 Invalid callback declarations do not prevent unrelated valid functions from
 receiving their generated dispatchers. Shared `[PgFunction]` names, schemas,

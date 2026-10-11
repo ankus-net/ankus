@@ -31,6 +31,10 @@ matching pgrx's backend benchmark bridge. `PgBenchmarkBatchSize` controls groupi
 Use `PgBenchmark.BlackBox` to keep Native AOT optimization from discarding a
 value. It accepts ref structs and does not box value-type inputs.
 
+For an invalid declaration (`ANKUS130`), editors offer **Make static**, **Make
+internal** or **Add the parameter** `PgBencher bencher` where that is the
+missing piece.
+
 Benchmark entry points and the `benches` schema exist only in benchmark
 publications. Normal build, install and package output excludes them.
 

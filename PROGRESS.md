@@ -74,7 +74,7 @@ defines the full scope; family-level implementation is not API-by-API completion
 | Workers and shared memory | Native signal globals, lifecycle/transaction boundaries and shared memory. Idle Wait recovers repeated real cancellation; transaction waits still abort and terminal reports remain sticky. Complete primary-platform CI passes. | Full source-contract and complete version/platform acceptance remain required. |
 | Functions and callbacks | Scalar/array/SETOF/TABLE, triggers/events, lifecycle, native callbacks, operators/conversions and installation-schema search paths. | Complete version/platform evidence. |
 | Aggregates and SQL graph | Static abstract aggregate capabilities, typed Requires/Before/SupportFunction references with per-contract diagnostics at the authored value, deterministic SQL provenance and extended module magic. Empty SQL dependency anchors and exact authored CR/CRLF values pass complete native acceptance. | Inventoried contracts and complete version/platform acceptance. |
-| Generator caching | Detached equatable declaration/provider/reference models, stable declaration-header locations and cached dispatcher/C/SQL artifacts across multi-declaration body edits, unrelated member insertion and unrelated file insertion. Only selected SQL files are read, with the complete path catalog retained. | Broader precise diagnostics, useful semantic code fixes and final inventory audit remain required. |
+| Generator caching | Detached equatable declaration/provider/reference models, stable declaration-header locations and cached dispatcher/C/SQL artifacts across multi-declaration body edits, unrelated member insertion and unrelated file insertion. Only selected SQL files are read, with the complete path catalog retained. Editor corrections cover 112 diagnostics, each kept only when the project still compiles. | Broader precise diagnostics and the final inventory audit remain required. |
 | Values and ownership | Documented scalar, array, composite, temporal, JSON, network, geometry, custom codec and raw datum contracts. Interval equality, hashing and ordering agree with PostgreSQL while retaining exact components; complete primary-platform CI passes. | Remaining mapped/container contracts, parsing/formatting ergonomics and complete source-case mapping remain required. |
 | Runtime performance | Owned binary PgNumeric, direct decimal coefficient encoding, constant-time fixed-width array indexing, and a measured native guard for allowlisted pure built-ins. Catalog-miss errors require actual rollback; real-resource regressions and complete primary-platform CI pass. Persistent in-backend benchmarks provide batching, transaction modes and statistical baseline comparisons. | Complete current guard supported-version acceptance. Extend that tier only where ownership proofs and measurements justify it. Never weaken error recovery to reduce overhead. |
 | Native bindings | pgrx 0.19.3 inventories, matching PostgreSQL 19 beta 4 inputs and target-compiler ABI checks; typed pointers and ANKUS129 make raw caller obligations explicit. Complete current primary-platform compositions pass, with focused binding checks on all seven majors. | Full supported-major/platform tests and final inventory audit. |
@@ -135,6 +135,17 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- Editors now correct 112 declaration diagnostics, up from 64. An audit of all
+  501 found the ones with a single mechanical answer: removing options or
+  attributes that cannot apply, removing `async` from entries that await
+  nothing (`Task<T>` becomes `T`), adding the trigger context, worker argument
+  or benchmark parameter, fixing cast and worker parameter types, swapping
+  reversed GUC bounds, and returning by value. Corrections that a caller could
+  break, such as removing a setter that is still assigned, compare compiler
+  errors only when applied and leave the source unchanged if they would add
+  one. Diagnostics with more than one reasonable answer, such as SPI
+  interpolation holes or snake_case names, stay without a fix. The guides list
+  each correction next to its diagnostic.
 - Native symbols no longer change with the extension's assembly version. Each
   exported `ankus_fn_…` name hashed the full assembly identity, version
   included, so a release that set a new `<Version>` (which

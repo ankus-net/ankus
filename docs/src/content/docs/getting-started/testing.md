@@ -252,9 +252,10 @@ publication behavior even when another declaration is invalid.
 | `ANKUS308` | Invalid PostgreSQL backend test ignore text. |
 | `ANKUS309` | PostgreSQL backend test requires a nonempty ignore reason. |
 
-Editors offer **Make static** for `ANKUS291`, **Make internal** for `ANKUS296`,
-`ANKUS302` and `ANKUS303`, **Make partial** for `ANKUS304`, and **Pass by value**
-for an `in` or `ref readonly` context (`ANKUS298`).
+Editors offer **Make static** for `ANKUS291`, **Make synchronous** for
+`ANKUS292`, **Make internal** for `ANKUS296`, `ANKUS302` and `ANKUS303`,
+**Make partial** for `ANKUS304`, and **Pass by value** for an `in` or
+`ref readonly` context (`ANKUS298`).
 
 `ExpectedError = null` means successful execution is expected; an empty string
 remains an exact expected message. `IgnoreReason = null` runs the test, while a

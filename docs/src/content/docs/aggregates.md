@@ -102,6 +102,12 @@ from `IPgAggregate<TState, TArgs>` and adds `IPgCombinableAggregate<TState>`.
 For a shared inherited callback, it updates each compatible attributed aggregate
 in the project. Existing callback bodies and their metadata are preserved.
 
+Editors also remove what an aggregate cannot use: `SortOperator` with more than
+one input (`ANKUS104`), an initial condition for internal state (`ANKUS106`),
+a C# default on a callback parameter (`ANKUS113`), attributes on the invocation
+context or an empty argument group (`ANKUS114`, `ANKUS119`), and `Default` or
+`Element` on a scalar input (`ANKUS127`, `ANKUS128`).
+
 Apply parameter metadata to a tuple group with `Element` selecting its exact
 C# element name. Each SQL input retains its own name, numeric constraint or
 explicit raw/composite binding:

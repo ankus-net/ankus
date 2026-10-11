@@ -32,7 +32,9 @@ return type:
 
 These checks use framework type identity; a user-defined SQL type named `Task`
 does not become an asynchronous result. Keep the PostgreSQL entry method
-synchronous and finish its work before returning.
+synchronous and finish its work before returning. When an `async` entry awaits
+nothing, editors offer **Make synchronous**, which returns the value it already
+produces.
 
 Managed worker threads can compute over detached managed values using operations
 that do not call PostgreSQL. Some owned-value APIs, such as `PgNumeric`

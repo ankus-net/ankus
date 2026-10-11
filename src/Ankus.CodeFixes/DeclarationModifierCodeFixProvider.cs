@@ -9,8 +9,8 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 namespace Ankus.CodeFixes;
 
 /// <summary>
-/// Makes a PostgreSQL entry method static, makes a declaration or its containing type reachable from generated code, or makes a
-/// containing type partial so it can receive generated members.
+/// Makes a PostgreSQL entry method static, makes a declaration or its containing type reachable from generated code, makes a
+/// containing type partial so it can receive generated members, or lets a PostgreSQL type have instances.
 /// </summary>
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(DeclarationModifierCodeFixProvider))]
 [Shared]
@@ -21,14 +21,14 @@ public sealed class DeclarationModifierCodeFixProvider : CodeFixProvider
     /// callbacks, initializers, background workers, backend tests, native callback handlers and output plugin initializers.
     /// </summary>
     private static readonly ImmutableArray<string> s_staticIds =
-        ["ANKUS033", "ANKUS208", "ANKUS232", "ANKUS251", "ANKUS291", "ANKUS332", "ANKUS516"];
+        ["ANKUS033", "ANKUS130", "ANKUS208", "ANKUS232", "ANKUS251", "ANKUS291", "ANKUS332", "ANKUS516"];
 
     /// <summary>
     /// The diagnostics for declarations or containing types that generated code cannot reach, including file-local types.
     /// </summary>
     private static readonly ImmutableArray<string> s_reachableIds =
     [
-        "ANKUS034", "ANKUS043", "ANKUS135", "ANKUS143", "ANKUS174", "ANKUS178", "ANKUS179", "ANKUS213", "ANKUS222", "ANKUS223",
+        "ANKUS034", "ANKUS043", "ANKUS130", "ANKUS135", "ANKUS143", "ANKUS174", "ANKUS178", "ANKUS179", "ANKUS213", "ANKUS222", "ANKUS223",
         "ANKUS240", "ANKUS243", "ANKUS244", "ANKUS261", "ANKUS264", "ANKUS265", "ANKUS281", "ANKUS282", "ANKUS296", "ANKUS302",
         "ANKUS303", "ANKUS321", "ANKUS428", "ANKUS522", "ANKUS523",
     ];
@@ -39,9 +39,15 @@ public sealed class DeclarationModifierCodeFixProvider : CodeFixProvider
     private static readonly ImmutableArray<string> s_partialContainerIds = ["ANKUS180", "ANKUS304", "ANKUS322"];
 
     /// <summary>
+    /// The diagnostic for a static class declared as a PostgreSQL type, whose values need instances.
+    /// </summary>
+    private const string StaticTypeId = "ANKUS425";
+
+    /// <summary>
     /// Gets the declaration diagnostics corrected by this provider.
     /// </summary>
-    public override ImmutableArray<string> FixableDiagnosticIds => [.. s_staticIds, .. s_reachableIds, .. s_partialContainerIds];
+    public override ImmutableArray<string> FixableDiagnosticIds =>
+        [.. s_staticIds, .. s_reachableIds.Where(id => !s_staticIds.Contains(id)), .. s_partialContainerIds, StaticTypeId];
 
     /// <summary>
     /// Gets batch support for independent declaration corrections.
@@ -94,6 +100,13 @@ public sealed class DeclarationModifierCodeFixProvider : CodeFixProvider
                 SyntaxNode partial = root.ReplaceNode(container, DeclarationModifiers.AddPartial(container));
                 context.RegisterCodeFix(CodeAction.Create($"Make '{container.Identifier.ValueText}' partial",
                     _ => Task.FromResult(context.Document.WithSyntaxRoot(partial)), "Ankus.MakeContainerPartial"), diagnostic);
+            }
+            else if (diagnostic.Id == StaticTypeId && identifier.Parent is ClassDeclarationSyntax type && type.Identifier == identifier &&
+                type.Modifiers.IndexOf(SyntaxKind.StaticKeyword) is var index and >= 0)
+            {
+                context.RegisterCodeFix(CompilerErrorComparison.CreateAction(context.Document,
+                    root.ReplaceNode(type, DeclarationModifiers.Remove(type, index)), $"Make '{type.Identifier.ValueText}' non-static",
+                    "Ankus.MakeTypeNonStatic"), diagnostic);
             }
         }
     }

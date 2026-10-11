@@ -389,7 +389,10 @@ handler signature that needs correction.
 Editors offer **Make static** for `ANKUS312` and `ANKUS332`, **Make partial**
 for `ANKUS317` and `ANKUS322`, **Make internal** for `ANKUS321`, **Remove** for
 `ANKUS276` and `ANKUS343`, and **Pass by value** for an `in` or `ref readonly`
-handler argument (`ANKUS341`).
+handler argument (`ANKUS341`). They also offer **Return by value** for
+`ANKUS313` and `ANKUS339`, **Remove the `set` accessor** for `ANKUS316`,
+**Remove the implementation** for `ANKUS318` and **Make synchronous** for an
+`async` handler that awaits nothing (`ANKUS335`).
 
 For example, install an executor hook and retain the previous hook explicitly:
 
@@ -911,4 +914,5 @@ an attribute with the same metadata name in another assembly cannot replace it.
 | `ANKUS204` | Rebuild the defining assembly so its mapping attribute contains complete, valid UTF-8 metadata. |
 
 Editors offer **Make internal** for a private, protected or file-local carrier
-(`ANKUS135`) or converter (`ANKUS143`).
+(`ANKUS135`) or converter (`ANKUS143`), and **Remove** for a `PgSqlType` or
+`PgCompositeType` override on a mapped value (`ANKUS151`).

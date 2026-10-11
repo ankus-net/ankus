@@ -152,5 +152,6 @@ their output.
 | ANKUS526 | Declare one initializer per extension; the library exports one `_PG_output_plugin_init`. |
 | ANKUS277 | Remove `Conditional` so every native invocation runs the initializer. |
 
-Editors offer **Make static** for ANKUS516, **Make internal** for ANKUS522
-and ANKUS523, and **Remove** for ANKUS277 and ANKUS524.
+Editors offer **Make static** for ANKUS516, **Make synchronous** for ANKUS517,
+**Make internal** for ANKUS522 and ANKUS523, and **Remove** for ANKUS277 and
+ANKUS524.

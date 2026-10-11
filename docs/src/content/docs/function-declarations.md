@@ -412,7 +412,18 @@ context**. This removes `PgParameter` from injected `PgFunctionContext` and
 `PgMemoryContext` parameters while retaining ordinary SQL inputs, their metadata,
 and unrelated attributes. The correction also supports the editor's **Fix all**
 action. For `ANKUS053`, **Remove** deletes `Rows` or `SetMode` from a function
-without a set result.
+without a set result. It also removes `PgColumnNames` from a function without a
+set result (`ANKUS396`) and a `Column` or `Element` selector where none applies
+(`ANKUS411`, `ANKUS412`).
+
+**Make synchronous** removes `async` from an entry that awaits nothing and returns
+the value or sequence it already produces: `Task<T>` becomes `T`, `Task` becomes
+`void`, and `IAsyncEnumerable<T>` becomes `IEnumerable<T>` (`ANKUS030`–`ANKUS032`).
+**Return by value** removes `ref` from a result (`ANKUS037`). For `ANKUS057`,
+**Remove** deletes `Element`, and **Declare with `params`** replaces
+`Variadic = true` on a final array parameter. These corrections leave the source
+unchanged when a caller would no longer compile, such as one that awaits the
+entry.
 
 Declaration errors point to the option value, result type or parameter that
 needs correction. Schema errors point to the schema argument, including named
