@@ -112,8 +112,10 @@ The publication still keeps its SQL and control files together under
 
 ## Build for another architecture
 
-Native AOT can build for another architecture of the same operating system, such
-as Intel macOS from Apple silicon. Ankus also needs the target's PostgreSQL
+Native AOT can build for another architecture of the same operating system.
+Ankus provides runtimes for `linux-x64`, `win-x64`, `osx-arm64` and `osx-x64`, so
+this applies to the two macOS architectures, such as building Intel macOS
+extensions on Apple silicon. Ankus also needs the target's PostgreSQL
 headers and the native layouts measured from them. It measures layouts by
 compiling and running small C programs, which must run on the target, so the
 target machine captures both once. pgrx's `cargo pgrx cross pgrx-target` captures
@@ -147,9 +149,8 @@ target's library and share directories. The build machine does not discover
 declarations or measure layouts, so it needs neither LLVM Clang 20 nor `libclang`
 nor a PostgreSQL installation. It still compiles the native wrapper against the
 archived headers with Native AOT's own compiler and linker, which must build for
-the target architecture, with the target's C library headers. macOS SDKs cover
-both architectures; Linux and Windows need the target architecture's sysroot or
-libraries. With `dotnet publish`, select the runtime and the archive:
+the target architecture; macOS SDKs cover both. With `dotnet publish`, select the
+runtime and the archive:
 
 ```console
 dotnet publish -c Release -r osx-x64 -p:AnkusTargetInfo=ankus-target.pg18.osx-x64.zip
@@ -162,8 +163,8 @@ export again after upgrading Ankus. Run tests on the target machine; `ankus test
 and `ankus run` need a local server and do not accept target information.
 
 Building from target information is tested on Linux x64 and Windows x64 with the
-same architecture on both sides. The Intel-from-Apple-silicon check is new and
-other cross-architecture combinations are not yet verified.
+same architecture on both sides, and for Intel macOS from Apple silicon, where
+the result loads into PostgreSQL on an Intel Mac.
 
 ## Inspect installation SQL
 

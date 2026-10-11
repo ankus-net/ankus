@@ -273,7 +273,7 @@ To build for another architecture, such as Intel macOS from Apple silicon, run
 `ankus target export --pg 18` on the target machine and pass its archive to
 `ankus package --target-info`. The archive carries that installation's headers,
 `pg_config` values and measured native layouts; a pgrx target bundle holds only
-the generated bindings. Cross-architecture builds are not yet verified. See
+the generated bindings. See
 [building for another architecture](docs/src/content/docs/getting-started/publishing.md#build-for-another-architecture).
 
 Use `--configuration Shipping` to select a custom MSBuild configuration when

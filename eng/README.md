@@ -111,7 +111,9 @@ PostgreSQL 18 target information for the Hello sample, the Apple silicon runner
 builds `osx-x64` from that archive with Clang and libclang unavailable, reusing
 the primary workflow's cached `osx-arm64` compiler, and the Intel runner loads
 the result into a temporary server and calls it. A `jobs` dispatch input of
-`tests` or `target` runs only the suites or only this check.
+`tests` or `target` runs only the suites or only this check. The first run took
+94 seconds to export with a cold binding cache, 67 seconds to build and 32
+seconds to load; each job allows 10 or 15 minutes.
 
 The `PostgreSQL versions` workflow runs complete Linux x64 suites for PostgreSQL
 13–17 and 19 weekly. Manual dispatch selects one major, including 18, or all six

@@ -188,7 +188,8 @@ jobs:
     if: github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main' && inputs.jobs != 'tests'
     name: target export (osx-x64)
     runs-on: [self-hosted, macOS, X64, ankus-macos-x64]
-    timeout-minutes: 30
+    # The first export, with a cold binding source cache, took 94 seconds.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
 
@@ -220,7 +221,8 @@ jobs:
     if: github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main' && inputs.jobs != 'tests'
     name: target build (osx-x64 on osx-arm64)
     runs-on: ankus-macos-arm64
-    timeout-minutes: 30
+    # The first cross build took 67 seconds.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
 
@@ -269,7 +271,8 @@ jobs:
     if: github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main' && inputs.jobs != 'tests'
     name: target verify (osx-x64)
     runs-on: [self-hosted, macOS, X64, ankus-macos-x64]
-    timeout-minutes: 15
+    # The first load check took 32 seconds.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
 

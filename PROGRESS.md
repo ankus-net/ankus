@@ -78,7 +78,7 @@ defines the full scope; family-level implementation is not API-by-API completion
 | Values and ownership | Documented scalar, array, composite, temporal, JSON, network, geometry, custom codec and raw datum contracts. Interval equality, hashing and ordering agree with PostgreSQL while retaining exact components; complete primary-platform CI passes. | Remaining mapped/container contracts, parsing/formatting ergonomics and complete source-case mapping remain required. |
 | Runtime performance | Owned binary PgNumeric, direct decimal coefficient encoding, constant-time fixed-width array indexing, and a measured native guard for allowlisted pure built-ins. Catalog-miss errors require actual rollback; real-resource regressions and complete primary-platform CI pass. Persistent in-backend benchmarks provide batching, transaction modes and statistical baseline comparisons. | Complete current guard supported-version acceptance. Extend that tier only where ownership proofs and measurements justify it. Never weaken error recovery to reduce overhead. |
 | Native bindings | pgrx 0.19.3 inventories, matching PostgreSQL 19 beta 4 inputs and target-compiler ABI checks; typed pointers and ANKUS129 make raw caller obligations explicit. Complete current primary-platform compositions pass, with focused binding checks on all seven majors. | Full supported-major/platform tests and final inventory audit. |
-| Development CLI | Version/project selection, installation/registration, cluster lifecycle, run/connect, test/regress/bench, property forwarding, environment selection, scriptable info, package prefixes and target export with `--target-info` builds. Benchmarks are measured inside PostgreSQL and retained in named comparison groups. `install --sudo`, `test --runas` and `regress --runas` follow cargo-pgrx with real-account evidence. | A first cross-architecture CI run of target export, build and load. Run-as cases now run on every runner; the Linux PostgreSQL 16 rerun ([38115917411](https://github.com/willibrandon/ankus/actions/runs/38115917411)) has 52 skips where it had 55. Persistent clusters already retain Windows event-log diagnostics through `PostgresServerLog`. |
+| Development CLI | Version/project selection, installation/registration, cluster lifecycle, run/connect, test/regress/bench, property forwarding, environment selection, scriptable info, package prefixes and target export with `--target-info` builds, including Intel macOS from Apple silicon. Benchmarks are measured inside PostgreSQL and retained in named comparison groups. `install --sudo`, `test --runas` and `regress --runas` follow cargo-pgrx with real-account evidence. | Run-as cases now run on every runner; the Linux PostgreSQL 16 rerun ([38115917411](https://github.com/willibrandon/ankus/actions/runs/38115917411)) has 52 skips where it had 55. Persistent clusters already retain Windows event-log diagnostics through `PostgresServerLog`. |
 | .NET templates | Version-matched ordinary extension and worker templates reuse the CLI assets and pin local tools. Optional xUnit/NUnit consumers exercise managed and named backend cases, ignore reasons, worker processes and cleanup alongside default MSTest consumers; all three list backend cases with `dotnet test --list-tests` before anything is published. Complete primary-platform CI passes. | Complete version/platform acceptance. |
 | API discoverability | Idiomatic attributed declarations, documented runtime APIs, named logging helpers and typed SPI interpolation. Compiler transport helpers are isolated in Ankus.CompilerServices and hidden from IntelliSense; complete primary-platform CI passes. `PgAssert` adds MSTest's tolerance, text and count checks. | Final inventory audit. |
 | Packages and release | MIT license, Brandon Williams copyright, author/repository/project metadata and deliberate SDK/runtime boundaries. | Full release gates and supported-platform packages before publishing 0.1.0. |
@@ -119,12 +119,12 @@ timings, rejected attempts and superseded
 results remain in the [acceptance history](docs/contributing/evidence/port-history.md#superseded-active-and-primary-acceptance-detail-before-sqldatetime-acceptance-2026-10-06).
 These results establish the named combinations, not full-port completion.
 
-Every row below uses the current runtime. Still pending: macOS x64 on 19 beta;
-the [weekly Intel run](https://github.com/willibrandon/ankus/actions/runs/38115991171)
-passes 13, 14, 15, 16 and 17.
+Every row below uses the current runtime, and every supported major now passes
+on every platform.
 
 | Earlier complete evidence | Platform / PostgreSQL | Result | Duration |
 | --- | --- | --- | --- |
+| [Intel weekly 38115991171](https://github.com/willibrandon/ankus/actions/runs/38115991171), **f220a27 / ankus.5** | macOS x64 / each of 13–18 and 19 beta | 14,654 total per major; 14,589 passed; 65 platform skips; zero failures | 1h21m36s–1h24m00s jobs, run in turn |
 | [Version CI 38102793609](https://github.com/willibrandon/ankus/actions/runs/38102793609), **be3fbcd / ankus.5** | Linux x64 / each of 13–17 and 19 beta 4 | 14,512 total per major; 14,457–14,460 passed; 52–55 platform skips; zero failures | 27m31s–35m27s jobs; 1h24m for three reruns sharing one host |
 | [Platform versions 38109393201](https://github.com/willibrandon/ankus/actions/runs/38109393201), **660ea5e / ankus.5** | macOS ARM64 / each of 13–17 and 19 beta 4 (assertions enabled) | 14,642 total per major; 14,573–14,577 passed; 65–69 platform skips; zero failures | 25m52s–32m09s jobs |
 | Same platform-versions run / revision / runtime | Windows x64 / each of 13–16 and 18 | 14,642 total per major; 14,596 passed; 46 platform skips; zero failures | 29m47s–1h00m43s jobs |
@@ -170,13 +170,18 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   CI. That run ([38137637601](https://github.com/willibrandon/ankus/actions/runs/38137637601))
   failed only a new unit test whose Windows cppflags used backslashes, which
   pg_config's shell words treat as escapes; it was fixed in **699d12a**. The
-  Intel-from-Apple-silicon CI jobs have not run yet.
+  first cross-architecture run ([38137646798](https://github.com/willibrandon/ankus/actions/runs/38137646798),
+  **0330d0c**) passes: the Intel runner exported PostgreSQL 18.6 in 94
+  seconds, the Apple silicon runner built an x86_64 Hello library from the
+  archive in 67 seconds with Clang and libclang unreachable, and the Intel
+  runner loaded it into a temporary server, where `add(19, 23)` returned 42.
 - Aggregate support calls now keep their per-call-site state in `fn_extra`, as
   PostgreSQL's own aggregates do. Each transition used to look up the catalog
   signature, rebuild the aggregate's metadata and create and delete a memory
   context; it now reuses them and resets one scratch context per row. An `int`
   sum with a `long` state costs 170 ns per row over the built-in `sum` on a
-  PostgreSQL 18.6 release build, down from 333 ns. `PgAtomicValue<T>` gains
+  PostgreSQL 18.6 release build, down from 333 ns, and 156 ns once rows without
+  `ORDER BY` stopped allocating sort-key lists. `PgAtomicValue<T>` gains
   the `Max` and `Min` that `PgAtomic<T>` has.
 - The pending-interrupt test failed once on macOS arm64
   ([38131906576](https://github.com/willibrandon/ankus/actions/runs/38131906576)):
@@ -741,18 +746,16 @@ Earlier entries in this log are in the
 ## Remaining work order
 
 Primary CI, the Linux, macOS ARM64 and Windows x64 version matrices, including
-PostgreSQL 19 beta, and Intel macOS on 13–18 all pass on runtime **ankus.5**. The
+PostgreSQL 19 beta, and Intel macOS on 13–18 and 19 beta all pass on runtime **ankus.5**. The
 declaration audit against pgrx 0.19.3 has no open option, and the third code
 review's findings are fixed or kept by documented design.
 
 1. Resolve discovered correctness and CI failures before accepting affected work, including the intermittent macOS PostgreSQL 19 `AllocSetCheck` fault if it recurs.
 2. Complete every pgrx 0.19.3 release-delta gate, including deterministic header discovery/regeneration, newly exposed native contracts, all CLI/configuration/output forwarding and allocation/shared-memory/varlena audits. Refresh evidence against the corrected current source.
-3. Finish supported-major/platform coverage: Intel macOS on 19 beta (the weekly run is in progress; 13–17 pass).
-4. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
-5. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees.
-6. Prove cross-target builds across architectures: the `target-export`, `target-build` and `target-verify` jobs build Intel macOS from Apple silicon and load the result; record their first run. Linux and Windows cross builds need a target sysroot and remain unverified.
-7. Complete framework/discovery support, representative samples and the final documentation review.
-8. Complete .NET servicing and every release requirement in the full inventory, using the release rehearsal, before publishing 0.1.0. If .NET 11 reaches GA first, complete its acceptance for that release; preview validation does not block the initial .NET 10 release.
+3. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
+4. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees.
+5. Complete framework/discovery support, representative samples and the final documentation review.
+6. Complete .NET servicing and every release requirement in the full inventory, using the release rehearsal, before publishing 0.1.0. If .NET 11 reaches GA first, complete its acceptance for that release; preview validation does not block the initial .NET 10 release.
 
 Continue independent work while CI runs. Before every commit and push, check and
 record previous run outcomes, including live runs, and resolve reported failures.
