@@ -144,9 +144,20 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   automatic getter also
   gets **Make static** (ANKUS170) and **Make partial** (ANKUS173), an authored
   getter can be removed (ANKUS175), and a container class made partial
-  (ANKUS180). Generator tests compare
+  (ANKUS180). ANKUS038 offers **Pass by value** for `in` and `ref readonly`
+  parameters, removing the modifier from every partial declaration and the `in`
+  or `ref` from callers' arguments across the solution; the edit is dropped when
+  any changed project gains a compiler error, as with a delegate, function
+  pointer or overload that needs the reference. `ref` and `out` get no fix.
+  Generator tests compare
   the complete corrected source, regenerate it without diagnostics, and check
   that no fix is offered where the result would not compile.
+- The PgFunction options were audited against pgrx 0.19.3's `#[pg_extern]`
+  attributes. Each option has an equivalent: `raw` maps to raw SQL value
+  parameters and results, and `should_panic` to `PgTest.ExpectedError`. Only
+  `no_guard` is absent, deliberately, because every entry runs behind the
+  native guard. Leakproof, rows, SET clauses and search paths go beyond pgrx's
+  set.
 - Binding catalogs can now be derived from the installed headers, as pgrx
   runs bindgen at build time, instead of from pgrx's generated output.
   `binding-catalog-headers` reads the header manifest through the compiler's

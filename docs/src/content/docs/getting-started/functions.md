@@ -115,11 +115,15 @@ Invalid signatures report a specific error at the offending declaration:
 | ANKUS042 | Reduce the number of SQL arguments to 100 or fewer. |
 | ANKUS043 | Move the method out of a file-local type. |
 
-Editors offer fixes for ANKUS033, ANKUS034 and ANKUS043. **Make static**
+Editors offer fixes for ANKUS033, ANKUS034, ANKUS038 and ANKUS043. **Make static**
 appears when the method uses no instance state and no caller invokes it through
 an instance. **Make internal** replaces a private or protected accessibility on
 the method, or on a containing type and each of its partial declarations, and
 replaces `file` on a containing type when no other type shares its name.
+**Pass by value** removes `in` or `ref readonly` from the parameter and from
+callers' arguments, and leaves the source unchanged if a delegate, overload or
+interface still needs the reference. `ref` and `out` get no fix, because the
+caller would no longer see the method's writes.
 
 Task and asynchronous iterator diagnostics are described in
 [execution constraints](/reference/execution/#backend-threads-and-tasks).
