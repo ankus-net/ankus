@@ -8,12 +8,16 @@ namespace Ankus;
 /// </remarks>
 public readonly ref struct PgCustomScanContext
 {
-    internal PgCustomScanContext(uint relationOid, PgTupleDescriptor descriptor, ReadOnlySpan<byte> data, bool isExplainOnly)
+    private readonly ReadOnlySpan<byte> _read;
+
+    internal PgCustomScanContext(uint relationOid, PgTupleDescriptor descriptor, ReadOnlySpan<byte> data, bool isExplainOnly,
+        ReadOnlySpan<byte> read)
     {
         RelationOid = relationOid;
         Descriptor = descriptor;
         Data = data;
         IsExplainOnly = isExplainOnly;
+        _read = read;
     }
 
     /// <summary>
@@ -35,4 +39,20 @@ public readonly ref struct PgCustomScanContext
     /// Gets whether the executor only explains the plan and will not request rows.
     /// </summary>
     public bool IsExplainOnly { get; }
+
+    /// <summary>
+    /// Gets whether PostgreSQL reads a column from the scan's rows, for the query's output or its conditions.
+    /// </summary>
+    /// <param name="ordinal">The column's zero-based position in <see cref="Descriptor"/>.</param>
+    /// <returns>
+    /// Whether the column is read. A provider can leave a column that PostgreSQL does not read unset, even when the
+    /// column is <c>NOT NULL</c>, and skip the work of producing it.
+    /// </returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="ordinal"/> is not a column of the table.</exception>
+    public bool IsColumnRead(int ordinal)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(ordinal);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(ordinal, Descriptor.Attributes.Count);
+        return ordinal >= _read.Length || _read[ordinal] != 0;
+    }
 }

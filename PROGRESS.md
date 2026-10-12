@@ -174,6 +174,21 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   fixed the rows cost 182 ns and 330 ns. See the
   [measurements](docs/contributing/evidence/guard-tiers.md#managed-custom-scans).
   The PostgreSQL 18 suite passes with these changes.
+- Today's native bridge changes (trigger call sites, type modifiers, domains,
+  row writes, setting reads and managed custom scans) were checked on every
+  supported major: the 540 trigger, composite, tuple, domain, setting and
+  custom scan backend tests pass on Linux x64 with PostgreSQL 14, 15, 16, 17
+  and 19 beta 4, as they did earlier on 13 and 18.
+- Managed custom scan providers learn which columns PostgreSQL reads. At plan
+  time the bridge collects the columns the query needs above the scan and
+  those its conditions use, as postgres_fdw does; a whole-row reference reads
+  them all. `PgCustomScanContext.IsColumnRead` exposes the set, and a column
+  that is not read may stay unset even when it is `NOT NULL`. The sample skips
+  formatting its label when no query reads it. PostgreSQL 19 rewrites
+  `count(label)` on a `NOT NULL` column to `count(*)`, which the tests now
+  account for. The 78 custom scan backend tests pass on PostgreSQL 13, 18 and
+  19 beta 4, and the full PostgreSQL 18 suite passes (14,858 tests, 52 platform
+  skips).
 - Writing a row to native code encodes column names once per descriptor, tracks
   cycles only for rows with nested values, reuses the outermost buffer and
   encodes text straight into it. A trigger row's overhead fell from 1.42 µs to
@@ -233,8 +248,8 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   It stays open under the first remaining-work item until it recurs with
   evidence. CI for **41b2111**
   ([38204764541](https://github.com/willibrandon/ankus/actions/runs/38204764541)),
-  **6c008fc**, **f95d2cb**, **8bb5954**, **0883b1e**, **50c1491** and the
-  earlier commits passed on all three platforms.
+  **6c008fc**, **f95d2cb**, **8bb5954**, **0883b1e**, **50c1491**, **feb2e51**
+  and the earlier commits passed on all three platforms.
 - GUC hook (`ANKUS199`–`ANKUS201`) and benchmark setup (`ANKUS131`) errors
   now say what is wrong with the named method, such as "'Hook' returns bool"
   or "'Settings' has no method named 'Hook'", instead of restating the whole

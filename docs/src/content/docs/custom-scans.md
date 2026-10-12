@@ -60,7 +60,10 @@ relation path hook after any existing one. The calls happen in this order:
    keep them.
 2. `Begin` runs when the executor starts the scan. The context has the table's
    descriptor and the path's bytes. `IsExplainOnly` is true for EXPLAIN without
-   ANALYZE, which starts the scan but never reads it.
+   ANALYZE, which starts the scan but never reads it. `IsColumnRead` tells
+   whether PostgreSQL reads a column, for the query's output or its
+   conditions; a provider can leave the other columns unset and skip producing
+   them.
 3. `Read` fills one row and returns `true`, or returns `false` when the scan has
    no more rows. Columns left unset are SQL NULL. PostgreSQL applies the query's
    conditions and projection to every row, so a provider can return more rows
@@ -79,7 +82,7 @@ provider.
 
 An exception from any of these methods becomes a PostgreSQL error, and the
 session can run the next statement. A row that leaves a `NOT NULL` column empty
-is rejected with an error.
+is rejected with an error, unless PostgreSQL does not read that column.
 
 Ankus does not offer a provider's paths in these cases:
 

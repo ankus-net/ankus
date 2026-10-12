@@ -14,6 +14,7 @@ internal static class NativeCustomScanBridge
     /// Declares the request shared with managed providers and the provider table entry.
     /// </summary>
     internal const string Declarations = """
+        #include "access/sysattr.h"
         #include "catalog/pg_class.h"
         #include "commands/explain.h"
         #if PG_VERSION_NUM >= 180000
@@ -47,6 +48,7 @@ internal static class NativeCustomScanBridge
             AnkusValue relation_name;
             AnkusValue schema_name;
             AnkusValue data;
+            AnkusValue read;
             AnkusValue output;
         } AnkusCustomScanRequest;
 
@@ -290,15 +292,27 @@ internal static class NativeCustomScanBridge
         {
             CustomScan *scan = makeNode(CustomScan);
             int provider = intVal(linitial(best_path->custom_private));
+            Bitmapset *attributes = NULL;
+            bytea *read = palloc0(VARHDRSZ + Max(rel->max_attr, 0));
+            bool whole_row;
             (void) root;
             scan->scan.plan.targetlist = tlist;
             /* PostgreSQL evaluates the conditions on each row the provider produces. */
             scan->scan.plan.qual = extract_actual_clauses(clauses, false);
+            /* The columns PostgreSQL reads from the scan's rows: those the query needs above the scan, as
+             * postgres_fdw collects them, and those its conditions use. A whole-row reference reads all. */
+            pull_varattnos((Node *) rel->reltarget->exprs, rel->relid, &attributes);
+            pull_varattnos((Node *) scan->scan.plan.qual, rel->relid, &attributes);
+            whole_row = bms_is_member(0 - FirstLowInvalidHeapAttributeNumber, attributes);
+            SET_VARSIZE(read, VARHDRSZ + Max(rel->max_attr, 0));
+            for (AttrNumber attribute = 1; attribute <= rel->max_attr; attribute++)
+                VARDATA(read)[attribute - 1] = whole_row || bms_is_member(attribute - FirstLowInvalidHeapAttributeNumber, attributes);
             scan->scan.scanrelid = rel->relid;
             scan->flags = best_path->flags;
             scan->custom_plans = custom_plans;
             scan->custom_exprs = NIL;
-            scan->custom_private = best_path->custom_private;
+            scan->custom_private = lappend(list_copy(best_path->custom_private),
+                makeConst(BYTEAOID, -1, InvalidOid, -1, PointerGetDatum(read), false, false));
             scan->custom_scan_tlist = NIL;
             scan->methods = &ankus_custom_scan_plan_methods[provider];
             return &scan->scan.plan;
@@ -361,7 +375,9 @@ internal static class NativeCustomScanBridge
             Relation relation = node->ss.ss_currentRelation;
             TupleDesc descriptor = RelationGetDescr(relation);
             Const *data = lsecond_node(Const, ((CustomScan *) node->ss.ps.plan)->custom_private);
+            Const *read = lthird_node(Const, ((CustomScan *) node->ss.ps.plan)->custom_private);
             bytea *bytes = DatumGetByteaPP(data->constvalue);
+            bytea *read_bytes = DatumGetByteaPP(read->constvalue);
             AnkusError error = {0};
             int status;
             state->query = estate->es_query_cxt;
@@ -380,6 +396,8 @@ internal static class NativeCustomScanBridge
             state->request.flags = (eflags & EXEC_FLAG_EXPLAIN_ONLY) != 0 ? 1 : 0;
             state->request.data.data = (unsigned char *) VARDATA_ANY(bytes);
             state->request.data.length = VARSIZE_ANY_EXHDR(bytes);
+            state->request.read.data = (unsigned char *) VARDATA_ANY(read_bytes);
+            state->request.read.length = VARSIZE_ANY_EXHDR(read_bytes);
             state->reset.func = ankus_custom_scan_abort;
             state->reset.arg = state;
             MemoryContextRegisterResetCallback(estate->es_query_cxt, &state->reset);

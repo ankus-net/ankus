@@ -118,26 +118,58 @@ public sealed partial class CustomScanTests
     /// disposed while the query aborts, and the same session keeps working.
     /// </summary>
     /// <param name="setup">The table or setting that makes the scan fail.</param>
-    /// <param name="table">The scanned table.</param>
+    /// <param name="query">The failing query.</param>
     /// <param name="message">The expected error message.</param>
     [TestMethod]
-    [DataRow("SET ankus_trace_scan.numbers_fail_at = 3", "numbers_a", "The numbers scan failed at 3.")]
-    [DataRow("CREATE TEMP TABLE numbers_strict(value bigint, label text NOT NULL)", "numbers_strict",
+    [DataRow("SET ankus_trace_scan.numbers_fail_at = 3", "SELECT count(*) FROM numbers_a", "The numbers scan failed at 3.")]
+    [DataRow("CREATE TEMP TABLE numbers_strict(value bigint, label text NOT NULL)", "SELECT max(length(label))::bigint FROM numbers_strict",
         "Custom scan rows cannot hold NULL in NOT NULL column 'label'.")]
-    public async Task ManagedProviderFailuresRecover(string setup, string table, string message)
+    public async Task ManagedProviderFailuresRecover(string setup, string query, string message)
     {
         CancellationToken token = context.CancellationToken;
         await using NpgsqlConnection connection = await OpenNumbersAsync(5, token);
         await ExecuteAsync(connection, setup, token);
         long[] before = await NumberCountsAsync(connection, token);
         PostgresException error = await Assert.ThrowsExactlyAsync<PostgresException>(() =>
-            ScalarAsync<long>(connection, $"SELECT count(*) FROM {table}", token));
+            ScalarAsync<long>(connection, query, token));
         Assert.AreEqual(message, error.MessageText);
         long[] after = await NumberCountsAsync(connection, token);
         Assert.AreEqual(1, after[0] - before[0]);
         Assert.AreEqual(1, after[1] - before[1]);
         await ExecuteAsync(connection, "RESET ankus_trace_scan.numbers_fail_at", token);
         Assert.AreEqual(5L, await ScalarAsync<long>(connection, "SELECT count(*) FROM numbers_a", token));
+    }
+
+    /// <summary>
+    /// A provider learns which columns PostgreSQL reads, from the query's output or its conditions, and may leave the
+    /// others unset even when they are <c>NOT NULL</c>; a column that is read, including through a whole-row
+    /// reference, must still hold a value.
+    /// </summary>
+    /// <param name="query">The query over a table whose NOT NULL label the provider fills only when it is read.</param>
+    /// <param name="expected">The query's result, or null when it must fail.</param>
+    [TestMethod]
+    [DataRow("SELECT count(*) FROM numbers_strict", 5L)]
+    [DataRow("SELECT sum(value)::bigint FROM numbers_strict WHERE value > 2", 12L)]
+    [DataRow("SELECT count(*) FROM numbers_strict WHERE label <> 'x'", null)]
+    [DataRow("SELECT count(numbers_strict) FROM numbers_strict", null)]
+    public async Task ManagedProviderSkipsUnreadColumns(string query, long? expected)
+    {
+        CancellationToken token = context.CancellationToken;
+        await using NpgsqlConnection connection = await OpenNumbersAsync(5, token);
+        await ExecuteAsync(connection, "CREATE TEMP TABLE numbers_strict(value bigint, label text NOT NULL)", token);
+        using (JsonDocument plan = await ExplainAsync(connection, query, false, token))
+        {
+            _ = FindNode(plan.RootElement[0].GetProperty("Plan"), "Custom Scan");
+        }
+
+        if (expected is long value)
+        {
+            Assert.AreEqual(value, await ScalarAsync<long>(connection, query, token));
+            return;
+        }
+
+        PostgresException error = await Assert.ThrowsExactlyAsync<PostgresException>(() => ScalarAsync<long>(connection, query, token));
+        Assert.AreEqual("Custom scan rows cannot hold NULL in NOT NULL column 'label'.", error.MessageText);
     }
 
     /// <summary>

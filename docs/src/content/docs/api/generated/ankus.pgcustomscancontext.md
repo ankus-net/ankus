@@ -66,3 +66,31 @@ public uint RelationOid { get; }
 ```
 
 Value: [uint](https://learn.microsoft.com/dotnet/api/system.uint32)
+
+
+## Methods
+
+<a id="member-b6e6a52a3d4531c1"></a>
+
+### IsColumnRead(int)
+
+Gets whether PostgreSQL reads a column from the scan's rows, for the query's output or its conditions.
+
+```csharp
+public bool IsColumnRead(int ordinal)
+```
+
+Parameters:
+
+`ordinal` — [int](https://learn.microsoft.com/dotnet/api/system.int32)
+
+The column's zero-based position in [Descriptor](/api/ankus.pgcustomscancontext/#member-94764bac31550381).
+
+Returns: [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
+
+Whether the column is read. A provider can leave a column that PostgreSQL does not read unset, even when the
+column is <code>NOT NULL</code>, and skip the work of producing it.
+
+Exceptions:
+
+- [ArgumentOutOfRangeException](https://learn.microsoft.com/dotnet/api/system.argumentoutofrangeexception): <code class="paramref">ordinal</code> is not a column of the table.

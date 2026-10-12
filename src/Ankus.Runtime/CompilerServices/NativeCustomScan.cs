@@ -73,6 +73,11 @@ public struct NativeCustomScanRequest
     internal NativeValue _data;
 
     /// <summary>
+    /// One borrowed byte per column, nonzero when PostgreSQL reads the column from the scan's rows.
+    /// </summary>
+    internal NativeValue _read;
+
+    /// <summary>
     /// Paths or EXPLAIN properties encoded for native code, owned by managed code until released.
     /// </summary>
     internal NativeValue _output;
@@ -185,12 +190,13 @@ public static unsafe class NativeCustomScan
         }
 
         byte[] data = request->_data.ReadBytes();
+        byte[] read = request->_read.ReadBytes();
         bool explainOnly = (request->_flags & 1) != 0;
-        TState state = begin(new PgCustomScanContext(request->_relation, descriptor, data, explainOnly))
+        TState state = begin(new PgCustomScanContext(request->_relation, descriptor, data, explainOnly, read))
             ?? throw new InvalidOperationException("A custom scan provider's Begin returned null.");
         try
         {
-            return GCHandle.ToIntPtr(GCHandle.Alloc(new Scan<TState>(state, request->_relation, descriptor, data, explainOnly)));
+            return GCHandle.ToIntPtr(GCHandle.Alloc(new Scan<TState>(state, request->_relation, descriptor, data, explainOnly, read)));
         }
         catch
         {
@@ -218,7 +224,8 @@ public static unsafe class NativeCustomScan
                 object? cell = attribute.IsDropped || attribute.IsUnavailable ? null : tuple.GetStoredCell(written);
                 if (cell is null)
                 {
-                    if (attribute.IsNotNull && !attribute.IsDropped)
+                    // A column PostgreSQL does not read can stay unset; nothing sees its NULL.
+                    if (attribute.IsNotNull && !attribute.IsDropped && (written >= scan.Read.Length || scan.Read[written] != 0))
                     {
                         throw new InvalidOperationException($"Custom scan rows cannot hold NULL in NOT NULL column '{attribute.Name}'.");
                     }
@@ -260,7 +267,7 @@ public static unsafe class NativeCustomScan
         TState? previous = scan.State;
         scan.State = null;
         (previous as IDisposable)?.Dispose();
-        scan.State = begin(new PgCustomScanContext(scan.Relation, scan.Descriptor, scan.Data, scan.ExplainOnly))
+        scan.State = begin(new PgCustomScanContext(scan.Relation, scan.Descriptor, scan.Data, scan.ExplainOnly, scan.Read))
             ?? throw new InvalidOperationException("A custom scan provider's Begin returned null.");
     }
 
@@ -353,7 +360,9 @@ public static unsafe class NativeCustomScan
     /// <param name="descriptor">The table's columns.</param>
     /// <param name="data">The chosen path's data.</param>
     /// <param name="explainOnly">Whether the executor only explains the plan.</param>
-    private sealed class Scan<TState>(TState state, uint relation, PgTupleDescriptor descriptor, byte[] data, bool explainOnly)
+    /// <param name="read">One byte per column, nonzero when PostgreSQL reads it.</param>
+    private sealed class Scan<TState>(TState state, uint relation, PgTupleDescriptor descriptor, byte[] data, bool explainOnly,
+        byte[] read)
         where TState : class
     {
         public TState? State
@@ -369,5 +378,7 @@ public static unsafe class NativeCustomScan
         public byte[] Data { get; } = data;
 
         public bool ExplainOnly { get; } = explainOnly;
+
+        public byte[] Read { get; } = read;
     }
 }

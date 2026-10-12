@@ -52,7 +52,7 @@ public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.Sta
         }
 
         // Settings are read once per scan; a backend call for every row would cost more than the row itself.
-        return new State(BinaryPrimitives.ReadInt32LittleEndian(context.Data), FailAt, context.Descriptor);
+        return new State(BinaryPrimitives.ReadInt32LittleEndian(context.Data), FailAt, context);
     }
 
     /// <inheritdoc />
@@ -104,13 +104,16 @@ public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.Sta
     /// </summary>
     public sealed class State : IDisposable
     {
-        internal State(int count, int failAt, PgTupleDescriptor descriptor)
+        internal State(int count, int failAt, PgCustomScanContext context)
         {
             Count = count;
             FailAt = failAt;
-            Value = descriptor.GetOrdinal("value");
-            Label = descriptor.Attributes.Select(static (attribute, index) => (attribute, index))
+            Value = context.Descriptor.GetOrdinal("value");
+            int label = context.Descriptor.Attributes.Select(static (attribute, index) => (attribute, index))
                 .FirstOrDefault(static item => item.attribute.Name == "label" && !item.attribute.IsDropped, (null!, -1)).index;
+
+            // A query that does not read the label skips formatting it.
+            Label = label >= 0 && context.IsColumnRead(label) ? label : -1;
         }
 
         /// <summary>
