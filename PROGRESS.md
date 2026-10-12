@@ -142,6 +142,15 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- CI for **74c3ee4** ([38193316088](https://github.com/willibrandon/ankus/actions/runs/38193316088))
+  failed once on macOS ARM64: the generator test process ended after 4,997 of
+  5,018 tests with no failed test (exit code 7, "test host process crashed").
+  The cases still running were the SPI interpolation flow-analysis tests. The
+  log, the TRX and the runner's crash and memory-pressure reports hold no stack
+  or cause. The rerun passed, and six direct runs on the same machine passed.
+  It stays open under the first remaining-work item until it recurs with
+  evidence. CI for **b978ac0**, **54c87a9**, **65a39f6** and the earlier
+  commits today passed on all three platforms.
 - GUC hook (`ANKUS199`–`ANKUS201`) and benchmark setup (`ANKUS131`) errors
   now say what is wrong with the named method, such as "'Hook' returns bool"
   or "'Settings' has no method named 'Hook'", instead of restating the whole
@@ -849,7 +858,7 @@ PostgreSQL 19 beta, and Intel macOS on 13–18 and 19 beta all pass on runtime *
 declaration audit against pgrx 0.19.3 has no open option, and the third code
 review's findings are fixed or kept by documented design.
 
-1. Resolve discovered correctness and CI failures before accepting affected work, including the intermittent macOS PostgreSQL 19 `AllocSetCheck` fault if it recurs.
+1. Resolve discovered correctness and CI failures before accepting affected work, including the intermittent macOS PostgreSQL 19 `AllocSetCheck` fault and the one macOS generator test-host crash if either recurs.
 2. Complete every pgrx 0.19.3 release-delta gate, including deterministic header discovery/regeneration, newly exposed native contracts, all CLI/configuration/output forwarding and allocation/shared-memory/varlena audits. Refresh evidence against the corrected current source.
 3. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
 4. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees.
