@@ -358,6 +358,37 @@ public sealed class PgHeapTupleTests
     }
 
     /// <summary>
+    /// Rows of one shape read one after another share a descriptor, while a row of the same type and modifier whose
+    /// columns differ gets its own.
+    /// </summary>
+    [TestMethod]
+    public void RowsOfOneShapeShareTheirDescriptor()
+    {
+        var descriptor = new PgTupleDescriptor(9182, -1, [new("name", 25, 25, -1, 100), new("count", 23, 23, -1, 0)]);
+        var renamed = new PgTupleDescriptor(9182, -1, [new("name", 25, 25, -1, 100), new("total", 23, 23, -1, 0)]);
+        PgHeapTuple first = RoundTrip(new PgHeapTuple(descriptor, ["a", 1]));
+        PgHeapTuple second = RoundTrip(new PgHeapTuple(descriptor, ["b", 2]));
+        PgHeapTuple third = RoundTrip(new PgHeapTuple(renamed, ["c", 3]));
+        Assert.AreSame(first.Descriptor, second.Descriptor);
+        Assert.AreEqual("b", second.Get<string>("name"));
+        Assert.AreNotSame(first.Descriptor, third.Descriptor);
+        Assert.AreEqual(3, third.Get<int>("total"));
+
+        static PgHeapTuple RoundTrip(PgHeapTuple tuple)
+        {
+            NativeValue encoded = NativeValue.FromTuple(tuple);
+            try
+            {
+                return encoded.ReadTuple();
+            }
+            finally
+            {
+                encoded.Release();
+            }
+        }
+    }
+
+    /// <summary>
     /// Independent wire bytes prove type/domain metadata and values without using the tuple writer as the oracle.
     /// </summary>
     [TestMethod]

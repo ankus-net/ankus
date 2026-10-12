@@ -13,6 +13,12 @@ public unsafe partial struct NativeValue
     private static ArrayBufferWriter<byte>? s_tupleBuffer;
 
     [ThreadStatic]
+    private static PgTupleDescriptor?[]? s_recentDescriptors;
+
+    [ThreadStatic]
+    private static int s_nextRecentDescriptor;
+
+    [ThreadStatic]
     private static int s_tupleWriteDepth;
 
     /// <summary>
@@ -24,7 +30,48 @@ public unsafe partial struct NativeValue
     /// Copies a composite or anonymous record, including its physical descriptor and nested owned values.
     /// </summary>
     /// <returns>The detached tuple. A SQL NULL transport must be handled by the caller.</returns>
-    public readonly PgHeapTuple ReadTuple() => ReadTuple(null);
+    /// <remarks>
+    /// Rows of one type usually arrive one after another, such as a composite argument on every call. The descriptor of
+    /// a recently read row of the same type and modifier is reused when every transported column matches it byte for
+    /// byte; otherwise the row gets a descriptor of its own.
+    /// </remarks>
+    public readonly PgHeapTuple ReadTuple()
+    {
+        PgTupleDescriptor? recent = FindRecentDescriptor();
+        PgHeapTuple tuple = ReadTuple(recent);
+        if (!ReferenceEquals(tuple.Descriptor, recent))
+        {
+            PgTupleDescriptor?[] descriptors = s_recentDescriptors ??= new PgTupleDescriptor?[8];
+            descriptors[s_nextRecentDescriptor] = tuple.Descriptor;
+            s_nextRecentDescriptor = (s_nextRecentDescriptor + 1) % descriptors.Length;
+        }
+
+        return tuple;
+    }
+
+    /// <summary>
+    /// Finds a recently read descriptor with the transported row type and modifier, without validating the transport.
+    /// </summary>
+    private readonly PgTupleDescriptor? FindRecentDescriptor()
+    {
+        if (s_recentDescriptors is not { } descriptors || !IsTuple || _data == null || _length < 12)
+        {
+            return null;
+        }
+
+        ReadOnlySpan<byte> header = new(_data, 8);
+        uint oid = BinaryPrimitives.ReadUInt32BigEndian(header);
+        int typeModifier = BinaryPrimitives.ReadInt32BigEndian(header[4..]);
+        foreach (PgTupleDescriptor? descriptor in descriptors)
+        {
+            if (descriptor is not null && descriptor.TypeOid == oid && descriptor.TypeModifier == typeModifier)
+            {
+                return descriptor;
+            }
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Copies a tuple, reusing a known descriptor when every transported attribute matches it, as each row of one

@@ -307,6 +307,108 @@ internal static class NativeTupleBridge
             ankus_tuple_transport_available(descriptor, declared_type, values, nulls, NULL, value, owned);
         }
 
+        /* Resolves a descriptor's column facts once, in the current memory context. */
+        static void
+        ankus_tuple_shape_build(TupleDesc descriptor, Oid declared_type, AnkusTupleShape *shape)
+        {
+            shape->declared_base = OidIsValid(declared_type) ? getBaseType(declared_type) : InvalidOid;
+            shape->count = descriptor->natts;
+            shape->fields = palloc0(sizeof(AnkusTupleShapeField) * Max(descriptor->natts, 1));
+            for (int index = 0; index < descriptor->natts; index++)
+                ankus_tuple_shape_field(TupleDescAttr(descriptor, index), &shape->fields[index], true);
+        }
+
+        /* Rows of one composite type usually cross the boundary one after another, such as a function's
+         * composite argument on every call. The backend keeps the resolved facts of a few recent row types.
+         * An entry is used only while every column still has the type, modifier, collation, flags and name
+         * it was built from, so a changed type gets a new entry. Entries are replaced only when no
+         * conversion is using one, because a composite column converts its own rows while its parent's
+         * entry is in use. */
+        #define ANKUS_TUPLE_SHAPES 16
+        typedef struct AnkusCachedShape
+        {
+            Oid type;
+            int32 modifier;
+            MemoryContext context;
+            FormData_pg_attribute *columns;
+            AnkusTupleShape shape;
+        } AnkusCachedShape;
+        static AnkusCachedShape ankus_tuple_shapes[ANKUS_TUPLE_SHAPES];
+        static int ankus_tuple_shape_count = 0;
+        static int ankus_tuple_shape_next = 0;
+        static int ankus_tuple_shape_depth = 0;
+        static MemoryContext ankus_tuple_shape_context = NULL;
+
+        static bool
+        ankus_tuple_shape_matches(const AnkusCachedShape *entry, TupleDesc descriptor, Oid type, int32 modifier)
+        {
+            if (entry->type != type || entry->modifier != modifier || entry->shape.count != descriptor->natts)
+                return false;
+            for (int index = 0; index < descriptor->natts; index++)
+            {
+                Form_pg_attribute attribute = TupleDescAttr(descriptor, index);
+                Form_pg_attribute cached = &entry->columns[index];
+                if (attribute->atttypid != cached->atttypid || attribute->atttypmod != cached->atttypmod ||
+                    attribute->attcollation != cached->attcollation || attribute->attisdropped != cached->attisdropped ||
+                    attribute->attnotnull != cached->attnotnull || strcmp(NameStr(attribute->attname), NameStr(cached->attname)) != 0)
+                    return false;
+            }
+
+            return true;
+        }
+
+        /* Returns the cached shape for a descriptor, or NULL when the cache cannot take another entry now. The
+         * caller holds ankus_tuple_shape_depth while it uses the shape. */
+        static AnkusTupleShape *
+        ankus_tuple_shape_find(TupleDesc descriptor, Oid type, int32 modifier)
+        {
+            AnkusCachedShape *entry;
+            MemoryContext previous;
+            for (int index = 0; index < ankus_tuple_shape_count; index++)
+            {
+                if (ankus_tuple_shape_matches(&ankus_tuple_shapes[index], descriptor, type, modifier))
+                    return &ankus_tuple_shapes[index].shape;
+            }
+
+            if (ankus_tuple_shape_count == ANKUS_TUPLE_SHAPES && ankus_tuple_shape_depth != 0)
+                return NULL;
+            if (ankus_tuple_shape_context == NULL)
+                ankus_tuple_shape_context = AllocSetContextCreate(TopMemoryContext, "Ankus tuple shapes", ALLOCSET_SMALL_SIZES);
+            if (ankus_tuple_shape_count < ANKUS_TUPLE_SHAPES)
+                entry = &ankus_tuple_shapes[ankus_tuple_shape_count];
+            else
+            {
+                entry = &ankus_tuple_shapes[ankus_tuple_shape_next];
+                ankus_tuple_shape_next = (ankus_tuple_shape_next + 1) % ANKUS_TUPLE_SHAPES;
+                MemoryContextDelete(entry->context);
+                memset(entry, 0, sizeof(*entry));
+            }
+
+            entry->context = AllocSetContextCreate(ankus_tuple_shape_context, "Ankus tuple shape", ALLOCSET_SMALL_SIZES);
+            previous = MemoryContextSwitchTo(entry->context);
+            PG_TRY();
+            {
+                entry->columns = palloc(sizeof(FormData_pg_attribute) * Max(descriptor->natts, 1));
+                for (int index = 0; index < descriptor->natts; index++)
+                    memcpy(&entry->columns[index], TupleDescAttr(descriptor, index), sizeof(FormData_pg_attribute));
+                ankus_tuple_shape_build(descriptor, type, &entry->shape);
+            }
+            PG_CATCH();
+            {
+                MemoryContextSwitchTo(previous);
+                MemoryContextDelete(entry->context);
+                memset(entry, 0, sizeof(*entry));
+                PG_RE_THROW();
+            }
+            PG_END_TRY();
+            MemoryContextSwitchTo(previous);
+            entry->type = type;
+            entry->modifier = modifier;
+            if (entry == &ankus_tuple_shapes[ankus_tuple_shape_count])
+                ankus_tuple_shape_count++;
+            return &entry->shape;
+        }
+
         static void
         ankus_read_tuple(Datum datum, AnkusValue *value, AnkusInputBuffer *owned)
         {
@@ -317,6 +419,7 @@ internal static class NativeTupleBridge
             HeapTupleData tuple = {0};
             Datum *values;
             bool *nulls;
+            volatile bool entered = false;
             check_stack_depth();
             if ((Pointer) header != DatumGetPointer(datum))
                 owned->detoasted = (struct varlena *) header;
@@ -327,11 +430,16 @@ internal static class NativeTupleBridge
             nulls = palloc(sizeof(bool) * Max(descriptor->natts, 1));
             PG_TRY();
             {
+                AnkusTupleShape *shape = ankus_tuple_shape_find(descriptor, type, modifier);
+                entered = true;
+                ankus_tuple_shape_depth++;
                 heap_deform_tuple(&tuple, descriptor, values, nulls);
-                ankus_tuple_transport(descriptor, type, values, nulls, value, owned);
+                ankus_tuple_transport_shaped(descriptor, type, shape, values, nulls, NULL, value, owned);
             }
             PG_FINALLY();
             {
+                if (entered)
+                    ankus_tuple_shape_depth--;
                 ReleaseTupleDesc(descriptor);
             }
             PG_END_TRY();
@@ -426,6 +534,7 @@ internal static class NativeTupleBridge
             HeapTuple tuple;
             Datum result;
             bool anonymous;
+            volatile bool entered = false;
             check_stack_depth();
             fields = ankus_tuple_fields(value, &type, &modifier, &count);
             for (int index = 0; index < count; index++)
@@ -448,34 +557,58 @@ internal static class NativeTupleBridge
                 ereport(ERROR, (errcode(ERRCODE_DATATYPE_MISMATCH), errmsg("Composite tuple layout changed after the managed value was captured")));
             values = palloc0(sizeof(Datum) * Max(count, 1));
             nulls = palloc(sizeof(bool) * Max(count, 1));
-            for (int index = 0; index < count; index++)
+            PG_TRY();
             {
-                Form_pg_attribute attribute = TupleDescAttr(descriptor, index);
-                AnkusTupleField *field = &fields[index];
-                AnkusParameter parameter = {0};
-                const char *name = NameStr(attribute->attname);
-                char *utf8 = pg_server_to_any(name, strlen(name), PG_UTF8);
-                bool same_name = strlen(utf8) == (Size) field->name_length && memcmp(utf8, field->name, field->name_length) == 0;
-                if (utf8 != name)
-                    pfree(utf8);
-                if (attribute->attisdropped != ((field->flags & 1) != 0) ||
-                    (!attribute->attisdropped && (attribute->atttypid != field->type ||
-                        attribute->atttypmod != field->modifier ||
-                        (!(anonymous && !OidIsValid(field->collation)) && attribute->attcollation != field->collation) || !same_name)))
-                    ereport(ERROR, (errcode(ERRCODE_DATATYPE_MISMATCH), errmsg("Composite attribute %d changed after the managed value was captured", index + 1)));
-                nulls[index] = field->value.is_null != 0 || attribute->attisdropped;
-                if (attribute->attisdropped)
-                    continue;
-                parameter.type_oid = attribute->atttypid;
-                parameter.value = field->value;
-                if (!nulls[index] && (getBaseType(parameter.type_oid) == JSONOID ||
-                    getBaseType(parameter.type_oid) == JSONBOID))
-                    parameter.value.data = (unsigned char *) pnstrdup((char *) parameter.value.data, parameter.value.length);
-                values[index] = ankus_parameter_datum(&parameter);
-                if (attribute->atttypmod >= 0)
-                    values[index] = ankus_coerce_value(values[index], &nulls[index], attribute->atttypid,
-                        attribute->atttypid, attribute->atttypmod, attribute->attcollation);
+                /* A named type's column facts come from the shape cache; an anonymous record is described
+                 * only by this value. */
+                AnkusTupleShape *shape = anonymous ? NULL : ankus_tuple_shape_find(descriptor, descriptor->tdtypeid, descriptor->tdtypmod);
+                entered = true;
+                ankus_tuple_shape_depth++;
+                for (int index = 0; index < count; index++)
+                {
+                    Form_pg_attribute attribute = TupleDescAttr(descriptor, index);
+                    AnkusTupleField *field = &fields[index];
+                    const AnkusTupleShapeField *expected = shape != NULL ? &shape->fields[index] : NULL;
+                    AnkusParameter parameter = {0};
+                    bool same_name;
+                    Oid base_type;
+                    if (expected != NULL)
+                        same_name = expected->name_length == field->name_length &&
+                            memcmp(expected->name, field->name, field->name_length) == 0;
+                    else
+                    {
+                        const char *name = NameStr(attribute->attname);
+                        char *utf8 = pg_server_to_any(name, strlen(name), PG_UTF8);
+                        same_name = strlen(utf8) == (Size) field->name_length && memcmp(utf8, field->name, field->name_length) == 0;
+                        if (utf8 != name)
+                            pfree(utf8);
+                    }
+
+                    if (attribute->attisdropped != ((field->flags & 1) != 0) ||
+                        (!attribute->attisdropped && (attribute->atttypid != field->type ||
+                            attribute->atttypmod != field->modifier ||
+                            (!(anonymous && !OidIsValid(field->collation)) && attribute->attcollation != field->collation) || !same_name)))
+                        ereport(ERROR, (errcode(ERRCODE_DATATYPE_MISMATCH), errmsg("Composite attribute %d changed after the managed value was captured", index + 1)));
+                    nulls[index] = field->value.is_null != 0 || attribute->attisdropped;
+                    if (attribute->attisdropped)
+                        continue;
+                    parameter.type_oid = attribute->atttypid;
+                    parameter.value = field->value;
+                    base_type = expected != NULL ? expected->base_type : getBaseType(parameter.type_oid);
+                    if (!nulls[index] && (base_type == JSONOID || base_type == JSONBOID))
+                        parameter.value.data = (unsigned char *) pnstrdup((char *) parameter.value.data, parameter.value.length);
+                    values[index] = expected != NULL ? ankus_parameter_datum_resolved(&parameter, base_type) : ankus_parameter_datum(&parameter);
+                    if (attribute->atttypmod >= 0)
+                        values[index] = ankus_coerce_value(values[index], &nulls[index], attribute->atttypid,
+                            attribute->atttypid, attribute->atttypmod, attribute->attcollation);
+                }
             }
+            PG_FINALLY();
+            {
+                if (entered)
+                    ankus_tuple_shape_depth--;
+            }
+            PG_END_TRY();
 
             tuple = heap_form_tuple(descriptor, values, nulls);
             if (expected_descriptor != NULL)

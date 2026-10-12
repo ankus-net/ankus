@@ -174,6 +174,16 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   fixed the rows cost 182 ns and 330 ns. See the
   [measurements](docs/contributing/evidence/guard-tiers.md#managed-custom-scans).
   The PostgreSQL 18 suite passes with these changes.
+- Composite values cross the boundary without per-row catalog lookups. Managed
+  code reuses a recent descriptor of the same type when every transported
+  column matches it byte for byte, and the native side keeps the resolved facts
+  of up to 16 row types, used only while every column still has the type,
+  modifier, collation, flags and name it was built from. A call that reads and
+  returns a composite went from 1.80 µs to 1.35 µs. A new backend test renames,
+  adds, retypes and drops attributes of a composite type between calls in one
+  session and checks both directions. The composite, tuple, trigger, SPI,
+  domain, set and array backend tests pass on PostgreSQL 13 and 18, and the full
+  PostgreSQL 18 suite passes (14,860 tests, 52 platform skips).
 - Today's native bridge changes (trigger call sites, type modifiers, domains,
   row writes, setting reads and managed custom scans) were checked on every
   supported major: the 540 trigger, composite, tuple, domain, setting and
@@ -249,7 +259,12 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   evidence. CI for **41b2111**
   ([38204764541](https://github.com/willibrandon/ankus/actions/runs/38204764541)),
   **6c008fc**, **f95d2cb**, **8bb5954**, **0883b1e**, **50c1491**, **feb2e51**
-  and the earlier commits passed on all three platforms.
+  and the earlier commits passed on all three platforms. CI for **3db7a56**
+  ([38254761262](https://github.com/willibrandon/ankus/actions/runs/38254761262))
+  did not run its tests: both macOS ARM64 runners, on a laptop that was off the
+  home network, timed out downloading the workflow's actions, in the first
+  attempt and in a rerun, so the test jobs were skipped. Its changes passed the
+  full PostgreSQL 18 suite on Linux before the push.
 - GUC hook (`ANKUS199`–`ANKUS201`) and benchmark setup (`ANKUS131`) errors
   now say what is wrong with the named method, such as "'Hook' returns bool"
   or "'Settings' has no method named 'Hook'", instead of restating the whole

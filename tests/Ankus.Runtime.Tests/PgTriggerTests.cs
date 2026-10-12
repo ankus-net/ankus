@@ -183,11 +183,11 @@ public sealed class PgTriggerTests
         envelope.Replace(8, NativeValue.FromArray(new PgArray<string>(["other"])));
         PgTriggerContext changed = NativeValue.ReadTriggerContext(envelope.Values);
         Assert.AreSequenceEqual(["other"], changed.Arguments);
-        Assert.AreNotSame(first.Descriptor, changed.Descriptor);
+        Assert.AreNotSame(first.Name, changed.Name);
 
         using NativeEnvelope unidentified = CreateEnvelope(4, hasNew: true);
-        Assert.AreNotSame(NativeValue.ReadTriggerContext(unidentified.Values).Descriptor,
-            NativeValue.ReadTriggerContext(unidentified.Values).Descriptor);
+        Assert.AreNotSame(NativeValue.ReadTriggerContext(unidentified.Values).Arguments,
+            NativeValue.ReadTriggerContext(unidentified.Values).Arguments);
     }
 
     /// <summary>

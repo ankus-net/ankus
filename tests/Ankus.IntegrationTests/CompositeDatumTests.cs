@@ -740,6 +740,32 @@ public sealed class CompositeDatumTests(TestContext context)
             }, context.CancellationToken);
 
     /// <summary>
+    /// A composite type changed between calls in one session converts with its new columns in both directions, so
+    /// nothing resolved for the old columns is reused.
+    /// </summary>
+    [TestMethod]
+    public Task ChangedCompositeTypesConvertWithTheirNewColumns()
+        => PostgresFixture.Cluster.RunInTransactionAsync(nameof(ChangedCompositeTypesConvertWithTheirNewColumns),
+            async (connection, transaction, token) =>
+            {
+                (string Change, string Row, string Expected)[] steps =
+                [
+                    ("CREATE TYPE pg_temp.shape_probe AS (a integer, b text)", "ROW(1,'x')", """{"a":1,"b":"x"}"""),
+                    ("ALTER TYPE pg_temp.shape_probe RENAME ATTRIBUTE b TO c", "ROW(2,'y')", """{"a":2,"c":"y"}"""),
+                    ("ALTER TYPE pg_temp.shape_probe ADD ATTRIBUTE d bigint", "ROW(3,'z',5)", """{"a":3,"c":"z","d":5}"""),
+                    ("ALTER TYPE pg_temp.shape_probe ALTER ATTRIBUTE a TYPE bigint", "ROW(4000000000,'w',6)", """{"a":4000000000,"c":"w","d":6}"""),
+                    ("ALTER TYPE pg_temp.shape_probe DROP ATTRIBUTE c", "ROW(5,7)", """{"a":5,"d":7}"""),
+                ];
+                foreach ((string change, string row, string expected) in steps)
+                {
+                    await using var command = new NpgsqlCommand(change, connection, transaction);
+                    await command.ExecuteNonQueryAsync(token);
+                    command.CommandText = $"SELECT row_to_json(tuple_values.tuple_record({row}::pg_temp.shape_probe, 0))::text";
+                    Assert.AreEqual(expected, await command.ExecuteScalarAsync(token), change);
+                }
+            }, context.CancellationToken);
+
+    /// <summary>
     /// Applies ordinary assignment coercion for constrained numeric scale and character length.
     /// </summary>
     [TestMethod]

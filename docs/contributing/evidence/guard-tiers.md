@@ -223,3 +223,16 @@ changes, so the backend keeps that state for up to 16 domains. With a
 `CHECK`-constrained text domain column, best of four runs of 200,000 rows each,
 the managed trigger took 510 ms against 608 to 633 ms before, while the PL/pgSQL
 trigger took 324 to 354 ms in both.
+
+### Composite arguments and results
+
+Calling the `ankus_composites` sample's `scritch_dog`, which reads a `dog`
+row, copies it and returns it, cost 1.80 µs per call over building the row,
+best of five runs of 500,000 calls. Both directions resolved every column's
+base type and kind in the catalog caches and converted its name, and managed
+code built a new descriptor for every row. Managed code now reuses a recent
+descriptor of the same type when every transported column matches it byte for
+byte, which brought the call to 1.66 µs. The native side keeps the resolved
+facts of up to 16 row types and uses an entry only while every column still has
+the type, modifier, collation, flags and name it was built from; with it the
+call costs 1.35 µs.

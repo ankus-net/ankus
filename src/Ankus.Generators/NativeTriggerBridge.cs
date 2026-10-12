@@ -126,17 +126,6 @@ internal static class NativeTriggerBridge
             AnkusTupleShape shape;
         } AnkusTriggerSite;
 
-        /* Resolves the relation's column facts once, in the current memory context. */
-        static void
-        ankus_trigger_shape(TupleDesc descriptor, AnkusTupleShape *shape)
-        {
-            shape->declared_base = getBaseType(descriptor->tdtypeid);
-            shape->count = descriptor->natts;
-            shape->fields = palloc0(sizeof(AnkusTupleShapeField) * Max(descriptor->natts, 1));
-            for (int index = 0; index < descriptor->natts; index++)
-                ankus_tuple_shape_field(TupleDescAttr(descriptor, index), &shape->fields[index], true);
-        }
-
         static bool
         ankus_trigger_site_matches(const AnkusTriggerSite *site, TriggerData *trigger)
         {
@@ -173,7 +162,7 @@ internal static class NativeTriggerBridge
                     values[index] = Int32GetDatum(definition->tgattr[index] - 1);
                 ankus_read_array(PointerGetDatum(construct_array(values, definition->tgnattr, INT4OID, sizeof(int32), true, TYPALIGN_INT)),
                     &site->named, &owned);
-                ankus_trigger_shape(descriptor, &site->shape);
+                ankus_tuple_shape_build(descriptor, descriptor->tdtypeid, &site->shape);
                 if (ankus_next_trigger_site == PG_INT64_MAX)
                     ereport(ERROR, (errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED), errmsg("Ankus trigger site capacity exhausted")));
                 site->identity = ++ankus_next_trigger_site;
