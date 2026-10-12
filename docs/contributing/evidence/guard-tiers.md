@@ -92,7 +92,9 @@ aggregates cache per-call-site state, and resets the scratch context after each
 row. The release-build cost fell to 170 ns per row. A nested call through the
 same site while one is running uses a private context as before. Sharing one
 empty sort-key list among aggregates without `ORDER BY`, instead of allocating
-and wrapping a copy for every row, brought it to 156 ns.
+and wrapping a copy for every row, brought it to 156 ns. Each returned state
+also checked its type and resolved its base type in the catalog caches; the
+call site now resolves them once, which brought the cost to 124 ns.
 
 ### Sets, arrays and SPI
 

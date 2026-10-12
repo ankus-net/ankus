@@ -255,6 +255,7 @@ internal static class NativeAggregateBridge
             Oid *types;
             int parameter_count;
             Oid result_type;
+            Oid result_base_type;
             AnkusValue *metadata;
             int metadata_count;
             AnkusAggregateSortKey *keys;
@@ -339,6 +340,9 @@ internal static class NativeAggregateBridge
                 if (!OidIsValid(site->result_type) || IsPolymorphicType(site->result_type))
                     ereport(ERROR, (errcode(ERRCODE_DATATYPE_MISMATCH), errmsg("Aggregate result type was not resolved")));
             }
+
+            /* The result type is fixed for the call site, so each row skips the catalog lookups. */
+            site->result_base_type = get_typtype(site->result_type) == '\0' ? InvalidOid : getBaseType(site->result_type);
 
             site->metadata = ankus_aggregate_metadata(fcinfo, kind, site, &site->metadata_count);
             site->arguments = palloc0(sizeof(AnkusValue) * Max(arguments_count, 1));
@@ -461,7 +465,9 @@ internal static class NativeAggregateBridge
                         AnkusParameter value = {0};
                         value.type_oid = result_type;
                         value.value = *result;
-                        datum = ankus_parameter_datum(&value);
+                        datum = OidIsValid(site->result_base_type)
+                            ? ankus_parameter_datum_resolved(&value, site->result_base_type)
+                            : ankus_parameter_datum(&value);
                     }
                 }
             }
