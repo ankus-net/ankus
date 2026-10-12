@@ -44,7 +44,7 @@ export default defineConfig({
     starlight({
       title: 'Ankus',
       description: 'PostgreSQL extensions in C# with .NET Native AOT.',
-      logo: { src: './src/assets/logo.svg', alt: 'Ankus' },
+      logo: { light: './src/assets/logo-light.svg', dark: './src/assets/logo-dark.svg', alt: 'Ankus' },
       favicon: '/favicon.svg',
       head: [
         { tag: 'link', attrs: { rel: 'icon', type: 'image/x-icon', sizes: '16x16 32x32 48x48', href: `${siteBase}/favicon.ico` } },

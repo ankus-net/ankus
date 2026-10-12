@@ -1,7 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" role="img" aria-labelledby="title">
   <title id="title">Ankus</title>
-<rect width="16" height="16" rx="3.25" fill="#121B2D"/>
-      <path d="M10 4H8C5 4 3 6 3 8.5C3 10.5 4 12 6 13C5 11 5 10 5 9C5 7.5 6 7 8 7H10Z" fill="#8758FF"/>
-      <rect x="10" y="3" width="3" height="10" rx="1" fill="#F4F6FF"/>
-    
+  <style>
+    .staff { fill: #121B2D; }
+    @media (prefers-color-scheme: dark) {
+      .staff { fill: #F4F6FF; }
+    }
+  </style>
+  <path d="M10 4H8C5 4 3 6 3 8.5C3 10.5 4 12 6 13C5 11 5 10 5 9C5 7.5 6 7 8 7H10Z" fill="#8758FF"/>
+  <rect class="staff" x="10" y="3" width="3" height="10" rx="1"/>
 </svg>
