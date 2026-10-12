@@ -110,6 +110,11 @@ for `GetMemoryChunkContext`, and `PgHeapTuple.DangerousCopy`,
 `from_pg_copy` and `into_pg`. See [borrowed native allocators](/memory-contexts/#borrowed-native-allocators)
 and [composite values](/composites/).
 
+A custom scan written against `pg_sys::CustomScanMethods` has a direct
+counterpart in the generated method tables and `[PgNativeCallback]`. Ankus also
+offers `[PgCustomScan]`, a managed provider that only plans paths and produces
+rows. See [custom scan providers](/custom-scans/).
+
 ## SPI, errors and cancellation
 
 Use `Spi.ExecuteScalar<T>`, `Spi.Execute` and `Spi.Connect` for backend SQL.
@@ -178,6 +183,8 @@ public static partial class Settings
 }
 ```
 
+Reading a property returns the current value from the variable PostgreSQL
+assigns, as `GucSetting::get` does.
 Check, assign and show hooks are ordinary named methods selected by the
 attribute. Their phase and SQL-access restrictions still apply. When a name is
 computed at run time, as with `GucRegistry::define_int_guc` in `_PG_init`, call

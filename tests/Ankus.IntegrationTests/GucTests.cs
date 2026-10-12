@@ -19,16 +19,18 @@ public sealed class GucTests(TestContext context)
         "assign:23:old=24:extra=null", "assign:22:old=23:extra=00FF0016",
     ];
     /// <summary>
-    /// A scalar property reads the variable PostgreSQL assigns, so it sees a later <c>SET</c> in the same call, and its
-    /// reads stay unavailable inside a memory reset callback whether or not the setting was read before.
+    /// A property reads the variable PostgreSQL assigns, so it sees a later <c>SET</c> in the same call, and its reads
+    /// stay unavailable inside a memory reset callback whether or not the setting was read before. A string property
+    /// returns its default before it is set and every new value, including one assigned again.
     /// </summary>
     [TestMethod]
-    public async Task LocatedScalarReadsFollowAssignmentsAndScopes()
+    public async Task LocatedReadsFollowAssignmentsAndScopes()
     {
         await using NpgsqlConnection connection = await OpenAsync();
         await ExecuteAsync(connection, "SET \"ankus_guc.limit\" = '23'");
         const string Unavailable = "Configuration reads are unavailable in this callback scope.";
-        Assert.AreEqual($"23|31|{Unavailable}|{Unavailable}|31", await ScalarAsync(connection, "SELECT datatype.guc_located_reads()"));
+        Assert.AreEqual($"23|31|{Unavailable}|{Unavailable}|31|null,café,other,café,café",
+            await ScalarAsync(connection, "SELECT datatype.guc_located_reads()"));
         Assert.AreEqual("31", await ScalarAsync(connection, "SHOW \"ankus_guc.limit\""));
     }
 

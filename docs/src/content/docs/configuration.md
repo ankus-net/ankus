@@ -31,11 +31,11 @@ optional `[PgInitialize]` method. Read a getter from an extension callback to ob
 the current native value. Reads outside a backend callback or on another thread
 throw `InvalidOperationException`.
 
-A Boolean, integer, real or enum getter reads the variable PostgreSQL assigns, as
-pgrx's `GucSetting::get` does, instead of calling into the backend. After the
-first read it only repeats the thread and callback checks. A string getter
-converts the value from the server encoding on every read; read it once and keep
-it if a loop needs it.
+A getter reads the variable PostgreSQL assigns, as pgrx's `GucSetting::get`
+does, instead of calling into the backend. After the first read it only repeats
+the thread and callback checks. A string getter also reuses its last
+conversion from the server encoding while the setting's bytes are unchanged
+and the converted string is still alive.
 
 Use ordinary SQL configuration commands to change values:
 

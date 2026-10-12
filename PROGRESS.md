@@ -174,6 +174,17 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   fixed the rows cost 182 ns and 330 ns. See the
   [measurements](docs/contributing/evidence/guard-tiers.md#managed-custom-scans).
   The PostgreSQL 18 suite passes with these changes.
+- String setting properties now also locate their variable. Each read compares
+  the bytes it points to with those it last converted and converts from the
+  server encoding only when they differ; a null pointer, before PostgreSQL
+  registers the setting, still reads the declared default by name. The last
+  conversion is held weakly: the existing lifetime tests require a read value,
+  which can be 64 KB, to be collected once its caller drops it, and the first
+  version of the cache failed them. A backend test reads a string setting
+  before it is set and across three assignments, including one back to an
+  earlier value. The configuration and custom scan backend tests pass on
+  PostgreSQL 13, 18 and 19 beta 4, and the full PostgreSQL 18 suite passes
+  (14,862 tests, 52 platform skips).
 - A `BEFORE` row trigger that returns its NEW row unchanged no longer converts
   it back: `PgHeapTuple` records replaced cells, and when the returned row is the
   context's own NEW row with none replaced and no mutable cells, PostgreSQL
@@ -194,6 +205,11 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   session and checks both directions. The composite, tuple, trigger, SPI,
   domain, set and array backend tests pass on PostgreSQL 13 and 18, and the full
   PostgreSQL 18 suite passes (14,860 tests, 52 platform skips).
+- Complete Linux x64 suites on the current source (**07923d5**, runtime
+  ankus.5) pass on every other supported major: PostgreSQL 13.23, 14.24,
+  15.19, 16.15, 17.11 and 19 beta 4 each ran 14,861 tests with 52 platform
+  skips and no failures, in 26 to 27 minutes each, alongside the PostgreSQL
+  18.6 suite on **f3f3f6f**.
 - Today's native bridge changes (trigger call sites, type modifiers, domains,
   row writes, setting reads and managed custom scans) were checked on every
   supported major: the 540 trigger, composite, tuple, domain, setting and
@@ -204,7 +220,10 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   those its conditions use, as postgres_fdw does; a whole-row reference reads
   them all. `PgCustomScanContext.IsColumnRead` exposes the set, and a column
   that is not read may stay unset even when it is `NOT NULL`. The sample skips
-  formatting its label when no query reads it. PostgreSQL 19 rewrites
+  formatting its label when no query reads it. `PgCustomScanPlanner` reports
+  the same set while planning, with the table's descriptor loaded on first use,
+  so a provider can price a path by the columns it must produce; the sample
+  charges twice as much when its label is read. PostgreSQL 19 rewrites
   `count(label)` on a `NOT NULL` column to `count(*)`, which the tests now
   account for. The 78 custom scan backend tests pass on PostgreSQL 13, 18 and
   19 beta 4, and the full PostgreSQL 18 suite passes (14,858 tests, 52 platform

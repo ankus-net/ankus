@@ -303,7 +303,7 @@ public sealed partial class PgFunctionGeneratorTests
             "name" => "@Renamed =>",
             "namespace" => "namespace @Cache",
             "container" => "partial record class @Outer",
-            _ => "global::Ankus.CompilerServices.NativeGuc.ReadString(\"demo.value\")",
+            _ => "global::Ankus.CompilerServices.NativeGuc.ReadString(\"demo.value\", ref global::Ankus.Generated.GucVariables.",
         };
         Assert.Contains(expected, changed.Property);
         if (change is "namespace" or "container")

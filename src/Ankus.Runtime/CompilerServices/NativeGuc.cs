@@ -150,6 +150,50 @@ public static unsafe class NativeGuc
     public static int ReadEnum(string name) => ReadOrdinal(name, 4);
 
     /// <summary>
+    /// Reads a declared string setting, converting it from the server encoding only when its bytes changed since the
+    /// last read.
+    /// </summary>
+    /// <param name="name">The generated setting's qualified name.</param>
+    /// <param name="variable">The generated property's cached variable address, zero until located.</param>
+    /// <param name="cache">The generated property's last conversion.</param>
+    /// <returns>The current string, or null when the setting has no value.</returns>
+    /// <remarks>
+    /// The variable holds a pointer PostgreSQL replaces whenever it assigns the setting, so the bytes it points to are
+    /// compared rather than the pointer, which a new value can reuse. Before PostgreSQL registers the setting the
+    /// variable is null and the declared default is read by name.
+    /// </remarks>
+    public static string? ReadString(string name, ref nint variable, NativeGucText cache)
+    {
+        ArgumentNullException.ThrowIfNull(cache);
+        byte* text = *(byte**)Locate(name, 3, ref variable);
+        if (text == null)
+        {
+            return ReadString(name);
+        }
+
+        ReadOnlySpan<byte> current = MemoryMarshal.CreateReadOnlySpanFromNullTerminated(text);
+        if (cache.TryGet(current, out string? value))
+        {
+            return value;
+        }
+
+        value = ReadString(name);
+        cache.Set(current, value);
+        return value;
+    }
+
+    /// <summary>
+    /// Reads a declared nonnullable string setting, converting it only when its bytes changed since the last read.
+    /// </summary>
+    /// <param name="name">The generated setting's qualified name.</param>
+    /// <param name="variable">The generated property's cached variable address, zero until located.</param>
+    /// <param name="cache">The generated property's last conversion.</param>
+    /// <returns>The current string.</returns>
+    public static string ReadRequiredString(string name, ref nint variable, NativeGucText cache)
+        => ReadString(name, ref variable, cache) ??
+            throw new InvalidOperationException("A nonnullable configuration setting has an absent native value.");
+
+    /// <summary>
     /// Reads a declared Boolean setting from the native variable PostgreSQL assigns, locating it on the first read.
     /// </summary>
     /// <param name="name">The generated setting's qualified name.</param>

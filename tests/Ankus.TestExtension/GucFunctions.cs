@@ -57,7 +57,10 @@ public static partial class GucFunctions
     /// Reads scalar settings through their located native variables across a change, then inside a memory reset
     /// callback, where configuration reads are unavailable whether or not a setting was located first.
     /// </summary>
-    /// <returns>The values before and after <c>SET</c>, each callback read's outcome, and the value afterwards.</returns>
+    /// <returns>
+    /// The values before and after <c>SET</c>, each callback read's outcome, the value afterwards, and a string setting
+    /// read before it is set and after each of three assignments, the last one twice.
+    /// </returns>
     [PgFunction]
     public static string GucLocatedReads()
     {
@@ -76,7 +79,14 @@ public static partial class GucFunctions
             owner.Reset();
         }
 
-        return string.Create(CultureInfo.InvariantCulture, $"{before}|{changed}|{located}|{unlocated}|{Limit}");
+        string? unset = Text;
+        Spi.Execute("SET \"ankus_guc.text\" = 'café'");
+        string? first = Text;
+        Spi.Execute("SET \"ankus_guc.text\" = 'other'");
+        string? second = Text;
+        Spi.Execute("SET \"ankus_guc.text\" = 'café'");
+        string texts = string.Join(",", unset ?? "null", first, second, Text, Text);
+        return string.Create(CultureInfo.InvariantCulture, $"{before}|{changed}|{located}|{unlocated}|{Limit}|{texts}");
 
         static string Attempt<T>(Func<T> read)
         {

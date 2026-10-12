@@ -21,7 +21,7 @@ public sealed class CompilerContractNamespaceTests
         string[] expected =
         [
             "NativeAggregate", "NativeBackend", "NativeCallArgument", "NativeCallError", "NativeCallbackContext", "NativeCustomScan",
-            "NativeCustomScanRequest", "NativeError", "NativeEventTrigger", "NativeFunctionPointerAttribute", "NativeGuc", "NativeLog",
+            "NativeCustomScanRequest", "NativeError", "NativeEventTrigger", "NativeFunctionPointerAttribute", "NativeGuc", "NativeGucText", "NativeLog",
             "NativeMemoryContext", "NativeRawCall", "NativeRawCallback", "NativeRelationScope", "NativeSet", "NativeUnsafeAccessAttribute",
             "NativeValue",
         ];

@@ -1070,16 +1070,10 @@ internal static class NativeGucBridge
             }
 
             /* A Boolean, integer, real or enum value is a static the server writes in place, so the managed
-             * property reads it directly after this lookup; text needs encoding conversion on every read. */
+             * property reads it directly after this lookup. A string's static holds a pointer the server
+             * replaces on assignment; the property compares its bytes with the ones it last converted. */
             if (locate)
             {
-                if (kind == 3)
-                {
-                    error->sqlstate = ERRCODE_FEATURE_NOT_SUPPORTED;
-                    strlcpy(error->message, "Text configuration values are converted on each read", sizeof(error->message));
-                    return 1;
-                }
-
                 value->integral = (int64) (intptr_t) definition->variable;
                 return 0;
             }

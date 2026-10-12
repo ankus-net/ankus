@@ -34,9 +34,9 @@ approaches, not as guarantees, and measure your own code with
 - Read large query results through a cursor. `Spi.Select` keeps every row in
   managed memory, and one two-million-row result costs about three times as much
   per row as the same rows read in batches.
-- Read string settings once. Boolean, integer, real and enum properties read
-  PostgreSQL's variable directly, but a string property converts its value on
-  every read. Keep the value for the duration of a loop or scan.
+- Setting properties read PostgreSQL's variable directly, and a string
+  property converts its value only after it changes, so reading a setting in a
+  loop is cheap.
 - In a custom scan, check
   [`IsColumnRead`](/custom-scans/#managed-providers) in `Begin` and skip
   columns the query does not read.

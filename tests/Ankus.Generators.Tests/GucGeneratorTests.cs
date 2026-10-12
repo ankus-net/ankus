@@ -9,7 +9,7 @@ public sealed partial class PgFunctionGeneratorTests
 {
     /// <summary>
     /// Every native setting kind compiles as a typed partial getter without SQL functions or managed initialization.
-    /// Scalar getters cache their native variable's address in one generated field; text is converted on every read.
+    /// Getters cache their native variable's address in a generated field; text also keeps its last conversion.
     /// </summary>
     /// <param name="attribute">The typed declaration.</param>
     /// <param name="type">The exact managed type.</param>
@@ -42,18 +42,20 @@ public sealed partial class PgFunctionGeneratorTests
         IPropertySymbol property = Assert.IsInstanceOfType<IPropertySymbol>(Assert.ContainsSingle(compilation.GetTypeByMetadataName("Settings")!.GetMembers("Value")));
         Assert.IsNotNull(property.PartialImplementationPart);
         string getter = property.PartialImplementationPart.DeclaringSyntaxReferences.Single().GetSyntax(context.CancellationToken).ToString();
-        INamedTypeSymbol? variables = compilation.GetTypeByMetadataName("Ankus.Generated.GucVariables");
+        IFieldSymbol[] fields = [.. compilation.GetTypeByMetadataName("Ankus.Generated.GucVariables")!.GetMembers().OfType<IFieldSymbol>()];
+        IFieldSymbol variable = Assert.ContainsSingle(fields.Where(static field => field.Type.SpecialType == SpecialType.System_IntPtr));
+        string expected = $"global::Ankus.CompilerServices.NativeGuc.{reader}(\"demo.enabled\", ref global::Ankus.Generated.GucVariables.{variable.Name}";
         if (kind == 3)
         {
-            Assert.Contains($"global::Ankus.CompilerServices.NativeGuc.{reader}(\"demo.enabled\")", getter);
-            Assert.IsNull(variables);
+            // Text also keeps its last conversion.
+            IFieldSymbol cache = Assert.ContainsSingle(fields.Where(static field => field.Type.Name == "NativeGucText"));
+            Assert.IsTrue(cache.IsReadOnly);
+            Assert.Contains($"{expected}, global::Ankus.Generated.GucVariables.{cache.Name})", getter);
             return;
         }
 
-        IFieldSymbol variable = Assert.ContainsSingle(variables!.GetMembers().OfType<IFieldSymbol>());
-        Assert.AreEqual(SpecialType.System_IntPtr, variable.Type.SpecialType);
-        Assert.Contains($"global::Ankus.CompilerServices.NativeGuc.{reader}(\"demo.enabled\", ref global::Ankus.Generated.GucVariables.{variable.Name})",
-            getter);
+        Assert.HasCount(1, fields);
+        Assert.Contains(expected + ")", getter);
     }
 
     /// <summary>
