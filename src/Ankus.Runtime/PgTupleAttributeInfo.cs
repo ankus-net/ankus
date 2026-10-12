@@ -1,3 +1,5 @@
+using System.Text;
+
 namespace Ankus;
 
 /// <summary>
@@ -5,6 +7,8 @@ namespace Ankus;
 /// </summary>
 public sealed class PgTupleAttributeInfo
 {
+    private byte[]? _utf8Name;
+
     /// <summary>
     /// Copies an attribute description from the guarded native transport.
     /// </summary>
@@ -27,6 +31,11 @@ public sealed class PgTupleAttributeInfo
         IsComposite = isComposite;
         IsUnavailable = isUnavailable;
     }
+
+    /// <summary>
+    /// Gets the name's UTF-8 bytes, computed on first use, so transported metadata can be matched without decoding it.
+    /// </summary>
+    internal ReadOnlySpan<byte> Utf8Name => _utf8Name ??= Encoding.UTF8.GetBytes(Name);
 
     /// <summary>
     /// Gets the exact catalog name. Dropped attributes retain their physical placeholder names.

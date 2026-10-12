@@ -182,3 +182,21 @@ Boolean, integer, real or enum property now finds its native variable on the
 first read and reads that memory afterwards, after the same managed access
 checks, which brings the per-row read to 24 ns. Text settings still convert from
 the server encoding on each read.
+
+### Row triggers
+
+Inserting one million rows into a two-column table, in one session, best of six
+runs on the 18.6 release build: the insert alone takes 620 ms, a PL/pgSQL
+`BEFORE INSERT` trigger that trims a name adds 0.56 µs per row, and the
+`ankus_triggers` sample doing the same added 3.24 µs.
+
+Each call converted the trigger, table and schema names, rebuilt the trigger's
+argument array, serialized the table's columns and resolved every column's base
+type, then checked the returned row against the catalog the same way. None of
+that changes while a statement runs, and PostgreSQL keeps one `FmgrInfo` per
+trigger and result relation, so the call site now keeps it in `fn_extra`.
+Managed code also parsed the same names, arguments and columns for every row,
+and each row built its own descriptor. The native site now sends an identity
+with buffers that stay the same, so managed code keeps what it parsed for the
+site and rows reuse its descriptor. Together these brought the overhead to
+1.42 µs per row, 2.5 times the PL/pgSQL trigger's.

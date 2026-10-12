@@ -18,11 +18,19 @@ public unsafe partial struct NativeValue
     /// Copies a composite or anonymous record, including its physical descriptor and nested owned values.
     /// </summary>
     /// <returns>The detached tuple. A SQL NULL transport must be handled by the caller.</returns>
-    public readonly PgHeapTuple ReadTuple()
+    public readonly PgHeapTuple ReadTuple() => ReadTuple(null);
+
+    /// <summary>
+    /// Copies a tuple, reusing a known descriptor when every transported attribute matches it, as each row of one
+    /// relation does.
+    /// </summary>
+    /// <param name="expected">The descriptor to reuse, or null to build one from the transport.</param>
+    /// <returns>The detached tuple. A SQL NULL transport must be handled by the caller.</returns>
+    internal readonly PgHeapTuple ReadTuple(PgTupleDescriptor? expected)
     {
         RuntimeHelpers.EnsureSufficientExecutionStack();
-        PgTupleDescriptor descriptor = ReadTupleDescriptor(false, out object?[] values);
-        return new PgHeapTuple(descriptor, values);
+        PgTupleDescriptor descriptor = ReadTupleDescriptor(false, out object?[] values, expected);
+        return PgHeapTuple.FromOwnedCells(descriptor, values);
     }
 
     /// <summary>
@@ -97,7 +105,8 @@ public unsafe partial struct NativeValue
     /// <summary>
     /// Validates the shared transport while keeping absent row identities confined to physical relation metadata.
     /// </summary>
-    private readonly PgTupleDescriptor ReadTupleDescriptor(bool physicalMetadata, out object?[] values)
+    private readonly PgTupleDescriptor ReadTupleDescriptor(bool physicalMetadata, out object?[] values,
+        PgTupleDescriptor? expected = null)
     {
         if (!IsTuple || _auxiliary2 != 0 || _isNull != 0 || _data == null || _length < 12)
         {
@@ -114,7 +123,10 @@ public unsafe partial struct NativeValue
             throw new InvalidOperationException("Invalid native tuple identity or attribute count.");
         }
 
-        var attributes = new PgTupleAttributeInfo[count];
+        uint baseTypeOid = _integer == 0 ? oid : (uint)_integer;
+        bool reuse = expected is not null && expected.TypeOid == oid && expected.TypeModifier == typeModifier &&
+            expected.BaseTypeOid == baseTypeOid && expected.Attributes.Count == count;
+        PgTupleAttributeInfo[]? attributes = reuse ? null : new PgTupleAttributeInfo[count];
         values = new object?[count];
         int offset = 12;
         for (int index = 0; index < count; index++)
@@ -137,14 +149,43 @@ public unsafe partial struct NativeValue
                 throw new InvalidOperationException("Invalid native tuple attribute metadata.");
             }
 
-            string name = s_utf8.GetString(data.Slice(offset, nameLength));
+            ReadOnlySpan<byte> nameBytes = data.Slice(offset, nameLength);
             offset += nameLength;
             bool dropped = (flags & 1) != 0;
             bool composite = (flags & 4) != 0;
             bool unavailable = (flags & 8) != 0;
-            if (name.Contains('\0', StringComparison.Ordinal) || (!dropped && (name.Length == 0 || declaredOid == 0 || baseOid == 0)))
+            PgTupleAttributeInfo? attribute = null;
+            if (reuse)
             {
-                throw new InvalidOperationException("Invalid native tuple attribute name or identity.");
+                PgTupleAttributeInfo known = expected!.Attributes[index];
+                if (known.TypeOid == declaredOid && known.BaseTypeOid == baseOid && known.TypeModifier == modifier &&
+                    known.CollationOid == collation && known.IsDropped == dropped && known.IsNotNull == ((flags & 2) != 0) &&
+                    known.IsComposite == composite && known.IsUnavailable == unavailable && nameBytes.SequenceEqual(known.Utf8Name))
+                {
+                    attribute = known;
+                }
+                else
+                {
+                    // The first difference ends reuse; the attributes already read are the known ones.
+                    reuse = false;
+                    attributes = new PgTupleAttributeInfo[count];
+                    for (int prior = 0; prior < index; prior++)
+                    {
+                        attributes[prior] = expected.Attributes[prior];
+                    }
+                }
+            }
+
+            if (attribute is null)
+            {
+                string name = s_utf8.GetString(nameBytes);
+                if (name.Contains('\0', StringComparison.Ordinal) || (!dropped && (name.Length == 0 || declaredOid == 0 || baseOid == 0)))
+                {
+                    throw new InvalidOperationException("Invalid native tuple attribute name or identity.");
+                }
+
+                attribute = new PgTupleAttributeInfo(name, declaredOid, baseOid, modifier, collation, dropped, (flags & 2) != 0, composite,
+                    unavailable);
             }
 
             NativeValue item = ReadContainerValue(data, ref offset);
@@ -153,8 +194,11 @@ public unsafe partial struct NativeValue
                 throw new InvalidOperationException("Tuple field transport does not match its descriptor.");
             }
 
-            attributes[index] = new PgTupleAttributeInfo(name, declaredOid, baseOid, modifier, collation,
-                dropped, (flags & 2) != 0, composite, unavailable);
+            if (attributes is not null)
+            {
+                attributes[index] = attribute;
+            }
+
             values[index] = SpiType.FromNative(item, baseOid);
             if (values[index] is PgHeapTuple nested && baseOid != 2249 && nested.Descriptor.BaseTypeOid != baseOid)
             {
@@ -167,8 +211,7 @@ public unsafe partial struct NativeValue
             throw new InvalidOperationException("Unexpected trailing native tuple data.");
         }
 
-        return new PgTupleDescriptor(oid, typeModifier, attributes,
-            _integer == 0 ? oid : (uint)_integer, physicalMetadata);
+        return reuse ? expected! : new PgTupleDescriptor(oid, typeModifier, attributes!, baseTypeOid, physicalMetadata);
     }
 
     private readonly NativeValue ReadContainerValue(ReadOnlySpan<byte> data, ref int offset)

@@ -561,14 +561,6 @@ internal static class NativeSpiBridge
             ankus_convert_value(datum, type, value, owned, false);
         }
 
-        /* A row or composite cell keeps an exact copy of a value Ankus cannot convert, as pgrx reads a
-         * field only when asked. A mapped reader can use it, and writing the row back restores it. */
-        static void
-        ankus_read_cell(Datum datum, Oid type, AnkusValue *value, AnkusInputBuffer *owned)
-        {
-            ankus_convert_value(datum, type, value, owned, true);
-        }
-
         /* A by-value datum keeps its word. Other storage keeps its bytes: a varlena without its header,
          * a C string without its terminator, and fixed-length storage whole. */
         static void

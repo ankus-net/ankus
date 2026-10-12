@@ -163,20 +163,48 @@ public sealed class PgTriggerTests
     }
 
     /// <summary>
-    /// The generated invocation shape has exactly fifteen slots, with no ignored extra metadata.
+    /// Calls from one native call site share what was parsed from its unchanging slots, and their rows reuse its
+    /// descriptor. The same identity with a different buffer, or an unidentified call, is read in full.
+    /// </summary>
+    [TestMethod]
+    public void CallSiteMetadataIsParsedOnce()
+    {
+        using NativeEnvelope envelope = CreateEnvelope(4, hasNew: true, site: 7001);
+        PgTriggerContext first = NativeValue.ReadTriggerContext(envelope.Values);
+        envelope.Replace(10, NativeValue.FromTuple(new PgHeapTuple(CreateDescriptor(), [43])));
+        PgTriggerContext second = NativeValue.ReadTriggerContext(envelope.Values);
+        Assert.AreSame(first.Descriptor, second.Descriptor);
+        Assert.AreSame(first.Descriptor, second.New!.Descriptor);
+        Assert.AreSame(first.Arguments, second.Arguments);
+        Assert.AreSame(first.Name, second.Name);
+        Assert.AreEqual(42, first.New!.Get<int>(0));
+        Assert.AreEqual(43, second.New.Get<int>(0));
+
+        envelope.Replace(8, NativeValue.FromArray(new PgArray<string>(["other"])));
+        PgTriggerContext changed = NativeValue.ReadTriggerContext(envelope.Values);
+        Assert.AreSequenceEqual(["other"], changed.Arguments);
+        Assert.AreNotSame(first.Descriptor, changed.Descriptor);
+
+        using NativeEnvelope unidentified = CreateEnvelope(4, hasNew: true);
+        Assert.AreNotSame(NativeValue.ReadTriggerContext(unidentified.Values).Descriptor,
+            NativeValue.ReadTriggerContext(unidentified.Values).Descriptor);
+    }
+
+    /// <summary>
+    /// The generated invocation shape has exactly sixteen slots, with no ignored extra metadata.
     /// </summary>
     [TestMethod]
     [DataRow(0)]
-    [DataRow(14)]
-    [DataRow(16)]
-    public void InvocationRequiresExactlyFifteenSlots(int count)
+    [DataRow(15)]
+    [DataRow(17)]
+    public void InvocationRequiresExactlySixteenSlots(int count)
     {
         var values = new NativeValue[count];
         Assert.ThrowsExactly<InvalidOperationException>(() => NativeValue.ReadTriggerContext(values));
     }
 
     /// <summary>
-    /// Event and catalog identities must be nonnull, unsigned, scalar values, and catalog OIDs cannot be invalid zero.
+    /// Event, catalog and call site identities must be nonnull, unsigned, scalar values, and catalog OIDs cannot be invalid zero.
     /// </summary>
     [TestMethod]
     [DataRow(0, -1L)]
@@ -187,6 +215,7 @@ public sealed class PgTriggerTests
     [DataRow(2, -1L)]
     [DataRow(2, 4294967296L)]
     [DataRow(2, 0L)]
+    [DataRow(15, -1L)]
     public void NumericMetadataRejectsOutOfRangeValues(int slot, long value)
     {
         using NativeEnvelope envelope = CreateEnvelope(3);
@@ -620,7 +649,11 @@ public sealed class PgTriggerTests
     /// <summary>
     /// Creates an owned native invocation with explicit OLD and NEW slot presence and distinct row values.
     /// </summary>
-    private static NativeEnvelope CreateEnvelope(uint eventBits, bool hasOld = false, bool hasNew = false)
+    /// <param name="eventBits">The trigger event.</param>
+    /// <param name="hasOld">Whether the OLD slot holds a row.</param>
+    /// <param name="hasNew">Whether the NEW slot holds a row.</param>
+    /// <param name="site">The native call site's identity, or zero for an uncached call.</param>
+    private static NativeEnvelope CreateEnvelope(uint eventBits, bool hasOld = false, bool hasNew = false, long site = 0)
     {
         PgTupleDescriptor descriptor = CreateDescriptor();
         NativeValue[] values =
@@ -635,6 +668,7 @@ public sealed class PgTriggerTests
             NativeValue.FromArray(new PgArray<int>([])),
             (eventBits & 3) == 2 ? NativeValue.FromArray(new PgArray<int>([0])) : new NativeValue { IsNull = 1 },
             new() { Integral = 0 },
+            new() { Integral = site },
         ];
 
         return new NativeEnvelope(values);

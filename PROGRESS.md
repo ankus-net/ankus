@@ -174,6 +174,16 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   fixed the rows cost 182 ns and 330 ns. See the
   [measurements](docs/contributing/evidence/guard-tiers.md#managed-custom-scans).
   The PostgreSQL 18 suite passes with these changes.
+- A row trigger's overhead fell from 3.24 µs to 1.42 µs per row, against
+  0.56 µs for an equivalent PL/pgSQL trigger. Names, arguments, columns and base
+  types that cannot change during a statement were converted, serialized and
+  parsed again for every row. The native call site now keeps them in `fn_extra`,
+  and a sixteenth slot identifies the site so managed code reuses what it parsed
+  and each row reuses the site's descriptor. Tuple transports also stopped
+  resolving a cell's base type a second time. The trigger, tuple and SPI backend
+  tests pass on PostgreSQL 13 and 18, and the full PostgreSQL 18 suite passes
+  (14,849 tests, 52 platform skips). See the
+  [measurements](docs/contributing/evidence/guard-tiers.md#row-triggers).
 - Scalar setting properties now read the variable PostgreSQL assigns, as pgrx's
   `GucSetting::get` does. A read was a backend call that searched the
   declarations by name and created a memory context; the first read now
@@ -197,9 +207,9 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   log, the TRX and the runner's crash and memory-pressure reports hold no stack
   or cause. The rerun passed, and six direct runs on the same machine passed.
   It stays open under the first remaining-work item until it recurs with
-  evidence. CI for **b978ac0**, **54c87a9**, **65a39f6**, **41b2111**
-  ([38204764541](https://github.com/willibrandon/ankus/actions/runs/38204764541))
-  and the earlier commits today passed on all three platforms.
+  evidence. CI for **41b2111**
+  ([38204764541](https://github.com/willibrandon/ankus/actions/runs/38204764541)),
+  **6c008fc**, **f95d2cb** and the earlier commits passed on all three platforms.
 - GUC hook (`ANKUS199`–`ANKUS201`) and benchmark setup (`ANKUS131`) errors
   now say what is wrong with the named method, such as "'Hook' returns bool"
   or "'Settings' has no method named 'Hook'", instead of restating the whole

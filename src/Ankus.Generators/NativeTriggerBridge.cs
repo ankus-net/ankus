@@ -56,6 +56,8 @@ internal static class NativeTriggerBridge
         typedef int (*AnkusTriggerCallback)(const AnkusValue *, AnkusValue *, AnkusError *, AnkusExecute, AnkusMemoryApi *);
 
         static int64 ankus_next_trigger_id = 0;
+        /* Never reused in a backend, so managed code can tell a site from a later one at the same address. */
+        static int64 ankus_next_trigger_site = 0;
 
         static void
         ankus_close_trigger_cursors(int64 identity)
@@ -88,6 +90,15 @@ internal static class NativeTriggerBridge
             }
         }
 
+        /* Cached names outlive the call, so they never borrow relcache or trigger memory. */
+        static void
+        ankus_trigger_site_text(const char *text, AnkusValue *value)
+        {
+            ankus_trigger_text(text, value);
+            if (text != NULL && value->data == (const unsigned char *) text)
+                value->data = (unsigned char *) pnstrdup(text, value->length);
+        }
+
         static bool
         ankus_trigger_unavailable(Form_pg_attribute attribute, TriggerEvent event, bool is_new)
         {
@@ -97,8 +108,114 @@ internal static class NativeTriggerBridge
                 (attribute->attgenerated == 's' && is_new && TRIGGER_FIRED_BEFORE(event)));
         }
 
+        /* What a trigger call site sends on every call but that cannot change while its statement runs:
+         * names, arguments, the relation's columns and their resolved types. PostgreSQL keeps one FmgrInfo
+         * per trigger and result relation, so fn_extra holds this for the statement. */
+        typedef struct AnkusTriggerSite
+        {
+            int64 identity;
+            Oid trigger;
+            Oid relation;
+            TupleDesc descriptor;
+            MemoryContext context;
+            int busy;
+            AnkusValue texts[5];
+            AnkusValue arguments;
+            AnkusValue columns;
+            AnkusValue named;
+            AnkusTupleShape shape;
+        } AnkusTriggerSite;
+
+        /* Resolves the relation's column facts once, in the current memory context. */
         static void
-        ankus_trigger_tuple(HeapTuple tuple, TriggerData *trigger, bool is_new, AnkusValue *value)
+        ankus_trigger_shape(TupleDesc descriptor, AnkusTupleShape *shape)
+        {
+            shape->declared_base = getBaseType(descriptor->tdtypeid);
+            shape->count = descriptor->natts;
+            shape->fields = palloc0(sizeof(AnkusTupleShapeField) * Max(descriptor->natts, 1));
+            for (int index = 0; index < descriptor->natts; index++)
+                ankus_tuple_shape_field(TupleDescAttr(descriptor, index), &shape->fields[index], true);
+        }
+
+        static bool
+        ankus_trigger_site_matches(const AnkusTriggerSite *site, TriggerData *trigger)
+        {
+            return site->trigger == trigger->tg_trigger->tgoid && site->relation == RelationGetRelid(trigger->tg_relation) &&
+                site->descriptor == RelationGetDescr(trigger->tg_relation);
+        }
+
+        /* Builds a site in a new child of parent. On error the partial site is freed with its context. */
+        static AnkusTriggerSite *
+        ankus_trigger_site_build(TriggerData *trigger, MemoryContext parent)
+        {
+            Trigger *definition = trigger->tg_trigger;
+            TupleDesc descriptor = RelationGetDescr(trigger->tg_relation);
+            MemoryContext context = AllocSetContextCreate(parent, "Ankus trigger site", ALLOCSET_SMALL_SIZES);
+            MemoryContext previous = MemoryContextSwitchTo(context);
+            AnkusTriggerSite *site = NULL;
+            PG_TRY();
+            {
+                AnkusInputBuffer owned = {0};
+                Datum *values = palloc(sizeof(Datum) * Max(Max(definition->tgnargs, definition->tgnattr), 1));
+                site = palloc0(sizeof(AnkusTriggerSite));
+                site->context = context;
+                ankus_trigger_site_text(definition->tgname, &site->texts[0]);
+                ankus_trigger_site_text(RelationGetRelationName(trigger->tg_relation), &site->texts[1]);
+                ankus_trigger_site_text(get_namespace_name(RelationGetNamespace(trigger->tg_relation)), &site->texts[2]);
+                ankus_trigger_site_text(definition->tgoldtable, &site->texts[3]);
+                ankus_trigger_site_text(definition->tgnewtable, &site->texts[4]);
+                for (int index = 0; index < definition->tgnargs; index++)
+                    values[index] = CStringGetTextDatum(definition->tgargs[index]);
+                ankus_read_array(PointerGetDatum(construct_array(values, definition->tgnargs, TEXTOID, -1, false, TYPALIGN_INT)),
+                    &site->arguments, &owned);
+                ankus_tuple_transport(descriptor, descriptor->tdtypeid, NULL, NULL, &site->columns, &owned);
+                for (int index = 0; index < definition->tgnattr; index++)
+                    values[index] = Int32GetDatum(definition->tgattr[index] - 1);
+                ankus_read_array(PointerGetDatum(construct_array(values, definition->tgnattr, INT4OID, sizeof(int32), true, TYPALIGN_INT)),
+                    &site->named, &owned);
+                ankus_trigger_shape(descriptor, &site->shape);
+                if (ankus_next_trigger_site == PG_INT64_MAX)
+                    ereport(ERROR, (errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED), errmsg("Ankus trigger site capacity exhausted")));
+                site->identity = ++ankus_next_trigger_site;
+                site->trigger = definition->tgoid;
+                site->relation = RelationGetRelid(trigger->tg_relation);
+                site->descriptor = descriptor;
+            }
+            PG_CATCH();
+            {
+                MemoryContextSwitchTo(previous);
+                MemoryContextDelete(context);
+                PG_RE_THROW();
+            }
+            PG_END_TRY();
+            MemoryContextSwitchTo(previous);
+            return site;
+        }
+
+        /* Returns the call site's cached facts, building them on the first call. A site still in use by an
+         * outer call through the same FmgrInfo is never replaced; the nested call builds a private one. */
+        static AnkusTriggerSite *
+        ankus_trigger_site(FunctionCallInfo fcinfo, TriggerData *trigger, MemoryContext call_context)
+        {
+            FmgrInfo *function = fcinfo->flinfo;
+            AnkusTriggerSite *site = (AnkusTriggerSite *) function->fn_extra;
+            if (site != NULL && ankus_trigger_site_matches(site, trigger))
+                return site;
+            if (site != NULL && site->busy > 0)
+                return ankus_trigger_site_build(trigger, call_context);
+            if (site != NULL)
+            {
+                function->fn_extra = NULL;
+                MemoryContextDelete(site->context);
+            }
+
+            site = ankus_trigger_site_build(trigger, function->fn_mcxt);
+            function->fn_extra = site;
+            return site;
+        }
+
+        static void
+        ankus_trigger_tuple(HeapTuple tuple, TriggerData *trigger, AnkusTupleShape *shape, bool is_new, AnkusValue *value)
         {
             TupleDesc descriptor = RelationGetDescr(trigger->tg_relation);
             Datum *values;
@@ -114,26 +231,21 @@ internal static class NativeTriggerBridge
             heap_deform_tuple(tuple, descriptor, values, nulls);
             for (int index = 0; index < descriptor->natts; index++)
                 unavailable[index] = ankus_trigger_unavailable(TupleDescAttr(descriptor, index), trigger->tg_event, is_new);
-            ankus_tuple_transport_available(descriptor, descriptor->tdtypeid, values, nulls, unavailable, value, &owned);
+            ankus_tuple_transport_shaped(descriptor, descriptor->tdtypeid, shape, values, nulls, unavailable, value, &owned);
             /* The callback context owns the complete serialized transport. */
             pfree(values);
             pfree(nulls);
             pfree(unavailable);
         }
 
-        /* The columns named by UPDATE OF and the columns an UPDATE assigns, as zero-based
-         * ordinals. PostgreSQL reports only the second for UPDATE events. */
+        /* The columns an UPDATE assigns, as zero-based ordinals. PostgreSQL reports them only for UPDATE
+         * events; the columns named by UPDATE OF belong to the trigger and are cached with its site. */
         static void
-        ankus_trigger_columns(TriggerData *trigger, AnkusValue *named, AnkusValue *updated, AnkusInputBuffer *owned)
+        ankus_trigger_columns(TriggerData *trigger, AnkusValue *updated, AnkusInputBuffer *owned)
         {
-            Trigger *definition = trigger->tg_trigger;
-            Datum *values = palloc(sizeof(Datum) * Max(definition->tgnattr, 1));
+            Datum *values;
             int count = 0;
             int member = -1;
-            for (int index = 0; index < definition->tgnattr; index++)
-                values[index] = Int32GetDatum(definition->tgattr[index] - 1);
-            ankus_read_array(PointerGetDatum(construct_array(values, definition->tgnattr, INT4OID, sizeof(int32), true, TYPALIGN_INT)),
-                named, owned);
             updated->is_null = !TRIGGER_FIRED_BY_UPDATE(trigger->tg_event);
             if (updated->is_null)
                 return;
@@ -150,7 +262,7 @@ internal static class NativeTriggerBridge
         }
 
         static HeapTuple
-        ankus_trigger_result(const AnkusValue *value, TriggerData *trigger)
+        ankus_trigger_result(const AnkusValue *value, TriggerData *trigger, const AnkusTupleShape *shape)
         {
             TupleDesc descriptor = RelationGetDescr(trigger->tg_relation);
             Oid type;
@@ -170,17 +282,15 @@ internal static class NativeTriggerBridge
             {
                 Form_pg_attribute attribute = TupleDescAttr(descriptor, index);
                 AnkusTupleField *field = &fields[index];
+                const AnkusTupleShapeField *expected = &shape->fields[index];
                 AnkusParameter parameter = {0};
-                const char *name = NameStr(attribute->attname);
-                char *utf8 = pg_server_to_any(name, strlen(name), PG_UTF8);
-                bool same_name = strlen(utf8) == (Size) field->name_length && memcmp(utf8, field->name, field->name_length) == 0;
+                bool same_name = expected->name_length == field->name_length &&
+                    memcmp(expected->name, field->name, field->name_length) == 0;
                 if (attribute->attisdropped != ((field->flags & 1) != 0) ||
                     (!attribute->attisdropped && (!same_name || attribute->atttypid != field->type ||
-                        getBaseType(attribute->atttypid) != field->base_type || attribute->atttypmod != field->modifier ||
+                        expected->base_type != field->base_type || attribute->atttypmod != field->modifier ||
                         attribute->attcollation != field->collation)))
                     ereport(ERROR, (errcode(ERRCODE_DATATYPE_MISMATCH), errmsg("Trigger result attribute %d does not match the relation", index + 1)));
-                if (utf8 != name)
-                    pfree(utf8);
                 if (attribute->attisdropped || ankus_trigger_unavailable(attribute, trigger->tg_event, true))
                     continue;
                 if (field->flags & 8)
@@ -191,7 +301,7 @@ internal static class NativeTriggerBridge
                 parameter.value = field->value;
                 if (!nulls[index] && (field->base_type == JSONOID || field->base_type == JSONBOID))
                     parameter.value.data = (unsigned char *) pnstrdup((char *) parameter.value.data, parameter.value.length);
-                values[index] = ankus_parameter_datum(&parameter);
+                values[index] = ankus_parameter_datum_resolved(&parameter, expected->base_type);
                 if (attribute->atttypmod >= 0)
                     values[index] = ankus_coerce_value(values[index], &nulls[index], attribute->atttypid,
                         attribute->atttypid, attribute->atttypmod, attribute->attcollation);
@@ -210,7 +320,8 @@ internal static class NativeTriggerBridge
             AnkusTriggerScope *previous_scope = ankus_trigger_scope;
             Oid previous_function = ankus_function_oid;
             MemoryContext caller = CurrentMemoryContext;
-            AnkusValue arguments[15] = {0};
+            AnkusValue arguments[16] = {0};
+            AnkusTriggerSite *volatile site = NULL;
             AnkusValue *result;
             AnkusError *error;
             volatile HeapTuple output = NULL;
@@ -223,6 +334,18 @@ internal static class NativeTriggerBridge
                 ereport(ERROR, (errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED), errmsg("Ankus trigger identity capacity exhausted")));
             scope.data = trigger;
             scope.context = AllocSetContextCreate(caller, "Ankus trigger callback", ALLOCSET_SMALL_SIZES);
+            /* Built outside the callback scope so its failure needs no cleanup beyond the scope context. */
+            PG_TRY();
+            {
+                site = ankus_trigger_site(fcinfo, trigger, scope.context);
+            }
+            PG_CATCH();
+            {
+                MemoryContextSwitchTo(caller);
+                MemoryContextDelete(scope.context);
+                PG_RE_THROW();
+            }
+            PG_END_TRY();
             scope.identity = ++ankus_next_trigger_id;
             /* These mutable headers are read during cleanup after ERROR/longjmp. */
             result = MemoryContextAllocZero(scope.context, sizeof(AnkusValue));
@@ -230,42 +353,36 @@ internal static class NativeTriggerBridge
             ankus_trigger_scope = &scope;
             ankus_function_oid = fcinfo->flinfo->fn_oid;
             AnkusMemoryApi memory = {0};
+            site->busy++;
             PG_TRY();
             {
                 AnkusInputBuffer owned = {0};
-                Datum *extra;
-                ArrayType *array;
                 int status;
                 MemoryContextSwitchTo(scope.context);
                 ankus_memory_initialize(&memory);
                 arguments[0].integral = trigger->tg_event;
                 arguments[1].integral = RelationGetRelid(trigger->tg_relation);
                 arguments[2].integral = trigger->tg_trigger->tgoid;
-                ankus_trigger_text(trigger->tg_trigger->tgname, &arguments[3]);
-                ankus_trigger_text(RelationGetRelationName(trigger->tg_relation), &arguments[4]);
-                ankus_trigger_text(get_namespace_name(RelationGetNamespace(trigger->tg_relation)), &arguments[5]);
-                ankus_trigger_text(trigger->tg_trigger->tgoldtable, &arguments[6]);
-                ankus_trigger_text(trigger->tg_trigger->tgnewtable, &arguments[7]);
-                extra = palloc(sizeof(Datum) * Max(trigger->tg_trigger->tgnargs, 1));
-                for (int index = 0; index < trigger->tg_trigger->tgnargs; index++)
-                    extra[index] = CStringGetTextDatum(trigger->tg_trigger->tgargs[index]);
-                array = construct_array(extra, trigger->tg_trigger->tgnargs, TEXTOID, -1, false, TYPALIGN_INT);
-                ankus_read_array(PointerGetDatum(array), &arguments[8], &owned);
+                /* Managed code copies what it reads, so the cached transports are passed as they are. */
+                for (int index = 0; index < 5; index++)
+                    arguments[3 + index] = site->texts[index];
+                arguments[8] = site->arguments;
                 arguments[9].is_null = arguments[10].is_null = true;
                 if (TRIGGER_FIRED_FOR_ROW(trigger->tg_event))
                 {
                     if (TRIGGER_FIRED_BY_UPDATE(trigger->tg_event) || TRIGGER_FIRED_BY_DELETE(trigger->tg_event))
-                        ankus_trigger_tuple(trigger->tg_trigtuple, trigger, false, &arguments[9]);
+                        ankus_trigger_tuple(trigger->tg_trigtuple, trigger, &site->shape, false, &arguments[9]);
                     if (TRIGGER_FIRED_BY_INSERT(trigger->tg_event) || TRIGGER_FIRED_BY_UPDATE(trigger->tg_event))
                         ankus_trigger_tuple(TRIGGER_FIRED_BY_INSERT(trigger->tg_event) ? trigger->tg_trigtuple : trigger->tg_newtuple,
-                            trigger, true, &arguments[10]);
+                            trigger, &site->shape, true, &arguments[10]);
                 }
 
-                ankus_tuple_transport(RelationGetDescr(trigger->tg_relation), RelationGetDescr(trigger->tg_relation)->tdtypeid,
-                    NULL, NULL, &arguments[11], &owned);
-                ankus_trigger_columns(trigger, &arguments[12], &arguments[13], &owned);
+                arguments[11] = site->columns;
+                arguments[12] = site->named;
+                ankus_trigger_columns(trigger, &arguments[13], &owned);
                 arguments[14].integral = trigger->tg_trigger->tgconstraint;
                 arguments[14].auxiliary1 = (trigger->tg_trigger->tgdeferrable ? 1 : 0) | (trigger->tg_trigger->tginitdeferred ? 2 : 0);
+                arguments[15].integral = site->identity;
                 ANKUS_MANAGED_INVOKE(status, error, callback(arguments, result, error, ankus_spi_execute, &memory));
                 if (status != 0)
                     ankus_raise_error(error);
@@ -277,7 +394,7 @@ internal static class NativeTriggerBridge
                         output = trigger->tg_trigtuple;
                     else
                     {
-                        HeapTuple tuple = ankus_trigger_result(result, trigger);
+                        HeapTuple tuple = ankus_trigger_result(result, trigger, &site->shape);
                         MemoryContextSwitchTo(caller);
                         output = heap_copytuple(tuple);
                     }
@@ -286,6 +403,8 @@ internal static class NativeTriggerBridge
             PG_FINALLY();
             {
                 MemoryContextSwitchTo(caller);
+                /* A nested call's private site lives in the scope context deleted below. */
+                site->busy--;
                 if (result->release != NULL)
                     result->release(result->data);
                 ankus_release_error(error);

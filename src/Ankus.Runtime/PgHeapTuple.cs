@@ -11,6 +11,14 @@ public sealed class PgHeapTuple
     private readonly object?[] _values;
 
     /// <summary>
+    /// Takes ownership of an array of cells a reader has just converted, without copying it.
+    /// </summary>
+    /// <param name="descriptor">The tuple's immutable descriptor metadata.</param>
+    /// <param name="values">The converted cells, referenced by nothing else.</param>
+    /// <returns>The tuple that owns the cells.</returns>
+    internal static PgHeapTuple FromOwnedCells(PgTupleDescriptor descriptor, object?[] values) => new(descriptor, values, owned: true);
+
+    /// <summary>
     /// Creates a tuple whose physical fields are all SQL NULL, which every attribute accepts.
     /// </summary>
     /// <param name="descriptor">The tuple's immutable descriptor metadata.</param>
@@ -24,6 +32,15 @@ public sealed class PgHeapTuple
     /// Copies converted cells and retains immutable descriptor metadata.
     /// </summary>
     internal PgHeapTuple(PgTupleDescriptor descriptor, object?[] values)
+        : this(descriptor, values, owned: false)
+    {
+    }
+
+    /// <summary>
+    /// Validates converted cells and retains immutable descriptor metadata, copying the cells unless the caller
+    /// transfers an array nothing else references.
+    /// </summary>
+    private PgHeapTuple(PgTupleDescriptor descriptor, object?[] values, bool owned)
     {
         ArgumentNullException.ThrowIfNull(descriptor);
         ArgumentNullException.ThrowIfNull(values);
@@ -41,7 +58,7 @@ public sealed class PgHeapTuple
         }
 
         Descriptor = descriptor;
-        _values = [.. values];
+        _values = owned ? values : [.. values];
         for (int index = 0; index < _values.Length; index++)
         {
             _values[index] = PgRelationIdentity.Snapshot(_values[index]);

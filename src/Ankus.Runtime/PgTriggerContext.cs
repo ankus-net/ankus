@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+
 namespace Ankus;
 
 /// <summary>
@@ -13,6 +15,20 @@ public sealed class PgTriggerContext
         string tableSchema, string? oldTransitionTableName, string? newTransitionTableName,
         string[] arguments, PgHeapTuple? oldRow, PgHeapTuple? newRow, PgTupleDescriptor descriptor,
         int[]? updateOfColumns = null, int[]? updatedColumns = null, uint constraintOid = 0, int constraintFlags = 0)
+        : this(eventBits, relationOid, triggerOid, name, tableName, tableSchema, oldTransitionTableName, newTransitionTableName,
+            Array.AsReadOnly<string>([.. arguments ?? throw new ArgumentNullException(nameof(arguments))]), oldRow, newRow, descriptor,
+            Array.AsReadOnly<int>([.. updateOfColumns ?? []]), updatedColumns, constraintOid, constraintFlags)
+    {
+    }
+
+    /// <summary>
+    /// Validates the event and takes ownership of converted rows, sharing read-only argument and column lists that
+    /// nothing can change, such as those a trigger call site parsed once.
+    /// </summary>
+    internal PgTriggerContext(uint eventBits, uint relationOid, uint triggerOid, string name, string tableName,
+        string tableSchema, string? oldTransitionTableName, string? newTransitionTableName,
+        ReadOnlyCollection<string> arguments, PgHeapTuple? oldRow, PgHeapTuple? newRow, PgTupleDescriptor descriptor,
+        ReadOnlyCollection<int> updateOfColumns, int[]? updatedColumns, uint constraintOid, int constraintFlags)
     {
         if ((eventBits & ~127U) != 0 || (eventBits & 24U) == 24U ||
             ((eventBits & 4U) != 0 && (eventBits & 3U) == 3U) ||
@@ -41,9 +57,13 @@ public sealed class PgTriggerContext
 
         ArgumentNullException.ThrowIfNull(arguments);
         ArgumentNullException.ThrowIfNull(descriptor);
-        if (arguments.Any(static argument => argument is null || argument.Contains('\0', StringComparison.Ordinal)))
+        // Indexed loops: this runs for every row, and enumerating a read-only list allocates.
+        for (int index = 0; index < arguments.Count; index++)
         {
-            throw new InvalidOperationException("Trigger arguments cannot contain SQL NULL or zero characters.");
+            if (arguments[index] is null || arguments[index].Contains('\0', StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Trigger arguments cannot contain SQL NULL or zero characters.");
+            }
         }
 
         Event = eventBits;
@@ -65,7 +85,7 @@ public sealed class PgTriggerContext
 
         ValidateRow(oldRow, descriptor);
         ValidateRow(newRow, descriptor);
-        updateOfColumns ??= [];
+        ArgumentNullException.ThrowIfNull(updateOfColumns);
         ValidateColumns(updateOfColumns, descriptor);
         if (updatedColumns is not null)
         {
@@ -93,11 +113,11 @@ public sealed class PgTriggerContext
         TableSchema = tableSchema;
         OldTransitionTableName = oldTransitionTableName;
         NewTransitionTableName = newTransitionTableName;
-        Arguments = Array.AsReadOnly<string>([.. arguments]);
+        Arguments = arguments;
         Old = oldRow;
         New = newRow;
         Descriptor = descriptor;
-        UpdateOfColumns = Array.AsReadOnly<int>([.. updateOfColumns]);
+        UpdateOfColumns = updateOfColumns;
         UpdatedColumns = updatedColumns is null ? null : Array.AsReadOnly<int>([.. updatedColumns]);
         ConstraintOid = constraintOid;
         IsDeferrable = (constraintFlags & 1) != 0;
@@ -217,17 +237,21 @@ public sealed class PgTriggerContext
         }
     }
 
-    private static void ValidateColumns(int[] columns, PgTupleDescriptor descriptor)
+    private static void ValidateColumns(IReadOnlyList<int> columns, PgTupleDescriptor descriptor)
     {
-        if (columns.Any(column => column < 0 || column >= descriptor.Attributes.Count))
+        for (int index = 0; index < columns.Count; index++)
         {
-            throw new InvalidOperationException("Trigger column ordinals must identify the target relation's attributes.");
+            if (columns[index] < 0 || columns[index] >= descriptor.Attributes.Count)
+            {
+                throw new InvalidOperationException("Trigger column ordinals must identify the target relation's attributes.");
+            }
         }
     }
 
     private static void ValidateRow(PgHeapTuple? row, PgTupleDescriptor descriptor)
     {
-        if (row is null)
+        // A row read from a call site's transport shares the site's descriptor.
+        if (row is null || ReferenceEquals(row.Descriptor, descriptor))
         {
             return;
         }

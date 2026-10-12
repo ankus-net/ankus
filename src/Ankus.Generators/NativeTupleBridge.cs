@@ -66,8 +66,43 @@ internal static class NativeTupleBridge
             AnkusValue value;
         } AnkusTupleField;
 
+        /* A descriptor's catalog facts, resolved once for a caller that serializes many rows of one relation.
+         * Every field is a pure function of the descriptor, so a cached shape transports exactly what an
+         * uncached one would. */
+        typedef struct AnkusTupleShapeField
+        {
+            Oid base_type;
+            int flags;
+            bool enum_checked;
+            char *name;
+            int name_length;
+        } AnkusTupleShapeField;
+
+        typedef struct AnkusTupleShape
+        {
+            Oid declared_base;
+            int count;
+            AnkusTupleShapeField *fields;
+        } AnkusTupleShape;
+
+        /* A persistent field owns its name; a transient one borrows the catalog name when no conversion is needed. */
         static void
-        ankus_tuple_transport_available(TupleDesc descriptor, Oid declared_type, const Datum *values,
+        ankus_tuple_shape_field(Form_pg_attribute attribute, AnkusTupleShapeField *field, bool persistent)
+        {
+            const char *name = NameStr(attribute->attname);
+            char *utf8 = pg_server_to_any(name, strlen(name), PG_UTF8);
+            field->base_type = attribute->attisdropped ? InvalidOid : getBaseType(attribute->atttypid);
+            field->flags = (attribute->attisdropped ? 1 : 0) | (attribute->attnotnull ? 2 : 0);
+            if (OidIsValid(field->base_type) &&
+                (field->base_type == RECORDOID || get_typtype(field->base_type) == TYPTYPE_COMPOSITE))
+                field->flags |= 4;
+            field->enum_checked = false;
+            field->name_length = strlen(utf8);
+            field->name = utf8 == name && persistent ? pnstrdup(name, field->name_length) : utf8;
+        }
+
+        static void
+        ankus_tuple_transport_shaped(TupleDesc descriptor, Oid declared_type, AnkusTupleShape *shape, const Datum *values,
             const bool *nulls, const bool *unavailable, AnkusValue *value, AnkusInputBuffer *owned)
         {
             StringInfoData buffer;
@@ -79,31 +114,39 @@ internal static class NativeTupleBridge
             for (int index = 0; index < descriptor->natts; index++)
             {
                 Form_pg_attribute attribute = TupleDescAttr(descriptor, index);
-                Oid base_type = attribute->attisdropped ? InvalidOid : getBaseType(attribute->atttypid);
-                const char *name = NameStr(attribute->attname);
-                char *utf8 = pg_server_to_any(name, strlen(name), PG_UTF8);
-                int flags = (attribute->attisdropped ? 1 : 0) | (attribute->attnotnull ? 2 : 0);
+                AnkusTupleShapeField resolved;
+                AnkusTupleShapeField *field = shape != NULL ? &shape->fields[index] : &resolved;
+                int flags;
                 AnkusValue cell = {0};
                 AnkusInputBuffer cell_owned = {0};
                 CHECK_FOR_INTERRUPTS();
-                if (OidIsValid(base_type) && (base_type == RECORDOID || get_typtype(base_type) == TYPTYPE_COMPOSITE))
-                    flags |= 4;
+                if (shape == NULL)
+                    ankus_tuple_shape_field(attribute, &resolved, false);
+                flags = field->flags;
                 if (unavailable != NULL && unavailable[index])
                     flags |= 8;
                 pq_sendint32(&buffer, attribute->atttypid);
-                pq_sendint32(&buffer, base_type);
+                pq_sendint32(&buffer, field->base_type);
                 pq_sendint32(&buffer, attribute->atttypmod);
                 pq_sendint32(&buffer, attribute->attcollation);
                 pq_sendint32(&buffer, flags);
-                pq_sendint32(&buffer, strlen(utf8));
-                pq_sendbytes(&buffer, utf8, strlen(utf8));
-                if (utf8 != name)
-                    pfree(utf8);
+                pq_sendint32(&buffer, field->name_length);
+                pq_sendbytes(&buffer, field->name, field->name_length);
+                if (shape == NULL && resolved.name != NameStr(attribute->attname))
+                    pfree(resolved.name);
                 cell.is_null = values == NULL || attribute->attisdropped || (flags & 8) != 0 || nulls[index];
                 if (!cell.is_null)
                 {
-                    ankus_check_result_enum(base_type);
-                    ankus_read_cell(values[index], base_type, &cell, &cell_owned);
+                    if (!field->enum_checked)
+                    {
+                        ankus_check_result_enum(field->base_type);
+                        field->enum_checked = shape != NULL;
+                    }
+
+                    /* The field's type is already a base type, so convert without resolving it again. A cell
+                     * keeps an exact copy of a value Ankus cannot convert, as pgrx reads a field only when
+                     * asked; a mapped reader can use it, and writing the row back restores it. */
+                    ankus_convert_base_value(values[index], field->base_type, &cell, &cell_owned, true);
                 }
 
                 pq_sendint64(&buffer, cell.integral);
@@ -122,7 +165,14 @@ internal static class NativeTupleBridge
             value->length = buffer.len;
             value->auxiliary1 = -4;
             /* Physical index descriptors on PostgreSQL 13 have no catalog row type. */
-            value->integral = OidIsValid(declared_type) ? getBaseType(declared_type) : InvalidOid;
+            value->integral = shape != NULL ? shape->declared_base : OidIsValid(declared_type) ? getBaseType(declared_type) : InvalidOid;
+        }
+
+        static void
+        ankus_tuple_transport_available(TupleDesc descriptor, Oid declared_type, const Datum *values,
+            const bool *nulls, const bool *unavailable, AnkusValue *value, AnkusInputBuffer *owned)
+        {
+            ankus_tuple_transport_shaped(descriptor, declared_type, NULL, values, nulls, unavailable, value, owned);
         }
 
         static void

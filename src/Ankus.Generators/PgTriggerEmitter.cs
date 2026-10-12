@@ -35,7 +35,7 @@ internal static class PgTriggerEmitter
         managed.AppendLine("            previousMemory = global::Ankus.CompilerServices.NativeMemoryContext.Enter(memory);");
         managed.AppendLine("            memoryEntered = true;");
         managed.AppendLine("            global::Ankus.PgTriggerContext context = global::Ankus.CompilerServices.NativeValue.ReadTriggerContext(");
-        managed.AppendLine("                new global::System.ReadOnlySpan<global::Ankus.CompilerServices.NativeValue>(arguments, 15));");
+        managed.AppendLine("                new global::System.ReadOnlySpan<global::Ankus.CompilerServices.NativeValue>(arguments, 16));");
         managed.AppendLine("            global::Ankus.PgHeapTuple? value = " +
             target + "(context);");
         managed.AppendLine("            if (context.Timing == global::Ankus.PgTriggerTiming.After)");
