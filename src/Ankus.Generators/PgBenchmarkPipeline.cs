@@ -45,7 +45,8 @@ internal static class PgBenchmarkPipeline
         "'{0}' cannot contain benchmark '{1}'; benchmarks belong to non-generic, non-file-local public or internal classes",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: Help);
     private static readonly DiagnosticDescriptor s_setup = new(
-        "ANKUS131", "Invalid PostgreSQL benchmark setup", "Benchmark '{0}' setup '{1}' must identify one accessible synchronous static void method with no parameters",
+        "ANKUS131", "Invalid PostgreSQL benchmark setup",
+        "Benchmark '{0}' setup '{1}' must identify one accessible synchronous static void method with no parameters; {2}",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: Help);
     private static readonly DiagnosticDescriptor s_configuration = new(
         "ANKUS132", "Invalid PostgreSQL benchmark configuration", "Benchmark '{0}' has an invalid {1} value",
@@ -98,12 +99,16 @@ internal static class PgBenchmarkPipeline
         string? setupTarget = null;
         if (setupName is not null)
         {
-            IMethodSymbol[] candidates = [.. method.ContainingType.GetMembers(setupName).OfType<IMethodSymbol>().Where(static candidate =>
-                candidate.IsStatic && !candidate.IsAsync && !candidate.IsGenericMethod && !candidate.IsAbstract && candidate.ReturnsVoid &&
-                candidate.Parameters.Length == 0 && candidate.DeclaredAccessibility is Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal)];
-            if (candidates.Length != 1)
+            IMethodSymbol[] candidates = [.. method.ContainingType.GetMembers(setupName).OfType<IMethodSymbol>()];
+            string? problem = candidates.Length switch
             {
-                diagnostics.Report(s_setup, BenchmarkOption(benchmark, "Setup", method), method.Name, setupName);
+                0 => $"'{method.ContainingType.Name}' has no method named '{setupName}'",
+                1 => SetupProblem(candidates[0]),
+                _ => $"'{setupName}' has {candidates.Length} overloads",
+            };
+            if (problem is not null)
+            {
+                diagnostics.Report(s_setup, BenchmarkOption(benchmark, "Setup", method), method.Name, setupName, problem);
                 return null;
             }
 
@@ -256,6 +261,49 @@ internal static class PgBenchmarkPipeline
 
         Location? Modifier(SyntaxKind kind)
             => syntax?.Modifiers.FirstOrDefault(token => token.IsKind(kind)) is { RawKind: not 0 } token ? token.GetLocation() : name;
+    }
+
+    /// <summary>
+    /// Finds the first way a setup method breaks the shape the runner calls.
+    /// </summary>
+    /// <param name="setup">The named setup method.</param>
+    /// <returns>The problem the diagnostic states, or null when the runner can call it.</returns>
+    private static string? SetupProblem(IMethodSymbol setup)
+    {
+        string name = $"'{setup.Name}'";
+        if (!setup.IsStatic)
+        {
+            return name + " is not static";
+        }
+
+        if (setup.IsAsync)
+        {
+            return name + " is async";
+        }
+
+        if (setup.IsGenericMethod)
+        {
+            return name + " is generic";
+        }
+
+        if (setup.IsAbstract)
+        {
+            return name + " has no body the runner can call";
+        }
+
+        if (!setup.ReturnsVoid)
+        {
+            return $"{name} returns {setup.ReturnType.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat)}";
+        }
+
+        if (setup.Parameters.Length != 0)
+        {
+            return $"{name} takes {setup.Parameters.Length} parameter{(setup.Parameters.Length == 1 ? string.Empty : "s")}";
+        }
+
+        return setup.DeclaredAccessibility is Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal
+            ? null
+            : name + " is not public or internal";
     }
 
     private static string Target(IMethodSymbol method)

@@ -401,7 +401,13 @@ internal sealed class GucDeclaration
             }
 
             IMethodSymbol[] candidates = [.. property.ContainingType.GetMembers(hookName).OfType<IMethodSymbol>()];
-            if (candidates.Length != 1 || !result.ValidateHook(candidates[0], role))
+            string? problem = candidates.Length switch
+            {
+                0 => $"'{property.ContainingType.Name}' has no method named '{hookName}'",
+                1 => result.HookProblem(candidates[0], role),
+                _ => $"'{hookName}' has {candidates.Length} overloads",
+            };
+            if (problem is not null)
             {
                 DiagnosticDescriptor descriptor = role switch
                 {
@@ -409,7 +415,7 @@ internal sealed class GucDeclaration
                     "Assign" => GucDeclarationDiagnostics.Assign,
                     _ => GucDeclarationDiagnostics.Show,
                 };
-                return Invalid(descriptor, Option(role), result.ManagedType);
+                return Invalid(descriptor, Option(role), result.ManagedType, problem);
             }
 
             switch (role)
@@ -530,33 +536,99 @@ internal sealed class GucDeclaration
     }
 
     /// <summary>
-    /// Verifies a hook's invocation shape, nullable contract, and typed result.
+    /// Finds the first way a hook breaks its invocation shape, nullable contract or typed result.
     /// </summary>
-    private bool ValidateHook(IMethodSymbol method, string role)
+    /// <param name="method">The named hook.</param>
+    /// <param name="role">Check, Assign or Show.</param>
+    /// <returns>The problem the diagnostic states, or null when the hook can be called.</returns>
+    private string? HookProblem(IMethodSymbol method, string role)
     {
-        if (!method.IsStatic || method.MethodKind != MethodKind.Ordinary || method.IsGenericMethod || method.IsAsync ||
-            method.PartialImplementationPart?.IsAsync == true || method.IsAbstract || method.IsExtern || method.IsVirtual ||
-            method.ReturnsByRef || method.ReturnsByRefReadonly ||
-            method.IsPartialDefinition && method.PartialImplementationPart is null ||
-            method.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal) || method.Parameters.Length != 2 ||
-            method.Parameters.Any(static parameter => parameter.RefKind != RefKind.None || parameter.IsOptional || parameter.IsParams) ||
-            method.GetAttributes().Any(static attribute => attribute.AttributeClass?.ToDisplayString() is
-                "System.Diagnostics.ConditionalAttribute" or "System.Runtime.InteropServices.UnmanagedCallersOnlyAttribute") ||
-            !SymbolEqualityComparer.IncludeNullability.Equals(method.Parameters[0].Type, Property.Type))
+        string name = $"'{method.Name}'";
+        string? attribute = method.GetAttributes().Select(static item => item.AttributeClass?.ToDisplayString()).FirstOrDefault(static item =>
+            item is "System.Diagnostics.ConditionalAttribute" or "System.Runtime.InteropServices.UnmanagedCallersOnlyAttribute");
+        IParameterSymbol? passed = method.Parameters.FirstOrDefault(static parameter =>
+            parameter.RefKind != RefKind.None || parameter.IsOptional || parameter.IsParams);
+        if (!method.IsStatic)
         {
-            return false;
+            return name + " is not static";
+        }
+
+        if (method.MethodKind != MethodKind.Ordinary)
+        {
+            return name + " is not an ordinary method";
+        }
+
+        if (method.IsGenericMethod)
+        {
+            return name + " is generic";
+        }
+
+        if (method.IsAsync || method.PartialImplementationPart?.IsAsync == true)
+        {
+            return name + " is async";
+        }
+
+        if (method.IsAbstract || method.IsExtern || method.IsVirtual || method.IsPartialDefinition && method.PartialImplementationPart is null)
+        {
+            return name + " has no body the generated hook can call";
+        }
+
+        if (method.ReturnsByRef || method.ReturnsByRefReadonly)
+        {
+            return name + " returns by reference";
+        }
+
+        if (method.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal))
+        {
+            return name + " is not public or internal";
+        }
+
+        if (attribute is not null)
+        {
+            return name + " has " + attribute.Substring(attribute.LastIndexOf('.') + 1).Replace("Attribute", string.Empty);
+        }
+
+        if (method.Parameters.Length != 2)
+        {
+            return $"{name} takes {method.Parameters.Length} parameter{(method.Parameters.Length == 1 ? string.Empty : "s")}";
+        }
+
+        if (passed is not null)
+        {
+            return $"{name} parameter '{passed.Name}' " + (passed.RefKind != RefKind.None ? "is passed by reference" : passed.IsParams ? "is params" : "has a default");
+        }
+
+        if (!SymbolEqualityComparer.IncludeNullability.Equals(method.Parameters[0].Type, Property.Type))
+        {
+            return $"{name} takes {method.Parameters[0].Type.ToDisplayString()} as its first parameter";
         }
 
         IParameterSymbol second = method.Parameters[1];
+        SymbolDisplayFormat display = SymbolDisplayFormat.CSharpErrorMessageFormat.AddMiscellaneousOptions(
+            SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+        string result = method.ReturnType.WithNullableAnnotation(method.ReturnNullableAnnotation).ToDisplayString(display);
         if (role == "Check")
         {
-            return second.Type.ToDisplayString() == "Ankus.PgGucSource" && method.ReturnNullableAnnotation != NullableAnnotation.Annotated &&
-                method.ReturnType is INamedTypeSymbol result && result.OriginalDefinition.ToDisplayString() == "Ankus.PgGucCheckResult<T>" &&
-                SymbolEqualityComparer.IncludeNullability.Equals(result.TypeArguments[0], Property.Type);
+            if (second.Type.ToDisplayString() != "Ankus.PgGucSource")
+            {
+                return $"{name} takes {second.Type.ToDisplayString()} as its second parameter";
+            }
+
+            return method.ReturnNullableAnnotation != NullableAnnotation.Annotated && method.ReturnType is INamedTypeSymbol checkResult &&
+                checkResult.OriginalDefinition.ToDisplayString() == "Ankus.PgGucCheckResult<T>" &&
+                SymbolEqualityComparer.IncludeNullability.Equals(checkResult.TypeArguments[0], Property.Type)
+                ? null
+                : $"{name} returns {result}";
         }
 
-        return second.Type is INamedTypeSymbol extra && extra.Name == "PgGucExtra" && extra.ContainingNamespace.ToDisplayString() == "Ankus" &&
-            second.NullableAnnotation == NullableAnnotation.Annotated && (role == "Assign" ? method.ReturnsVoid :
-                method.ReturnType.SpecialType == SpecialType.System_String && method.ReturnNullableAnnotation != NullableAnnotation.Annotated);
+        if (second.Type is not INamedTypeSymbol { Name: "PgGucExtra" } extra || extra.ContainingNamespace.ToDisplayString() != "Ankus" ||
+            second.NullableAnnotation != NullableAnnotation.Annotated)
+        {
+            return $"{name} takes {second.Type.WithNullableAnnotation(second.NullableAnnotation).ToDisplayString(display)} as its second parameter";
+        }
+
+        bool returns = role == "Assign" ? method.ReturnsVoid :
+            method.ReturnType.SpecialType == SpecialType.System_String && method.ReturnNullableAnnotation != NullableAnnotation.Annotated;
+        return returns ? null : $"{name} returns {result}";
     }
 }

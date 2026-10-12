@@ -415,39 +415,46 @@ public sealed partial class PgFunctionGeneratorTests
             value + ", \"Mode\")] public static partial Mode Value { get; } }", id);
 
     /// <summary>
-    /// Hooks resolve one exact, callable typed contract instead of relying on overload choice or nullable conversions.
+    /// Hooks resolve one exact, callable typed contract instead of relying on overload choice or nullable conversions,
+    /// and the diagnostic states the first rule the named hook breaks.
     /// </summary>
     /// <param name="role">The hook role.</param>
     /// <param name="declaration">The invalid hook declaration.</param>
+    /// <param name="problem">The problem the message states.</param>
     [TestMethod]
-    [DataRow("Check", "")]
-    [DataRow("Check", "public static bool Hook(int value, Ankus.PgGucSource source) => true;")]
-    [DataRow("Check", "public static Ankus.PgGucCheckResult<long> Hook(int value, Ankus.PgGucSource source) => new(value);")]
-    [DataRow("Check", "public static Ankus.PgGucCheckResult<int>? Hook(int value, Ankus.PgGucSource source) => null;")]
-    [DataRow("Check", "public static ref Ankus.PgGucCheckResult<int> Hook(int value, Ankus.PgGucSource source) => throw new System.Exception();")]
-    [DataRow("Check", "private static Ankus.PgGucCheckResult<int> Hook(int value, Ankus.PgGucSource source) => new(value);")]
-    [DataRow("Check", "public Ankus.PgGucCheckResult<int> Hook(int value, Ankus.PgGucSource source) => new(value);")]
-    [DataRow("Check", "public static Ankus.PgGucCheckResult<int> Hook<T>(int value, Ankus.PgGucSource source) => new(value);")]
-    [DataRow("Check", "public static Ankus.PgGucCheckResult<int> Hook(ref int value, Ankus.PgGucSource source) => new(value);")]
-    [DataRow("Check", "public static Ankus.PgGucCheckResult<int> Hook(int value, Ankus.PgGucSource source = default) => new(value);")]
-    [DataRow("Check", "public static Ankus.PgGucCheckResult<int> Hook(int value, int source) => new(value);")]
-    [DataRow("Check", "public static Ankus.PgGucCheckResult<int> Hook(int value, Ankus.PgGucSource source) => new(value); public static void Hook() { }")]
-    [DataRow("Assign", "public static int Hook(int value, Ankus.PgGucExtra? extra) => value;")]
-    [DataRow("Assign", "public static void Hook(int value, Ankus.PgGucExtra extra) { }")]
-    [DataRow("Assign", "[System.Diagnostics.Conditional(\"NEVER\")] public static void Hook(int value, Ankus.PgGucExtra? extra) { }")]
-    [DataRow("Assign", "public static partial void Hook(int value, Ankus.PgGucExtra? extra); public static async partial void Hook(int value, Ankus.PgGucExtra? extra) { await System.Threading.Tasks.Task.Yield(); }")]
-    [DataRow("Show", "public static string? Hook(int value, Ankus.PgGucExtra? extra) => null;")]
-    [DataRow("Show", "public static ref readonly string Hook(int value, Ankus.PgGucExtra? extra) => throw new System.Exception();")]
-    [DataRow("Show", "public static string Hook(long value, Ankus.PgGucExtra? extra) => \"shown\";")]
-    public void InvalidGucHookContractsAreDiagnosed(string role, string declaration)
-        => AssertInvalidGuc("public partial class Settings { [Ankus.PgGucInt(\"demo.value\", 1, \"Value\", " + role +
-            " = \"Hook\")] public static partial int Value { get; } " + declaration + " }",
-            role switch
-            {
-                "Check" => "ANKUS199",
-                "Assign" => "ANKUS200",
-                _ => "ANKUS201",
-            });
+    [DataRow("Check", "", "'Settings' has no method named 'Hook'")]
+    [DataRow("Check", "public static bool Hook(int value, Ankus.PgGucSource source) => true;", "'Hook' returns bool")]
+    [DataRow("Check", "public static Ankus.PgGucCheckResult<long> Hook(int value, Ankus.PgGucSource source) => new(value);", "'Hook' returns Ankus.PgGucCheckResult<long>")]
+    [DataRow("Check", "public static Ankus.PgGucCheckResult<int>? Hook(int value, Ankus.PgGucSource source) => null;", "'Hook' returns Ankus.PgGucCheckResult<int>?")]
+    [DataRow("Check", "public static ref Ankus.PgGucCheckResult<int> Hook(int value, Ankus.PgGucSource source) => throw new System.Exception();", "'Hook' returns by reference")]
+    [DataRow("Check", "private static Ankus.PgGucCheckResult<int> Hook(int value, Ankus.PgGucSource source) => new(value);", "'Hook' is not public or internal")]
+    [DataRow("Check", "public Ankus.PgGucCheckResult<int> Hook(int value, Ankus.PgGucSource source) => new(value);", "'Hook' is not static")]
+    [DataRow("Check", "public static Ankus.PgGucCheckResult<int> Hook<T>(int value, Ankus.PgGucSource source) => new(value);", "'Hook' is generic")]
+    [DataRow("Check", "public static Ankus.PgGucCheckResult<int> Hook(ref int value, Ankus.PgGucSource source) => new(value);", "'Hook' parameter 'value' is passed by reference")]
+    [DataRow("Check", "public static Ankus.PgGucCheckResult<int> Hook(int value, Ankus.PgGucSource source = default) => new(value);", "'Hook' parameter 'source' has a default")]
+    [DataRow("Check", "public static Ankus.PgGucCheckResult<int> Hook(int value, int source) => new(value);", "'Hook' takes int as its second parameter")]
+    [DataRow("Check", "public static Ankus.PgGucCheckResult<int> Hook(int value, Ankus.PgGucSource source) => new(value); public static void Hook() { }", "'Hook' has 2 overloads")]
+    [DataRow("Assign", "public static int Hook(int value, Ankus.PgGucExtra? extra) => value;", "'Hook' returns int")]
+    [DataRow("Assign", "public static void Hook(int value, Ankus.PgGucExtra extra) { }", "'Hook' takes Ankus.PgGucExtra as its second parameter")]
+    [DataRow("Assign", "[System.Diagnostics.Conditional(\"NEVER\")] public static void Hook(int value, Ankus.PgGucExtra? extra) { }", "'Hook' has Conditional")]
+    [DataRow("Assign", "public static partial void Hook(int value, Ankus.PgGucExtra? extra); public static async partial void Hook(int value, Ankus.PgGucExtra? extra) { await System.Threading.Tasks.Task.Yield(); }", "'Hook' is async")]
+    [DataRow("Show", "public static string? Hook(int value, Ankus.PgGucExtra? extra) => null;", "'Hook' returns string?")]
+    [DataRow("Show", "public static ref readonly string Hook(int value, Ankus.PgGucExtra? extra) => throw new System.Exception();", "'Hook' returns by reference")]
+    [DataRow("Show", "public static string Hook(long value, Ankus.PgGucExtra? extra) => \"shown\";", "'Hook' takes long as its first parameter")]
+    public void InvalidGucHookContractsAreDiagnosed(string role, string declaration, string problem)
+    {
+        string id = role switch
+        {
+            "Check" => "ANKUS199",
+            "Assign" => "ANKUS200",
+            _ => "ANKUS201",
+        };
+        string source = "public partial class Settings { [Ankus.PgGucInt(\"demo.value\", 1, \"Value\", " + role +
+            " = \"Hook\")] public static partial int Value { get; } " + declaration + " }";
+        AssertInvalidGuc(source, id);
+        (_, ImmutableArray<Diagnostic> diagnostics) = Generate(source);
+        Assert.EndsWith("; " + problem, Assert.ContainsSingle(diagnostics).GetMessage(CultureInfo.InvariantCulture));
+    }
 
     /// <summary>
     /// Duplicate native names use ASCII folding, while non-ASCII labels remain distinct.

@@ -197,7 +197,7 @@ defining assembly with a complete valid attribute.
 | `ANKUS196` | Select a declared value of the property's enum type. |
 | `ANKUS197` | Use valid enum labels and complete, readable attribute metadata in referenced assemblies. |
 | `ANKUS198` | Give labels distinct names under PostgreSQL's ASCII case folding. |
-| `ANKUS199`–`ANKUS201` | Match the check, assignment, or display hook's exact typed signature. |
+| `ANKUS199`–`ANKUS201` | Match the check, assignment, or display hook's exact typed signature. The message names the first problem, such as a missing method, an overload or a wrong return type. |
 | `ANKUS202` | Give each setting a distinct name under PostgreSQL's ASCII case folding. |
 
 Editors fix the common declaration mistakes: **Make static** and **Make

@@ -280,7 +280,7 @@ internal static class GucDeclarationDiagnostics
     internal static DiagnosticDescriptor DuplicateLabel => s_duplicateLabel;
 
     private static readonly DiagnosticDescriptor s_check = new("ANKUS199", "Invalid GUC check hook",
-        "Check must name one accessible synchronous non-generic static method returning PgGucCheckResult<{0}> and taking ({0}, PgGucSource)",
+        "Check must name one accessible synchronous non-generic static method returning PgGucCheckResult<{0}> and taking ({0}, PgGucSource); {1}",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: HelpLink);
 
     /// <summary>
@@ -289,7 +289,7 @@ internal static class GucDeclarationDiagnostics
     internal static DiagnosticDescriptor Check => s_check;
 
     private static readonly DiagnosticDescriptor s_assign = new("ANKUS200", "Invalid GUC assignment hook",
-        "Assign must name one accessible synchronous non-generic static void method taking ({0}, PgGucExtra?)",
+        "Assign must name one accessible synchronous non-generic static void method taking ({0}, PgGucExtra?); {1}",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: HelpLink);
 
     /// <summary>
@@ -298,7 +298,7 @@ internal static class GucDeclarationDiagnostics
     internal static DiagnosticDescriptor Assign => s_assign;
 
     private static readonly DiagnosticDescriptor s_show = new("ANKUS201", "Invalid GUC display hook",
-        "Show must name one accessible synchronous non-generic static method returning non-nullable string and taking ({0}, PgGucExtra?)",
+        "Show must name one accessible synchronous non-generic static method returning non-nullable string and taking ({0}, PgGucExtra?); {1}",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: HelpLink);
 
     /// <summary>

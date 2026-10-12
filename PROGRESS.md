@@ -142,6 +142,10 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- GUC hook (`ANKUS199`–`ANKUS201`) and benchmark setup (`ANKUS131`) errors
+  now say what is wrong with the named method, such as "'Hook' returns bool"
+  or "'Settings' has no method named 'Hook'", instead of restating the whole
+  contract for every mistake.
 - Aggregate transitions now resolve their result and argument types once per
   call site, as sets do, so an `int` sum with a `long` state costs 95 ns per
   row instead of 153 ns on the same release build. SPI result cells, whose

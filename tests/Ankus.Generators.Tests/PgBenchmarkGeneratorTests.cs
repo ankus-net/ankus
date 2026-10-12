@@ -173,6 +173,30 @@ public sealed partial class PgFunctionGeneratorTests
     }
 
     /// <summary>
+    /// A setup diagnostic states the first rule the named method breaks.
+    /// </summary>
+    /// <param name="setup">The setup declarations.</param>
+    /// <param name="problem">The problem the message states.</param>
+    [TestMethod]
+    [DataRow("", "'B' has no method named 'Prepare'")]
+    [DataRow("public void Prepare() { }", "'Prepare' is not static")]
+    [DataRow("public static async void Prepare() => await System.Threading.Tasks.Task.Yield();", "'Prepare' is async")]
+    [DataRow("public static void Prepare<T>() { }", "'Prepare' is generic")]
+    [DataRow("public static int Prepare() => 0;", "'Prepare' returns int")]
+    [DataRow("public static void Prepare(int count) { }", "'Prepare' takes 1 parameter")]
+    [DataRow("private static void Prepare() { }", "'Prepare' is not public or internal")]
+    [DataRow("public static void Prepare() { } public static void Prepare(int count) { }", "'Prepare' has 2 overloads")]
+    public void BenchmarkSetupDiagnosticsStateTheProblem(string setup, string problem)
+    {
+        (_, ImmutableArray<Diagnostic> diagnostics) = Generate(
+            "public class B { [Ankus.PgBenchmark(Setup = \"Prepare\")] public static void Run(Ankus.PgBencher b) { } " + setup + " }",
+            options: new BenchmarkOptions(true, string.Empty));
+        Diagnostic diagnostic = Assert.ContainsSingle(diagnostics);
+        Assert.AreEqual("ANKUS131", diagnostic.Id);
+        Assert.EndsWith("; " + problem, diagnostic.GetMessage(CultureInfo.InvariantCulture));
+    }
+
+    /// <summary>
     /// Body edits in one of several declarations retain the complete benchmark model and rendered publication.
     /// </summary>
     [TestMethod]

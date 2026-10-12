@@ -184,7 +184,7 @@ parameter or containing type that breaks it:
 | `ANKUS532` | Declare exactly one `PgBencher` parameter. |
 | `ANKUS533` | Pass the `PgBencher` by value. |
 | `ANKUS534` | Declare benchmarks in non-generic, non-file-local public or internal classes. |
-| `ANKUS131` | Name one accessible synchronous static `void` setup method without parameters. |
+| `ANKUS131` | Name one accessible synchronous static `void` setup method without parameters. The message names the first problem. |
 | `ANKUS132` | Correct the reported measurement or throughput option. |
 | `ANKUS133` | Keep benchmarks separate from functions, tests, initialization and workers. |
 
