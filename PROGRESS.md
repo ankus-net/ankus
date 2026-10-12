@@ -174,6 +174,16 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   fixed the rows cost 182 ns and 330 ns. See the
   [measurements](docs/contributing/evidence/guard-tiers.md#managed-custom-scans).
   The PostgreSQL 18 suite passes with these changes.
+- A `BEFORE` row trigger that returns its NEW row unchanged no longer converts
+  it back: `PgHeapTuple` records replaced cells, and when the returned row is the
+  context's own NEW row with none replaced and no mutable cells, PostgreSQL
+  keeps the row it passed in. A validating trigger's overhead fell from 1.21 µs
+  to 0.76 µs per row. Unit tests cover clones, replaced cells and byte arrays,
+  and every existing backend test whose trigger returns NEW now takes this
+  path; the trigger backend tests pass on PostgreSQL 13 and 18, and the full
+  PostgreSQL 18 suite passes (14,861 tests, 52 platform skips). A new
+  [boundary costs](docs/src/content/docs/reference/performance.md) reference
+  page lists the measured costs and how to keep hot paths cheap.
 - Composite values cross the boundary without per-row catalog lookups. Managed
   code reuses a recent descriptor of the same type when every transported
   column matches it byte for byte, and the native side keeps the resolved facts
@@ -264,7 +274,10 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   did not run its tests: both macOS ARM64 runners, on a laptop that was off the
   home network, timed out downloading the workflow's actions, in the first
   attempt and in a rerun, so the test jobs were skipped. Its changes passed the
-  full PostgreSQL 18 suite on Linux before the push.
+  full PostgreSQL 18 suite on Linux before the push, and CI for **7ed74c8**
+  ([38261381904](https://github.com/willibrandon/ankus/actions/runs/38261381904)),
+  which contains them, passed on all three platforms once the runners
+  recovered.
 - GUC hook (`ANKUS199`–`ANKUS201`) and benchmark setup (`ANKUS131`) errors
   now say what is wrong with the named method, such as "'Hook' returns bool"
   or "'Settings' has no method named 'Hook'", instead of restating the whole
