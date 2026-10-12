@@ -231,6 +231,21 @@ changes, so the backend keeps that state for up to 16 domains. With a
 the managed trigger took 510 ms against 608 to 633 ms before, while the PL/pgSQL
 trigger took 324 to 354 ms in both.
 
+Sampling the backend's stacks with gdb showed that much of the trimming
+trigger's remaining overhead was the row format itself. Each row went out with
+every column's name, types, modifier, collation and flags, which native code
+serialized and managed code parsed and compared, and the returned row came back
+the same way. The call site
+already gives both sides the relation's columns, so a trigger row now travels as
+one value per column. A returned NEW row marks each cell the trigger did not
+replace, and PostgreSQL's `heap_modify_tuple` keeps the original datum for it
+instead of converting it back; the result tuple is built where the caller keeps
+it rather than copied there. A row of another descriptor still describes itself
+and is checked against the relation. With the two builds alternated on the same
+cluster, best of five runs of 500,000 rows, the trimming trigger's overhead went
+from 1.27 µs to 0.90 µs per row, against 0.54 µs for PL/pgSQL, and the sample
+changed to validate without trimming went from 0.75 µs to 0.55 µs.
+
 ### Composite arguments and results
 
 Calling the `ankus_composites` sample's `scritch_dog`, which reads a `dog`

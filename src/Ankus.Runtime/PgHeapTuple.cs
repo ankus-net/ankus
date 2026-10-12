@@ -10,7 +10,7 @@ public sealed class PgHeapTuple
 {
     private readonly object?[] _values;
 
-    private bool _modified;
+    private bool[]? _replaced;
 
     /// <summary>
     /// Takes ownership of an array of cells a reader has just converted, without copying it.
@@ -162,7 +162,7 @@ public sealed class PgHeapTuple
             uint mapped = mapping.GetOid();
             RequireReplaceable(ordinal, mapped);
             _values[ordinal] = mapping.WriteCell(value, mapped);
-            _modified = true;
+            MarkReplaced(ordinal);
             return;
         }
 
@@ -171,7 +171,7 @@ public sealed class PgHeapTuple
             uint mapped = arrays.GetOid();
             RequireReplaceable(ordinal, mapped);
             _values[ordinal] = arrays.WriteCell(value, mapped);
-            _modified = true;
+            MarkReplaced(ordinal);
             return;
         }
 
@@ -206,7 +206,7 @@ public sealed class PgHeapTuple
         {
             RequireReplaceable(ordinal, value.TypeOid);
             _values[ordinal] = WriteMapped(value);
-            _modified = true;
+            MarkReplaced(ordinal);
             return;
         }
 
@@ -318,7 +318,14 @@ public sealed class PgHeapTuple
     /// <summary>
     /// Gets whether any cell has been replaced since the tuple was created or read.
     /// </summary>
-    internal bool IsModified => _modified;
+    internal bool IsModified => _replaced is not null;
+
+    /// <summary>
+    /// Gets whether a cell has been replaced since the tuple was created or read.
+    /// </summary>
+    /// <param name="ordinal">The zero-based physical ordinal.</param>
+    /// <returns>Whether the cell was replaced.</returns>
+    internal bool IsReplaced(int ordinal) => _replaced is { } replaced && replaced[ordinal];
 
     /// <summary>
     /// Gets a stored cell, including one that has no managed conversion, after checking that the attribute has a value.
@@ -335,8 +342,10 @@ public sealed class PgHeapTuple
     {
         RequireReplaceable(ordinal, oid);
         _values[ordinal] = value is PgDatum datum ? NativeBackend.DetachDatum(datum) : PgRelationIdentity.Snapshot(value);
-        _modified = true;
+        MarkReplaced(ordinal);
     }
+
+    private void MarkReplaced(int ordinal) => (_replaced ??= new bool[_values.Length])[ordinal] = true;
 
     /// <summary>
     /// Checks that a live attribute can hold a replacement of the given type before any conversion runs.

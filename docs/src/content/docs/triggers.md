@@ -104,9 +104,10 @@ value would have been ignored.
 
 Returning `context.New` without setting any of its cells gives PostgreSQL back
 the row it passed in, as a C trigger returning `tg_trigtuple` does, so a trigger
-that only checks its row does not pay to convert it again. A row holding an
-array or other mutable value is always converted, because it may have been
-changed in place.
+that only checks its row does not pay to convert it again. After setting some
+cells, PostgreSQL keeps its original values for the others and converts only
+the cells that were set. An array or other mutable value is always converted,
+because it may have been changed in place.
 
 ## Generated and dropped columns
 

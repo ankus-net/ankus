@@ -203,28 +203,50 @@ internal static class NativeTriggerBridge
             return site;
         }
 
+        /* A trigger row travels as one value per column. Both sides already know the relation's columns from the
+         * call site, so no names or types are sent. Cells and the buffers they borrow belong to the callback
+         * context. */
         static void
         ankus_trigger_tuple(HeapTuple tuple, TriggerData *trigger, AnkusTupleShape *shape, bool is_new, AnkusValue *value)
         {
             TupleDesc descriptor = RelationGetDescr(trigger->tg_relation);
             Datum *values;
             bool *nulls;
-            bool *unavailable;
-            AnkusInputBuffer owned = {0};
+            AnkusValue *cells;
             value->is_null = tuple == NULL;
             if (tuple == NULL)
                 return;
-            values = palloc0(sizeof(Datum) * Max(descriptor->natts, 1));
+            values = palloc(sizeof(Datum) * Max(descriptor->natts, 1));
             nulls = palloc(sizeof(bool) * Max(descriptor->natts, 1));
-            unavailable = palloc0(sizeof(bool) * Max(descriptor->natts, 1));
+            cells = palloc0(sizeof(AnkusValue) * Max(descriptor->natts, 1));
             heap_deform_tuple(tuple, descriptor, values, nulls);
             for (int index = 0; index < descriptor->natts; index++)
-                unavailable[index] = ankus_trigger_unavailable(TupleDescAttr(descriptor, index), trigger->tg_event, is_new);
-            ankus_tuple_transport_shaped(descriptor, descriptor->tdtypeid, shape, values, nulls, unavailable, value, &owned);
-            /* The callback context owns the complete serialized transport. */
+            {
+                Form_pg_attribute attribute = TupleDescAttr(descriptor, index);
+                AnkusTupleShapeField *field = &shape->fields[index];
+                AnkusInputBuffer owned = {0};
+                cells[index].is_null = 1;
+                if (ankus_trigger_unavailable(attribute, trigger->tg_event, is_new))
+                    cells[index].auxiliary1 = -12;
+                else if (!attribute->attisdropped && !nulls[index])
+                {
+                    if (!field->enum_checked)
+                    {
+                        ankus_check_result_enum(field->base_type);
+                        field->enum_checked = true;
+                    }
+
+                    cells[index].is_null = 0;
+                    ankus_convert_base_value(values[index], field->base_type, &cells[index], &owned, true);
+                }
+            }
+
             pfree(values);
             pfree(nulls);
-            pfree(unavailable);
+            value->data = (unsigned char *) cells;
+            value->length = descriptor->natts;
+            value->auxiliary1 = -10;
+            value->integral = shape->declared_base;
         }
 
         /* The columns an UPDATE assigns, as zero-based ordinals. PostgreSQL reports them only for UPDATE
@@ -250,8 +272,67 @@ internal static class NativeTriggerBridge
                 updated, owned);
         }
 
+        static Datum
+        ankus_trigger_cell(const AnkusValue *cell, Form_pg_attribute attribute, Oid base_type, bool *is_null)
+        {
+            AnkusParameter parameter = {0};
+            Datum datum;
+            *is_null = cell->is_null != 0;
+            if (*is_null)
+                return (Datum) 0;
+            parameter.type_oid = attribute->atttypid;
+            parameter.value = *cell;
+            if (base_type == JSONOID || base_type == JSONBOID)
+                parameter.value.data = (unsigned char *) pnstrdup((char *) parameter.value.data, parameter.value.length);
+            datum = ankus_parameter_datum_resolved(&parameter, base_type);
+            if (attribute->atttypmod >= 0)
+                datum = ankus_coerce_value(datum, is_null, attribute->atttypid, attribute->atttypid, attribute->atttypmod,
+                    attribute->attcollation);
+            return datum;
+        }
+
+        /* A row the managed trigger built over the relation's own columns returns one value per column. A cell kept
+         * from the NEW row keeps PostgreSQL's original datum, so only replaced cells are converted. */
         static HeapTuple
-        ankus_trigger_result(const AnkusValue *value, TriggerData *trigger, const AnkusTupleShape *shape)
+        ankus_trigger_result_cells(const AnkusValue *value, TriggerData *trigger, const AnkusTupleShape *shape, MemoryContext target)
+        {
+            TupleDesc descriptor = RelationGetDescr(trigger->tg_relation);
+            const AnkusValue *cells = (const AnkusValue *) value->data;
+            HeapTuple original = TRIGGER_FIRED_BY_UPDATE(trigger->tg_event) ? trigger->tg_newtuple : trigger->tg_trigtuple;
+            Datum *values;
+            bool *nulls;
+            bool *replace;
+            HeapTuple tuple;
+            MemoryContext previous;
+            if (value->length != descriptor->natts || value->integral != shape->declared_base)
+                ereport(ERROR, (errcode(ERRCODE_DATATYPE_MISMATCH), errmsg("Trigger result must match the triggering relation's row type")));
+            values = palloc0(sizeof(Datum) * Max(descriptor->natts, 1));
+            nulls = palloc0(sizeof(bool) * Max(descriptor->natts, 1));
+            replace = palloc0(sizeof(bool) * Max(descriptor->natts, 1));
+            for (int index = 0; index < descriptor->natts; index++)
+            {
+                Form_pg_attribute attribute = TupleDescAttr(descriptor, index);
+                const AnkusValue *cell = &cells[index];
+                if (attribute->attisdropped || ankus_trigger_unavailable(attribute, trigger->tg_event, true))
+                    continue;
+                if (cell->auxiliary1 == -12)
+                    ereport(ERROR, (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE), errmsg("Trigger result contains an unavailable ordinary attribute")));
+                if (cell->auxiliary1 == -11)
+                    continue;
+                replace[index] = true;
+                values[index] = ankus_trigger_cell(cell, attribute, shape->fields[index].base_type, &nulls[index]);
+            }
+
+            /* Preserve PostgreSQL tuple identification and generated slots from the original NEW, and build the row
+             * where the caller keeps it. */
+            previous = MemoryContextSwitchTo(target);
+            tuple = heap_modify_tuple(original, descriptor, values, nulls, replace);
+            MemoryContextSwitchTo(previous);
+            return tuple;
+        }
+
+        static HeapTuple
+        ankus_trigger_result(const AnkusValue *value, TriggerData *trigger, const AnkusTupleShape *shape, MemoryContext target)
         {
             TupleDesc descriptor = RelationGetDescr(trigger->tg_relation);
             Oid type;
@@ -262,6 +343,8 @@ internal static class NativeTriggerBridge
             bool *nulls;
             bool *replace;
             HeapTuple original = TRIGGER_FIRED_BY_UPDATE(trigger->tg_event) ? trigger->tg_newtuple : trigger->tg_trigtuple;
+            HeapTuple tuple;
+            MemoryContext previous;
             if (type != descriptor->tdtypeid || modifier != descriptor->tdtypmod || count != descriptor->natts)
                 ereport(ERROR, (errcode(ERRCODE_DATATYPE_MISMATCH), errmsg("Trigger result must match the triggering relation's row type")));
             values = palloc0(sizeof(Datum) * Max(count, 1));
@@ -272,7 +355,6 @@ internal static class NativeTriggerBridge
                 Form_pg_attribute attribute = TupleDescAttr(descriptor, index);
                 AnkusTupleField *field = &fields[index];
                 const AnkusTupleShapeField *expected = &shape->fields[index];
-                AnkusParameter parameter = {0};
                 bool same_name = expected->name_length == field->name_length &&
                     memcmp(expected->name, field->name, field->name_length) == 0;
                 if (attribute->attisdropped != ((field->flags & 1) != 0) ||
@@ -285,20 +367,15 @@ internal static class NativeTriggerBridge
                 if (field->flags & 8)
                     ereport(ERROR, (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE), errmsg("Trigger result contains an unavailable ordinary attribute")));
                 replace[index] = true;
-                nulls[index] = field->value.is_null != 0;
-                parameter.type_oid = attribute->atttypid;
-                parameter.value = field->value;
-                if (!nulls[index] && (field->base_type == JSONOID || field->base_type == JSONBOID))
-                    parameter.value.data = (unsigned char *) pnstrdup((char *) parameter.value.data, parameter.value.length);
-                values[index] = ankus_parameter_datum_resolved(&parameter, expected->base_type);
-                if (attribute->atttypmod >= 0)
-                    values[index] = ankus_coerce_value(values[index], &nulls[index], attribute->atttypid,
-                        attribute->atttypid, attribute->atttypmod, attribute->attcollation);
+                values[index] = ankus_trigger_cell(&field->value, attribute, expected->base_type, &nulls[index]);
             }
 
             /* Preserve PostgreSQL tuple identification and generated slots from the original NEW.
              * PostgreSQL recomputes stored generated values after BEFORE callbacks finish. */
-            return heap_modify_tuple(original, descriptor, values, nulls, replace);
+            previous = MemoryContextSwitchTo(target);
+            tuple = heap_modify_tuple(original, descriptor, values, nulls, replace);
+            MemoryContextSwitchTo(previous);
+            return tuple;
         }
 
         static Datum
@@ -338,7 +415,8 @@ internal static class NativeTriggerBridge
             scope.identity = ++ankus_next_trigger_id;
             /* These mutable headers are read during cleanup after ERROR/longjmp. */
             result = MemoryContextAllocZero(scope.context, sizeof(AnkusValue));
-            error = MemoryContextAllocZero(scope.context, sizeof(AnkusError));
+            error = MemoryContextAlloc(scope.context, sizeof(AnkusError));
+            ankus_error_clear(error);
             ankus_trigger_scope = &scope;
             ankus_function_oid = fcinfo->flinfo->fn_oid;
             AnkusMemoryApi memory = {0};
@@ -384,12 +462,10 @@ internal static class NativeTriggerBridge
                     else if (result->auxiliary1 != -4 && result->data == NULL)
                         /* The trigger returned its NEW row unchanged. */
                         output = TRIGGER_FIRED_BY_UPDATE(trigger->tg_event) ? trigger->tg_newtuple : trigger->tg_trigtuple;
+                    else if (result->auxiliary1 == -10)
+                        output = ankus_trigger_result_cells(result, trigger, &site->shape, caller);
                     else
-                    {
-                        HeapTuple tuple = ankus_trigger_result(result, trigger, &site->shape);
-                        MemoryContextSwitchTo(caller);
-                        output = heap_copytuple(tuple);
-                    }
+                        output = ankus_trigger_result(result, trigger, &site->shape, caller);
                 }
             }
             PG_FINALLY();

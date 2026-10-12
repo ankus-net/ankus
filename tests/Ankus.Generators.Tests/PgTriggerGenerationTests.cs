@@ -107,7 +107,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual("global::Ankus.CompilerServices.NativeValue.IsUnchangedTriggerRow(context, value)", unchanged.Condition.ToString());
         Assert.AreSequenceEqual(["result->IsNull = 0;", "return 0;"],
             Assert.IsInstanceOfType<BlockSyntax>(unchanged.Statement).Statements.Select(static item => item.ToString()));
-        Assert.AreSequenceEqual(["*result = global::Ankus.CompilerServices.NativeValue.FromTuple(value);", "return 0;"],
+        Assert.AreSequenceEqual(["*result = global::Ankus.CompilerServices.NativeValue.FromTriggerRow(context, value);", "return 0;"],
             guarded.Block.Statements.Skip(9).Select(static item => item.ToString()));
     }
 

@@ -20,8 +20,8 @@ approaches, not as guarantees, and measure your own code with
 | Reading a Boolean, integer, real or enum setting property | 24 ns |
 | A managed custom scan row with one `bigint` column | 182 ns |
 | A function that reads a composite row and returns one, per call | 1.35 µs |
-| A `BEFORE INSERT` row trigger that trims one text column, per row | 1.32 µs, against 0.56 µs for PL/pgSQL |
-| A `BEFORE INSERT` row trigger that only checks its row, per row | 0.76 µs |
+| A `BEFORE INSERT` row trigger that trims one text column, per row | 0.90 µs, against 0.54 µs for PL/pgSQL |
+| A `BEFORE INSERT` row trigger that only checks its row, per row | 0.55 µs |
 
 ## Keeping hot paths cheap
 
@@ -41,5 +41,6 @@ approaches, not as guarantees, and measure your own code with
   [`IsColumnRead`](/custom-scans/#managed-providers) in `Begin` and skip
   columns the query does not read.
 - A row trigger converts the row it receives. A `BEFORE` trigger that returns
-  `context.New` without replacing any cell hands PostgreSQL its original row
-  back, so a validating trigger costs less than one that edits the row.
+  `context.New` hands PostgreSQL back the cells it did not replace, so only the
+  replaced cells are converted, and a validating trigger that replaces none
+  costs least. Returning a new row converts every cell.

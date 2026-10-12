@@ -195,9 +195,7 @@ public unsafe partial struct NativeValue
                 continue;
             }
 
-            object? cell = value.GetStoredCell(index);
-            if (cell is not (null or string or bool or char or sbyte or byte or short or ushort or int or uint or long or ulong or float or
-                double or decimal or Guid) && !(includeBytes && cell is byte[]))
+            if (!IsImmutableCell(value.GetStoredCell(index), includeBytes))
             {
                 return false;
             }

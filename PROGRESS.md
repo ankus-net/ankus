@@ -83,7 +83,7 @@ defines the full scope; family-level implementation is not API-by-API completion
 | Aggregates and SQL graph | Static abstract aggregate capabilities, typed Requires/Before/SupportFunction references with per-contract diagnostics at the authored value, deterministic SQL provenance and extended module magic. Empty SQL dependency anchors and exact authored CR/CRLF values pass complete native acceptance. | Inventoried contracts and complete version/platform acceptance. |
 | Generator caching | Detached equatable declaration/provider/reference models, stable declaration-header locations and cached dispatcher/C/SQL artifacts across multi-declaration body edits, unrelated member insertion and unrelated file insertion. Only selected SQL files are read, with the complete path catalog retained. Editor corrections cover 117 diagnostics, each kept only when the project still compiles. | Broader precise diagnostics and the final inventory audit remain required. |
 | Values and ownership | Documented scalar, array, composite, temporal, JSON, network, geometry, custom codec and raw datum contracts. Interval equality, hashing and ordering agree with PostgreSQL while retaining exact components; complete primary-platform CI passes. | The [API](docs/contributing/evidence/pgrx-api-mapping.md), unit-test, inline-test and tooling-test mappings have no open item. Refresh version/platform evidence after the .NET servicing update. |
-| Runtime performance | Owned binary PgNumeric, direct decimal coefficient encoding, constant-time fixed-width array indexing, and a measured native guard for allowlisted pure built-ins. Sets, aggregates and triggers resolve their types and metadata once per call site; scalar settings read their native variables; type modifiers and domains use PostgreSQL's direct coercion and `domain_check`. Catalog-miss errors require actual rollback; real-resource regressions and complete primary-platform CI pass. Persistent in-backend benchmarks provide batching, transaction modes and statistical baseline comparisons. | Complete current guard supported-version acceptance. Extend that tier only where ownership proofs and measurements justify it. Never weaken error recovery to reduce overhead. |
+| Runtime performance | Owned binary PgNumeric, direct decimal coefficient encoding, constant-time fixed-width array indexing, and a measured native guard for allowlisted pure built-ins. Sets, aggregates and triggers resolve their types and metadata once per call site, and trigger rows travel as bare cells with untouched NEW cells kept; scalar settings read their native variables; type modifiers and domains use PostgreSQL's direct coercion and `domain_check`. Catalog-miss errors require actual rollback; real-resource regressions and complete primary-platform CI pass. Persistent in-backend benchmarks provide batching, transaction modes and statistical baseline comparisons. | Complete current guard supported-version acceptance. Extend that tier only where ownership proofs and measurements justify it. Never weaken error recovery to reduce overhead. |
 | Native bindings | pgrx 0.19.3 inventories, matching PostgreSQL 19 beta 4 inputs and target-compiler ABI checks; typed pointers and ANKUS129 make raw caller obligations explicit. Complete current primary-platform compositions pass, with focused binding checks on all seven majors. | Full supported-major/platform tests and final inventory audit. |
 | Custom scans | Native providers use the selected headers' method tables through `[PgNativeCallback]`, with child plans, parameters, mark/restore and parallel state. Managed providers implement `IPgCustomScan<TState>`; the generator registers them, chains the path hook and dispatches rows, rescans, EXPLAIN properties, ordered paths, backward reads, mark/restore and parallel scans over shared memory the provider lays out. | Complete version/platform evidence. |
 | Development CLI | Version/project selection, installation/registration, cluster lifecycle, run/connect, test/regress/bench, property forwarding, environment selection, scriptable info, package prefixes and target export with `--target-info` builds, including Intel macOS from Apple silicon. Benchmarks are measured inside PostgreSQL and retained in named comparison groups. `install --sudo`, `test --runas` and `regress --runas` follow cargo-pgrx with real-account evidence. | Run-as cases now run on every runner; the Linux PostgreSQL 16 rerun ([38115917411](https://github.com/willibrandon/ankus/actions/runs/38115917411)) has 52 skips where it had 55. Persistent clusters already retain Windows event-log diagnostics through `PostgresServerLog`. |
@@ -101,17 +101,20 @@ incorrect. See [the detailed review](docs/contributing/evidence/port-history.md#
 ## Current complete acceptance evidence
 
 Primary CI runs all six modules against real published Native AOT extensions.
-The latest successful primary CI source is **8c91b6b**, with runtime **10.0.12-ankus.5**.
-[CI 38297126972](https://github.com/willibrandon/ankus/actions/runs/38297126972)
+The latest successful primary CI source is **2ab2160**, with runtime **10.0.12-ankus.5**.
+[CI 38315500203](https://github.com/willibrandon/ankus/actions/runs/38315500203)
 passes. Each platform completed all six modules with zero failures; no primary job
-timed out. The Linux job ran on a host where another project's work was using
-most of the CPU, which doubled its test step. Earlier **ankus.4** evidence,
+timed out. The Linux job took 15m48s again after the other project's work on its
+host was stopped; at **8c91b6b** that work had doubled its test step. Earlier **ankus.4** evidence,
 including a complete [Intel refresh](https://github.com/willibrandon/ankus/actions/runs/37460600236)
 on source **e41c687**, is retained below.
 
 | Source | Platform / PostgreSQL | Result | Duration |
 | --- | --- | --- | --- |
-| Latest primary CI, **8c91b6b / ankus.5** | Linux x64 / 18 | 14,862 total; 14,810 passed; 52 platform skips; zero failures | 30m49s test step under host contention; 36m07s job |
+| [Latest primary CI 38315500203](https://github.com/willibrandon/ankus/actions/runs/38315500203), **2ab2160 / ankus.5** | Linux x64 / 18 | 14,883 total; 14,831 passed; 52 platform skips; zero failures | 13m24s test step; 15m48s job |
+| Same CI / revision / runtime | macOS ARM64 / 18 | 14,883 total; 14,818 passed; 65 platform skips; zero failures | 14m11s test step; 16m15s job |
+| Same CI / revision / runtime | Windows x64 / 17 | 14,883 total; 14,837 passed; 46 platform skips; zero failures | 15m29s test step; 17m42s job |
+| Earlier primary CI, **8c91b6b / ankus.5** | Linux x64 / 18 | 14,862 total; 14,810 passed; 52 platform skips; zero failures | 30m49s test step under host contention; 36m07s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 14,862 total; 14,797 passed; 65 platform skips; zero failures | 14m05s test step; 16m07s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 14,862 total; 14,816 passed; 46 platform skips; zero failures | 15m54s test step; 18m02s job |
 | Local complete suites, **07923d5 / ankus.5** | Linux x64 / each of 13.23, 14.24, 15.19, 16.15, 17.11 and 19 beta 4 | 14,861 total per major; 14,809 passed; 52 platform skips; zero failures | 26–27 minutes per major |
@@ -219,6 +222,27 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   supported major: the 540 trigger, composite, tuple, domain, setting and
   custom scan backend tests pass on Linux x64 with PostgreSQL 14, 15, 16, 17
   and 19 beta 4, as they did earlier on 13 and 18.
+- Trigger rows cross the boundary as one value per column. Sampling the
+  backend with gdb showed much of a row trigger's remaining overhead was the
+  self-describing row format: every column's name, types, modifier, collation
+  and flags were serialized, parsed and compared in both directions on every
+  row, though the call site already gives both sides the relation's columns.
+  Native code now sends a cell array over the site's shape, with unavailable
+  generated columns marked; managed code keeps one descriptor variant for them
+  per site. `NativeValue.FromTriggerRow` returns the relation's rows the same
+  way, marking each cell of NEW that was not replaced and holds an immutable
+  value, so `heap_modify_tuple` keeps PostgreSQL's datum for it; rows of other
+  descriptors still describe themselves and are checked. The result tuple is
+  built in the caller's context instead of being copied there, and the call's
+  error record is cleared rather than zeroed. Alternating the two builds on one
+  PostgreSQL 18.6 cluster, the trimming trigger's overhead fell from 1.27 µs to
+  0.90 µs per row, against 0.54 µs for PL/pgSQL, and a validating trigger's
+  from 0.75 µs to 0.55 µs. Unit tests cover kept, replaced, dropped,
+  unavailable and mutable cells, OLD and copied rows, foreign descriptors, the
+  site's descriptor variant and malformed cell rows. The 469 trigger, tuple,
+  composite, generated-column and custom scan backend tests pass on PostgreSQL
+  13, 16, 18 and 19 beta 4, and the full PostgreSQL 18 suite passes (14,889
+  tests, 52 platform skips).
 - Managed custom scan providers can run in parallel. A provider that
   implements `IPgParallelCustomScan<TState, TShared>` offers paths with
   `PgCustomScanPlanner.AddParallelPath`; Ankus adds them as partial paths with

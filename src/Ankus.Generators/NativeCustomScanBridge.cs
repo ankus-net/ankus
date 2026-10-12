@@ -533,8 +533,10 @@ internal static class NativeCustomScanBridge
             TupleTableSlot *slot = node->ss_ScanTupleSlot;
             TupleDesc descriptor = slot->tts_tupleDescriptor;
             MemoryContext caller = CurrentMemoryContext;
-            AnkusError error = {0};
+            AnkusError error;
             int status;
+            /* Clearing the whole record, message buffer included, cost more than the rest of a row. */
+            ankus_error_clear(&error);
             ExecClearTuple(slot);
             MemoryContextReset(state->rows);
             status = ankus_custom_scan_call(state->provider, ScanDirectionIsBackward(node->ps.state->es_direction) ? 7 : 2,
@@ -596,8 +598,10 @@ internal static class NativeCustomScanBridge
         ankus_custom_scan_operation(CustomScanState *node, int operation)
         {
             AnkusCustomScanState *state = (AnkusCustomScanState *) node;
-            AnkusError error = {0};
-            int status = ankus_custom_scan_call(state->provider, operation, &state->request, NULL, &error, state->query);
+            AnkusError error;
+            int status;
+            ankus_error_clear(&error);
+            status = ankus_custom_scan_call(state->provider, operation, &state->request, NULL, &error, state->query);
             if (status != 0)
                 ankus_raise_error(&error);
         }

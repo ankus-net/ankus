@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Ankus.CompilerServices;
 
@@ -37,8 +39,8 @@ public unsafe partial struct NativeValue
         TriggerSite site = s_triggerSite is { } cached && cached.Matches(identity, relationOid, triggerOid, arguments)
             ? cached
             : ReadTriggerSite(identity, relationOid, triggerOid, arguments);
-        PgHeapTuple? oldRow = ReadTriggerIsNull(arguments[9]) ? null : arguments[9].ReadTuple(site.Descriptor);
-        PgHeapTuple? newRow = ReadTriggerIsNull(arguments[10]) ? null : arguments[10].ReadTuple(site.Descriptor);
+        PgHeapTuple? oldRow = ReadTriggerIsNull(arguments[9]) ? null : arguments[9].ReadTriggerRow(site);
+        PgHeapTuple? newRow = ReadTriggerIsNull(arguments[10]) ? null : arguments[10].ReadTriggerRow(site);
         int[]? updated = ReadTriggerIsNull(arguments[13]) ? null : arguments[13].ReadArray<int>().ToVector();
         (uint constraintOid, int constraintFlags) = ReadTriggerConstraint(arguments[14]);
         return new PgTriggerContext(eventBits, relationOid, triggerOid, site.Name, site.TableName, site.TableSchema,
@@ -61,6 +63,168 @@ public unsafe partial struct NativeValue
         ArgumentNullException.ThrowIfNull(context);
         ArgumentNullException.ThrowIfNull(row);
         return ReferenceEquals(row, context.New) && !row.IsModified && HasOnlyScalarCells(row, includeBytes: false);
+    }
+
+    /// <summary>
+    /// Converts the row a trigger returns, sending only the cells PostgreSQL needs when the row has the relation's
+    /// columns.
+    /// </summary>
+    /// <param name="context">The trigger's context.</param>
+    /// <param name="row">The row the trigger returned.</param>
+    /// <returns>An owned transport: one value per column, or a self-describing row for a row of another shape.</returns>
+    /// <remarks>
+    /// A cell of the context's NEW row that was not replaced and holds an immutable value is sent as kept, and
+    /// PostgreSQL keeps its original datum instead of converting it back.
+    /// </remarks>
+    public static NativeValue FromTriggerRow(PgTriggerContext context, PgHeapTuple row)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(row);
+        if (!ReferenceEquals(row.Descriptor, context.Descriptor) && !ReferenceEquals(row.Descriptor, context.New?.Descriptor) &&
+            !ReferenceEquals(row.Descriptor, context.Old?.Descriptor))
+        {
+            return FromTuple(row);
+        }
+
+        bool fromNew = ReferenceEquals(row, context.New);
+        int count = row.Count;
+        long capacity = Math.Max(count, 1);
+        long* block = (long*)NativeMemory.AllocZeroed((nuint)(sizeof(long) + (capacity * sizeof(NativeValue)) + capacity));
+        *block = capacity << 32;
+        var cells = (NativeValue*)(block + 1);
+        byte* owned = (byte*)(cells + capacity);
+        try
+        {
+            for (int index = 0; index < count; index++)
+            {
+                PgTupleAttributeInfo attribute = row.Descriptor.Attributes[index];
+                ref NativeValue cell = ref cells[index];
+                *block = (capacity << 32) | (uint)(index + 1);
+                if (attribute.IsDropped || attribute.IsUnavailable)
+                {
+                    cell._isNull = 1;
+                    cell._auxiliary1 = attribute.IsUnavailable ? -12 : 0;
+                    continue;
+                }
+
+                object? value = row.GetStoredCell(index);
+                if (fromNew && !row.IsReplaced(index) && IsImmutableCell(value, includeBytes: false))
+                {
+                    // PostgreSQL keeps the datum this cell was read from.
+                    cell._isNull = 1;
+                    cell._auxiliary1 = -11;
+                    continue;
+                }
+
+                CustomTypeMapping? mapping = PgTypeRegistry.FindValue(value, attribute.BaseTypeOid);
+                if (value is string text && mapping is null && PgTypeRegistry.Find(typeof(string)) is null)
+                {
+                    cell = FromString(text);
+                    cell._release = null;
+                    owned[index] = 1;
+                    continue;
+                }
+
+                cell = SpiType.ToNative(value, mapping, value is Array array ? PgTypeRegistry.FindArrayValue(array, attribute.BaseTypeOid) : null);
+            }
+        }
+        catch
+        {
+            ReleaseCells(cells);
+            throw;
+        }
+
+        return new NativeValue
+        {
+            _data = (byte*)cells,
+            _length = count,
+            _auxiliary1 = -10,
+            _integer = row.Descriptor.BaseTypeOid,
+            _release = &ReleaseCells,
+        };
+    }
+
+    /// <summary>
+    /// Reads a trigger row over the call site's descriptor. Native code sends one value per column of the relation;
+    /// a self-describing row, as tests build, is read as any row is.
+    /// </summary>
+    private readonly PgHeapTuple ReadTriggerRow(TriggerSite site)
+    {
+        if (_auxiliary1 != -10)
+        {
+            return ReadTuple(site.Descriptor);
+        }
+
+        int count = site.Descriptor.Attributes.Count;
+        if (_isNull != 0 || _length != count || (_data == null && count != 0) || _integer != site.Descriptor.BaseTypeOid)
+        {
+            throw new InvalidOperationException("A trigger row does not match its relation's columns.");
+        }
+
+        var cells = new ReadOnlySpan<NativeValue>(_data, count);
+        PgTupleDescriptor descriptor = site.GetDescriptor(cells);
+        object?[] values = new object?[count];
+        for (int index = 0; index < count; index++)
+        {
+            PgTupleAttributeInfo attribute = descriptor.Attributes[index];
+            NativeValue cell = cells[index];
+            if (cell._isNull != 0 && cell._auxiliary1 is 0 or -12)
+            {
+                continue;
+            }
+
+            if (cell._isNull != 0 || cell._auxiliary1 == -12 || attribute.IsDropped || cell.IsTuple != attribute.IsComposite)
+            {
+                throw new InvalidOperationException("A trigger row cell does not match its column.");
+            }
+
+            values[index] = SpiType.FromNative(cell, attribute.BaseTypeOid);
+            if (values[index] is PgHeapTuple nested && attribute.BaseTypeOid != 2249 && nested.Descriptor.BaseTypeOid != attribute.BaseTypeOid)
+            {
+                throw new InvalidOperationException("Nested tuple identity does not match its attribute type.");
+            }
+        }
+
+        return PgHeapTuple.FromOwnedCells(descriptor, values);
+    }
+
+    /// <summary>
+    /// Recognizes SQL NULL, text and primitive values, which cannot change after they were read, optionally also
+    /// byte arrays.
+    /// </summary>
+    private static bool IsImmutableCell(object? cell, bool includeBytes)
+        => cell is null or string or bool or char or sbyte or byte or short or ushort or int or uint or long or ulong or float or
+            double or decimal or Guid || (includeBytes && cell is byte[]);
+
+    /// <summary>
+    /// Releases the cells of a trigger row transport and the block that holds them.
+    /// </summary>
+    /// <param name="data">
+    /// The first cell. The block starts with the row's column count in its high half and the number of cells written in
+    /// its low half, and ends with one byte per cell that is nonzero for text this runtime encoded.
+    /// </param>
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+    private static void ReleaseCells(void* data) => ReleaseCells((NativeValue*)data);
+
+    private static void ReleaseCells(NativeValue* cells)
+    {
+        long* block = (long*)cells - 1;
+        byte* owned = (byte*)(cells + Math.Max(*block >> 32, 1));
+        *block &= uint.MaxValue;
+        for (long index = 0; index < *block; index++)
+        {
+            // Text this method encoded is freed directly rather than through a native release entry.
+            if (owned[index] != 0)
+            {
+                NativeMemory.Free(cells[index]._data);
+            }
+            else
+            {
+                cells[index].Release();
+            }
+        }
+
+        NativeMemory.Free(block);
     }
 
     /// <summary>
@@ -183,6 +347,8 @@ public unsafe partial struct NativeValue
         string name, string tableName, string tableSchema, string? oldTransition, string? newTransition,
         ReadOnlyCollection<string> arguments, PgTupleDescriptor descriptor, ReadOnlyCollection<int> updateOf)
     {
+        private PgTupleDescriptor? _unavailable;
+
         internal string Name => name;
 
         internal string TableName => tableName;
@@ -198,6 +364,54 @@ public unsafe partial struct NativeValue
         internal PgTupleDescriptor Descriptor => descriptor;
 
         internal ReadOnlyCollection<int> UpdateOf => updateOf;
+
+        /// <summary>
+        /// Gets the descriptor for a row's cells: the site's own, or one that marks the generated columns PostgreSQL
+        /// has not computed yet, kept for the site's next row.
+        /// </summary>
+        internal PgTupleDescriptor GetDescriptor(ReadOnlySpan<NativeValue> cells)
+        {
+            int first = 0;
+            while (first < cells.Length && cells[first]._auxiliary1 != -12)
+            {
+                first++;
+            }
+
+            if (first == cells.Length)
+            {
+                return descriptor;
+            }
+
+            if (_unavailable is { } cached && Marks(cached, cells))
+            {
+                return cached;
+            }
+
+            var attributes = new PgTupleAttributeInfo[cells.Length];
+            for (int index = 0; index < cells.Length; index++)
+            {
+                PgTupleAttributeInfo known = descriptor.Attributes[index];
+                bool unavailable = cells[index]._auxiliary1 == -12;
+                attributes[index] = unavailable == known.IsUnavailable ? known : new PgTupleAttributeInfo(known.Name, known.TypeOid,
+                    known.BaseTypeOid, known.TypeModifier, known.CollationOid, known.IsDropped, known.IsNotNull, known.IsComposite, unavailable);
+            }
+
+            _unavailable = new PgTupleDescriptor(descriptor.TypeOid, descriptor.TypeModifier, attributes, descriptor.BaseTypeOid);
+            return _unavailable;
+        }
+
+        private static bool Marks(PgTupleDescriptor variant, ReadOnlySpan<NativeValue> cells)
+        {
+            for (int index = 0; index < cells.Length; index++)
+            {
+                if (variant.Attributes[index].IsUnavailable != (cells[index]._auxiliary1 == -12))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
 
         /// <summary>
         /// Checks that a call comes from this site and sends the very buffers this site was parsed from.
