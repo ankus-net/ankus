@@ -209,3 +209,12 @@ that function directly; domains and arrays keep the general path. Inserting
 200,000 rows into a table with three `varchar` columns, best of four runs, the
 managed trigger went from 5.0 µs to 3.1 µs per row, against 1.3 µs for the
 PL/pgSQL trigger.
+
+A value of a domain type also went through a prepared coercion expression. It
+now gets the base type's modifier as above and then PostgreSQL's
+`domain_check`, which PL/pgSQL uses for domain results. `domain_check` keeps the
+domain's constraint state between calls and refreshes it when the domain
+changes, so the backend keeps that state for up to 16 domains. With a
+`CHECK`-constrained text domain column, best of four runs of 200,000 rows each,
+the managed trigger took 510 ms against 608 to 633 ms before, while the PL/pgSQL
+trigger took 324 to 354 ms in both.

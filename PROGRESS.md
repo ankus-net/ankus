@@ -83,7 +83,7 @@ defines the full scope; family-level implementation is not API-by-API completion
 | Aggregates and SQL graph | Static abstract aggregate capabilities, typed Requires/Before/SupportFunction references with per-contract diagnostics at the authored value, deterministic SQL provenance and extended module magic. Empty SQL dependency anchors and exact authored CR/CRLF values pass complete native acceptance. | Inventoried contracts and complete version/platform acceptance. |
 | Generator caching | Detached equatable declaration/provider/reference models, stable declaration-header locations and cached dispatcher/C/SQL artifacts across multi-declaration body edits, unrelated member insertion and unrelated file insertion. Only selected SQL files are read, with the complete path catalog retained. Editor corrections cover 117 diagnostics, each kept only when the project still compiles. | Broader precise diagnostics and the final inventory audit remain required. |
 | Values and ownership | Documented scalar, array, composite, temporal, JSON, network, geometry, custom codec and raw datum contracts. Interval equality, hashing and ordering agree with PostgreSQL while retaining exact components; complete primary-platform CI passes. | Remaining mapped/container contracts, parsing/formatting ergonomics and complete source-case mapping remain required. |
-| Runtime performance | Owned binary PgNumeric, direct decimal coefficient encoding, constant-time fixed-width array indexing, and a measured native guard for allowlisted pure built-ins. Catalog-miss errors require actual rollback; real-resource regressions and complete primary-platform CI pass. Persistent in-backend benchmarks provide batching, transaction modes and statistical baseline comparisons. | Complete current guard supported-version acceptance. Extend that tier only where ownership proofs and measurements justify it. Never weaken error recovery to reduce overhead. |
+| Runtime performance | Owned binary PgNumeric, direct decimal coefficient encoding, constant-time fixed-width array indexing, and a measured native guard for allowlisted pure built-ins. Sets, aggregates and triggers resolve their types and metadata once per call site; scalar settings read their native variables; type modifiers and domains use PostgreSQL's direct coercion and `domain_check`. Catalog-miss errors require actual rollback; real-resource regressions and complete primary-platform CI pass. Persistent in-backend benchmarks provide batching, transaction modes and statistical baseline comparisons. | Complete current guard supported-version acceptance. Extend that tier only where ownership proofs and measurements justify it. Never weaken error recovery to reduce overhead. |
 | Native bindings | pgrx 0.19.3 inventories, matching PostgreSQL 19 beta 4 inputs and target-compiler ABI checks; typed pointers and ANKUS129 make raw caller obligations explicit. Complete current primary-platform compositions pass, with focused binding checks on all seven majors. | Full supported-major/platform tests and final inventory audit. |
 | Custom scans | Native providers use the selected headers' method tables through `[PgNativeCallback]`, with child plans, parameters, mark/restore and parallel state. Managed providers implement `IPgCustomScan<TState>`; the generator registers them, chains the path hook and dispatches rows, rescans and EXPLAIN properties. | Managed parallel, mark/restore and backward scans, and complete version/platform evidence. |
 | Development CLI | Version/project selection, installation/registration, cluster lifecycle, run/connect, test/regress/bench, property forwarding, environment selection, scriptable info, package prefixes and target export with `--target-info` builds, including Intel macOS from Apple silicon. Benchmarks are measured inside PostgreSQL and retained in named comparison groups. `install --sudo`, `test --runas` and `regress --runas` follow cargo-pgrx with real-account evidence. | Run-as cases now run on every runner; the Linux PostgreSQL 16 rerun ([38115917411](https://github.com/willibrandon/ankus/actions/runs/38115917411)) has 52 skips where it had 55. Persistent clusters already retain Windows event-log diagnostics through `PostgresServerLog`. |
@@ -174,6 +174,16 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   fixed the rows cost 182 ns and 330 ns. See the
   [measurements](docs/contributing/evidence/guard-tiers.md#managed-custom-scans).
   The PostgreSQL 18 suite passes with these changes.
+- Domain values are checked with PostgreSQL's `domain_check` after their base
+  type's modifier, as PL/pgSQL does, instead of preparing a coercion expression
+  per value. The backend keeps each domain's constraint state, which
+  `domain_check` refreshes when the domain changes, for up to 16 domains, and
+  never clears it while a check is running. A trigger row with a `CHECK` domain
+  column costs 0.5 µs less. New trigger cases cover a domain over `char(10)`, a
+  `CHECK` domain over `varchar(10)` and a too-long value for a domain over
+  `varchar(3)`. The domain, trigger, composite, set and SPI backend tests pass on
+  PostgreSQL 13 and 18, and the full PostgreSQL 18 suite passes (14,854 tests,
+  52 platform skips).
 - Values written to a column with a type modifier, such as `varchar(64)` or
   `numeric(6,2)`, built, prepared and ran a coercion expression in a new
   executor state for every value. They now call the type's length coercion
@@ -218,8 +228,8 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   It stays open under the first remaining-work item until it recurs with
   evidence. CI for **41b2111**
   ([38204764541](https://github.com/willibrandon/ankus/actions/runs/38204764541)),
-  **6c008fc**, **f95d2cb**, **8bb5954** and the earlier commits passed on all
-  three platforms.
+  **6c008fc**, **f95d2cb**, **8bb5954**, **0883b1e** and the earlier commits
+  passed on all three platforms.
 - GUC hook (`ANKUS199`–`ANKUS201`) and benchmark setup (`ANKUS131`) errors
   now say what is wrong with the named method, such as "'Hook' returns bool"
   or "'Settings' has no method named 'Hook'", instead of restating the whole

@@ -2,6 +2,7 @@
     CREATE SCHEMA trigger_values;
     CREATE TYPE trigger_values.foreign_row AS (id integer, value integer, note text);
     CREATE DOMAIN trigger_values.positive AS integer CHECK (VALUE > 0);
+    CREATE DOMAIN trigger_values.short_note AS varchar(3);
     CREATE TABLE trigger_values.events (
         position bigint GENERATED ALWAYS AS IDENTITY,
         trigger_name text, operation text, timing text, level text, event integer,

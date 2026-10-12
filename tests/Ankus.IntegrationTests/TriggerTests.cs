@@ -452,6 +452,7 @@ public sealed class TriggerTests(TestContext context)
     [DataRow("value integer CHECK(value>0),note text", "negative", "23514")]
     [DataRow("value integer,note text NOT NULL", "null_note", "23502")]
     [DataRow("value integer,note varchar(3)", "long_note", "22001")]
+    [DataRow("value integer,note trigger_values.short_note", "long_note", "22001")]
     public Task ReplacementRowsEnforceActualRelationConstraints(string definition, string action, string sqlState)
         => Run(nameof(ReplacementRowsEnforceActualRelationConstraints), async (connection, transaction, token) =>
         {
@@ -469,17 +470,21 @@ public sealed class TriggerTests(TestContext context)
 
     /// <summary>
     /// Applies each column's type modifier to a replacement row as an assignment would: fixed-length character columns
-    /// are padded and variable-length ones keep the value.
+    /// are padded and variable-length ones keep the value, including through a domain's base type.
     /// </summary>
     /// <param name="note">The note column's type.</param>
     /// <param name="bytes">The stored note's length in bytes, including any padding.</param>
     [TestMethod]
     [DataRow("char(10)", 10)]
     [DataRow("varchar(10)", 7)]
+    [DataRow("trigger_values.padded", 10)]
+    [DataRow("trigger_values.bounded", 7)]
     public Task ReplacementRowsApplyTypeModifiers(string note, int bytes)
         => Run(nameof(ReplacementRowsApplyTypeModifiers), async (connection, transaction, token) =>
         {
             await Execute(connection, transaction, $"""
+                CREATE DOMAIN trigger_values.padded AS char(10);
+                CREATE DOMAIN trigger_values.bounded AS varchar(10) CHECK (VALUE <> 'rejected');
                 CREATE TABLE trigger_values.rows(id integer,value integer,note {note});
                 CREATE TRIGGER replaced BEFORE INSERT ON trigger_values.rows FOR EACH ROW EXECUTE FUNCTION trigger_values.trigger_action('replace');
                 """, token);

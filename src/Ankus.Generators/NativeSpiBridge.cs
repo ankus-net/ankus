@@ -141,6 +141,7 @@ internal static class NativeSpiBridge
         static Datum ankus_write_tuple(const AnkusValue *value, Oid expected_type, TupleDesc expected_descriptor);
         static Datum ankus_coerce_value(Datum value, bool *is_null, Oid source_type, Oid target_type,
             int32 modifier, Oid collation);
+        static Datum ankus_coerce_domain(Datum value, bool *is_null, Oid domain);
         static Datum ankus_raw_parameter(const AnkusParameter *parameter);
         static Datum ankus_parameter_datum_resolved(const AnkusParameter *parameter, Oid base_type);
         static Datum ankus_copy_raw_datum(Datum datum, Oid type, intptr_t context, uintptr_t generation);
@@ -227,7 +228,7 @@ internal static class NativeSpiBridge
                 Datum datum;
                 base.type_oid = base_type;
                 datum = ankus_parameter_datum(&base);
-                return ankus_coerce_value(datum, &is_null, base_type, parameter->type_oid, -1, InvalidOid);
+                return ankus_coerce_domain(datum, &is_null, parameter->type_oid);
             }
 
             if (value->auxiliary1 == -5 && value->data != NULL)

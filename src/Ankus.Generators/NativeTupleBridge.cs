@@ -103,6 +103,82 @@ internal static class NativeTupleBridge
             return result;
         }
 
+        /* domain_check keeps a domain's constraint state between calls and refreshes it whenever the domain
+         * changes, which PostgreSQL's own callers rely on through fn_extra. The backend keeps that state for
+         * a few domains; the cache is cleared only when full and no check is running, because a CHECK
+         * expression can call a function that checks another domain. */
+        #define ANKUS_DOMAIN_CHECKS 16
+        typedef struct AnkusDomainCheck
+        {
+            Oid domain;
+            void *extra;
+        } AnkusDomainCheck;
+        static AnkusDomainCheck ankus_domain_checks[ANKUS_DOMAIN_CHECKS];
+        static int ankus_domain_check_count = 0;
+        static int ankus_domain_check_depth = 0;
+        static MemoryContext ankus_domain_check_context = NULL;
+
+        static void
+        ankus_check_domain(Datum value, bool is_null, Oid domain)
+        {
+            AnkusDomainCheck *entry = NULL;
+            for (int index = 0; index < ankus_domain_check_count; index++)
+            {
+                if (ankus_domain_checks[index].domain == domain)
+                {
+                    entry = &ankus_domain_checks[index];
+                    break;
+                }
+            }
+
+            if (entry == NULL && ankus_domain_check_count == ANKUS_DOMAIN_CHECKS && ankus_domain_check_depth == 0)
+            {
+                MemoryContextReset(ankus_domain_check_context);
+                ankus_domain_check_count = 0;
+            }
+
+            if (entry == NULL && ankus_domain_check_count < ANKUS_DOMAIN_CHECKS)
+            {
+                if (ankus_domain_check_context == NULL)
+                    ankus_domain_check_context = AllocSetContextCreate(TopMemoryContext, "Ankus domain checks",
+                        ALLOCSET_SMALL_SIZES);
+                entry = &ankus_domain_checks[ankus_domain_check_count++];
+                entry->domain = domain;
+                entry->extra = NULL;
+            }
+
+            if (entry == NULL)
+            {
+                domain_check(value, is_null, domain, NULL, CurrentMemoryContext);
+                return;
+            }
+
+            ankus_domain_check_depth++;
+            PG_TRY();
+            {
+                domain_check(value, is_null, domain, &entry->extra, ankus_domain_check_context);
+            }
+            PG_FINALLY();
+            {
+                ankus_domain_check_depth--;
+            }
+            PG_END_TRY();
+        }
+
+        /* Checks a value against a domain as an assignment's CoerceToDomain does: the base type's modifier
+         * first, then the domain's NOT NULL and CHECK constraints through domain_check, as PL/pgSQL does for
+         * domain results. The result is the input datum unless the modifier produced a new one. */
+        static Datum
+        ankus_coerce_domain(Datum value, bool *is_null, Oid domain)
+        {
+            int32 modifier = -1;
+            Oid base = getBaseTypeAndTypmod(domain, &modifier);
+            if (modifier >= 0 && !ankus_coerce_typmod(&value, is_null, base, modifier))
+                return ankus_coerce_value(value, is_null, base, domain, -1, InvalidOid);
+            ankus_check_domain(value, *is_null, domain);
+            return value;
+        }
+
         typedef struct AnkusTupleField
         {
             Oid type;
@@ -441,8 +517,9 @@ internal static class NativeTupleBridge
             if (getBaseType(expected_type) != expected_type)
             {
                 bool is_null = false;
-                Datum coerced = ankus_coerce_value(result, &is_null, getBaseType(expected_type), expected_type, -1, InvalidOid);
-                pfree(DatumGetPointer(result));
+                Datum coerced = ankus_coerce_domain(result, &is_null, expected_type);
+                if (DatumGetPointer(coerced) != DatumGetPointer(result))
+                    pfree(DatumGetPointer(result));
                 return coerced;
             }
 
