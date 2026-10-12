@@ -101,17 +101,21 @@ incorrect. See [the detailed review](docs/contributing/evidence/port-history.md#
 ## Current complete acceptance evidence
 
 Primary CI runs all six modules against real published Native AOT extensions.
-The latest successful primary CI source is **554cbb4**, with runtime **10.0.12-ankus.5**.
-[CI 38107375540](https://github.com/willibrandon/ankus/actions/runs/38107375540)
-passes; [Docs run 38107375539](https://github.com/willibrandon/ankus/actions/runs/38107375539)
-for **554cbb4** is the latest documentation run. Each platform completed all six
-modules with zero failures; no primary job timed out. Earlier **ankus.4** evidence,
+The latest successful primary CI source is **8c91b6b**, with runtime **10.0.12-ankus.5**.
+[CI 38297126972](https://github.com/willibrandon/ankus/actions/runs/38297126972)
+passes. Each platform completed all six modules with zero failures; no primary job
+timed out. The Linux job ran on a host where another project's work was using
+most of the CPU, which doubled its test step. Earlier **ankus.4** evidence,
 including a complete [Intel refresh](https://github.com/willibrandon/ankus/actions/runs/37460600236)
 on source **e41c687**, is retained below.
 
 | Source | Platform / PostgreSQL | Result | Duration |
 | --- | --- | --- | --- |
-| Latest primary CI, **554cbb4 / ankus.5** | Linux x64 / 18 | 14,592 total; 14,540 passed; 52 platform skips; zero failures | 16m22s test step; 19m00s job |
+| Latest primary CI, **8c91b6b / ankus.5** | Linux x64 / 18 | 14,862 total; 14,810 passed; 52 platform skips; zero failures | 30m49s test step under host contention; 36m07s job |
+| Same CI / revision / runtime | macOS ARM64 / 18 | 14,862 total; 14,797 passed; 65 platform skips; zero failures | 14m05s test step; 16m07s job |
+| Same CI / revision / runtime | Windows x64 / 17 | 14,862 total; 14,816 passed; 46 platform skips; zero failures | 15m54s test step; 18m02s job |
+| Local complete suites, **07923d5 / ankus.5** | Linux x64 / each of 13.23, 14.24, 15.19, 16.15, 17.11 and 19 beta 4 | 14,861 total per major; 14,809 passed; 52 platform skips; zero failures | 26–27 minutes per major |
+| Earlier primary CI, **554cbb4 / ankus.5** | Linux x64 / 18 | 14,592 total; 14,540 passed; 52 platform skips; zero failures | 16m22s test step; 19m00s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 14,592 total; 14,527 passed; 65 platform skips; zero failures | 14m07s test step; 16m08s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 14,592 total; 14,546 passed; 46 platform skips; zero failures | 16m00s test step; 18m26s job |
 | Earlier primary CI, **e0e469a / ankus.4** | Linux x64 / 18 | 13,883 total; 13,833 passed; 50 platform skips; zero failures | 11m37s test step; 13m48s job |
