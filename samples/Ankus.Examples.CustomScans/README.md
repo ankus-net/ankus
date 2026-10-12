@@ -1,4 +1,4 @@
-# Tracing custom scans
+# Custom scans
 
 This extension wraps PostgreSQL sequential, index and index-only scan paths in
 a native custom scan. It retains the original child path, costs, ordering,
@@ -56,3 +56,22 @@ continue using the registered methods until PostgreSQL discards them.
 The predecessor planner hook still runs while tracing is disabled. Native
 method registration lasts for the backend lifetime, including across SQL
 rollback; a duplicate name cannot replace an existing provider's table.
+
+## Managed numbers scan
+
+`NumberScan.cs` is a managed provider. For tables whose names start with
+`numbers`, it returns the integers 1 to N in a `value` column and text in an
+optional `label` column. The table's stored rows are ignored:
+
+```sql
+SELECT trace_scan_reset();
+SET ankus_trace_scan.numbers = 5;
+CREATE TEMP TABLE numbers(value bigint, label text);
+EXPLAIN (ANALYZE) SELECT * FROM numbers WHERE value > 2;
+SELECT number_scan_counts();
+```
+
+It shows path data, rescans, EXPLAIN properties and state disposal.
+`number_scan_counts()` reports begins, disposals, rescans and EXPLAIN-only
+begins. Setting `ankus_trace_scan.numbers_fail_at` makes the scan throw at that
+integer.

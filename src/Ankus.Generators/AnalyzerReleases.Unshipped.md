@@ -512,3 +512,8 @@ ANKUS531 | Ankus | Error | PostgreSQL benchmark must be accessible
 ANKUS532 | Ankus | Error | PostgreSQL benchmark requires one PgBencher parameter
 ANKUS533 | Ankus | Error | PostgreSQL benchmark bencher must be passed by value
 ANKUS534 | Ankus | Error | Invalid PostgreSQL benchmark container
+ANKUS535 | Ankus | Error | Custom scan provider must implement IPgCustomScan
+ANKUS536 | Ankus | Error | Invalid custom scan name
+ANKUS537 | Ankus | Error | Duplicate custom scan name
+ANKUS538 | Ankus | Error | Invalid custom scan provider
+ANKUS539 | Ankus | Error | Custom scan callback must be synchronous

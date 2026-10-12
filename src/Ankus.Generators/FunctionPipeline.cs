@@ -150,9 +150,10 @@ internal static class FunctionPipeline
     /// <param name="Tests">The independently analyzed tests, discovery catalogs and native boundaries.</param>
     /// <param name="Benchmarks">The independently analyzed benchmark declarations.</param>
     /// <param name="OutputPlugins">The independently analyzed logical decoding output plugin initializers.</param>
+    /// <param name="CustomScans">The independently analyzed custom scan providers.</param>
     internal sealed record MethodInputs(EquatableArray<MethodInventoryModel> Methods, EquatableArray<FunctionOutput> Functions,
         EquatableArray<TriggerPipeline.TriggerOutput> Triggers, EquatableArray<BackgroundWorkerPipeline.WorkerOutput> Workers,
         EquatableArray<LifecyclePipeline.LifecycleOutput> Lifecycle, EquatableArray<OperatorCastPipeline.Output> OperatorCasts,
         PgTestPipeline.Output Tests, EquatableArray<PgBenchmarkPipeline.Output> Benchmarks,
-        EquatableArray<OutputPluginPipeline.Output> OutputPlugins);
+        EquatableArray<OutputPluginPipeline.Output> OutputPlugins, EquatableArray<CustomScanPipeline.Analysis> CustomScans);
 }

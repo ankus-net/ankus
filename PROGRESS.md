@@ -85,6 +85,7 @@ defines the full scope; family-level implementation is not API-by-API completion
 | Values and ownership | Documented scalar, array, composite, temporal, JSON, network, geometry, custom codec and raw datum contracts. Interval equality, hashing and ordering agree with PostgreSQL while retaining exact components; complete primary-platform CI passes. | Remaining mapped/container contracts, parsing/formatting ergonomics and complete source-case mapping remain required. |
 | Runtime performance | Owned binary PgNumeric, direct decimal coefficient encoding, constant-time fixed-width array indexing, and a measured native guard for allowlisted pure built-ins. Catalog-miss errors require actual rollback; real-resource regressions and complete primary-platform CI pass. Persistent in-backend benchmarks provide batching, transaction modes and statistical baseline comparisons. | Complete current guard supported-version acceptance. Extend that tier only where ownership proofs and measurements justify it. Never weaken error recovery to reduce overhead. |
 | Native bindings | pgrx 0.19.3 inventories, matching PostgreSQL 19 beta 4 inputs and target-compiler ABI checks; typed pointers and ANKUS129 make raw caller obligations explicit. Complete current primary-platform compositions pass, with focused binding checks on all seven majors. | Full supported-major/platform tests and final inventory audit. |
+| Custom scans | Native providers use the selected headers' method tables through `[PgNativeCallback]`, with child plans, parameters, mark/restore and parallel state. Managed providers implement `IPgCustomScan<TState>`; the generator registers them, chains the path hook and dispatches rows, rescans and EXPLAIN properties. | Managed parallel, mark/restore and backward scans, and complete version/platform evidence. |
 | Development CLI | Version/project selection, installation/registration, cluster lifecycle, run/connect, test/regress/bench, property forwarding, environment selection, scriptable info, package prefixes and target export with `--target-info` builds, including Intel macOS from Apple silicon. Benchmarks are measured inside PostgreSQL and retained in named comparison groups. `install --sudo`, `test --runas` and `regress --runas` follow cargo-pgrx with real-account evidence. | Run-as cases now run on every runner; the Linux PostgreSQL 16 rerun ([38115917411](https://github.com/willibrandon/ankus/actions/runs/38115917411)) has 52 skips where it had 55. Persistent clusters already retain Windows event-log diagnostics through `PostgresServerLog`. |
 | .NET templates | Version-matched ordinary extension and worker templates reuse the CLI assets and pin local tools. Optional xUnit/NUnit consumers exercise managed and named backend cases, ignore reasons, worker processes and cleanup alongside default MSTest consumers; all three list backend cases with `dotnet test --list-tests` before anything is published. Complete primary-platform CI passes. | Complete version/platform acceptance. |
 | API discoverability | Idiomatic attributed declarations, documented runtime APIs, named logging helpers and typed SPI interpolation. Compiler transport helpers are isolated in Ankus.CompilerServices and hidden from IntelliSense; complete primary-platform CI passes. `PgAssert` adds MSTest's tolerance, text and count checks. | Final inventory audit. |
@@ -142,6 +143,34 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- Managed custom scan providers: a class marked `[PgCustomScan]` implements
+  `IPgCustomScan<TState>` with static `Plan`, `Begin` and `Read` methods, and
+  optionally `IPgRescannableCustomScan<TState>` and
+  `IPgExplainedCustomScan<TState>`. The generator emits the method tables,
+  registers them during library load and chains `set_rel_pathlist_hook`. Rows
+  go into the scan's own slot, so PostgreSQL applies conditions and projection.
+  Path bytes are stored in the plan as a `bytea` constant. State is disposed at
+  scan end and, through a query-context reset callback, after errors. Paths are
+  not offered for system columns, row locks, modified tables, inheritance
+  parents, `TABLESAMPLE` or an extension whose load failed; the last case was
+  found by the existing registry-collision test, where the new hook made every
+  later query fail. `ANKUS535`–`ANKUS539` report contract, name, duplicate,
+  container and async mistakes. The `NumberScan` sample's backend tests cover
+  conditions, NULL, EXPLAIN and EXPLAIN ANALYZE, nested-loop and subquery
+  rescans, LIMIT and closed cursors, provider exceptions and NOT NULL
+  violations with same-session recovery, dropped columns, the cases that keep
+  ordinary scans, and a name another module registered first, which rejects
+  every load attempt while ordinary queries keep working. A retried load skips
+  names it already registered, so it reports the real conflict. The 74 custom
+  scan backend tests pass on Linux x64 with PostgreSQL 18 and 19 beta 4; all
+  but the collision test, added later, also pass on 13. The full PostgreSQL 18
+  suite ran 14,846 tests with 52 platform skips; its one failure was the
+  compiler-services type inventory, which now lists the two new transport types.
+- The text array change in **cfd68a3** declared its null bitmap as `bits8`,
+  which PostgreSQL 19 removed. Every extension with functions includes that
+  code, so none built against 19 beta. Primary CI builds against 17 and 18
+  only; the custom scan run on 19 found it. The bitmap is now
+  `uint8`, the type `bits8` named in every earlier version.
 - CI for **74c3ee4** ([38193316088](https://github.com/willibrandon/ankus/actions/runs/38193316088))
   failed once on macOS ARM64: the generator test process ended after 4,997 of
   5,018 tests with no failed test (exit code 7, "test host process crashed").

@@ -75,11 +75,11 @@ public sealed class PgFunctionGenerator : IIncrementalGenerator
             .Combine(FunctionPipeline.Register(context)).Combine(TriggerPipeline.Register(context))
             .Combine(BackgroundWorkerPipeline.Register(context)).Combine(LifecyclePipeline.Register(context))
             .Combine(OperatorCastPipeline.Register(context)).Combine(PgTestPipeline.Register(context))
-            .Combine(benchmarks).Combine(OutputPluginPipeline.Register(context))
-            .Select(static (value, _) => new FunctionPipeline.MethodInputs(value.Left.Left.Left.Left.Left.Left.Left.Left,
-                value.Left.Left.Left.Left.Left.Left.Left.Right, value.Left.Left.Left.Left.Left.Left.Right,
-                value.Left.Left.Left.Left.Left.Right, value.Left.Left.Left.Left.Right, value.Left.Left.Left.Right,
-                value.Left.Left.Right, value.Left.Right, value.Right));
+            .Combine(benchmarks).Combine(OutputPluginPipeline.Register(context)).Combine(CustomScanPipeline.Register(context))
+            .Select(static (value, _) => new FunctionPipeline.MethodInputs(value.Left.Left.Left.Left.Left.Left.Left.Left.Left,
+                value.Left.Left.Left.Left.Left.Left.Left.Left.Right, value.Left.Left.Left.Left.Left.Left.Left.Right,
+                value.Left.Left.Left.Left.Left.Left.Right, value.Left.Left.Left.Left.Left.Right, value.Left.Left.Left.Left.Right,
+                value.Left.Left.Left.Right, value.Left.Left.Right, value.Left.Right, value.Right));
         IncrementalValueProvider<EquatableArray<EnumPipeline.EnumOutput>> enums = EnumPipeline.Register(context);
         IncrementalValueProvider<EquatableArray<CustomTypePipeline.Output>> customTypes = CustomTypePipeline.Register(context);
         IncrementalValuesProvider<INamedTypeSymbol> datumTypes = context.SyntaxProvider.ForAttributeWithMetadataName(
@@ -258,7 +258,7 @@ public sealed class PgFunctionGenerator : IIncrementalGenerator
         ILookup<DeclarationIdentity, TriggerPipeline.TriggerOutput> triggerModels = methodInputs.Triggers.ToLookup(static value => value.Analysis.Identity);
         ILookup<DeclarationIdentity, OperatorCastPipeline.Output> operatorModels = methodInputs.OperatorCasts.ToLookup(static value => value.Analysis.Identity);
         bool referencedCallbacks = nativeCompilation.Analysis.ReferencedCallbacks;
-        if (!referencedCallbacks && !module.Declared && references.IsEmpty && methods.IsEmpty && methodInputs.Workers.IsEmpty && methodInputs.OutputPlugins.IsEmpty && methodInputs.Lifecycle.IsEmpty && schemaTypes.IsEmpty && providers.IsEmpty && customBlocks.IsEmpty && enumTypes.IsEmpty && aggregateOutputs.IsEmpty && propertyInputs.Callbacks.IsEmpty && propertyInputs.Settings.IsEmpty && !propertyInputs.RuntimeSettings && !prefixOutput.Analysis.Declared && customTypes.IsEmpty && !mappingOutput.Analysis.Declared)
+        if (!referencedCallbacks && !module.Declared && references.IsEmpty && methods.IsEmpty && methodInputs.Workers.IsEmpty && methodInputs.OutputPlugins.IsEmpty && methodInputs.CustomScans.IsEmpty && methodInputs.Lifecycle.IsEmpty && schemaTypes.IsEmpty && providers.IsEmpty && customBlocks.IsEmpty && enumTypes.IsEmpty && aggregateOutputs.IsEmpty && propertyInputs.Callbacks.IsEmpty && propertyInputs.Settings.IsEmpty && !propertyInputs.RuntimeSettings && !prefixOutput.Analysis.Declared && customTypes.IsEmpty && !mappingOutput.Analysis.Declared)
         {
             return;
         }
@@ -344,12 +344,13 @@ public sealed class PgFunctionGenerator : IIncrementalGenerator
         List<GucModel> gucs = [.. gucOutputs.Select(static output => output.Analysis.Model!)];
         List<NativeCallbackPipeline.Output> callbacks = NativeCallbackPipeline.Select(propertyInputs.Callbacks, compilation, context);
         OutputPluginEmission? outputPlugin = OutputPluginPipeline.Select(methodInputs.OutputPlugins, compilation, context);
+        CustomScanPipeline.Emission? customScans = CustomScanPipeline.Select(methodInputs.CustomScans, compilation, context);
 
         bool hasGucHooks = gucs.Any(static guc => guc.HasHooks);
         bool hasGucCheck = gucs.Any(static guc => guc.Check is not null);
         bool hasGucShow = gucs.Any(static guc => guc.Show is not null);
-        // The output plugin export enters managed code through the native callback boundary.
-        bool hasNativeCallbacks = callbacks.Count != 0 || referencedCallbacks || outputPlugin is not null;
+        // The output plugin export and custom scan providers use the native callback boundary's initialization.
+        bool hasNativeCallbacks = callbacks.Count != 0 || referencedCallbacks || outputPlugin is not null || customScans is not null;
         List<BackgroundWorkerPipeline.WorkerOutput> workers = BackgroundWorkerPipeline.Select(methodInputs.Workers, compilation, context);
         bool hasWorkers = workers.Count != 0;
         bool hasFunctionCallbacks = !methodInputs.Lifecycle.IsEmpty || hasWorkers || hasNativeCallbacks || !methods.IsEmpty ||
@@ -762,6 +763,13 @@ public sealed class PgFunctionGenerator : IIncrementalGenerator
 
         native.Append(prefixOutput.Emission.Native);
         registration.Append(prefixOutput.Emission.Registration);
+        if (customScans is not null)
+        {
+            // Registration is native-only and precedes managed startup; the bridge follows the shared callback boundary.
+            native.AppendLine("static void ankus_custom_scan_register(void);");
+            registration.AppendLine("        ankus_custom_scan_register();");
+        }
+
         if (initializer is not null || moduleLoad is not null || hasNativeCallbacks || hasWorkers)
         {
             native.AppendLine(NativeErrorBridge.InitializationLogging);
@@ -794,6 +802,11 @@ public sealed class PgFunctionGenerator : IIncrementalGenerator
         }
 
         outputPlugin?.AppendTo(managed, native, exports);
+        if (customScans is not null)
+        {
+            managed.Append(customScans.Managed);
+            native.Append(customScans.Native);
+        }
 
         foreach (BackgroundWorkerPipeline.WorkerOutput worker in workers)
         {

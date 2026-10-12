@@ -1,12 +1,114 @@
 ---
 title: Custom scan providers
-description: Use selected-header native methods and managed callbacks to plan and execute custom scans.
+description: Write custom scans as managed providers or with PostgreSQL's native method tables.
 ---
 
-A custom scan provider participates in PostgreSQL's planner and executor. Use
-the generated `Ankus.Postgres` declarations and `[PgNativeCallback]` for the
-native method tables. Their fields and callback signatures come from the server
-headers selected when the extension is built.
+A custom scan provider participates in PostgreSQL's planner and executor. There
+are two ways to write one:
+
+- A managed provider implements `IPgCustomScan<TState>` and produces rows for a
+  table. Ankus generates and registers everything PostgreSQL needs.
+- A native provider uses the generated `Ankus.Postgres` declarations and
+  `[PgNativeCallback]` for PostgreSQL's method tables. It can wrap PostgreSQL's
+  own child plans, reparameterize, mark and restore, and run in parallel. Its
+  fields and callback signatures come from the server headers selected when the
+  extension is built.
+
+## Managed providers
+
+Mark a class with `[PgCustomScan]` and implement `IPgCustomScan<TState>`:
+
+```csharp
+[PgCustomScan]
+public sealed class NumberScan : IPgCustomScan<NumberScan.State>
+{
+    public static void Plan(PgCustomScanPlanner planner)
+    {
+        if (planner.RelationName == "numbers")
+        {
+            planner.AddPath(new PgCustomScanPath(StartupCost: 0, TotalCost: 1) { Rows = 100 });
+        }
+    }
+
+    public static State Begin(PgCustomScanContext context) => new();
+
+    public static bool Read(State state, PgHeapTuple row)
+    {
+        if (state.Next > 100)
+        {
+            return false;
+        }
+
+        row.Set(0, state.Next++);
+        return true;
+    }
+
+    public sealed class State
+    {
+        public long Next { get; set; } = 1;
+    }
+}
+```
+
+When the library loads, Ankus registers the provider with PostgreSQL and adds a
+relation path hook after any existing one. The calls happen in this order:
+
+1. `Plan` runs when the planner considers a scan of a plain table or
+   materialized view. `AddPath` offers a path with its costs, an optional row
+   estimate and optional bytes. PostgreSQL keeps the path only if it is cheaper
+   than its own scans. The bytes are stored in the plan, so prepared statements
+   keep them.
+2. `Begin` runs when the executor starts the scan. The context has the table's
+   descriptor and the path's bytes. `IsExplainOnly` is true for EXPLAIN without
+   ANALYZE, which starts the scan but never reads it.
+3. `Read` fills one row and returns `true`, or returns `false` when the scan has
+   no more rows. Columns left unset are SQL NULL. PostgreSQL applies the query's
+   conditions and projection to every row, so a provider can return more rows
+   than the query needs.
+4. When the scan ends, Ankus disposes a state that implements `IDisposable`.
+   This also happens after an early stop such as `LIMIT`, a closed cursor or an
+   error.
+
+PostgreSQL restarts a scan on the inner side of a nested loop or in a subquery
+that depends on an outer row. Implement `IPgRescannableCustomScan<TState>` to
+restart in place. Otherwise Ankus disposes the state and calls `Begin` again.
+Implement `IPgExplainedCustomScan<TState>` to add EXPLAIN properties with
+`PgExplainWriter`. EXPLAIN shows the provider's name as the custom plan
+provider.
+
+An exception from any of these methods becomes a PostgreSQL error, and the
+session can run the next statement. A row that leaves a `NOT NULL` column empty
+is rejected with an error.
+
+Ankus does not offer a provider's paths in these cases:
+
+- the query reads a system column such as `ctid`, locks rows, or modifies the
+  table;
+- the scan is of an inheritance parent or uses `TABLESAMPLE`;
+- the extension has not finished loading, for example after its load failed.
+
+Managed paths are marked parallel-unsafe, so parallel workers never run them.
+They do not support mark and restore or backward scans. Use a native provider
+for those.
+
+The name defaults to the class name in snake_case. Set `Name` to choose another.
+A name is 1 to 63 ASCII letters, digits or underscores and does not start with a
+digit. PostgreSQL keeps one registry per backend, so two loaded extensions cannot
+use the same name. The library has to be loaded before a query is planned; call
+one of its functions first, or add it to `session_preload_libraries`.
+
+| Diagnostic | Meaning |
+|---|---|
+| ANKUS535 | The class implements `IPgCustomScan<TState>` for no state type or for several |
+| ANKUS536 | The name is not a valid custom scan name |
+| ANKUS537 | Another provider in the extension uses the same name |
+| ANKUS538 | The class or a containing type is generic, file-local, private or protected |
+| ANKUS539 | A provider method is `async` |
+
+The sample's [`NumberScan.cs`](https://github.com/willibrandon/ankus/blob/main/samples/Ankus.Examples.CustomScans/NumberScan.cs)
+is a complete provider with path data, rescans, EXPLAIN properties and disposal.
+
+## Native providers
 
 The [trace-scan sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.CustomScans)
 wraps sequential, index and index-only scan paths and delegates to their real

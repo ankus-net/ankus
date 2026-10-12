@@ -567,9 +567,16 @@ library can serve as a logical decoding output plugin. The method receives
 PostgreSQL's callback table and assigns `[PgNativeCallback]` properties. See
 [logical decoding output plugins](docs/src/content/docs/logical-decoding.md).
 
-The [custom-scan sample](samples/Ankus.Examples.CustomScans) uses these method
-tables to trace actual sequential and index paths, child-plan execution, rescans
-and EXPLAIN. Index children retain their supported backward and mark/restore
+`[PgCustomScan]` turns a class that implements `IPgCustomScan<TState>` into a
+custom scan provider. Its static `Plan`, `Begin` and `Read` methods offer a path,
+start a scan and produce rows; PostgreSQL still applies the query's conditions.
+Optional interfaces add rescans and EXPLAIN properties. Ankus generates the
+method tables and the planner hook.
+
+The [custom-scan sample](samples/Ankus.Examples.CustomScans) has a managed
+provider and a native one. The native provider uses these method tables directly
+to trace actual sequential and index paths, child-plan execution, rescans and
+EXPLAIN. Index children retain their supported backward and mark/restore
 capabilities.
 
 Parameter diagnostics follow partition ancestry without reevaluating
