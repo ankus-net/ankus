@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title">
+  <title id="title">Ankus</title>
+  <defs>
+    <!-- The dedicated 16px mark has a wider hook and staff, without a spear tip. -->
+    <g id="favicon-16">
+      <path d="M10 4H8C5 4 3 6 3 8.5C3 10.5 4 12 6 13C5 11 5 10 5 9C5 7.5 6 7 8 7H10Z" fill="#8758FF"/>
+      <rect x="10" y="3" width="3" height="10" rx="1" fill="#F4F6FF"/>
+    </g>
+  </defs>
+  <g id="mark">
+    <path d="M162 82C148 88 136 89 122 90C89 92 64 109 64 129C64 147 84 163 103 171C91 158 87 146 87 137C87 121 104 110 126 110C140 110 151 116 162 128Z" fill="#8758FF"/>
+    <path d="M172 40L192 76C186 82 184 89 184 96V202C184 208 180 212 174 212H170C164 212 160 208 160 202V96C160 89 158 82 152 76Z" fill="#F4F6FF"/>
+  </g>
+</svg>

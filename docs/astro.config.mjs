@@ -44,6 +44,13 @@ export default defineConfig({
     starlight({
       title: 'Ankus',
       description: 'PostgreSQL extensions in C# with .NET Native AOT.',
+      logo: { src: './src/assets/logo.svg', alt: 'Ankus' },
+      favicon: '/favicon.svg',
+      head: [
+        { tag: 'link', attrs: { rel: 'icon', type: 'image/x-icon', sizes: '16x16 32x32 48x48', href: `${siteBase}/favicon.ico` } },
+        { tag: 'link', attrs: { rel: 'icon', type: 'image/png', sizes: '16x16', href: `${siteBase}/favicon-16.png` } },
+        { tag: 'link', attrs: { rel: 'apple-touch-icon', sizes: '180x180', href: `${siteBase}/apple-touch-icon.png` } },
+      ],
       disable404Route: true,
       social: [
         {
