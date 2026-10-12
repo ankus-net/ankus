@@ -174,6 +174,11 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   fixed the rows cost 182 ns and 330 ns. See the
   [measurements](docs/contributing/evidence/guard-tiers.md#managed-custom-scans).
   The PostgreSQL 18 suite passes with these changes.
+- Writing a row to native code encodes column names once per descriptor, tracks
+  cycles only for rows with nested values, reuses the outermost buffer and
+  encodes text straight into it. A trigger row's overhead fell from 1.42 µs to
+  1.32 µs. The affected backend tests pass on PostgreSQL 13 and 18, and the full
+  PostgreSQL 18 suite passes (14,854 tests, 52 platform skips).
 - Domain values are checked with PostgreSQL's `domain_check` after their base
   type's modifier, as PL/pgSQL does, instead of preparing a coercion expression
   per value. The backend keeps each domain's constraint state, which
@@ -228,8 +233,8 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   It stays open under the first remaining-work item until it recurs with
   evidence. CI for **41b2111**
   ([38204764541](https://github.com/willibrandon/ankus/actions/runs/38204764541)),
-  **6c008fc**, **f95d2cb**, **8bb5954**, **0883b1e** and the earlier commits
-  passed on all three platforms.
+  **6c008fc**, **f95d2cb**, **8bb5954**, **0883b1e**, **50c1491** and the
+  earlier commits passed on all three platforms.
 - GUC hook (`ANKUS199`–`ANKUS201`) and benchmark setup (`ANKUS131`) errors
   now say what is wrong with the named method, such as "'Hook' returns bool"
   or "'Settings' has no method named 'Hook'", instead of restating the whole

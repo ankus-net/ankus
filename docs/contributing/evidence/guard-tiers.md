@@ -199,7 +199,12 @@ Managed code also parsed the same names, arguments and columns for every row,
 and each row built its own descriptor. The native site now sends an identity
 with buffers that stay the same, so managed code keeps what it parsed for the
 site and rows reuse its descriptor. Together these brought the overhead to
-1.42 µs per row, 2.5 times the PL/pgSQL trigger's.
+1.42 µs per row, 2.5 times the PL/pgSQL trigger's. Writing the returned row
+encoded every column name again, tracked the row for cycles even when no cell
+could hold another row, allocated a new buffer, and copied each text cell
+through its own native buffer. Names are now encoded once per descriptor, only
+rows with nested values are tracked, the outermost row reuses a buffer, and
+text is encoded straight into it, which brought the overhead to 1.32 µs.
 
 Returning a row also applied each column's type modifier, such as `varchar(64)`,
 by building a coercion expression, preparing it in a new executor state and

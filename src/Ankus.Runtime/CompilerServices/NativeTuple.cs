@@ -9,6 +9,12 @@ public unsafe partial struct NativeValue
     [ThreadStatic]
     private static HashSet<PgHeapTuple>? s_writingTuples;
 
+    [ThreadStatic]
+    private static ArrayBufferWriter<byte>? s_tupleBuffer;
+
+    [ThreadStatic]
+    private static int s_tupleWriteDepth;
+
     /// <summary>
     /// Gets whether this value carries a pointer-free tuple envelope.
     /// </summary>
@@ -48,22 +54,27 @@ public unsafe partial struct NativeValue
     {
         ArgumentNullException.ThrowIfNull(value);
         RuntimeHelpers.EnsureSufficientExecutionStack();
-        HashSet<PgHeapTuple> writing = s_writingTuples ??= [];
-        if (!writing.Add(value))
+
+        // Only a cell that can hold another row can lead back to this one, so plain rows skip cycle tracking.
+        bool tracked = !HasOnlyLeafCells(value);
+        if (tracked && !(s_writingTuples ??= []).Add(value))
         {
             throw new InvalidOperationException("Composite values cannot contain reference cycles.");
         }
 
+        // The outermost row reuses one buffer per thread; its bytes are copied to native memory before it returns.
+        ArrayBufferWriter<byte> buffer = s_tupleWriteDepth == 0 ? s_tupleBuffer ??= new() : new();
+        buffer.ResetWrittenCount();
+        s_tupleWriteDepth++;
         try
         {
-            var buffer = new ArrayBufferWriter<byte>();
             WriteInt(buffer, unchecked((int)value.Descriptor.TypeOid));
             WriteInt(buffer, value.Descriptor.TypeModifier);
             WriteInt(buffer, value.Count);
             for (int index = 0; index < value.Count; index++)
             {
                 PgTupleAttributeInfo attribute = value.Descriptor.Attributes[index];
-                byte[] name = s_utf8.GetBytes(attribute.Name);
+                ReadOnlySpan<byte> name = attribute.Utf8Name;
                 if (name.Length > 252)
                 {
                     throw new InvalidOperationException("Tuple attribute names exceed PostgreSQL's identifier capacity.");
@@ -79,7 +90,14 @@ public unsafe partial struct NativeValue
                 WriteInt(buffer, name.Length);
                 buffer.Write(name);
                 object? cell = attribute.IsUnavailable ? null : value.GetStoredCell(index);
-                NativeValue item = SpiType.ToNative(cell, PgTypeRegistry.FindValue(cell, attribute.BaseTypeOid),
+                CustomTypeMapping? mapping = PgTypeRegistry.FindValue(cell, attribute.BaseTypeOid);
+                if (cell is string text && mapping is null && PgTypeRegistry.Find(typeof(string)) is null)
+                {
+                    WriteContainerText(buffer, text);
+                    continue;
+                }
+
+                NativeValue item = SpiType.ToNative(cell, mapping,
                     cell is Array array ? PgTypeRegistry.FindArrayValue(array, attribute.BaseTypeOid) : null);
                 try
                 {
@@ -98,8 +116,36 @@ public unsafe partial struct NativeValue
         }
         finally
         {
-            writing.Remove(value);
+            s_tupleWriteDepth--;
+            if (s_tupleWriteDepth == 0 && buffer.Capacity > 65536)
+            {
+                // A large row does not keep its buffer for the rest of the backend's life.
+                s_tupleBuffer = null;
+            }
+
+            if (tracked)
+            {
+                s_writingTuples!.Remove(value);
+            }
         }
+    }
+
+    /// <summary>
+    /// Recognizes a row whose cells are SQL NULL, text, bytes or primitive values, none of which can contain a row.
+    /// </summary>
+    private static bool HasOnlyLeafCells(PgHeapTuple value)
+    {
+        for (int index = 0; index < value.Count; index++)
+        {
+            // An unavailable generated column has no value to write.
+            if (!value.Descriptor.Attributes[index].IsUnavailable && value.GetStoredCell(index) is not (null or string or byte[] or bool or
+                char or sbyte or byte or short or ushort or int or uint or long or ulong or float or double or decimal or Guid))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -256,6 +302,28 @@ public unsafe partial struct NativeValue
         BinaryPrimitives.WriteInt32BigEndian(header[24..], item._length);
         buffer.Advance(28);
         buffer.Write(new ReadOnlySpan<byte>(item._data, item._length));
+    }
+
+    /// <summary>
+    /// Writes text as <see cref="NativeValue.FromString(string)"/> would transport it, encoding it straight into the
+    /// container instead of into a native buffer that is then copied and freed.
+    /// </summary>
+    private static void WriteContainerText(ArrayBufferWriter<byte> buffer, string value)
+    {
+        if (value.Contains('\0', StringComparison.Ordinal))
+        {
+            throw new ArgumentException("PostgreSQL text cannot contain a zero character.", nameof(value));
+        }
+
+        int length = s_utf8.GetByteCount(value);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(length, 0x3FFFFFFF - 4);
+        EnsureContainerCapacity(buffer, 28L + length);
+        // A non-null text value has no scalar, auxiliary or infinity fields; only its length is set.
+        Span<byte> header = buffer.GetSpan(28);
+        header[..24].Clear();
+        BinaryPrimitives.WriteInt32BigEndian(header[24..], length);
+        buffer.Advance(28);
+        buffer.Advance(s_utf8.GetBytes(value, buffer.GetSpan(length)));
     }
 
     private static void EnsureContainerCapacity(ArrayBufferWriter<byte> buffer, long additional)
