@@ -57,7 +57,7 @@ public sealed partial class PgFunctionGeneratorTests
     }
 
     /// <summary>
-    /// Trigger dispatch handles ignored and skipped returns before serialization while preserving the managed error boundary.
+    /// Trigger dispatch handles ignored, skipped and unchanged returns before serialization while preserving the managed error boundary.
     /// </summary>
     [TestMethod]
     public void TriggerManagedDispatchOrdersEventSemanticsBeforeSerialization()
@@ -103,8 +103,12 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreSequenceEqual(["result->IsNull = 1;", "return 0;"], statementBody.Statements.Skip(1).Select(static item => item.ToString()));
         Assert.AreSequenceEqual(["result->IsNull = 0;", "return 0;"],
             Assert.IsInstanceOfType<BlockSyntax>(deleted.Statement).Statements.Select(static item => item.ToString()));
+        IfStatementSyntax unchanged = Assert.IsInstanceOfType<IfStatementSyntax>(guarded.Block.Statements[8]);
+        Assert.AreEqual("global::Ankus.CompilerServices.NativeValue.IsUnchangedTriggerRow(context, value)", unchanged.Condition.ToString());
+        Assert.AreSequenceEqual(["result->IsNull = 0;", "return 0;"],
+            Assert.IsInstanceOfType<BlockSyntax>(unchanged.Statement).Statements.Select(static item => item.ToString()));
         Assert.AreSequenceEqual(["*result = global::Ankus.CompilerServices.NativeValue.FromTuple(value);", "return 0;"],
-            guarded.Block.Statements.Skip(8).Select(static item => item.ToString()));
+            guarded.Block.Statements.Skip(9).Select(static item => item.ToString()));
     }
 
     /// <summary>

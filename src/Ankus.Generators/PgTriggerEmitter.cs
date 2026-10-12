@@ -67,6 +67,13 @@ internal static class PgTriggerEmitter
         managed.AppendLine("                return 0;");
         managed.AppendLine("            }");
         managed.AppendLine();
+        managed.AppendLine("            if (global::Ankus.CompilerServices.NativeValue.IsUnchangedTriggerRow(context, value))");
+        managed.AppendLine("            {");
+        managed.AppendLine("                // PostgreSQL keeps the row it passed in, as a C trigger returning it does.");
+        managed.AppendLine("                result->IsNull = 0;");
+        managed.AppendLine("                return 0;");
+        managed.AppendLine("            }");
+        managed.AppendLine();
         managed.AppendLine("            *result = global::Ankus.CompilerServices.NativeValue.FromTuple(value);");
         managed.AppendLine("            return 0;");
         managed.AppendLine("        }");

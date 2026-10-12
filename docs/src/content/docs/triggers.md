@@ -102,6 +102,12 @@ table constraints are checked by the operation after BEFORE triggers finish.
 Exceptions thrown by the callback still abort the statement even when its return
 value would have been ignored.
 
+Returning `context.New` without setting any of its cells gives PostgreSQL back
+the row it passed in, as a C trigger returning `tg_trigtuple` does, so a trigger
+that only checks its row does not pay to convert it again. A row holding an
+array or other mutable value is always converted, because it may have been
+changed in place.
+
 ## Generated and dropped columns
 
 A stored generated column in NEW is unavailable during BEFORE triggers because

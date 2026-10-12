@@ -10,6 +10,8 @@ public sealed class PgHeapTuple
 {
     private readonly object?[] _values;
 
+    private bool _modified;
+
     /// <summary>
     /// Takes ownership of an array of cells a reader has just converted, without copying it.
     /// </summary>
@@ -160,6 +162,7 @@ public sealed class PgHeapTuple
             uint mapped = mapping.GetOid();
             RequireReplaceable(ordinal, mapped);
             _values[ordinal] = mapping.WriteCell(value, mapped);
+            _modified = true;
             return;
         }
 
@@ -168,6 +171,7 @@ public sealed class PgHeapTuple
             uint mapped = arrays.GetOid();
             RequireReplaceable(ordinal, mapped);
             _values[ordinal] = arrays.WriteCell(value, mapped);
+            _modified = true;
             return;
         }
 
@@ -202,6 +206,7 @@ public sealed class PgHeapTuple
         {
             RequireReplaceable(ordinal, value.TypeOid);
             _values[ordinal] = WriteMapped(value);
+            _modified = true;
             return;
         }
 
@@ -311,6 +316,11 @@ public sealed class PgHeapTuple
             : value.DatumArrayMapping!.WriteCell(value.Value, value.TypeOid);
 
     /// <summary>
+    /// Gets whether any cell has been replaced since the tuple was created or read.
+    /// </summary>
+    internal bool IsModified => _modified;
+
+    /// <summary>
     /// Gets a stored cell, including one that has no managed conversion, after checking that the attribute has a value.
     /// </summary>
     /// <param name="ordinal">The zero-based physical ordinal.</param>
@@ -325,6 +335,7 @@ public sealed class PgHeapTuple
     {
         RequireReplaceable(ordinal, oid);
         _values[ordinal] = value is PgDatum datum ? NativeBackend.DetachDatum(datum) : PgRelationIdentity.Snapshot(value);
+        _modified = true;
     }
 
     /// <summary>

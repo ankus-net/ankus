@@ -191,6 +191,26 @@ public sealed class PgTriggerTests
     }
 
     /// <summary>
+    /// Only the context's own NEW row with no replaced cells and no mutable values counts as returned unchanged.
+    /// </summary>
+    [TestMethod]
+    public void UnchangedNewRowsAreRecognized()
+    {
+        using NativeEnvelope envelope = CreateEnvelope(4, hasNew: true);
+        PgTriggerContext context = NativeValue.ReadTriggerContext(envelope.Values);
+        PgHeapTuple row = context.New!;
+        Assert.IsTrue(NativeValue.IsUnchangedTriggerRow(context, row));
+        Assert.IsFalse(NativeValue.IsUnchangedTriggerRow(context, row.Clone()));
+        row.Set(0, row.Get<int>(0));
+        Assert.IsFalse(NativeValue.IsUnchangedTriggerRow(context, row));
+
+        var bytes = new PgTupleDescriptor(9100, -1, [new("payload", 17, 17, -1, 0)]);
+        var binary = new PgTriggerContext(4, 8100, 8200, "trigger", "table", "schema", null, null, [], null,
+            new PgHeapTuple(bytes, [new byte[] { 1 }]), bytes);
+        Assert.IsFalse(NativeValue.IsUnchangedTriggerRow(binary, binary.New!));
+    }
+
+    /// <summary>
     /// The generated invocation shape has exactly sixteen slots, with no ignored extra metadata.
     /// </summary>
     [TestMethod]

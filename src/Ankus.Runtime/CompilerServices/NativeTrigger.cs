@@ -47,6 +47,23 @@ public unsafe partial struct NativeValue
     }
 
     /// <summary>
+    /// Recognizes a trigger returning the NEW row it was given, unchanged, which PostgreSQL can keep as it is instead
+    /// of receiving a converted copy.
+    /// </summary>
+    /// <param name="context">The trigger's context.</param>
+    /// <param name="row">The row the trigger returned.</param>
+    /// <returns>
+    /// Whether the row is the context's NEW row with no replaced cells. A row holding a mutable value, such as an array,
+    /// could have changed in place and is always converted.
+    /// </returns>
+    public static bool IsUnchangedTriggerRow(PgTriggerContext context, PgHeapTuple row)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        ArgumentNullException.ThrowIfNull(row);
+        return ReferenceEquals(row, context.New) && !row.IsModified && HasOnlyScalarCells(row, includeBytes: false);
+    }
+
+    /// <summary>
     /// Parses a call site's unchanging slots and, when the site is identified, keeps them for its next call.
     /// </summary>
     private static TriggerSite ReadTriggerSite(long identity, uint relationOid, uint triggerOid, ReadOnlySpan<NativeValue> arguments)

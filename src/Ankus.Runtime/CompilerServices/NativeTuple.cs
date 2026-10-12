@@ -180,13 +180,24 @@ public unsafe partial struct NativeValue
     /// <summary>
     /// Recognizes a row whose cells are SQL NULL, text, bytes or primitive values, none of which can contain a row.
     /// </summary>
-    private static bool HasOnlyLeafCells(PgHeapTuple value)
+    private static bool HasOnlyLeafCells(PgHeapTuple value) => HasOnlyScalarCells(value, includeBytes: true);
+
+    /// <summary>
+    /// Recognizes a row whose cells are SQL NULL, text or primitive values, optionally also byte arrays.
+    /// </summary>
+    internal static bool HasOnlyScalarCells(PgHeapTuple value, bool includeBytes)
     {
         for (int index = 0; index < value.Count; index++)
         {
             // An unavailable generated column has no value to write.
-            if (!value.Descriptor.Attributes[index].IsUnavailable && value.GetStoredCell(index) is not (null or string or byte[] or bool or
-                char or sbyte or byte or short or ushort or int or uint or long or ulong or float or double or decimal or Guid))
+            if (value.Descriptor.Attributes[index].IsUnavailable)
+            {
+                continue;
+            }
+
+            object? cell = value.GetStoredCell(index);
+            if (cell is not (null or string or bool or char or sbyte or byte or short or ushort or int or uint or long or ulong or float or
+                double or decimal or Guid) && !(includeBytes && cell is byte[]))
             {
                 return false;
             }

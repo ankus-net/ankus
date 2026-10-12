@@ -206,6 +206,13 @@ through its own native buffer. Names are now encoded once per descriptor, only
 rows with nested values are tracked, the outermost row reuses a buffer, and
 text is encoded straight into it, which brought the overhead to 1.32 µs.
 
+A trigger that only validates and returns its NEW row still had that row
+converted to native code and rebuilt. When a `BEFORE` trigger returns the
+context's own NEW row with no replaced cells and no mutable values, such as
+arrays that could change in place, PostgreSQL now keeps the row it passed in, as
+a C trigger returning `tg_trigtuple` does. With the sample changed to validate
+the name without trimming it, the overhead fell from 1.21 µs to 0.76 µs per row.
+
 Returning a row also applied each column's type modifier, such as `varchar(64)`,
 by building a coercion expression, preparing it in a new executor state and
 running it, once per value. PostgreSQL applies a modifier in an assignment by

@@ -381,6 +381,9 @@ internal static class NativeTriggerBridge
                         ereport(ERROR, (errcode(ERRCODE_E_R_I_E_TRIGGER_PROTOCOL_VIOLATED), errmsg("BEFORE STATEMENT trigger cannot return a value")));
                     if (TRIGGER_FIRED_BY_DELETE(trigger->tg_event))
                         output = trigger->tg_trigtuple;
+                    else if (result->auxiliary1 != -4 && result->data == NULL)
+                        /* The trigger returned its NEW row unchanged. */
+                        output = TRIGGER_FIRED_BY_UPDATE(trigger->tg_event) ? trigger->tg_newtuple : trigger->tg_trigtuple;
                     else
                     {
                         HeapTuple tuple = ankus_trigger_result(result, trigger, &site->shape);
