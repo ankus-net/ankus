@@ -152,3 +152,25 @@ look up each element's type twice, copy it into its own datum and copy it again
 into the array. Elements without a domain are now checked as UTF-8 in one pass
 and laid out in the array in a second, so a result element costs 31 ns instead
 of 75 ns; domain elements keep their per-element checks.
+
+### Managed custom scans
+
+`SELECT count(*)` over the `NumberScan` sample's tables, with one million rows
+and `enable_seqscan` off, on the 18.6 release build. `count(*)` over
+`generate_series` costs 75 ns per row on the same server. `perf` is not
+available in the validation VM, so the costs were found by sampling the
+backend's stacks with gdb.
+
+| Table | First build | Sample reads its setting once | Framework changes |
+|---|---:|---:|---:|
+| `value bigint` | 650 ns | 302 ns | 182 ns |
+| `value bigint, label text` | 840 ns | 492 ns | 330 ns |
+
+The sample read its `numbers_fail_at` setting on every row, and each read is a
+backend call. It now reads the setting when the scan begins. Two framework
+costs followed. Every cell searched all of the extension's generated type
+mappings for one that owns the column's type; a built-in type OID is below
+PostgreSQL's `FirstNormalObjectId`, so no mapping can own it and the search is
+skipped. `PgTupleDescriptor.CreateTuple` built an empty array, then validated
+and copied it; it now creates the empty tuple directly. The rest is spread across
+the checks in `PgHeapTuple.Set` and the conversion of each cell.

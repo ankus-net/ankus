@@ -98,7 +98,7 @@ public sealed class PgTupleDescriptor
     public PgHeapTuple CreateTuple()
     {
         RequireRowType();
-        return new(this, new object?[Attributes.Count]);
+        return new(this);
     }
 
     /// <summary>

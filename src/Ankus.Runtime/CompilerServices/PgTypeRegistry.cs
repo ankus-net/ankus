@@ -137,7 +137,7 @@ public static class PgTypeRegistry
     /// </summary>
     internal static CustomTypeMapping? FindValue(object? value, uint oid)
     {
-        if (value is null)
+        if (value is null || IsBuiltIn(oid))
         {
             return null;
         }
@@ -159,6 +159,11 @@ public static class PgTypeRegistry
     /// </summary>
     internal static CustomTypeMapping? FindArrayValue(Array value, uint oid)
     {
+        if (IsBuiltIn(oid))
+        {
+            return null;
+        }
+
         foreach (KeyValuePair<Type, CustomTypeMapping> registration in s_scalars)
         {
             CustomTypeMapping mapping = registration.Value;
@@ -176,6 +181,16 @@ public static class PgTypeRegistry
 
         return null;
     }
+
+    /// <summary>
+    /// Recognizes a type OID that no generated mapping can own.
+    /// </summary>
+    /// <param name="oid">The declared SQL type, array type or base type.</param>
+    /// <returns>
+    /// Whether the OID belongs to a built-in type. Extension types are created after initdb, at or above PostgreSQL's
+    /// <c>FirstNormalObjectId</c>; zero stays searchable because a mapping whose type is missing reports it.
+    /// </returns>
+    private static bool IsBuiltIn(uint oid) => oid is > 0 and < 16384;
 
     /// <summary>
     /// Requires an already generated mapping without invoking a backend operation.

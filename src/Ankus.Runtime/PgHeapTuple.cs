@@ -11,6 +11,16 @@ public sealed class PgHeapTuple
     private readonly object?[] _values;
 
     /// <summary>
+    /// Creates a tuple whose physical fields are all SQL NULL, which every attribute accepts.
+    /// </summary>
+    /// <param name="descriptor">The tuple's immutable descriptor metadata.</param>
+    internal PgHeapTuple(PgTupleDescriptor descriptor)
+    {
+        Descriptor = descriptor;
+        _values = new object?[descriptor.Attributes.Count];
+    }
+
+    /// <summary>
     /// Copies converted cells and retains immutable descriptor metadata.
     /// </summary>
     internal PgHeapTuple(PgTupleDescriptor descriptor, object?[] values)

@@ -51,7 +51,8 @@ public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.Sta
             s_counts[3]++;
         }
 
-        return new State(BinaryPrimitives.ReadInt32LittleEndian(context.Data), context.Descriptor);
+        // Settings are read once per scan; a backend call for every row would cost more than the row itself.
+        return new State(BinaryPrimitives.ReadInt32LittleEndian(context.Data), FailAt, context.Descriptor);
     }
 
     /// <inheritdoc />
@@ -63,7 +64,7 @@ public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.Sta
         }
 
         long value = state.Next++;
-        if (value == FailAt)
+        if (value == state.FailAt)
         {
             throw new InvalidOperationException($"The numbers scan failed at {value}.");
         }
@@ -103,9 +104,10 @@ public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.Sta
     /// </summary>
     public sealed class State : IDisposable
     {
-        internal State(int count, PgTupleDescriptor descriptor)
+        internal State(int count, int failAt, PgTupleDescriptor descriptor)
         {
             Count = count;
+            FailAt = failAt;
             Value = descriptor.GetOrdinal("value");
             Label = descriptor.Attributes.Select(static (attribute, index) => (attribute, index))
                 .FirstOrDefault(static item => item.attribute.Name == "label" && !item.attribute.IsDropped, (null!, -1)).index;
@@ -115,6 +117,11 @@ public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.Sta
         /// Gets the number of integers the scan produces.
         /// </summary>
         public int Count { get; }
+
+        /// <summary>
+        /// Gets the integer at which the scan fails, or zero.
+        /// </summary>
+        public int FailAt { get; }
 
         /// <summary>
         /// Gets the integer the next row holds.

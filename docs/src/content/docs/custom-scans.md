@@ -64,7 +64,8 @@ relation path hook after any existing one. The calls happen in this order:
 3. `Read` fills one row and returns `true`, or returns `false` when the scan has
    no more rows. Columns left unset are SQL NULL. PostgreSQL applies the query's
    conditions and projection to every row, so a provider can return more rows
-   than the query needs.
+   than the query needs. Look up column ordinals and read settings in `Begin`
+   and keep them in the state; reading a setting is a backend call.
 4. When the scan ends, Ankus disposes a state that implements `IDisposable`.
    This also happens after an early stop such as `LIMIT`, a closed cursor or an
    error.

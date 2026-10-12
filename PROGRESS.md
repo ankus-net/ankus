@@ -89,7 +89,7 @@ defines the full scope; family-level implementation is not API-by-API completion
 | Development CLI | Version/project selection, installation/registration, cluster lifecycle, run/connect, test/regress/bench, property forwarding, environment selection, scriptable info, package prefixes and target export with `--target-info` builds, including Intel macOS from Apple silicon. Benchmarks are measured inside PostgreSQL and retained in named comparison groups. `install --sudo`, `test --runas` and `regress --runas` follow cargo-pgrx with real-account evidence. | Run-as cases now run on every runner; the Linux PostgreSQL 16 rerun ([38115917411](https://github.com/willibrandon/ankus/actions/runs/38115917411)) has 52 skips where it had 55. Persistent clusters already retain Windows event-log diagnostics through `PostgresServerLog`. |
 | .NET templates | Version-matched ordinary extension and worker templates reuse the CLI assets and pin local tools. Optional xUnit/NUnit consumers exercise managed and named backend cases, ignore reasons, worker processes and cleanup alongside default MSTest consumers; all three list backend cases with `dotnet test --list-tests` before anything is published. Complete primary-platform CI passes. | Complete version/platform acceptance. |
 | API discoverability | Idiomatic attributed declarations, documented runtime APIs, named logging helpers and typed SPI interpolation. Compiler transport helpers are isolated in Ankus.CompilerServices and hidden from IntelliSense; complete primary-platform CI passes. `PgAssert` adds MSTest's tolerance, text and count checks. | Final inventory audit. |
-| Packages and release | MIT license, Brandon Williams copyright, author/repository/project metadata and deliberate SDK/runtime boundaries. | Full release gates and supported-platform packages before publishing 0.1.0. |
+| Packages and release | MIT license, Brandon Williams copyright, author/repository/project metadata, package icon and deliberate SDK/runtime boundaries. | Full release gates and supported-platform packages before publishing 0.1.0. |
 | Documentation and samples | Public guides, generated API pages, pgrx migration and backend-execution guidance; current status separated from historical evidence. All 37 of pgrx's examples map to runnable samples with backend integration tests. Every guide was reviewed against the code on 2026-10-11 and corrected. | Recheck guides that change after the .NET servicing update and before release. |
 
 The custom-type alignment review found no defect: variable-length PostgreSQL
@@ -166,6 +166,14 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   but the collision test, added later, also pass on 13. The full PostgreSQL 18
   suite ran 14,846 tests with 52 platform skips; its one failure was the
   compiler-services type inventory, which now lists the two new transport types.
+- A managed custom scan row cost 650 ns for one `bigint` column and 840 ns with
+  a `text` column as well, on a PostgreSQL 18.6 release build. The sample read
+  a setting on every row; reading it once per scan brought these to 302 ns and
+  492 ns. Each cell also searched every generated type mapping, which built-in
+  types can skip, and each empty tuple was validated and copied; with both
+  fixed the rows cost 182 ns and 330 ns. See the
+  [measurements](docs/contributing/evidence/guard-tiers.md#managed-custom-scans).
+  The PostgreSQL 18 suite passes with these changes.
 - The text array change in **cfd68a3** declared its null bitmap as `bits8`,
   which PostgreSQL 19 removed. Every extension with functions includes that
   code, so none built against 19 beta. Primary CI builds against 17 and 18
@@ -178,8 +186,9 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   log, the TRX and the runner's crash and memory-pressure reports hold no stack
   or cause. The rerun passed, and six direct runs on the same machine passed.
   It stays open under the first remaining-work item until it recurs with
-  evidence. CI for **b978ac0**, **54c87a9**, **65a39f6** and the earlier
-  commits today passed on all three platforms.
+  evidence. CI for **b978ac0**, **54c87a9**, **65a39f6**, **41b2111**
+  ([38204764541](https://github.com/willibrandon/ankus/actions/runs/38204764541))
+  and the earlier commits today passed on all three platforms.
 - GUC hook (`ANKUS199`–`ANKUS201`) and benchmark setup (`ANKUS131`) errors
   now say what is wrong with the named method, such as "'Hook' returns bool"
   or "'Settings' has no method named 'Hook'", instead of restating the whole
