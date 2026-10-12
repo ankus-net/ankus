@@ -54,6 +54,44 @@ public static partial class GucFunctions
     }
 
     /// <summary>
+    /// Reads scalar settings through their located native variables across a change, then inside a memory reset
+    /// callback, where configuration reads are unavailable whether or not a setting was located first.
+    /// </summary>
+    /// <returns>The values before and after <c>SET</c>, each callback read's outcome, and the value afterwards.</returns>
+    [PgFunction]
+    public static string GucLocatedReads()
+    {
+        int before = Limit;
+        Spi.Execute("SET \"ankus_guc.limit\" = '31'");
+        int changed = Limit;
+        string located = "none";
+        string unlocated = "none";
+        using (PgMemoryContext owner = PgMemoryContext.Create("located configuration reads"))
+        {
+            using PgMemoryCallback callback = owner.RegisterResetCallback(() =>
+            {
+                located = Attempt(() => Limit);
+                unlocated = Attempt(() => Ratio);
+            });
+            owner.Reset();
+        }
+
+        return string.Create(CultureInfo.InvariantCulture, $"{before}|{changed}|{located}|{unlocated}|{Limit}");
+
+        static string Attempt<T>(Func<T> read)
+        {
+            try
+            {
+                return string.Create(CultureInfo.InvariantCulture, $"read {read()}");
+            }
+            catch (InvalidOperationException error)
+            {
+                return error.Message;
+            }
+        }
+    }
+
+    /// <summary>
     /// Gets the mode used to exercise individual hook contracts.
     /// </summary>
     [PgGucString("ankus_guc.control", "", "Hook test mode")]

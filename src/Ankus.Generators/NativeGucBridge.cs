@@ -24,6 +24,9 @@ internal static class NativeGucBridge
         #ifndef ANKUS_GUC_DEFINE_KIND
         #define ANKUS_GUC_DEFINE_KIND 100
         #endif
+        #ifndef ANKUS_GUC_LOCATE_KIND
+        #define ANKUS_GUC_LOCATE_KIND 200
+        #endif
 
         /* PostgreSQL 19 embeds typed bodies in the generic record instead of
          * placing a generic prefix in each separately typed record. */
@@ -792,6 +795,10 @@ internal static class NativeGucBridge
         #ifndef ANKUS_GUC_DEFINE_KIND
         #define ANKUS_GUC_DEFINE_KIND 100
         #endif
+        /* Read-binding kinds from here on return a declared scalar's variable address instead of its value. */
+        #ifndef ANKUS_GUC_LOCATE_KIND
+        #define ANKUS_GUC_LOCATE_KIND 200
+        #endif
         """;
 
     /// <summary>
@@ -1020,6 +1027,10 @@ internal static class NativeGucBridge
         #endif
             }
 
+            bool locate = kind >= ANKUS_GUC_LOCATE_KIND;
+            if (locate)
+                kind -= ANKUS_GUC_LOCATE_KIND;
+
             AnkusGuc *definition = NULL;
             for (int index = 0; index < ankus_guc_count; index++)
             {
@@ -1031,7 +1042,8 @@ internal static class NativeGucBridge
             }
 
         #ifdef ANKUS_GUC_RUNTIME
-            if (definition == NULL)
+            /* Only declared properties locate their variables; run-time parameters are read by name. */
+            if (definition == NULL && !locate)
             {
                 definition = ankus_guc_runtime_find(name);
                 if (definition != NULL && !definition->installed)
@@ -1055,6 +1067,21 @@ internal static class NativeGucBridge
                 error->sqlstate = ERRCODE_DATATYPE_MISMATCH;
                 strlcpy(error->message, "Ankus configuration type does not match its declaration", sizeof(error->message));
                 return 1;
+            }
+
+            /* A Boolean, integer, real or enum value is a static the server writes in place, so the managed
+             * property reads it directly after this lookup; text needs encoding conversion on every read. */
+            if (locate)
+            {
+                if (kind == 3)
+                {
+                    error->sqlstate = ERRCODE_FEATURE_NOT_SUPPORTED;
+                    strlcpy(error->message, "Text configuration values are converted on each read", sizeof(error->message));
+                    return 1;
+                }
+
+                value->integral = (int64) (intptr_t) definition->variable;
+                return 0;
             }
 
             MemoryContext caller = CurrentMemoryContext;

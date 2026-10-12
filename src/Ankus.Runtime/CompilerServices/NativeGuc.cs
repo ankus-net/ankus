@@ -15,6 +15,11 @@ public static unsafe class NativeGuc
     /// </summary>
     private const int DefineKind = 100;
 
+    /// <summary>
+    /// Selects a declared scalar's variable address rather than its value; it matches ANKUS_GUC_LOCATE_KIND.
+    /// </summary>
+    private const int LocateKind = 200;
+
     private static readonly UTF8Encoding s_utf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
     [ThreadStatic]
@@ -143,6 +148,38 @@ public static unsafe class NativeGuc
     /// <param name="name">The generated setting's qualified name.</param>
     /// <returns>The current native ordinal.</returns>
     public static int ReadEnum(string name) => ReadOrdinal(name, 4);
+
+    /// <summary>
+    /// Reads a declared Boolean setting from the native variable PostgreSQL assigns, locating it on the first read.
+    /// </summary>
+    /// <param name="name">The generated setting's qualified name.</param>
+    /// <param name="variable">The generated property's cached variable address, zero until located.</param>
+    /// <returns>The current Boolean value.</returns>
+    public static bool ReadBoolean(string name, ref nint variable) => *(byte*)Locate(name, 0, ref variable) != 0;
+
+    /// <summary>
+    /// Reads a declared integer setting from the native variable PostgreSQL assigns, locating it on the first read.
+    /// </summary>
+    /// <param name="name">The generated setting's qualified name.</param>
+    /// <param name="variable">The generated property's cached variable address, zero until located.</param>
+    /// <returns>The current signed integer.</returns>
+    public static int ReadInt32(string name, ref nint variable) => *(int*)Locate(name, 1, ref variable);
+
+    /// <summary>
+    /// Reads a declared real setting from the native variable PostgreSQL assigns, locating it on the first read.
+    /// </summary>
+    /// <param name="name">The generated setting's qualified name.</param>
+    /// <param name="variable">The generated property's cached variable address, zero until located.</param>
+    /// <returns>The current floating-point value.</returns>
+    public static double ReadDouble(string name, ref nint variable) => *(double*)Locate(name, 2, ref variable);
+
+    /// <summary>
+    /// Reads a declared enum setting's ordinal from the native variable PostgreSQL assigns, locating it on the first read.
+    /// </summary>
+    /// <param name="name">The generated setting's qualified name.</param>
+    /// <param name="variable">The generated property's cached variable address, zero until located.</param>
+    /// <returns>The current native ordinal.</returns>
+    public static int ReadEnum(string name, ref nint variable) => *(int*)Locate(name, 4, ref variable);
 
     /// <summary>
     /// Runs the hook registered for a run-time definition's slot, which the native hook passes as its third argument.
@@ -319,6 +356,47 @@ public static unsafe class NativeGuc
         byte[] bytes = new byte[s_utf8.GetByteCount(name) + 1];
         s_utf8.GetBytes(name, bytes);
         return bytes;
+    }
+
+    /// <summary>
+    /// Returns a declared scalar's native variable after the same access checks as a read by name.
+    /// </summary>
+    /// <remarks>
+    /// PostgreSQL assigns a scalar setting by storing into the variable it was given, so reading that memory sees every
+    /// change, including reverts at transaction end. The first read validates the name and type through the native
+    /// binding; later reads only repeat the managed access checks, avoiding a backend call per read.
+    /// </remarks>
+    private static nint Locate(string name, int kind, ref nint variable)
+    {
+        if (variable == 0)
+        {
+            NativeValue value = Read(name, LocateKind + kind);
+            try
+            {
+                variable = checked((nint)value.ReadGucScalar());
+            }
+            finally
+            {
+                value.Release();
+            }
+
+            return variable;
+        }
+
+        if (s_scopeDepth == 0)
+        {
+            NativeBackend.CheckAccess();
+        }
+        else
+        {
+            NativeBorrowScope.CheckBackendAccess();
+            if (s_read == 0)
+            {
+                throw new InvalidOperationException("Configuration reads are unavailable in this callback scope.");
+            }
+        }
+
+        return variable;
     }
 
     private static int ReadOrdinal(string name, int kind)

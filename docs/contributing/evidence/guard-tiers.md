@@ -174,3 +174,11 @@ PostgreSQL's `FirstNormalObjectId`, so no mapping can own it and the search is
 skipped. `PgTupleDescriptor.CreateTuple` built an empty array, then validated
 and copied it; it now creates the empty tuple directly. The rest is spread across
 the checks in `PgHeapTuple.Set` and the conversion of each cell.
+
+Reading a scalar setting property was a backend call: it encoded the name,
+searched the declarations, and created and deleted a memory context for the
+value. Reading the sample's integer setting on every row added about 350 ns. A
+Boolean, integer, real or enum property now finds its native variable on the
+first read and reads that memory afterwards, after the same managed access
+checks, which brings the per-row read to 24 ns. Text settings still convert from
+the server encoding on each read.

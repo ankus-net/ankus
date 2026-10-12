@@ -96,7 +96,9 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.DoesNotContain("ankus_guc_definitions[1] = { NULL }", native);
         Assert.Contains("#define ANKUS_GUC_RUNTIME 1", native);
         Assert.Contains("return ankus_guc_define_runtime(name, (intptr_t) value, error);", native);
-        Assert.Contains("global::Ankus.CompilerServices.NativeGuc.ReadInt32(\"demo.count\")",
+        // The declared setting reads its located variable; run-time definitions are only read by name.
+        Assert.Contains("if (definition == NULL && !locate)", native);
+        Assert.Contains("global::Ankus.CompilerServices.NativeGuc.ReadInt32(\"demo.count\", ref global::Ankus.Generated.GucVariables.",
             string.Concat(compilation.SyntaxTrees.Select(static tree => tree.ToString())));
     }
 }

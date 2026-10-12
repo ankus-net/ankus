@@ -9,6 +9,7 @@ public sealed partial class PgFunctionGeneratorTests
 {
     /// <summary>
     /// Every native setting kind compiles as a typed partial getter without SQL functions or managed initialization.
+    /// Scalar getters cache their native variable's address in one generated field; text is converted on every read.
     /// </summary>
     /// <param name="attribute">The typed declaration.</param>
     /// <param name="type">The exact managed type.</param>
@@ -40,8 +41,19 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.IsEmpty(compilation.GetTypeByMetadataName("Ankus.Generated.ExtensionDispatchers")!.GetMembers());
         IPropertySymbol property = Assert.IsInstanceOfType<IPropertySymbol>(Assert.ContainsSingle(compilation.GetTypeByMetadataName("Settings")!.GetMembers("Value")));
         Assert.IsNotNull(property.PartialImplementationPart);
-        Assert.Contains($"global::Ankus.CompilerServices.NativeGuc.{reader}(\"demo.enabled\")",
-            property.PartialImplementationPart.DeclaringSyntaxReferences.Single().GetSyntax(context.CancellationToken).ToString());
+        string getter = property.PartialImplementationPart.DeclaringSyntaxReferences.Single().GetSyntax(context.CancellationToken).ToString();
+        INamedTypeSymbol? variables = compilation.GetTypeByMetadataName("Ankus.Generated.GucVariables");
+        if (kind == 3)
+        {
+            Assert.Contains($"global::Ankus.CompilerServices.NativeGuc.{reader}(\"demo.enabled\")", getter);
+            Assert.IsNull(variables);
+            return;
+        }
+
+        IFieldSymbol variable = Assert.ContainsSingle(variables!.GetMembers().OfType<IFieldSymbol>());
+        Assert.AreEqual(SpecialType.System_IntPtr, variable.Type.SpecialType);
+        Assert.Contains($"global::Ankus.CompilerServices.NativeGuc.{reader}(\"demo.enabled\", ref global::Ankus.Generated.GucVariables.{variable.Name})",
+            getter);
     }
 
     /// <summary>

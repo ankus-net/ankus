@@ -162,8 +162,8 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   ordinary scans, and a name another module registered first, which rejects
   every load attempt while ordinary queries keep working. A retried load skips
   names it already registered, so it reports the real conflict. The 74 custom
-  scan backend tests pass on Linux x64 with PostgreSQL 18 and 19 beta 4; all
-  but the collision test, added later, also pass on 13. The full PostgreSQL 18
+  scan backend tests pass on Linux x64 with PostgreSQL 13, 18 and 19 beta 4.
+  The full PostgreSQL 18
   suite ran 14,846 tests with 52 platform skips; its one failure was the
   compiler-services type inventory, which now lists the two new transport types.
 - A managed custom scan row cost 650 ns for one `bigint` column and 840 ns with
@@ -174,6 +174,17 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   fixed the rows cost 182 ns and 330 ns. See the
   [measurements](docs/contributing/evidence/guard-tiers.md#managed-custom-scans).
   The PostgreSQL 18 suite passes with these changes.
+- Scalar setting properties now read the variable PostgreSQL assigns, as pgrx's
+  `GucSetting::get` does. A read was a backend call that searched the
+  declarations by name and created a memory context; the first read now
+  returns the variable's address through that same validated path, and later
+  reads repeat only the managed access checks. A per-row integer read costs
+  24 ns instead of about 350 ns. Reads inside callbacks that disable them still
+  fail before and after the first read. Text settings still convert from the
+  server encoding on each read. The configuration and custom scan backend tests
+  pass on PostgreSQL 13 and 18, and the full PostgreSQL 18 suite ran 14,847
+  tests; its one failure was a generator test still expecting the by-name read,
+  now updated.
 - The text array change in **cfd68a3** declared its null bitmap as `bits8`,
   which PostgreSQL 19 removed. Every extension with functions includes that
   code, so none built against 19 beta. Primary CI builds against 17 and 18

@@ -140,7 +140,11 @@ internal static class PgGucEmitter
             4 => "ReadEnum",
             _ => property.Nullable ? "ReadString" : "ReadRequiredString",
         };
-        string read = $"global::Ankus.CompilerServices.NativeGuc.{reader}({SymbolDisplay.FormatLiteral(declaration.Name, quote: true)})";
+        // Scalars read the variable PostgreSQL assigns, located once; text converts from the server encoding on each read.
+        bool located = declaration.Kind != 3;
+        string variable = "global::Ankus.Generated.GucVariables." + declaration.Callback;
+        string read = $"global::Ankus.CompilerServices.NativeGuc.{reader}({SymbolDisplay.FormatLiteral(declaration.Name, quote: true)}" +
+            (located ? $", ref {variable})" : ")");
         if (declaration.Kind == 4)
         {
             read = EnumFromOrdinal(declaration, read);
@@ -156,6 +160,12 @@ internal static class PgGucEmitter
         if (namespaced)
         {
             source.AppendLine("}");
+        }
+
+        if (located)
+        {
+            source.AppendLine("namespace Ankus.Generated { internal static partial class GucVariables { internal static nint " +
+                declaration.Callback + "; } }");
         }
 
         return source.ToString();
