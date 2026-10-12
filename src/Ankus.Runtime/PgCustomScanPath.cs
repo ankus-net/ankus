@@ -43,9 +43,19 @@ public readonly record struct PgCustomScanPath(double StartupCost, double TotalC
     /// </summary>
     /// <remarks>
     /// An ordered path can save a query a sort, for <c>ORDER BY</c>, a merge join or a <c>LIMIT</c>. The planner keeps
-    /// only the leading keys the query can use.
+    /// only the leading keys the query can use. On a parallel path, each process returns its own rows in this order, and
+    /// PostgreSQL merges them.
     /// </remarks>
     public IReadOnlyList<PgCustomScanSortKey>? SortKeys
+    {
+        get;
+        init;
+    }
+
+    /// <summary>
+    /// Gets the number of workers a parallel path plans for, or zero for a path one process runs.
+    /// </summary>
+    internal int Workers
     {
         get;
         init;

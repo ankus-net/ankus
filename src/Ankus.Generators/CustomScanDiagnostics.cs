@@ -41,6 +41,13 @@ internal static class CustomScanDiagnostics
         DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: HelpLink);
 
     /// <summary>
+    /// Stores the error for a parallel provider with more than one shared memory layout.
+    /// </summary>
+    private static readonly DiagnosticDescriptor s_shared = new("ANKUS540", "Parallel custom scan needs one shared memory layout",
+        "'{0}' implements IPgParallelCustomScan<TState, TShared> for {1} shared memory types; a parallel scan has one", "Ankus",
+        DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: HelpLink);
+
+    /// <summary>
     /// Stores the error for an asynchronous provider callback.
     /// </summary>
     private static readonly DiagnosticDescriptor s_async = new("ANKUS539", "Custom scan callback must be synchronous",
@@ -71,4 +78,9 @@ internal static class CustomScanDiagnostics
     /// Gets the asynchronous callback diagnostic.
     /// </summary>
     internal static DiagnosticDescriptor Async => s_async;
+
+    /// <summary>
+    /// Gets the ambiguous shared memory layout diagnostic.
+    /// </summary>
+    internal static DiagnosticDescriptor Shared => s_shared;
 }

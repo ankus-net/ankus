@@ -85,7 +85,7 @@ defines the full scope; family-level implementation is not API-by-API completion
 | Values and ownership | Documented scalar, array, composite, temporal, JSON, network, geometry, custom codec and raw datum contracts. Interval equality, hashing and ordering agree with PostgreSQL while retaining exact components; complete primary-platform CI passes. | The [API](docs/contributing/evidence/pgrx-api-mapping.md), unit-test, inline-test and tooling-test mappings have no open item. Refresh version/platform evidence after the .NET servicing update. |
 | Runtime performance | Owned binary PgNumeric, direct decimal coefficient encoding, constant-time fixed-width array indexing, and a measured native guard for allowlisted pure built-ins. Sets, aggregates and triggers resolve their types and metadata once per call site; scalar settings read their native variables; type modifiers and domains use PostgreSQL's direct coercion and `domain_check`. Catalog-miss errors require actual rollback; real-resource regressions and complete primary-platform CI pass. Persistent in-backend benchmarks provide batching, transaction modes and statistical baseline comparisons. | Complete current guard supported-version acceptance. Extend that tier only where ownership proofs and measurements justify it. Never weaken error recovery to reduce overhead. |
 | Native bindings | pgrx 0.19.3 inventories, matching PostgreSQL 19 beta 4 inputs and target-compiler ABI checks; typed pointers and ANKUS129 make raw caller obligations explicit. Complete current primary-platform compositions pass, with focused binding checks on all seven majors. | Full supported-major/platform tests and final inventory audit. |
-| Custom scans | Native providers use the selected headers' method tables through `[PgNativeCallback]`, with child plans, parameters, mark/restore and parallel state. Managed providers implement `IPgCustomScan<TState>`; the generator registers them, chains the path hook and dispatches rows, rescans and EXPLAIN properties. | Managed parallel, mark/restore and backward scans, and complete version/platform evidence. |
+| Custom scans | Native providers use the selected headers' method tables through `[PgNativeCallback]`, with child plans, parameters, mark/restore and parallel state. Managed providers implement `IPgCustomScan<TState>`; the generator registers them, chains the path hook and dispatches rows, rescans, EXPLAIN properties, ordered paths, backward reads, mark/restore and parallel scans over shared memory the provider lays out. | Complete version/platform evidence. |
 | Development CLI | Version/project selection, installation/registration, cluster lifecycle, run/connect, test/regress/bench, property forwarding, environment selection, scriptable info, package prefixes and target export with `--target-info` builds, including Intel macOS from Apple silicon. Benchmarks are measured inside PostgreSQL and retained in named comparison groups. `install --sudo`, `test --runas` and `regress --runas` follow cargo-pgrx with real-account evidence. | Run-as cases now run on every runner; the Linux PostgreSQL 16 rerun ([38115917411](https://github.com/willibrandon/ankus/actions/runs/38115917411)) has 52 skips where it had 55. Persistent clusters already retain Windows event-log diagnostics through `PostgresServerLog`. |
 | .NET templates | Version-matched ordinary extension and worker templates reuse the CLI assets and pin local tools. Optional xUnit/NUnit consumers exercise managed and named backend cases, ignore reasons, worker processes and cleanup alongside default MSTest consumers; all three list backend cases with `dotnet test --list-tests` before anything is published. Complete primary-platform CI passes. | Complete version/platform acceptance. |
 | API discoverability | Idiomatic attributed declarations, documented runtime APIs, named logging helpers and typed SPI interpolation. Compiler transport helpers are isolated in Ankus.CompilerServices and hidden from IntelliSense; complete primary-platform CI passes. `PgAssert` adds MSTest's tolerance, text and count checks. | Final inventory audit. |
@@ -219,6 +219,42 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   supported major: the 540 trigger, composite, tuple, domain, setting and
   custom scan backend tests pass on Linux x64 with PostgreSQL 14, 15, 16, 17
   and 19 beta 4, as they did earlier on 13 and 18.
+- Managed custom scan providers can run in parallel. A provider that
+  implements `IPgParallelCustomScan<TState, TShared>` offers paths with
+  `PgCustomScanPlanner.AddParallelPath`; Ankus adds them as partial paths with
+  PostgreSQL's parallel divisor for rows and run cost, skips them for tables
+  and queries that cannot run in parallel and inside lateral joins, and caps
+  their workers at `max_parallel_workers_per_gather`. The provider lays out
+  dynamic shared memory as an unmanaged `TShared`: the leader clears and
+  initializes it before workers start and again before a rescan, every process
+  that reads gets a `PgCustomScanSharedMemory<TShared>` handle before its first
+  row, and the handle stops working at shutdown, before PostgreSQL frees the
+  memory. Implementing the interface also makes the provider's ordinary paths
+  parallel-safe. `ANKUS540` rejects more than one shared layout. The sample
+  claims integers from an atomic counter, and backend tests show every integer
+  read once by worker processes, a Gather Merge over each worker's ordered rows
+  with no sort, three rounds of a rescanned Gather each reinitializing the
+  memory, a provider without `Rescan` whose replacement states keep the shared
+  memory while the leader reads too, and a worker's exception reaching the
+  client with recovery after rollback. PostgreSQL restarts a Gather's child
+  only after it reinitializes shared memory, so Ankus attaches the memory again
+  to any state a restart begins. The 90 custom scan backend tests pass on
+  Linux x64 with PostgreSQL 13 through 18 and 19 beta 4, and the full
+  PostgreSQL 18 suite passes (14,883 tests, 52 platform skips).
+- Managed custom scan paths can declare their row order, and providers can
+  read backward and mark and restore positions. `PgCustomScanPath.SortKeys`
+  names columns with direction and NULL placement; the bridge turns them into
+  PostgreSQL's canonical pathkeys as `build_index_pathkeys` does for an index,
+  using each type's default B-tree ordering and stopping at the first key the
+  query has no use for. `IPgScrollableCustomScan<TState>` adds `ReadBackward`,
+  so a cursor without `SCROLL` can fetch backward and a `SCROLL` cursor needs
+  no `Materialize`; `IPgMarkableCustomScan<TState>` adds `Mark` and `Restore`
+  for merge joins. The generator passes each capability's PostgreSQL flag in
+  the provider table. Backend tests cover nine cursor movements over a filtered
+  scan, `ORDER BY` and `LIMIT` without a sort and the orders that still need
+  one, and a merge join that restores the inner scan once per repeated outer
+  key with no `Materialize`. The 85 custom scan backend tests pass on Linux
+  x64 with PostgreSQL 13, 15, 16, 17, 18 and 19 beta 4.
 - Managed custom scan providers learn which columns PostgreSQL reads. At plan
   time the bridge collects the columns the query needs above the scan and
   those its conditions use, as postgres_fdw does; a whole-row reference reads
@@ -1009,7 +1045,7 @@ declaration audit against pgrx 0.19.3 has no open option, and the third code
 review's findings are fixed or kept by documented design.
 
 1. Resolve discovered correctness and CI failures before accepting affected work, including the intermittent macOS PostgreSQL 19 `AllocSetCheck` fault and the one macOS generator test-host crash if either recurs.
-2. Complete every pgrx 0.19.3 release-delta gate, including deterministic header discovery/regeneration, newly exposed native contracts, all CLI/configuration/output forwarding and allocation/shared-memory/varlena audits. Refresh evidence against the corrected current source.
+2. Keep the pgrx 0.19.3 [release-delta gates](docs/contributing/evidence/parity-requirements.md#pgrx-0193-release-delta-and-refresh-gates) satisfied: each has implementation and complete-suite evidence on runtime ankus.5, which must be refreshed on the serviced runtime.
 3. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
 4. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees.
 5. Keep samples and guides current with API changes, and recheck changed guides before release. Test discovery for MSTest, xUnit and NUnit consumers and samples for all 37 pgrx examples are complete.

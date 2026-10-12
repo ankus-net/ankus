@@ -7,12 +7,12 @@ A custom scan provider participates in PostgreSQL's planner and executor. There
 are two ways to write one:
 
 - A managed provider implements `IPgCustomScan<TState>` and produces rows for a
-  table. Ankus generates and registers everything PostgreSQL needs.
+  table, optionally in order, backward, from a marked position or in parallel.
+  Ankus generates and registers everything PostgreSQL needs.
 - A native provider uses the generated `Ankus.Postgres` declarations and
-  `[PgNativeCallback]` for PostgreSQL's method tables. It can wrap PostgreSQL's
-  own child plans, reparameterize, mark and restore, and run in parallel. Its
-  fields and callback signatures come from the server headers selected when the
-  extension is built.
+  `[PgNativeCallback]` for PostgreSQL's method tables. It can also wrap
+  PostgreSQL's own child plans and reparameterize them. Its fields and callback
+  signatures come from the server headers selected when the extension is built.
 
 ## Managed providers
 
@@ -127,8 +127,66 @@ Ankus does not offer a provider's paths in these cases:
 - the scan is of an inheritance parent or uses `TABLESAMPLE`;
 - the extension has not finished loading, for example after its load failed.
 
-Managed paths are marked parallel-unsafe, so parallel workers never run them.
-Use a native provider for a parallel scan.
+### Parallel scans
+
+A provider that implements `IPgParallelCustomScan<TState, TShared>` can offer
+paths that PostgreSQL's parallel workers and the leader run together. Each
+process has its own state and reads part of the rows; they divide the rows
+through shared memory laid out as `TShared`:
+
+```csharp
+public readonly struct Counter(long claimed)
+{
+    private readonly PgAtomicValue<long> _claimed = new(claimed);
+
+    public long Claim() => _claimed.Increment();
+}
+
+public static void Plan(PgCustomScanPlanner planner)
+{
+    var path = new PgCustomScanPath(0, 100) { Rows = 100_000 };
+    planner.AddPath(path);
+    planner.AddParallelPath(path, workers: 2);
+}
+
+public static void InitializeShared(State state, ref Counter memory) => memory = new Counter(0);
+
+public static void AttachShared(State state, PgCustomScanSharedMemory<Counter> memory) => state.Memory = memory;
+
+public static bool Read(State state, PgHeapTuple row)
+{
+    // In parallel each process claims the next integer; alone, the scan reads them all.
+    long next = state.Memory is { } memory ? memory.Value.Claim() : ++state.Position;
+    if (next > state.Count)
+    {
+        return false;
+    }
+
+    row.Set(0, next);
+    return true;
+}
+```
+
+`AddParallelPath` takes the whole scan's costs and rows; Ankus divides the run
+cost and the rows among the processes as PostgreSQL does for a parallel
+sequential scan, and caps the workers at `max_parallel_workers_per_gather`.
+PostgreSQL considers the path only when the table and query can run in
+parallel, which rules out temporary tables, and never inside a lateral join.
+
+Ankus clears the shared memory and calls `InitializeShared` in the leader
+before workers start, and again before a rescan starts new ones. Every process
+that reads the scan, the leader included, then gets `AttachShared` before its
+first read. Use `PgAtomicValue<T>` fields for values that several processes
+update. The handle stops working when the parallel scan shuts down. A provider
+that cannot rescan in place gets a new state for each restart, and Ankus gives
+it the same shared memory. PostgreSQL can also run a parallel plan without
+workers or shared memory; the scan then reads every row itself.
+
+Implementing the interface also declares that the provider's ordinary paths are
+safe to run inside a worker, for example on the inner side of a parallel join.
+Without it, managed paths are parallel-unsafe. Sort keys on a parallel path
+mean that each process returns its own rows in that order, and PostgreSQL
+merges them with Gather Merge.
 
 The name defaults to the class name in snake_case. Set `Name` to choose another.
 A name is 1 to 63 ASCII letters, digits or underscores and does not start with a
@@ -143,10 +201,11 @@ one of its functions first, or add it to `session_preload_libraries`.
 | ANKUS537 | Another provider in the extension uses the same name |
 | ANKUS538 | The class or a containing type is generic, file-local, private or protected |
 | ANKUS539 | A provider method is `async` |
+| ANKUS540 | The class implements `IPgParallelCustomScan` for more than one shared memory type |
 
 The sample's [`NumberScan.cs`](https://github.com/willibrandon/ankus/blob/main/samples/Ankus.Examples.CustomScans/NumberScan.cs)
 is a complete provider with path data, ordered rows, rescans, backward reads,
-mark and restore, EXPLAIN properties and disposal.
+mark and restore, parallel scans, EXPLAIN properties and disposal.
 
 ## Native providers
 

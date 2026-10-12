@@ -14,6 +14,7 @@ internal static class NativeCustomScanBridge
     /// Declares the request shared with managed providers and the provider table entry.
     /// </summary>
     internal const string Declarations = """
+        #include "access/parallel.h"
         #include "access/sysattr.h"
         #include "catalog/pg_class.h"
         #include "commands/explain.h"
@@ -32,7 +33,9 @@ internal static class NativeCustomScanBridge
         #include "optimizer/paths.h"
         #include "optimizer/prep.h"
         #include "optimizer/restrictinfo.h"
+        #include "utils/builtins.h"
         #include "utils/float.h"
+        #include "utils/guc.h"
         #include "utils/lsyscache.h"
         #include "utils/typcache.h"
 
@@ -51,6 +54,8 @@ internal static class NativeCustomScanBridge
             AnkusValue data;
             AnkusValue read;
             AnkusValue output;
+            intptr_t shared;
+            intptr_t shared_size;
         } AnkusCustomScanRequest;
 
         typedef int (*AnkusCustomScanCallback)(int, AnkusCustomScanRequest *, AnkusValue *, AnkusError *, AnkusExecute,
@@ -61,6 +66,7 @@ internal static class NativeCustomScanBridge
             const char *name;
             AnkusCustomScanCallback callback;
             uint32 flags;
+            bool parallel;
         } AnkusCustomScanProvider;
 
         """;
@@ -319,7 +325,11 @@ internal static class NativeCustomScanBridge
             {
                 Selectivity selectivity = clauselist_selectivity(root, conditions, 0, JOIN_INNER, NULL);
                 QualCost quals;
+                bool leader = true;
+                bool parallel_safe = ankus_custom_scan_providers[provider].parallel && rel->consider_parallel;
                 cost_qual_eval(&quals, conditions, root);
+                if (!parse_bool(GetConfigOption("parallel_leader_participation", false, false), &leader))
+                    leader = true;
                 ankus_custom_scan_output(&request, &buffer);
                 count = pq_getmsgint(&buffer, 4);
                 for (int index = 0; index < count; index++)
@@ -330,34 +340,55 @@ internal static class NativeCustomScanBridge
                     bool has_rows = pq_getmsgint(&buffer, 4) != 0;
                     double produced = pq_getmsgfloat8(&buffer);
                     int32 length = pq_getmsgint(&buffer, 4);
+                    int32 workers;
+                    double divisor = 1;
                     bytea *data;
                     if (length < 0 || !(startup >= 0) || !(total >= startup) || isinf(total) || !(produced >= 0) || isinf(produced))
                         ereport(ERROR, (errcode(ERRCODE_INVALID_BINARY_REPRESENTATION), errmsg("Invalid Ankus custom scan path")));
                     data = (bytea *) palloc(VARHDRSZ + length);
                     SET_VARSIZE(data, VARHDRSZ + length);
                     memcpy(VARDATA(data), pq_getmsgbytes(&buffer, length), length);
+                    workers = pq_getmsgint(&buffer, 4);
+                    if (workers < 0 || (workers > 0 && !ankus_custom_scan_providers[provider].parallel))
+                        ereport(ERROR, (errcode(ERRCODE_INVALID_BINARY_REPRESENTATION), errmsg("Invalid Ankus custom scan path")));
+                    path->path.pathkeys = ankus_custom_scan_pathkeys(root, rel, rte, &buffer);
+                    /* PostgreSQL builds no parallel path inside a lateral join, as add_partial_path explains. */
+                    if (workers > 0 && (!parallel_safe || parameters != NULL || max_parallel_workers_per_gather <= 0))
+                        continue;
+                    if (workers > 0)
+                    {
+                        /* The leader's share of the work, as get_parallel_divisor estimates it. */
+                        workers = Min(workers, max_parallel_workers_per_gather);
+                        divisor = workers;
+                        if (leader && 1.0 - 0.3 * workers > 0)
+                            divisor += 1.0 - 0.3 * workers;
+                    }
+
                     if (!has_rows)
                         produced = rel->tuples;
                     path->path.pathtype = T_CustomScan;
                     path->path.parent = rel;
                     path->path.pathtarget = rel->reltarget;
                     path->path.param_info = parameters;
-                    path->path.parallel_aware = false;
-                    path->path.parallel_safe = false;
-                    path->path.parallel_workers = 0;
-                    path->path.rows = parameters != NULL ? parameters->ppi_rows : clamp_row_est(produced * selectivity);
-                    /* Conditions and output columns cost what they do for PostgreSQL's own scans. */
+                    path->path.parallel_aware = workers > 0;
+                    path->path.parallel_safe = parallel_safe;
+                    path->path.parallel_workers = workers;
+                    path->path.rows = parameters != NULL ? parameters->ppi_rows : clamp_row_est(produced * selectivity / divisor);
+                    /* Conditions and output columns cost what they do for PostgreSQL's own scans, and each process pays for
+                     * its share of the rows. */
                     path->path.startup_cost = startup + quals.startup + rel->reltarget->cost.startup;
-                    path->path.total_cost = total + quals.startup + quals.per_tuple * produced + rel->reltarget->cost.startup +
+                    path->path.total_cost = path->path.startup_cost + (total - startup + quals.per_tuple * produced) / divisor +
                         rel->reltarget->cost.per_tuple * path->path.rows;
-                    path->path.pathkeys = ankus_custom_scan_pathkeys(root, rel, rte, &buffer);
                     /* The plan copies these flags, so PostgreSQL asks for backward reads and marks only of a capable provider. */
                     path->flags = ankus_custom_scan_providers[provider].flags;
                     path->custom_paths = NIL;
                     path->custom_private = list_make2(makeInteger(provider),
                         makeConst(BYTEAOID, -1, InvalidOid, -1, PointerGetDatum(data), false, false));
                     path->methods = &ankus_custom_scan_path_methods[provider];
-                    add_path(rel, &path->path);
+                    if (workers > 0)
+                        add_partial_path(rel, &path->path);
+                    else
+                        add_path(rel, &path->path);
                 }
 
                 pq_getmsgend(&buffer);
@@ -561,10 +592,8 @@ internal static class NativeCustomScanBridge
                 ankus_raise_error(&error);
         }
 
-        /* The first read after a restore returns the row the first read after the mark returned; the provider keeps the
-         * position. */
         static void
-        ankus_custom_scan_position(CustomScanState *node, int operation)
+        ankus_custom_scan_operation(CustomScanState *node, int operation)
         {
             AnkusCustomScanState *state = (AnkusCustomScanState *) node;
             AnkusError error = {0};
@@ -573,16 +602,74 @@ internal static class NativeCustomScanBridge
                 ankus_raise_error(&error);
         }
 
+        /* The first read after a restore returns the row the first read after the mark returned; the provider keeps the
+         * position. */
         static void
         ankus_custom_scan_mark(CustomScanState *node)
         {
-            ankus_custom_scan_position(node, 8);
+            ankus_custom_scan_operation(node, 8);
         }
 
         static void
         ankus_custom_scan_restore(CustomScanState *node)
         {
-            ankus_custom_scan_position(node, 9);
+            ankus_custom_scan_operation(node, 9);
+        }
+
+        /* PostgreSQL places the shared memory in its dynamic shared memory segment, sized by the provider's layout. */
+        static Size
+        ankus_custom_scan_estimate(CustomScanState *node, ParallelContext *context)
+        {
+            AnkusCustomScanState *state = (AnkusCustomScanState *) node;
+            (void) context;
+            ankus_custom_scan_operation(node, 10);
+            return (Size) state->request.shared_size;
+        }
+
+        /* The address is passed only for the call; the managed handle keeps it until shutdown or the scan's end. */
+        static void
+        ankus_custom_scan_share(CustomScanState *node, void *coordinate, int operation)
+        {
+            AnkusCustomScanState *state = (AnkusCustomScanState *) node;
+            state->request.shared = (intptr_t) coordinate;
+            PG_TRY();
+            {
+                ankus_custom_scan_operation(node, operation);
+            }
+            PG_FINALLY();
+            {
+                state->request.shared = 0;
+            }
+            PG_END_TRY();
+        }
+
+        static void
+        ankus_custom_scan_initialize(CustomScanState *node, ParallelContext *context, void *coordinate)
+        {
+            (void) context;
+            ankus_custom_scan_share(node, coordinate, 11);
+        }
+
+        static void
+        ankus_custom_scan_reinitialize(CustomScanState *node, ParallelContext *context, void *coordinate)
+        {
+            (void) context;
+            ankus_custom_scan_share(node, coordinate, 12);
+        }
+
+        static void
+        ankus_custom_scan_attach(CustomScanState *node, shm_toc *toc, void *coordinate)
+        {
+            (void) toc;
+            ankus_custom_scan_share(node, coordinate, 13);
+        }
+
+        /* PostgreSQL frees the shared memory after shutting the scan down, so the managed handle stops working first. */
+        static void
+        ankus_custom_scan_shutdown(CustomScanState *node)
+        {
+            if (((AnkusCustomScanState *) node)->request.state != 0)
+                ankus_custom_scan_operation(node, 14);
         }
 
         static void
@@ -669,6 +756,15 @@ internal static class NativeCustomScanBridge
                 {
                     ankus_custom_scan_exec_methods[provider].MarkPosCustomScan = ankus_custom_scan_mark;
                     ankus_custom_scan_exec_methods[provider].RestrPosCustomScan = ankus_custom_scan_restore;
+                }
+
+                if (ankus_custom_scan_providers[provider].parallel)
+                {
+                    ankus_custom_scan_exec_methods[provider].EstimateDSMCustomScan = ankus_custom_scan_estimate;
+                    ankus_custom_scan_exec_methods[provider].InitializeDSMCustomScan = ankus_custom_scan_initialize;
+                    ankus_custom_scan_exec_methods[provider].ReInitializeDSMCustomScan = ankus_custom_scan_reinitialize;
+                    ankus_custom_scan_exec_methods[provider].InitializeWorkerCustomScan = ankus_custom_scan_attach;
+                    ankus_custom_scan_exec_methods[provider].ShutdownCustomScan = ankus_custom_scan_shutdown;
                 }
 
                 /* A load that failed on a later name already registered this one; the retry reports the real conflict. */

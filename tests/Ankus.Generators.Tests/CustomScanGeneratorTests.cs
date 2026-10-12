@@ -73,8 +73,9 @@ public sealed partial class PgFunctionGeneratorTests
     /// <param name="explain">Whether the dispatcher passes an EXPLAIN call.</param>
     /// <param name="scroll">Whether the dispatcher passes a backward read.</param>
     /// <param name="mark">Whether the dispatcher passes mark and restore calls.</param>
+    /// <param name="shared">The parallel provider's shared memory layout, or null.</param>
     [TestMethod]
-    [DataRow(CustomScanProviderSource, "number_scan", true, true, true, true)]
+    [DataRow(CustomScanProviderSource, "number_scan", true, true, true, true, null)]
     [DataRow("""
         internal sealed class Outer
         {
@@ -86,7 +87,7 @@ public sealed partial class PgFunctionGeneratorTests
                 static bool Ankus.IPgCustomScan<string>.Read(string state, Ankus.PgHeapTuple row) => false;
             }
         }
-        """, "nested", false, false, false, false)]
+        """, "nested", false, false, false, false, null)]
     [DataRow("""
         [Ankus.PgCustomScan(Name = "scroll_only")]
         public sealed class Scroll : Ankus.IPgScrollableCustomScan<string>
@@ -96,8 +97,30 @@ public sealed partial class PgFunctionGeneratorTests
             public static bool Read(string state, Ankus.PgHeapTuple row) => false;
             public static bool ReadBackward(string state, Ankus.PgHeapTuple row) => false;
         }
-        """, "scroll_only", false, false, true, false)]
-    public void CustomScanProvidersRegisterAndDispatch(string source, string name, bool rescan, bool explain, bool scroll, bool mark)
+        """, "scroll_only", false, false, true, false, null)]
+    [DataRow("""
+        [Ankus.PgCustomScan]
+        public sealed class Split : Ankus.IPgParallelCustomScan<Split.State, Split.Counter>
+        {
+            public sealed class State
+            {
+                public Ankus.PgCustomScanSharedMemory<Counter>? Memory { get; set; }
+            }
+
+            public readonly struct Counter
+            {
+                public readonly Ankus.PgAtomicValue<long> Claimed;
+            }
+
+            public static void Plan(Ankus.PgCustomScanPlanner planner) => planner.AddParallelPath(new(0, 1), 2);
+            public static State Begin(Ankus.PgCustomScanContext context) => new();
+            public static bool Read(State state, Ankus.PgHeapTuple row) => state.Memory is { } memory && Ankus.PgAtomicValue.Increment(in memory.Value.Claimed) <= 3;
+            public static void InitializeShared(State state, ref Counter memory) { }
+            public static void AttachShared(State state, Ankus.PgCustomScanSharedMemory<Counter> memory) => state.Memory = memory;
+        }
+        """, "split", false, false, false, false, "global::Split.Counter")]
+    public void CustomScanProvidersRegisterAndDispatch(string source, string name, bool rescan, bool explain, bool scroll, bool mark,
+        string? shared)
     {
         (Compilation compilation, ImmutableArray<Diagnostic> diagnostics) = Generate(source);
         Assert.IsEmpty(diagnostics);
@@ -113,13 +136,21 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(scroll, managed.Contains("&" + dispatcher.Name + "_read_backward<", StringComparison.Ordinal));
         Assert.AreEqual(mark, managed.Contains("&" + dispatcher.Name + "_mark<", StringComparison.Ordinal));
         Assert.AreEqual(mark, managed.Contains("&" + dispatcher.Name + "_restore<", StringComparison.Ordinal));
+        Assert.AreEqual(shared is not null, managed.Contains("&" + dispatcher.Name + "_initialize_shared<", StringComparison.Ordinal));
+        Assert.AreEqual(shared is not null, managed.Contains("&" + dispatcher.Name + "_attach_shared<", StringComparison.Ordinal));
+        if (shared is not null)
+        {
+            Assert.Contains("NativeCustomScan.Dispatch<global::Split.State, " + shared + ">(", managed);
+        }
+
         int flags = (scroll ? 1 : 0) | (mark ? 2 : 0);
 
         string native = ManifestValue(compilation, "Ankus.NativeSource").ReplaceLineEndings("\n");
         AssertOrdered(native, ["static void ankus_custom_scan_register(void);", "ankus_custom_scan_register();",
             "ankus_dispatch_native_callback(AnkusManagedNativeCallback callback,", "typedef struct AnkusCustomScanRequest",
             "extern int " + dispatcher.Name + "(int, AnkusCustomScanRequest *, AnkusValue *, AnkusError *, AnkusExecute, AnkusMemoryApi *);",
-            "#define ANKUS_CUSTOM_SCAN_COUNT 1", "{ \"" + name + "\", " + dispatcher.Name + ", " + flags.ToString(CultureInfo.InvariantCulture) + " },",
+            "#define ANKUS_CUSTOM_SCAN_COUNT 1", "{ \"" + name + "\", " + dispatcher.Name + ", " + flags.ToString(CultureInfo.InvariantCulture) + ", " +
+                (shared is null ? "false" : "true") + " },",
             "RegisterCustomScanMethods(&ankus_custom_scan_plan_methods[provider]);", "set_rel_pathlist_hook = ankus_custom_scan_paths;"]);
         Assert.AreSequenceEqual(["Pg_magic_func", "_PG_init"], ManifestValue(compilation, "Ankus.Exports").Split('\n', StringSplitOptions.RemoveEmptyEntries));
         Assert.AreEqual("-- No installable objects declared.\n", InstallationBody(compilation).ReplaceLineEndings("\n"));
@@ -162,11 +193,18 @@ public sealed partial class PgFunctionGeneratorTests
         "public static bool Read(string state, Ankus.PgHeapTuple row) => false; " +
         "public static async void Mark(string state) { await System.Threading.Tasks.Task.Yield(); } public static void Restore(string state) { } }",
         "ANKUS539", "async", "'Mark'")]
+    [DataRow("[Ankus.PgCustomScan] public sealed class Scan : Ankus.IPgParallelCustomScan<string, int>, Ankus.IPgParallelCustomScan<string, long> { " +
+        "public static void Plan(Ankus.PgCustomScanPlanner planner) { } public static string Begin(Ankus.PgCustomScanContext context) => \"\"; " +
+        "public static bool Read(string state, Ankus.PgHeapTuple row) => false; " +
+        "public static void InitializeShared(string state, ref int memory) { } public static void InitializeShared(string state, ref long memory) { } " +
+        "public static void AttachShared(string state, Ankus.PgCustomScanSharedMemory<int> memory) { } " +
+        "public static void AttachShared(string state, Ankus.PgCustomScanSharedMemory<long> memory) { } }",
+        "ANKUS540", "Scan", "2 shared memory types")]
     public void CustomScanProviderFailuresHaveSpecificDiagnostics(string source, string id, string fragment, string detail)
     {
         (Compilation compilation, ImmutableArray<Diagnostic> diagnostics) = Generate(source +
             " public static class Other { [Ankus.PgFunction] public static int Value() => 7; }");
-        Diagnostic error = Assert.ContainsSingle(diagnostics.Where(static diagnostic => diagnostic.Id.StartsWith("ANKUS53", StringComparison.Ordinal)));
+        Diagnostic error = Assert.ContainsSingle(diagnostics.Where(static diagnostic => diagnostic.Id is ['A', 'N', 'K', 'U', 'S', '5', '3' or '4', _]));
         Assert.AreEqual(id, error.Id);
         Assert.AreEqual(fragment, error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
         Assert.Contains(detail, error.GetMessage(CultureInfo.InvariantCulture));

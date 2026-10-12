@@ -57,7 +57,7 @@ The predecessor planner hook still runs while tracing is disabled. Native
 method registration lasts for the backend lifetime, including across SQL
 rollback; a duplicate name cannot replace an existing provider's table.
 
-## Managed numbers scan
+## Managed providers
 
 `NumberScan.cs` is a managed provider. For tables whose names start with
 `numbers`, it returns the integers 1 to N in a `value` column and text in an
@@ -72,9 +72,17 @@ SELECT number_scan_counts();
 ```
 
 It shows path data, ordered rows, rescans, backward reads, mark and restore,
-EXPLAIN properties and state disposal. Its rows come in order of `value`, so
-`ORDER BY value` needs no sort, a cursor can fetch backward and a merge join
-reads repeated keys again without a `Materialize` node.
-`number_scan_counts()` reports begins, disposals, rescans, EXPLAIN-only
-begins, marks and restores. Setting `ankus_trace_scan.numbers_fail_at` makes the scan throw at that
+parallel scans, EXPLAIN properties and state disposal. Its rows come in order
+of `value`, so `ORDER BY value` needs no sort, a cursor can fetch backward and a
+merge join reads repeated keys again without a `Materialize` node. In a
+parallel scan of an ordinary table, each process claims the next integer from
+a counter in shared memory. `number_scan_counts()` reports begins, disposals,
+rescans, EXPLAIN-only begins, marks, restores and shared memory
+initializations.
+
+`SplitScan.cs` is the smallest parallel provider. For ordinary tables whose
+names start with `split`, it offers only a parallel path and divides the same
+integers among the leader and workers. It cannot rescan in place, so
+PostgreSQL restarts it with a new state that keeps the shared counter.
+`split_scan_counts()` reports begins, disposals and shared memory attachments. Setting `ankus_trace_scan.numbers_fail_at` makes the scan throw at that
 integer.

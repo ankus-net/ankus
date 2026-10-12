@@ -81,6 +81,16 @@ public struct NativeCustomScanRequest
     /// Paths or EXPLAIN properties encoded for native code, owned by managed code until released.
     /// </summary>
     internal NativeValue _output;
+
+    /// <summary>
+    /// The parallel scan's dynamic shared memory, or zero outside parallel setup.
+    /// </summary>
+    internal nint _shared;
+
+    /// <summary>
+    /// The bytes of shared memory the provider's layout needs.
+    /// </summary>
+    internal nint _sharedSize;
 }
 
 /// <summary>
@@ -97,7 +107,7 @@ public static unsafe class NativeCustomScan
     /// <typeparam name="TState">The provider's per-scan state.</typeparam>
     /// <param name="operation">
     /// 0 plans, 1 begins, 2 produces a row, 3 rescans, 4 ends, 5 ends during abort, 6 explains, 7 produces the previous row,
-    /// 8 marks the position and 9 restores it.
+    /// 8 marks the position and 9 restores it. A parallel provider's overload also handles operations 10 to 14.
     /// </param>
     /// <param name="request">The native request.</param>
     /// <param name="row">The column values a produced row fills, released by native code.</param>
@@ -112,11 +122,12 @@ public static unsafe class NativeCustomScan
     /// <param name="readBackward">The provider's backward row reader, or null when it reads only forward.</param>
     /// <param name="mark">The provider's position mark, or null when it has none.</param>
     /// <param name="restore">The provider's position restore, or null when it has none.</param>
+    /// <param name="parallel">Whether the provider can offer parallel paths.</param>
     /// <returns>0 when the operation succeeded or produced a row, 1 after an error and 2 when the scan has no more rows.</returns>
     public static int Dispatch<TState>(int operation, NativeCustomScanRequest* request, NativeValue* row, NativeCallError* error, nint execute,
         nint memory, delegate*<PgCustomScanPlanner, void> plan, delegate*<PgCustomScanContext, TState> begin,
         delegate*<TState, PgHeapTuple, bool> read, delegate*<TState, void> rescan, delegate*<TState, PgExplainWriter, void> explain,
-        delegate*<TState, PgHeapTuple, bool> readBackward, delegate*<TState, void> mark, delegate*<TState, void> restore)
+        delegate*<TState, PgHeapTuple, bool> readBackward, delegate*<TState, void> mark, delegate*<TState, void> restore, bool parallel)
         where TState : class
     {
         bool abortCleanup = operation == 5;
@@ -130,7 +141,7 @@ public static unsafe class NativeCustomScan
             switch (operation)
             {
                 case 0:
-                    Plan(request, plan);
+                    Plan(request, plan, parallel);
                     return 0;
                 case 1:
                     request->_state = Begin(request, begin);
@@ -175,12 +186,112 @@ public static unsafe class NativeCustomScan
         }
     }
 
-    private static void Plan(NativeCustomScanRequest* request, delegate*<PgCustomScanPlanner, void> plan)
+    /// <summary>
+    /// Dispatches one native operation to a parallel provider, including the shared memory setup the leader and workers
+    /// run.
+    /// </summary>
+    /// <typeparam name="TState">The provider's per-scan state.</typeparam>
+    /// <typeparam name="TShared">The provider's shared memory layout.</typeparam>
+    /// <param name="operation">
+    /// The operations of <see cref="Dispatch{TState}"/>, and 10 sizes the shared memory, 11 initializes and attaches it in the
+    /// leader, 12 initializes it again before a rescan, 13 attaches it in a worker and 14 detaches it at shutdown.
+    /// </param>
+    /// <param name="request">The native request.</param>
+    /// <param name="row">The column values a produced row fills, released by native code.</param>
+    /// <param name="error">The diagnostic written when the provider fails.</param>
+    /// <param name="execute">The backend operation entry for this call.</param>
+    /// <param name="memory">The memory context API for this call.</param>
+    /// <param name="plan">The provider's planning call.</param>
+    /// <param name="begin">The provider's scan start.</param>
+    /// <param name="read">The provider's row reader.</param>
+    /// <param name="rescan">The provider's rescan, or null to dispose and begin again.</param>
+    /// <param name="explain">The provider's EXPLAIN writer, or null when it adds no properties.</param>
+    /// <param name="readBackward">The provider's backward row reader, or null when it reads only forward.</param>
+    /// <param name="mark">The provider's position mark, or null when it has none.</param>
+    /// <param name="restore">The provider's position restore, or null when it has none.</param>
+    /// <param name="initializeShared">The provider's shared memory initialization.</param>
+    /// <param name="attachShared">The provider's shared memory attachment.</param>
+    /// <returns>0 when the operation succeeded or produced a row, 1 after an error and 2 when the scan has no more rows.</returns>
+    public static int Dispatch<TState, TShared>(int operation, NativeCustomScanRequest* request, NativeValue* row, NativeCallError* error,
+        nint execute, nint memory, delegate*<PgCustomScanPlanner, void> plan, delegate*<PgCustomScanContext, TState> begin,
+        delegate*<TState, PgHeapTuple, bool> read, delegate*<TState, void> rescan, delegate*<TState, PgExplainWriter, void> explain,
+        delegate*<TState, PgHeapTuple, bool> readBackward, delegate*<TState, void> mark, delegate*<TState, void> restore,
+        delegate*<TState, ref TShared, void> initializeShared, delegate*<TState, PgCustomScanSharedMemory<TShared>, void> attachShared)
+        where TState : class
+        where TShared : unmanaged
+    {
+        if (operation < 10)
+        {
+            return Dispatch(operation, request, row, error, execute, memory, plan, begin, read, rescan, explain, readBackward, mark, restore, true);
+        }
+
+        nint previous = NativeBackend.Enter(execute, abortCleanup: false);
+        nint previousMemory = 0;
+        bool memoryEntered = false;
+        try
+        {
+            previousMemory = NativeMemoryContext.Enter(memory);
+            memoryEntered = true;
+            if (operation == 10)
+            {
+                request->_sharedSize = sizeof(TShared);
+                return 0;
+            }
+
+            Scan<TState> scan = Get<TState>(request->_state);
+            if (operation == 14)
+            {
+                scan.DetachShared();
+                return 0;
+            }
+
+            if (request->_shared == 0 || operation > 14)
+            {
+                throw new ArgumentOutOfRangeException(nameof(operation), operation, "Unknown or unsupported custom scan operation.");
+            }
+
+            var shared = (TShared*)request->_shared;
+            if (operation != 13)
+            {
+                // PostgreSQL does not clear shared memory, and a rescan reuses the memory the last workers left.
+                *shared = default;
+                initializeShared(scan.State!, ref *shared);
+                if (operation == 12 && scan.Shared is not null)
+                {
+                    return 0;
+                }
+            }
+
+            scan.DetachShared();
+            var handle = new PgCustomScanSharedMemory<TShared>(shared);
+            scan.Shared = handle;
+            scan.AttachShared = state => attachShared(state, handle);
+            scan.AttachShared(scan.State!);
+            return 0;
+        }
+        catch (Exception exception)
+        {
+            NativeError.Write(exception, error);
+            return 1;
+        }
+        finally
+        {
+            if (memoryEntered)
+            {
+                NativeMemoryContext.Exit(previousMemory);
+            }
+
+            NativeBackend.Exit(previous, abortCleanup: false);
+        }
+    }
+
+    private static void Plan(NativeCustomScanRequest* request, delegate*<PgCustomScanPlanner, void> plan, bool parallel)
     {
         var paths = new List<PgCustomScanPath>();
         byte[] read = request->_read.ReadBytes();
         plan(new PgCustomScanPlanner(request->_relation, request->_schemaName.ReadString(), request->_relationName.ReadString(),
-            request->_rows, request->_cheapestStartupCost, request->_cheapestTotalCost, paths, request->_rowType, request->_columns, read));
+            request->_rows, request->_cheapestStartupCost, request->_cheapestTotalCost, paths, request->_rowType, request->_columns, read,
+            parallel));
         var buffer = new ArrayBufferWriter<byte>();
         WriteInt(buffer, paths.Count);
         foreach (PgCustomScanPath path in paths)
@@ -191,6 +302,7 @@ public static unsafe class NativeCustomScan
             WriteDouble(buffer, path.Rows ?? 0);
             WriteInt(buffer, path.Data.Length);
             buffer.Write(path.Data.Span);
+            WriteInt(buffer, path.Workers);
             IReadOnlyList<PgCustomScanSortKey> keys = path.SortKeys ?? [];
             WriteInt(buffer, keys.Count);
             foreach (PgCustomScanSortKey key in keys)
@@ -286,12 +398,14 @@ public static unsafe class NativeCustomScan
             return;
         }
 
-        // Without a rescan capability the scan starts over with the context it began with.
+        // Without a rescan capability the scan starts over with the context it began with, and keeps a parallel scan's
+        // shared memory.
         TState? previous = scan.State;
         scan.State = null;
         (previous as IDisposable)?.Dispose();
         scan.State = begin(new PgCustomScanContext(scan.Relation, scan.Descriptor, scan.Data, scan.ExplainOnly, scan.Read))
             ?? throw new InvalidOperationException("A custom scan provider's Begin returned null.");
+        scan.AttachShared?.Invoke(scan.State);
     }
 
     private static void End<TState>(ref nint handle)
@@ -306,7 +420,13 @@ public static unsafe class NativeCustomScan
         handle = 0;
         object? target = root.Target;
         root.Free();
-        if (target is Scan<TState> { State: IDisposable state })
+        if (target is not Scan<TState> scan)
+        {
+            return;
+        }
+
+        scan.DetachShared();
+        if (scan.State is IDisposable state)
         {
             state.Dispose();
         }
@@ -403,5 +523,33 @@ public static unsafe class NativeCustomScan
         public bool ExplainOnly { get; } = explainOnly;
 
         public byte[] Read { get; } = read;
+
+        /// <summary>
+        /// Gets or sets the parallel scan's shared memory handle in this process, or null when it has none.
+        /// </summary>
+        public IPgCustomScanSharedMemory? Shared
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Gets or sets the provider call that passes <see cref="Shared"/> to a state, kept for states a rescan begins.
+        /// </summary>
+        public Action<TState>? AttachShared
+        {
+            get;
+            set;
+        }
+
+        /// <summary>
+        /// Stops the provider from reaching shared memory PostgreSQL is about to free.
+        /// </summary>
+        public void DetachShared()
+        {
+            Shared?.Detach();
+            Shared = null;
+            AttachShared = null;
+        }
     }
 }

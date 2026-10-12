@@ -93,7 +93,8 @@ public IReadOnlyList<PgCustomScanSortKey>? SortKeys { get; init; }
 Value: [IReadOnlyList&lt;PgCustomScanSortKey&gt;](https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1)
 
 An ordered path can save a query a sort, for <code>ORDER BY</code>, a merge join or a <code>LIMIT</code>. The planner keeps
-only the leading keys the query can use.
+only the leading keys the query can use. On a parallel path, each process returns its own rows in this order, and
+PostgreSQL merges them.
 
 <a id="member-c9fdf24fb002fa33"></a>
 

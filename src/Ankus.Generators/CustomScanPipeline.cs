@@ -72,7 +72,7 @@ internal static class CustomScanPipeline
         {
             // The capability bits are PostgreSQL's CUSTOMPATH_SUPPORT_BACKWARD_SCAN and CUSTOMPATH_SUPPORT_MARK_RESTORE.
             int flags = (model.Scroll ? 1 : 0) | (model.Mark ? 2 : 0);
-            native.AppendLine($"    {{ \"{model.Name}\", {model.Callback}, {flags.ToString(CultureInfo.InvariantCulture)} }},");
+            native.AppendLine($"    {{ \"{model.Name}\", {model.Callback}, {flags.ToString(CultureInfo.InvariantCulture)}, {(model.Shared is null ? "false" : "true")} }},");
         }
 
         native.AppendLine("};");
@@ -94,14 +94,20 @@ internal static class CustomScanPipeline
         string backward = model.Scroll ? $"&{callback}_read_backward<{model.Provider}>" : "null";
         string mark = model.Mark ? $"&{callback}_mark<{model.Provider}>" : "null";
         string restore = model.Mark ? $"&{callback}_restore<{model.Provider}>" : "null";
+        string dispatch = model.Shared is null
+            ? $"Dispatch<{state}>"
+            : $"Dispatch<{state}, {model.Shared}>";
+        string parallel = model.Shared is null
+            ? "false"
+            : $"&{callback}_initialize_shared<{model.Provider}>, &{callback}_attach_shared<{model.Provider}>";
         var source = new StringBuilder($$"""
                 [global::System.Runtime.InteropServices.UnmanagedCallersOnly(
                     EntryPoint = "{{callback}}", CallConvs = [typeof(global::System.Runtime.CompilerServices.CallConvCdecl)])]
                 private static int {{callback}}(int operation, global::Ankus.CompilerServices.NativeCustomScanRequest* request,
                     global::Ankus.CompilerServices.NativeValue* row, global::Ankus.CompilerServices.NativeCallError* error, nint execute, nint memory)
-                    => global::Ankus.CompilerServices.NativeCustomScan.Dispatch<{{state}}>(operation, request, row, error, execute, memory,
+                    => global::Ankus.CompilerServices.NativeCustomScan.{{dispatch}}(operation, request, row, error, execute, memory,
                         &{{callback}}_plan<{{model.Provider}}>, &{{callback}}_begin<{{model.Provider}}>, &{{callback}}_read<{{model.Provider}}>,
-                        {{rescan}}, {{explain}}, {{backward}}, {{mark}}, {{restore}});
+                        {{rescan}}, {{explain}}, {{backward}}, {{mark}}, {{restore}}, {{parallel}});
 
                 private static void {{callback}}_plan<T>(global::Ankus.PgCustomScanPlanner planner)
                     where T : global::Ankus.IPgCustomScan<{{state}}>
@@ -160,6 +166,21 @@ internal static class CustomScanPipeline
                     private static void {{callback}}_restore<T>({{state}} state)
                         where T : global::Ankus.IPgMarkableCustomScan<{{state}}>
                         => T.Restore(state);
+
+
+                """);
+        }
+
+        if (model.Shared is string shared)
+        {
+            source.Append($$"""
+                    private static void {{callback}}_initialize_shared<T>({{state}} state, ref {{shared}} memory)
+                        where T : global::Ankus.IPgParallelCustomScan<{{state}}, {{shared}}>
+                        => T.InitializeShared(state, ref memory);
+
+                    private static void {{callback}}_attach_shared<T>({{state}} state, global::Ankus.PgCustomScanSharedMemory<{{shared}}> memory)
+                        where T : global::Ankus.IPgParallelCustomScan<{{state}}, {{shared}}>
+                        => T.AttachShared(state, memory);
 
 
                 """);

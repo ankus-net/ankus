@@ -66,7 +66,7 @@ public sealed partial class CustomScanTests
         }
 
         long[] after = await NumberCountsAsync(connection, token);
-        Assert.AreSequenceEqual<long>([2, 2, 0, 1, 0, 0], [.. after.Zip(before, static (current, previous) => current - previous)]);
+        Assert.AreSequenceEqual<long>([2, 2, 0, 1, 0, 0, 0], [.. after.Zip(before, static (current, previous) => current - previous)]);
     }
 
     /// <summary>

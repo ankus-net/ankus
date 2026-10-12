@@ -16,24 +16,26 @@ public readonly ref struct PgCustomScanPlanner
 
     private readonly ReadOnlySpan<byte> _read;
 
+    private readonly bool _parallel;
+
     internal PgCustomScanPlanner(uint relationOid, string schemaName, string relationName, double rows,
         double cheapestStartupCost, double cheapestTotalCost, List<PgCustomScanPath> paths, uint rowTypeOid, int columns,
-        ReadOnlySpan<byte> read)
+        ReadOnlySpan<byte> read, bool parallel)
         : this(relationOid, schemaName, relationName, rows, cheapestStartupCost, cheapestTotalCost, paths, new RowType(rowTypeOid, columns),
-            read)
+            read, parallel)
     {
     }
 
     /// <summary>
     /// Creates a planner over a descriptor that is already loaded.
     /// </summary>
-    internal PgCustomScanPlanner(string relationName, List<PgCustomScanPath> paths, PgTupleDescriptor descriptor)
-        : this(0, "public", relationName, 0, 0, 0, paths, new RowType(descriptor), [])
+    internal PgCustomScanPlanner(string relationName, List<PgCustomScanPath> paths, PgTupleDescriptor descriptor, bool parallel = false)
+        : this(0, "public", relationName, 0, 0, 0, paths, new RowType(descriptor), [], parallel)
     {
     }
 
     private PgCustomScanPlanner(uint relationOid, string schemaName, string relationName, double rows, double cheapestStartupCost,
-        double cheapestTotalCost, List<PgCustomScanPath> paths, RowType rowType, ReadOnlySpan<byte> read)
+        double cheapestTotalCost, List<PgCustomScanPath> paths, RowType rowType, ReadOnlySpan<byte> read, bool parallel)
     {
         RelationOid = relationOid;
         SchemaName = schemaName;
@@ -44,6 +46,7 @@ public readonly ref struct PgCustomScanPlanner
         _paths = paths;
         _rowType = rowType;
         _read = read;
+        _parallel = parallel;
     }
 
     /// <summary>
@@ -103,7 +106,38 @@ public readonly ref struct PgCustomScanPlanner
     /// <exception cref="ArgumentOutOfRangeException">A cost or row estimate is negative or not finite, the total cost
     /// is below the startup cost, or a sort key is not a column of the table.</exception>
     /// <exception cref="ArgumentException">A sort key names a dropped column.</exception>
-    public void AddPath(PgCustomScanPath path)
+    public void AddPath(PgCustomScanPath path) => Add(path with { Workers = 0 });
+
+    /// <summary>
+    /// Offers a path that PostgreSQL's parallel workers and the leader run together, each producing part of the rows.
+    /// </summary>
+    /// <param name="path">
+    /// The whole scan's costs and optional row estimate, with its data and sort keys. Ankus divides the run cost and the
+    /// rows among the processes, as PostgreSQL does for a parallel sequential scan.
+    /// </param>
+    /// <param name="workers">The workers the path plans for, at most PostgreSQL's <c>max_parallel_workers_per_gather</c>.</param>
+    /// <remarks>
+    /// PostgreSQL considers the path only for a table and query that can run in parallel, and never inside a lateral
+    /// join. The processes divide the rows through the provider's shared memory; see
+    /// <see cref="IPgParallelCustomScan{TState, TShared}"/>.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">The provider does not implement
+    /// <see cref="IPgParallelCustomScan{TState, TShared}"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="workers"/> is less than one, or the path is invalid
+    /// as for <see cref="AddPath"/>.</exception>
+    /// <exception cref="ArgumentException">A sort key names a dropped column.</exception>
+    public void AddParallelPath(PgCustomScanPath path, int workers)
+    {
+        if (!_parallel)
+        {
+            throw new InvalidOperationException("Only a provider that implements IPgParallelCustomScan can offer parallel paths.");
+        }
+
+        ArgumentOutOfRangeException.ThrowIfLessThan(workers, 1);
+        Add(path with { Workers = workers });
+    }
+
+    private void Add(PgCustomScanPath path)
     {
         ValidateCost(path.StartupCost, nameof(PgCustomScanPath.StartupCost));
         ValidateCost(path.TotalCost, nameof(PgCustomScanPath.TotalCost));

@@ -10,13 +10,15 @@ namespace Ankus.Examples.CustomScans;
 /// The table supplies the columns; its stored rows are ignored. Set <c>ankus_trace_scan.numbers</c> to N before
 /// planning. A <c>value</c> column receives the integer and an optional <c>label</c> column its text. PostgreSQL still
 /// applies the query's conditions and projection to every row. The rows come in order of <c>value</c>, and the scan can
-/// read backward and return to a marked row, so cursors and merge joins need no stored copy of them.
+/// read backward and return to a marked row, so cursors and merge joins need no stored copy of them. In parallel, each
+/// process claims the next integer from a shared counter, so every integer is read once.
 /// </remarks>
 [PgCustomScan]
 public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.State>, IPgExplainedCustomScan<NumberScan.State>,
-    IPgScrollableCustomScan<NumberScan.State>, IPgMarkableCustomScan<NumberScan.State>
+    IPgScrollableCustomScan<NumberScan.State>, IPgMarkableCustomScan<NumberScan.State>,
+    IPgParallelCustomScan<NumberScan.State, NumberScan.Counter>
 {
-    private static readonly long[] s_counts = new long[6];
+    private static readonly long[] s_counts = new long[7];
 
     /// <summary>
     /// Gets how many integers a numbers table produces; zero leaves those tables to PostgreSQL's own scans.
@@ -45,12 +47,16 @@ public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.Sta
         // Formatting labels doubles the work, so a query that reads them gets a dearer path.
         int label = FindLabel(planner.Descriptor);
         double perRow = label >= 0 && planner.IsColumnRead(label) ? 0.002 : 0.001;
-        planner.AddPath(new PgCustomScanPath(0, count * perRow)
+        var path = new PgCustomScanPath(0, count * perRow)
         {
             Rows = count,
             Data = data,
             SortKeys = [new(planner.Descriptor.GetOrdinal("value"))],
-        });
+        };
+        planner.AddPath(path);
+
+        // Each process claims integers in increasing order, so its own rows keep the path's order.
+        planner.AddParallelPath(path, workers: 2);
     }
 
     /// <inheritdoc />
@@ -69,6 +75,12 @@ public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.Sta
     /// <inheritdoc />
     public static bool Read(State state, PgHeapTuple row)
     {
+        if (state.Memory is { } memory)
+        {
+            state.Position = Math.Min(memory.Value.Claim(), state.Count + 1L);
+            return state.Position <= state.Count && Produce(state, row);
+        }
+
         if (state.Position > state.Count)
         {
             return false;
@@ -112,6 +124,16 @@ public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.Sta
     }
 
     /// <inheritdoc />
+    public static void InitializeShared(State state, ref Counter memory)
+    {
+        s_counts[6]++;
+        memory = new Counter(0);
+    }
+
+    /// <inheritdoc />
+    public static void AttachShared(State state, PgCustomScanSharedMemory<Counter> memory) => state.Memory = memory;
+
+    /// <inheritdoc />
     public static void Explain(State state, PgExplainWriter explain)
     {
         explain.Add("Numbers", state.Count);
@@ -148,10 +170,10 @@ public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.Sta
             .FirstOrDefault(static item => item.attribute.Name == "label" && !item.attribute.IsDropped, (null!, -1)).index;
 
     /// <summary>
-    /// Reads begin, disposal and rescan counts, the begins made only for EXPLAIN, and mark and restore counts, in this
-    /// backend.
+    /// Reads begin, disposal and rescan counts, the begins made only for EXPLAIN, mark and restore counts, and parallel
+    /// shared memory initializations, in this backend.
     /// </summary>
-    /// <returns>Six counters in that order.</returns>
+    /// <returns>Seven counters in that order.</returns>
     [PgFunction]
     public static long[] NumberScanCounts() => [.. s_counts];
 
@@ -200,11 +222,35 @@ public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.Sta
             set;
         }
 
+        /// <summary>
+        /// Gets the shared counter of a parallel scan, or null when this process reads every integer itself.
+        /// </summary>
+        public PgCustomScanSharedMemory<Counter>? Memory
+        {
+            get;
+            set;
+        }
+
         internal int Value { get; }
 
         internal int Label { get; }
 
         /// <inheritdoc />
         public void Dispose() => s_counts[1]++;
+    }
+
+    /// <summary>
+    /// Holds the last integer the processes of a parallel scan claimed.
+    /// </summary>
+    /// <param name="claimed">The integer claimed before the first.</param>
+    public readonly struct Counter(long claimed)
+    {
+        private readonly PgAtomicValue<long> _claimed = new(claimed);
+
+        /// <summary>
+        /// Claims the next integer for this process.
+        /// </summary>
+        /// <returns>An integer no other process of the scan receives.</returns>
+        public long Claim() => _claimed.Increment();
     }
 }

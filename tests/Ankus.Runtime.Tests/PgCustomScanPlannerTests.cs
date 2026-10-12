@@ -68,4 +68,28 @@ public sealed class PgCustomScanPlannerTests
 
         Assert.IsEmpty(paths);
     }
+
+    /// <summary>
+    /// Only a parallel provider offers parallel paths, each planning for at least one worker, and its ordinary paths
+    /// stay serial.
+    /// </summary>
+    [TestMethod]
+    public void ParallelPathsNeedAParallelProviderAndWorkers()
+    {
+        var paths = new List<PgCustomScanPath>();
+        PgCustomScanPath path = new(0, 1) { SortKeys = [new(0)] };
+        InvalidOperationException serial = Assert.ThrowsExactly<InvalidOperationException>(() =>
+            new PgCustomScanPlanner("numbers", paths, s_numbers).AddParallelPath(path, 2));
+        Assert.Contains("IPgParallelCustomScan", serial.Message);
+        ArgumentOutOfRangeException none = Assert.ThrowsExactly<ArgumentOutOfRangeException>(() =>
+            new PgCustomScanPlanner("numbers", paths, s_numbers, parallel: true).AddParallelPath(path, 0));
+        Assert.AreEqual("workers", none.ParamName);
+        Assert.IsEmpty(paths);
+
+        var planner = new PgCustomScanPlanner("numbers", paths, s_numbers, parallel: true);
+        planner.AddParallelPath(path, 3);
+        planner.AddPath(paths[0]);
+        Assert.AreSequenceEqual([3, 0], [.. paths.Select(static value => value.Workers)]);
+        Assert.AreSequenceEqual([new PgCustomScanSortKey(0)], [.. paths[1].SortKeys!]);
+    }
 }

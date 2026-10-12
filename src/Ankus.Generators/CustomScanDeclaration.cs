@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -14,9 +15,10 @@ namespace Ankus.Generators;
 /// <param name="Explain">Whether the provider adds EXPLAIN properties.</param>
 /// <param name="Scroll">Whether the provider reads scans backward.</param>
 /// <param name="Mark">Whether the provider saves and restores scan positions.</param>
+/// <param name="Shared">The fully qualified shared memory layout of a parallel provider, or null.</param>
 /// <param name="Callback">The assembly-specific managed dispatcher symbol.</param>
 internal sealed record CustomScanDeclaration(string Name, string Provider, string State, bool Rescan, bool Explain, bool Scroll, bool Mark,
-    string Callback)
+    string? Shared, string Callback)
 {
     /// <summary>
     /// The optional capability interfaces, each implemented for the provider's one state type.
@@ -65,9 +67,15 @@ internal sealed record CustomScanDeclaration(string Name, string Provider, strin
         ITypeSymbol state = states[0];
         bool[] capabilities = [.. s_capabilities.Select(name => type.AllInterfaces.Any(value => Is(value, name) &&
             SymbolEqualityComparer.Default.Equals(value.TypeArguments[0], state)))];
-        foreach (INamedTypeSymbol contract in type.AllInterfaces.Where(value => value.TypeArguments.Length == 1 &&
+        INamedTypeSymbol[] parallel = [.. type.AllInterfaces.Where(static value => Is(value, "IPgParallelCustomScan", 2))];
+        if (parallel.Length > 1)
+        {
+            return Report(CustomScanDiagnostics.Shared, type.Locations.FirstOrDefault(), type.Name, parallel.Length.ToString(CultureInfo.InvariantCulture));
+        }
+
+        foreach (INamedTypeSymbol contract in type.AllInterfaces.Where(value => value.TypeArguments.Length is 1 or 2 &&
             SymbolEqualityComparer.Default.Equals(value.TypeArguments[0], state) &&
-            (Is(value, "IPgCustomScan") || s_capabilities.Any(name => Is(value, name)))))
+            (Is(value, "IPgCustomScan") || s_capabilities.Any(name => Is(value, name)) || Is(value, "IPgParallelCustomScan", 2))))
         {
             foreach (IMethodSymbol member in contract.GetMembers().OfType<IMethodSymbol>())
             {
@@ -83,6 +91,7 @@ internal sealed record CustomScanDeclaration(string Name, string Provider, strin
 
         return new(name, type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat), state.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             capabilities[0], capabilities[1], capabilities[2], capabilities[3],
+            parallel.Length == 0 ? null : parallel[0].TypeArguments[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             PgFunctionGenerator.GetCallbackName(PgFunctionGenerator.SymbolScope(type.ContainingAssembly) + ":" +
                 type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat), "custom_scan"));
 
@@ -105,6 +114,6 @@ internal sealed record CustomScanDeclaration(string Name, string Provider, strin
     /// <summary>
     /// Identifies a custom scan contract interface by its exact namespace, name and arity.
     /// </summary>
-    private static bool Is(INamedTypeSymbol value, string name)
-        => value.Name == name && value.Arity == 1 && value.ContainingNamespace.ToDisplayString() == "Ankus";
+    private static bool Is(INamedTypeSymbol value, string name, int arity = 1)
+        => value.Name == name && value.Arity == arity && value.ContainingNamespace.ToDisplayString() == "Ankus";
 }

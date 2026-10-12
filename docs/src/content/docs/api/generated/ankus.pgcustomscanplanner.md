@@ -21,6 +21,39 @@ locks or modifies, or whose system columns it reads, because a custom scan's row
 
 ## Methods
 
+<a id="member-24e487b3b46a52b2"></a>
+
+### AddParallelPath(PgCustomScanPath, int)
+
+Offers a path that PostgreSQL's parallel workers and the leader run together, each producing part of the rows.
+
+```csharp
+public void AddParallelPath(PgCustomScanPath path, int workers)
+```
+
+Parameters:
+
+`path` — [PgCustomScanPath](/api/ankus.pgcustomscanpath/)
+
+The whole scan's costs and optional row estimate, with its data and sort keys. Ankus divides the run cost and the
+rows among the processes, as PostgreSQL does for a parallel sequential scan.
+
+`workers` — [int](https://learn.microsoft.com/dotnet/api/system.int32)
+
+The workers the path plans for, at most PostgreSQL's <code>max_parallel_workers_per_gather</code>.
+
+Exceptions:
+
+- [InvalidOperationException](https://learn.microsoft.com/dotnet/api/system.invalidoperationexception): The provider does not implement
+            [IPgParallelCustomScan&lt;TState, TShared&gt;](/api/ankus.ipgparallelcustomscan-2/).
+- [ArgumentOutOfRangeException](https://learn.microsoft.com/dotnet/api/system.argumentoutofrangeexception): <code class="paramref">workers</code> is less than one, or the path is invalid
+            as for [AddPath(PgCustomScanPath)](/api/ankus.pgcustomscanplanner/#member-246b7dff9fbfbfd2).
+- [ArgumentException](https://learn.microsoft.com/dotnet/api/system.argumentexception): A sort key names a dropped column.
+
+PostgreSQL considers the path only for a table and query that can run in parallel, and never inside a lateral
+join. The processes divide the rows through the provider's shared memory; see
+[IPgParallelCustomScan&lt;TState, TShared&gt;](/api/ankus.ipgparallelcustomscan-2/).
+
 <a id="member-246b7dff9fbfbfd2"></a>
 
 ### AddPath(PgCustomScanPath)
