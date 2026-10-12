@@ -19,6 +19,53 @@ internal static class NativeTupleBridge
         #include "parser/parse_coerce.h"
         #include "utils/datum.h"
 
+        /* Applies a type modifier the way coerce_to_target_type would in an assignment: through the
+         * type's length coercion function from pg_cast, strict, with isExplicit false and no input
+         * collation. Calling it directly gives the same value or error without planning and running an
+         * expression for each value. Domains, which also check constraints, and arrays, which coerce
+         * each element, report false so the caller takes the general path. */
+        static bool
+        ankus_coerce_typmod(Datum *value, bool *is_null, Oid type, int32 modifier)
+        {
+            Oid function;
+            FmgrInfo info;
+            LOCAL_FCINFO(call, 3);
+            if (getBaseType(type) != type)
+                return false;
+            switch (find_typmod_coercion_function(type, &function))
+            {
+                case COERCION_PATH_NONE:
+                    /* Without a coercion function, the modifier only relabels the value. */
+                    return true;
+                case COERCION_PATH_FUNC:
+                    break;
+                default:
+                    return false;
+            }
+
+            fmgr_info(function, &info);
+            if (*is_null && info.fn_strict)
+                return true;
+            InitFunctionCallInfoData(*call, &info, info.fn_nargs, InvalidOid, NULL, NULL);
+            call->args[0].value = *value;
+            call->args[0].isnull = *is_null;
+            if (info.fn_nargs >= 2)
+            {
+                call->args[1].value = Int32GetDatum(modifier);
+                call->args[1].isnull = false;
+            }
+
+            if (info.fn_nargs == 3)
+            {
+                call->args[2].value = BoolGetDatum(false);
+                call->args[2].isnull = false;
+            }
+
+            *value = FunctionCallInvoke(call);
+            *is_null = call->isnull;
+            return true;
+        }
+
         static Datum
         ankus_coerce_value(Datum value, bool *is_null, Oid source_type, Oid target_type,
             int32 modifier, Oid collation)
@@ -30,6 +77,8 @@ internal static class NativeTupleBridge
             EState *estate;
             MemoryContext previous = CurrentMemoryContext;
             Datum result = (Datum) 0;
+            if (source_type == target_type && modifier >= 0 && ankus_coerce_typmod(&value, is_null, target_type, modifier))
+                return value;
             get_typlenbyval(source_type, &length, &by_value);
             constant = makeConst(source_type, -1, collation, length, value, *is_null, by_value);
             expression = coerce_to_target_type(NULL, (Node *) constant, source_type, target_type, modifier,

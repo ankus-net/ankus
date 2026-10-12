@@ -468,6 +468,27 @@ public sealed class TriggerTests(TestContext context)
         });
 
     /// <summary>
+    /// Applies each column's type modifier to a replacement row as an assignment would: fixed-length character columns
+    /// are padded and variable-length ones keep the value.
+    /// </summary>
+    /// <param name="note">The note column's type.</param>
+    /// <param name="bytes">The stored note's length in bytes, including any padding.</param>
+    [TestMethod]
+    [DataRow("char(10)", 10)]
+    [DataRow("varchar(10)", 7)]
+    public Task ReplacementRowsApplyTypeModifiers(string note, int bytes)
+        => Run(nameof(ReplacementRowsApplyTypeModifiers), async (connection, transaction, token) =>
+        {
+            await Execute(connection, transaction, $"""
+                CREATE TABLE trigger_values.rows(id integer,value integer,note {note});
+                CREATE TRIGGER replaced BEFORE INSERT ON trigger_values.rows FOR EACH ROW EXECUTE FUNCTION trigger_values.trigger_action('replace');
+                """, token);
+            Assert.AreEqual(1, await Execute(connection, transaction, Change("INSERT"), token));
+            Assert.AreEqual(bytes, await Scalar<int>(connection, transaction, "SELECT octet_length(note) FROM trigger_values.rows WHERE id=2", token));
+            Assert.AreEqual(30, await Scalar<int>(connection, transaction, "SELECT value FROM trigger_values.rows WHERE id=2", token));
+        });
+
+    /// <summary>
     /// Protects undefined generated cells and dropped physical slots while preserving later fields and computed values.
     /// </summary>
     [TestMethod]

@@ -200,3 +200,12 @@ and each row built its own descriptor. The native site now sends an identity
 with buffers that stay the same, so managed code keeps what it parsed for the
 site and rows reuse its descriptor. Together these brought the overhead to
 1.42 µs per row, 2.5 times the PL/pgSQL trigger's.
+
+Returning a row also applied each column's type modifier, such as `varchar(64)`,
+by building a coercion expression, preparing it in a new executor state and
+running it, once per value. PostgreSQL applies a modifier in an assignment by
+calling the type's length coercion function from `pg_cast`, so Ankus now calls
+that function directly; domains and arrays keep the general path. Inserting
+200,000 rows into a table with three `varchar` columns, best of four runs, the
+managed trigger went from 5.0 µs to 3.1 µs per row, against 1.3 µs for the
+PL/pgSQL trigger.

@@ -174,6 +174,15 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   fixed the rows cost 182 ns and 330 ns. See the
   [measurements](docs/contributing/evidence/guard-tiers.md#managed-custom-scans).
   The PostgreSQL 18 suite passes with these changes.
+- Values written to a column with a type modifier, such as `varchar(64)` or
+  `numeric(6,2)`, built, prepared and ran a coercion expression in a new
+  executor state for every value. They now call the type's length coercion
+  function, as PostgreSQL's assignment coercion does; domains and arrays keep
+  the general path. A managed trigger row on a table with three `varchar`
+  columns went from 5.0 µs to 3.1 µs. A new backend test checks that `char(10)`
+  replacement values are padded and `varchar(10)` values are not. The trigger,
+  composite and aggregate backend tests pass on PostgreSQL 13 and 18, and the
+  full PostgreSQL 18 suite passes (14,851 tests, 52 platform skips).
 - A row trigger's overhead fell from 3.24 µs to 1.42 µs per row, against
   0.56 µs for an equivalent PL/pgSQL trigger. Names, arguments, columns and base
   types that cannot change during a statement were converted, serialized and
@@ -209,7 +218,8 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   It stays open under the first remaining-work item until it recurs with
   evidence. CI for **41b2111**
   ([38204764541](https://github.com/willibrandon/ankus/actions/runs/38204764541)),
-  **6c008fc**, **f95d2cb** and the earlier commits passed on all three platforms.
+  **6c008fc**, **f95d2cb**, **8bb5954** and the earlier commits passed on all
+  three platforms.
 - GUC hook (`ANKUS199`–`ANKUS201`) and benchmark setup (`ANKUS131`) errors
   now say what is wrong with the named method, such as "'Hook' returns bool"
   or "'Settings' has no method named 'Hook'", instead of restating the whole
