@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using Npgsql;
 
@@ -65,7 +66,7 @@ public sealed partial class CustomScanTests
         }
 
         long[] after = await NumberCountsAsync(connection, token);
-        Assert.AreSequenceEqual<long>([2, 2, 0, 1], [.. after.Zip(before, static (current, previous) => current - previous)]);
+        Assert.AreSequenceEqual<long>([2, 2, 0, 1, 0, 0], [.. after.Zip(before, static (current, previous) => current - previous)]);
     }
 
     /// <summary>
@@ -88,6 +89,89 @@ public sealed partial class CustomScanTests
         Assert.AreEqual(2, after[0] - before[0]);
         Assert.AreEqual(2, after[1] - before[1]);
         Assert.AreEqual(6, after[2] - before[2]);
+    }
+
+    /// <summary>
+    /// A provider that reads backward lets a cursor without <c>SCROLL</c> move both ways over its rows, with PostgreSQL
+    /// still applying the query's condition, and a scrollable cursor needs no stored copy of them.
+    /// </summary>
+    [TestMethod]
+    public async Task ManagedProviderReadsBackward()
+    {
+        CancellationToken token = context.CancellationToken;
+        await using NpgsqlConnection connection = await OpenNumbersAsync(6, token);
+        using (JsonDocument plan = await ExplainAsync(connection, "DECLARE numbers SCROLL CURSOR FOR SELECT value FROM numbers_a", false, token))
+        {
+            Assert.AreEqual("Custom Scan", plan.RootElement[0].GetProperty("Plan").GetProperty("Node Type").GetString());
+        }
+
+        await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
+        await ExecuteAsync(connection, "DECLARE numbers CURSOR FOR SELECT value FROM numbers_a WHERE value <> 4", token);
+        string[] fetches = ["FETCH 3", "FETCH PRIOR", "FETCH LAST", "FETCH BACKWARD 2", "FETCH FORWARD ALL", "FETCH BACKWARD ALL", "FETCH NEXT",
+            "FETCH ABSOLUTE 2", "FETCH RELATIVE 3"];
+        var results = new List<string>();
+        foreach (string fetch in fetches)
+        {
+            results.Add(await FetchAsync(connection, fetch + " FROM numbers", token));
+        }
+
+        Assert.AreSequenceEqual(["1,2,3", "2", "6", "5,3", "5,6", "6,5,3,2,1", "1", "2", "6"], results);
+        await transaction.CommitAsync(token);
+    }
+
+    /// <summary>
+    /// Rows a provider returns in order of a column satisfy <c>ORDER BY</c> and <c>LIMIT</c> on it without a sort; an
+    /// order the provider does not offer still sorts.
+    /// </summary>
+    /// <param name="query">The query over the provider's table.</param>
+    /// <param name="sorted">Whether PostgreSQL must sort the provider's rows.</param>
+    /// <param name="expected">The query's rows.</param>
+    [TestMethod]
+    [DataRow("SELECT value FROM numbers_a ORDER BY value", false, "1,2,3,4,5")]
+    [DataRow("SELECT value FROM numbers_a WHERE value > 2 ORDER BY value LIMIT 2", false, "3,4")]
+    [DataRow("SELECT value FROM numbers_a ORDER BY value DESC", true, "5,4,3,2,1")]
+    [DataRow("SELECT value FROM numbers_a ORDER BY value NULLS FIRST", true, "1,2,3,4,5")]
+    public async Task ManagedProviderOrderedRowsSkipSorts(string query, bool sorted, string expected)
+    {
+        CancellationToken token = context.CancellationToken;
+        await using NpgsqlConnection connection = await OpenNumbersAsync(5, token);
+        using (JsonDocument plan = await ExplainAsync(connection, query, false, token))
+        {
+            JsonElement root = plan.RootElement[0].GetProperty("Plan");
+            _ = FindNode(root, "Custom Scan");
+            Assert.AreEqual(sorted, Nodes(root).Any(static node => node.GetProperty("Node Type").GetString() == "Sort"));
+        }
+
+        Assert.AreEqual(expected, await FetchAsync(connection, query, token));
+    }
+
+    /// <summary>
+    /// A merge join reads its inner rows again for each repeated outer key by marking and restoring the provider's
+    /// position, with no sort or stored copy of those rows.
+    /// </summary>
+    [TestMethod]
+    public async Task ManagedProviderRestoresMarksForMergeJoins()
+    {
+        CancellationToken token = context.CancellationToken;
+        await using NpgsqlConnection connection = await OpenNumbersAsync(6, token);
+        await ExecuteAsync(connection, "SET enable_hashjoin = off; SET enable_nestloop = off; SET enable_material = off;", token);
+        const string Query = """
+            SELECT outer_value.v || ':' || n.value
+            FROM (VALUES (2), (2), (3), (5), (5), (5), (9)) outer_value(v) JOIN numbers_a n ON n.value = outer_value.v
+            """;
+        using (JsonDocument plan = await ExplainAsync(connection, Query, false, token))
+        {
+            JsonElement join = FindNode(plan.RootElement[0].GetProperty("Plan"), "Merge Join");
+            JsonElement inner = join.GetProperty("Plans").EnumerateArray()
+                .Single(static child => child.GetProperty("Parent Relationship").GetString() == "Inner");
+            Assert.AreEqual("Custom Scan", inner.GetProperty("Node Type").GetString());
+        }
+
+        long[] before = await NumberCountsAsync(connection, token);
+        Assert.AreEqual("2:2,2:2,3:3,5:5,5:5,5:5", await FetchAsync(connection, Query, token));
+        long[] after = await NumberCountsAsync(connection, token);
+        Assert.IsGreaterThan(0L, after[4] - before[4]);
+        Assert.AreEqual(3, after[5] - before[5]);
     }
 
     /// <summary>
@@ -310,6 +394,22 @@ public sealed partial class CustomScanTests
     /// </summary>
     private static async Task<long[]> NumberCountsAsync(NpgsqlConnection connection, CancellationToken token)
         => await ScalarAsync<long[]>(connection, "SELECT customscan.number_scan_counts()", token);
+
+    /// <summary>
+    /// Joins the first column of every row a statement returns with commas.
+    /// </summary>
+    private static async Task<string> FetchAsync(NpgsqlConnection connection, string sql, CancellationToken token)
+    {
+        var values = new List<string>();
+        await using var command = new NpgsqlCommand(sql, connection);
+        await using NpgsqlDataReader reader = await command.ExecuteReaderAsync(token);
+        while (await reader.ReadAsync(token))
+        {
+            values.Add(Convert.ToString(reader.GetValue(0), CultureInfo.InvariantCulture)!);
+        }
+
+        return string.Join(',', values);
+    }
 
     /// <summary>
     /// Runs statements on the connection.

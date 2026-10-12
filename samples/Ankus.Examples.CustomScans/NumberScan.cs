@@ -9,12 +9,14 @@ namespace Ankus.Examples.CustomScans;
 /// <remarks>
 /// The table supplies the columns; its stored rows are ignored. Set <c>ankus_trace_scan.numbers</c> to N before
 /// planning. A <c>value</c> column receives the integer and an optional <c>label</c> column its text. PostgreSQL still
-/// applies the query's conditions and projection to every row.
+/// applies the query's conditions and projection to every row. The rows come in order of <c>value</c>, and the scan can
+/// read backward and return to a marked row, so cursors and merge joins need no stored copy of them.
 /// </remarks>
 [PgCustomScan]
-public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.State>, IPgExplainedCustomScan<NumberScan.State>
+public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.State>, IPgExplainedCustomScan<NumberScan.State>,
+    IPgScrollableCustomScan<NumberScan.State>, IPgMarkableCustomScan<NumberScan.State>
 {
-    private static readonly long[] s_counts = new long[4];
+    private static readonly long[] s_counts = new long[6];
 
     /// <summary>
     /// Gets how many integers a numbers table produces; zero leaves those tables to PostgreSQL's own scans.
@@ -43,7 +45,12 @@ public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.Sta
         // Formatting labels doubles the work, so a query that reads them gets a dearer path.
         int label = FindLabel(planner.Descriptor);
         double perRow = label >= 0 && planner.IsColumnRead(label) ? 0.002 : 0.001;
-        planner.AddPath(new PgCustomScanPath(0, count * perRow) { Rows = count, Data = data });
+        planner.AddPath(new PgCustomScanPath(0, count * perRow)
+        {
+            Rows = count,
+            Data = data,
+            SortKeys = [new(planner.Descriptor.GetOrdinal("value"))],
+        });
     }
 
     /// <inheritdoc />
@@ -62,12 +69,61 @@ public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.Sta
     /// <inheritdoc />
     public static bool Read(State state, PgHeapTuple row)
     {
-        if (state.Next > state.Count)
+        if (state.Position > state.Count)
         {
             return false;
         }
 
-        long value = state.Next++;
+        state.Position++;
+        return state.Position <= state.Count && Produce(state, row);
+    }
+
+    /// <inheritdoc />
+    public static bool ReadBackward(State state, PgHeapTuple row)
+    {
+        if (state.Position < 1)
+        {
+            return false;
+        }
+
+        state.Position--;
+        return state.Position >= 1 && Produce(state, row);
+    }
+
+    /// <inheritdoc />
+    public static void Rescan(State state)
+    {
+        s_counts[2]++;
+        state.Position = 0;
+    }
+
+    /// <inheritdoc />
+    public static void Mark(State state)
+    {
+        s_counts[4]++;
+        state.Marked = state.Position;
+    }
+
+    /// <inheritdoc />
+    public static void Restore(State state)
+    {
+        s_counts[5]++;
+        state.Position = state.Marked;
+    }
+
+    /// <inheritdoc />
+    public static void Explain(State state, PgExplainWriter explain)
+    {
+        explain.Add("Numbers", state.Count);
+        explain.Add("Numbers Read", Math.Clamp(state.Position, 0, state.Count));
+    }
+
+    /// <summary>
+    /// Fills the row for the scan's current integer.
+    /// </summary>
+    private static bool Produce(State state, PgHeapTuple row)
+    {
+        long value = state.Position;
         if (value == state.FailAt)
         {
             throw new InvalidOperationException($"The numbers scan failed at {value}.");
@@ -82,20 +138,6 @@ public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.Sta
         return true;
     }
 
-    /// <inheritdoc />
-    public static void Rescan(State state)
-    {
-        s_counts[2]++;
-        state.Next = 1;
-    }
-
-    /// <inheritdoc />
-    public static void Explain(State state, PgExplainWriter explain)
-    {
-        explain.Add("Numbers", state.Count);
-        explain.Add("Numbers Read", state.Next - 1L);
-    }
-
     /// <summary>
     /// Finds the optional <c>label</c> column.
     /// </summary>
@@ -106,14 +148,16 @@ public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.Sta
             .FirstOrDefault(static item => item.attribute.Name == "label" && !item.attribute.IsDropped, (null!, -1)).index;
 
     /// <summary>
-    /// Reads begin, disposal and rescan counts, and the begins made only for EXPLAIN, in this backend.
+    /// Reads begin, disposal and rescan counts, the begins made only for EXPLAIN, and mark and restore counts, in this
+    /// backend.
     /// </summary>
-    /// <returns>Four counters in that order.</returns>
+    /// <returns>Six counters in that order.</returns>
     [PgFunction]
     public static long[] NumberScanCounts() => [.. s_counts];
 
     /// <summary>
-    /// Holds one scan's position.
+    /// Holds one scan's position: zero before the first integer, the integer last read, or one past the count after the
+    /// last.
     /// </summary>
     public sealed class State : IDisposable
     {
@@ -139,13 +183,22 @@ public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.Sta
         public int FailAt { get; }
 
         /// <summary>
-        /// Gets the integer the next row holds.
+        /// Gets the scan's position.
         /// </summary>
-        public long Next
+        public long Position
         {
             get;
             set;
-        } = 1;
+        }
+
+        /// <summary>
+        /// Gets the position the last mark saved.
+        /// </summary>
+        public long Marked
+        {
+            get;
+            set;
+        }
 
         internal int Value { get; }
 

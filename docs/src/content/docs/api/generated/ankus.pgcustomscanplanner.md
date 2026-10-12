@@ -35,12 +35,13 @@ Parameters:
 
 `path` — [PgCustomScanPath](/api/ankus.pgcustomscanpath/)
 
-The path's costs, optional row estimate and data.
+The path's costs, optional row estimate, data and sort keys.
 
 Exceptions:
 
-- [ArgumentOutOfRangeException](https://learn.microsoft.com/dotnet/api/system.argumentoutofrangeexception): A cost or row estimate is negative or not finite, or the total
-            cost is below the startup cost.
+- [ArgumentOutOfRangeException](https://learn.microsoft.com/dotnet/api/system.argumentoutofrangeexception): A cost or row estimate is negative or not finite, the total cost
+            is below the startup cost, or a sort key is not a column of the table.
+- [ArgumentException](https://learn.microsoft.com/dotnet/api/system.argumentexception): A sort key names a dropped column.
 
 <a id="member-c0b8a89d8b26d59e"></a>
 

@@ -95,7 +95,10 @@ public static unsafe class NativeCustomScan
     /// Dispatches one native custom scan operation to the provider and reports its outcome.
     /// </summary>
     /// <typeparam name="TState">The provider's per-scan state.</typeparam>
-    /// <param name="operation">0 plans, 1 begins, 2 produces a row, 3 rescans, 4 ends, 5 ends during abort and 6 explains.</param>
+    /// <param name="operation">
+    /// 0 plans, 1 begins, 2 produces a row, 3 rescans, 4 ends, 5 ends during abort, 6 explains, 7 produces the previous row,
+    /// 8 marks the position and 9 restores it.
+    /// </param>
     /// <param name="request">The native request.</param>
     /// <param name="row">The column values a produced row fills, released by native code.</param>
     /// <param name="error">The diagnostic written when the provider fails.</param>
@@ -106,10 +109,14 @@ public static unsafe class NativeCustomScan
     /// <param name="read">The provider's row reader.</param>
     /// <param name="rescan">The provider's rescan, or null to dispose and begin again.</param>
     /// <param name="explain">The provider's EXPLAIN writer, or null when it adds no properties.</param>
+    /// <param name="readBackward">The provider's backward row reader, or null when it reads only forward.</param>
+    /// <param name="mark">The provider's position mark, or null when it has none.</param>
+    /// <param name="restore">The provider's position restore, or null when it has none.</param>
     /// <returns>0 when the operation succeeded or produced a row, 1 after an error and 2 when the scan has no more rows.</returns>
     public static int Dispatch<TState>(int operation, NativeCustomScanRequest* request, NativeValue* row, NativeCallError* error, nint execute,
         nint memory, delegate*<PgCustomScanPlanner, void> plan, delegate*<PgCustomScanContext, TState> begin,
-        delegate*<TState, PgHeapTuple, bool> read, delegate*<TState, void> rescan, delegate*<TState, PgExplainWriter, void> explain)
+        delegate*<TState, PgHeapTuple, bool> read, delegate*<TState, void> rescan, delegate*<TState, PgExplainWriter, void> explain,
+        delegate*<TState, PgHeapTuple, bool> readBackward, delegate*<TState, void> mark, delegate*<TState, void> restore)
         where TState : class
     {
         bool abortCleanup = operation == 5;
@@ -140,8 +147,16 @@ public static unsafe class NativeCustomScan
                 case 6:
                     Explain(request, explain);
                     return 0;
+                case 7 when readBackward != null:
+                    return Read(request, row, readBackward) ? 0 : 2;
+                case 8 when mark != null:
+                    mark(Get<TState>(request->_state).State!);
+                    return 0;
+                case 9 when restore != null:
+                    restore(Get<TState>(request->_state).State!);
+                    return 0;
                 default:
-                    throw new ArgumentOutOfRangeException(nameof(operation), operation, "Unknown custom scan operation.");
+                    throw new ArgumentOutOfRangeException(nameof(operation), operation, "Unknown or unsupported custom scan operation.");
             }
         }
         catch (Exception exception)
@@ -176,6 +191,13 @@ public static unsafe class NativeCustomScan
             WriteDouble(buffer, path.Rows ?? 0);
             WriteInt(buffer, path.Data.Length);
             buffer.Write(path.Data.Span);
+            IReadOnlyList<PgCustomScanSortKey> keys = path.SortKeys ?? [];
+            WriteInt(buffer, keys.Count);
+            foreach (PgCustomScanSortKey key in keys)
+            {
+                WriteInt(buffer, key.Ordinal);
+                WriteInt(buffer, (key.Descending ? 1 : 0) | (key.NullsFirst ? 2 : 0));
+            }
         }
 
         request->_output = NativeValue.FromBytes(buffer.WrittenSpan);

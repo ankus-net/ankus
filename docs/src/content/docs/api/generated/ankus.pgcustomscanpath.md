@@ -79,6 +79,22 @@ Value: [double?](https://learn.microsoft.com/dotnet/api/system.double)
 A path that depends on an outer query's values, such as inside a lateral join, always uses the planner's
 estimate.
 
+<a id="member-b986ca367d13186c"></a>
+
+### SortKeys
+
+Gets the columns by which the path returns its rows in order, most significant first, or null when the rows have no
+order.
+
+```csharp
+public IReadOnlyList<PgCustomScanSortKey>? SortKeys { get; init; }
+```
+
+Value: [IReadOnlyList&lt;PgCustomScanSortKey&gt;](https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1)
+
+An ordered path can save a query a sort, for <code>ORDER BY</code>, a merge join or a <code>LIMIT</code>. The planner keeps
+only the leading keys the query can use.
+
 <a id="member-c9fdf24fb002fa33"></a>
 
 ### StartupCost

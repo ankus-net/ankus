@@ -8,7 +8,9 @@ namespace Ankus;
 /// Apply <see cref="PgCustomScanAttribute"/> to the implementing class. PostgreSQL still evaluates the query's
 /// conditions and projection on each row the provider produces. A state that implements <see cref="IDisposable"/> is
 /// disposed when the scan ends, including when the query fails. Implement
-/// <see cref="IPgRescannableCustomScan{TState}"/> to restart a scan in place and
+/// <see cref="IPgRescannableCustomScan{TState}"/> to restart a scan in place,
+/// <see cref="IPgScrollableCustomScan{TState}"/> to read it backward,
+/// <see cref="IPgMarkableCustomScan{TState}"/> to return to a saved position and
 /// <see cref="IPgExplainedCustomScan{TState}"/> to add EXPLAIN properties.
 /// </remarks>
 public interface IPgCustomScan<TState>
@@ -51,6 +53,53 @@ public interface IPgRescannableCustomScan<TState> : IPgCustomScan<TState>
     /// </summary>
     /// <param name="state">The scan's state.</param>
     static abstract void Rescan(TState state);
+}
+
+/// <summary>
+/// Reads a custom scan backward, so a cursor can fetch earlier rows without PostgreSQL storing the rows it has read.
+/// </summary>
+/// <typeparam name="TState">The per-scan state.</typeparam>
+/// <remarks>
+/// The scan has a current row, the one the last read returned, like a cursor. Reading forward moves to the next row and
+/// reading backward to the previous one. A read that finds no row leaves the scan before the first row or after the last,
+/// so reading in the other direction then returns the first or the last row.
+/// </remarks>
+public interface IPgScrollableCustomScan<TState> : IPgCustomScan<TState>
+    where TState : class
+{
+    /// <summary>
+    /// Reads the row before the current one.
+    /// </summary>
+    /// <param name="state">The scan's state.</param>
+    /// <param name="row">A new row of the table's columns, all NULL until set.</param>
+    /// <returns>Whether a row was read; false leaves the scan before its first row.</returns>
+    static abstract bool ReadBackward(TState state, PgHeapTuple row);
+}
+
+/// <summary>
+/// Saves and restores a custom scan's position, so a merge join can read the same inner rows again without PostgreSQL
+/// storing them.
+/// </summary>
+/// <typeparam name="TState">The per-scan state.</typeparam>
+/// <remarks>
+/// A merge join needs its inner rows in order, so a provider that implements this interface usually offers paths with
+/// <see cref="PgCustomScanPath.SortKeys"/>.
+/// </remarks>
+public interface IPgMarkableCustomScan<TState> : IPgCustomScan<TState>
+    where TState : class
+{
+    /// <summary>
+    /// Saves the scan's current position, replacing any earlier one.
+    /// </summary>
+    /// <param name="state">The scan's state.</param>
+    static abstract void Mark(TState state);
+
+    /// <summary>
+    /// Returns to the saved position, so the next read returns the row the first read after
+    /// <see cref="Mark"/> returned.
+    /// </summary>
+    /// <param name="state">The scan's state.</param>
+    static abstract void Restore(TState state);
 }
 
 /// <summary>

@@ -11,11 +11,14 @@ public sealed partial class PgFunctionGeneratorTests
     /// </summary>
     private const string CustomScanProviderSource = """
         [Ankus.PgCustomScan]
-        public sealed class NumberScan : Ankus.IPgRescannableCustomScan<NumberScan.State>, Ankus.IPgExplainedCustomScan<NumberScan.State>
+        public sealed class NumberScan : Ankus.IPgRescannableCustomScan<NumberScan.State>, Ankus.IPgExplainedCustomScan<NumberScan.State>,
+            Ankus.IPgScrollableCustomScan<NumberScan.State>, Ankus.IPgMarkableCustomScan<NumberScan.State>
         {
             public sealed class State
             {
                 public int Read { get; set; }
+
+                public int Marked { get; set; }
             }
 
             public static void Plan(Ankus.PgCustomScanPlanner planner)
@@ -39,7 +42,22 @@ public sealed partial class PgFunctionGeneratorTests
                 return true;
             }
 
+            public static bool ReadBackward(State state, Ankus.PgHeapTuple row)
+            {
+                if (state.Read == 0 || --state.Read == 0)
+                {
+                    return false;
+                }
+
+                row.Set(0, state.Read);
+                return true;
+            }
+
             public static void Rescan(State state) => state.Read = 0;
+
+            public static void Mark(State state) => state.Marked = state.Read;
+
+            public static void Restore(State state) => state.Read = state.Marked;
 
             public static void Explain(State state, Ankus.PgExplainWriter explain) => explain.Add("Rows Read", state.Read);
         }
@@ -53,8 +71,10 @@ public sealed partial class PgFunctionGeneratorTests
     /// <param name="name">The registered name.</param>
     /// <param name="rescan">Whether the dispatcher passes a rescan call.</param>
     /// <param name="explain">Whether the dispatcher passes an EXPLAIN call.</param>
+    /// <param name="scroll">Whether the dispatcher passes a backward read.</param>
+    /// <param name="mark">Whether the dispatcher passes mark and restore calls.</param>
     [TestMethod]
-    [DataRow(CustomScanProviderSource, "number_scan", true, true)]
+    [DataRow(CustomScanProviderSource, "number_scan", true, true, true, true)]
     [DataRow("""
         internal sealed class Outer
         {
@@ -66,8 +86,18 @@ public sealed partial class PgFunctionGeneratorTests
                 static bool Ankus.IPgCustomScan<string>.Read(string state, Ankus.PgHeapTuple row) => false;
             }
         }
-        """, "nested", false, false)]
-    public void CustomScanProvidersRegisterAndDispatch(string source, string name, bool rescan, bool explain)
+        """, "nested", false, false, false, false)]
+    [DataRow("""
+        [Ankus.PgCustomScan(Name = "scroll_only")]
+        public sealed class Scroll : Ankus.IPgScrollableCustomScan<string>
+        {
+            public static void Plan(Ankus.PgCustomScanPlanner planner) { }
+            public static string Begin(Ankus.PgCustomScanContext context) => "state";
+            public static bool Read(string state, Ankus.PgHeapTuple row) => false;
+            public static bool ReadBackward(string state, Ankus.PgHeapTuple row) => false;
+        }
+        """, "scroll_only", false, false, true, false)]
+    public void CustomScanProvidersRegisterAndDispatch(string source, string name, bool rescan, bool explain, bool scroll, bool mark)
     {
         (Compilation compilation, ImmutableArray<Diagnostic> diagnostics) = Generate(source);
         Assert.IsEmpty(diagnostics);
@@ -80,12 +110,16 @@ public sealed partial class PgFunctionGeneratorTests
             .Select(tree => tree.GetText(context.CancellationToken).ToString())).ReplaceLineEndings("\n");
         Assert.AreEqual(rescan, managed.Contains("&" + dispatcher.Name + "_rescan<", StringComparison.Ordinal));
         Assert.AreEqual(explain, managed.Contains("&" + dispatcher.Name + "_explain<", StringComparison.Ordinal));
+        Assert.AreEqual(scroll, managed.Contains("&" + dispatcher.Name + "_read_backward<", StringComparison.Ordinal));
+        Assert.AreEqual(mark, managed.Contains("&" + dispatcher.Name + "_mark<", StringComparison.Ordinal));
+        Assert.AreEqual(mark, managed.Contains("&" + dispatcher.Name + "_restore<", StringComparison.Ordinal));
+        int flags = (scroll ? 1 : 0) | (mark ? 2 : 0);
 
         string native = ManifestValue(compilation, "Ankus.NativeSource").ReplaceLineEndings("\n");
         AssertOrdered(native, ["static void ankus_custom_scan_register(void);", "ankus_custom_scan_register();",
             "ankus_dispatch_native_callback(AnkusManagedNativeCallback callback,", "typedef struct AnkusCustomScanRequest",
             "extern int " + dispatcher.Name + "(int, AnkusCustomScanRequest *, AnkusValue *, AnkusError *, AnkusExecute, AnkusMemoryApi *);",
-            "#define ANKUS_CUSTOM_SCAN_COUNT 1", "{ \"" + name + "\", " + dispatcher.Name + " },",
+            "#define ANKUS_CUSTOM_SCAN_COUNT 1", "{ \"" + name + "\", " + dispatcher.Name + ", " + flags.ToString(CultureInfo.InvariantCulture) + " },",
             "RegisterCustomScanMethods(&ankus_custom_scan_plan_methods[provider]);", "set_rel_pathlist_hook = ankus_custom_scan_paths;"]);
         Assert.AreSequenceEqual(["Pg_magic_func", "_PG_init"], ManifestValue(compilation, "Ankus.Exports").Split('\n', StringSplitOptions.RemoveEmptyEntries));
         Assert.AreEqual("-- No installable objects declared.\n", InstallationBody(compilation).ReplaceLineEndings("\n"));
@@ -123,6 +157,11 @@ public sealed partial class PgFunctionGeneratorTests
         "public static async void Plan(Ankus.PgCustomScanPlanner planner) { await System.Threading.Tasks.Task.Yield(); } " +
         "public static string Begin(Ankus.PgCustomScanContext context) => \"\"; public static bool Read(string state, Ankus.PgHeapTuple row) => false; }",
         "ANKUS539", "async", "'Plan'")]
+    [DataRow("[Ankus.PgCustomScan] public sealed class Scan : Ankus.IPgMarkableCustomScan<string> { " +
+        "public static void Plan(Ankus.PgCustomScanPlanner planner) { } public static string Begin(Ankus.PgCustomScanContext context) => \"\"; " +
+        "public static bool Read(string state, Ankus.PgHeapTuple row) => false; " +
+        "public static async void Mark(string state) { await System.Threading.Tasks.Task.Yield(); } public static void Restore(string state) { } }",
+        "ANKUS539", "async", "'Mark'")]
     public void CustomScanProviderFailuresHaveSpecificDiagnostics(string source, string id, string fragment, string detail)
     {
         (Compilation compilation, ImmutableArray<Diagnostic> diagnostics) = Generate(source +

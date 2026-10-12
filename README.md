@@ -574,8 +574,9 @@ PostgreSQL's callback table and assigns `[PgNativeCallback]` properties. See
 `[PgCustomScan]` turns a class that implements `IPgCustomScan<TState>` into a
 custom scan provider. Its static `Plan`, `Begin` and `Read` methods offer a path,
 start a scan and produce rows; PostgreSQL still applies the query's conditions.
-Optional interfaces add rescans and EXPLAIN properties. Ankus generates the
-method tables and the planner hook.
+Paths can declare their row order, and optional interfaces add rescans, backward
+reads, mark and restore, and EXPLAIN properties. Ankus generates the method
+tables and the planner hook.
 
 The [custom-scan sample](samples/Ankus.Examples.CustomScans) has a managed
 provider and a native one. The native provider uses these method tables directly

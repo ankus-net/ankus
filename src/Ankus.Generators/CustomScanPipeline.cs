@@ -70,7 +70,9 @@ internal static class CustomScanPipeline
         native.AppendLine("static const AnkusCustomScanProvider ankus_custom_scan_providers[ANKUS_CUSTOM_SCAN_COUNT] = {");
         foreach (CustomScanDeclaration model in selected)
         {
-            native.AppendLine($"    {{ \"{model.Name}\", {model.Callback} }},");
+            // The capability bits are PostgreSQL's CUSTOMPATH_SUPPORT_BACKWARD_SCAN and CUSTOMPATH_SUPPORT_MARK_RESTORE.
+            int flags = (model.Scroll ? 1 : 0) | (model.Mark ? 2 : 0);
+            native.AppendLine($"    {{ \"{model.Name}\", {model.Callback}, {flags.ToString(CultureInfo.InvariantCulture)} }},");
         }
 
         native.AppendLine("};");
@@ -89,6 +91,9 @@ internal static class CustomScanPipeline
         string state = model.State;
         string rescan = model.Rescan ? $"&{callback}_rescan<{model.Provider}>" : "null";
         string explain = model.Explain ? $"&{callback}_explain<{model.Provider}>" : "null";
+        string backward = model.Scroll ? $"&{callback}_read_backward<{model.Provider}>" : "null";
+        string mark = model.Mark ? $"&{callback}_mark<{model.Provider}>" : "null";
+        string restore = model.Mark ? $"&{callback}_restore<{model.Provider}>" : "null";
         var source = new StringBuilder($$"""
                 [global::System.Runtime.InteropServices.UnmanagedCallersOnly(
                     EntryPoint = "{{callback}}", CallConvs = [typeof(global::System.Runtime.CompilerServices.CallConvCdecl)])]
@@ -96,7 +101,7 @@ internal static class CustomScanPipeline
                     global::Ankus.CompilerServices.NativeValue* row, global::Ankus.CompilerServices.NativeCallError* error, nint execute, nint memory)
                     => global::Ankus.CompilerServices.NativeCustomScan.Dispatch<{{state}}>(operation, request, row, error, execute, memory,
                         &{{callback}}_plan<{{model.Provider}}>, &{{callback}}_begin<{{model.Provider}}>, &{{callback}}_read<{{model.Provider}}>,
-                        {{rescan}}, {{explain}});
+                        {{rescan}}, {{explain}}, {{backward}}, {{mark}}, {{restore}});
 
                 private static void {{callback}}_plan<T>(global::Ankus.PgCustomScanPlanner planner)
                     where T : global::Ankus.IPgCustomScan<{{state}}>
@@ -129,6 +134,32 @@ internal static class CustomScanPipeline
                     private static void {{callback}}_explain<T>({{state}} state, global::Ankus.PgExplainWriter explain)
                         where T : global::Ankus.IPgExplainedCustomScan<{{state}}>
                         => T.Explain(state, explain);
+
+
+                """);
+        }
+
+        if (model.Scroll)
+        {
+            source.Append($$"""
+                    private static bool {{callback}}_read_backward<T>({{state}} state, global::Ankus.PgHeapTuple row)
+                        where T : global::Ankus.IPgScrollableCustomScan<{{state}}>
+                        => T.ReadBackward(state, row);
+
+
+                """);
+        }
+
+        if (model.Mark)
+        {
+            source.Append($$"""
+                    private static void {{callback}}_mark<T>({{state}} state)
+                        where T : global::Ankus.IPgMarkableCustomScan<{{state}}>
+                        => T.Mark(state);
+
+                    private static void {{callback}}_restore<T>({{state}} state)
+                        where T : global::Ankus.IPgMarkableCustomScan<{{state}}>
+                        => T.Restore(state);
 
 
                 """);

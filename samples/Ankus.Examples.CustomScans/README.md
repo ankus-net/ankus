@@ -71,7 +71,10 @@ EXPLAIN (ANALYZE) SELECT * FROM numbers WHERE value > 2;
 SELECT number_scan_counts();
 ```
 
-It shows path data, rescans, EXPLAIN properties and state disposal.
-`number_scan_counts()` reports begins, disposals, rescans and EXPLAIN-only
-begins. Setting `ankus_trace_scan.numbers_fail_at` makes the scan throw at that
+It shows path data, ordered rows, rescans, backward reads, mark and restore,
+EXPLAIN properties and state disposal. Its rows come in order of `value`, so
+`ORDER BY value` needs no sort, a cursor can fetch backward and a merge join
+reads repeated keys again without a `Materialize` node.
+`number_scan_counts()` reports begins, disposals, rescans, EXPLAIN-only
+begins, marks and restores. Setting `ankus_trace_scan.numbers_fail_at` makes the scan throw at that
 integer.

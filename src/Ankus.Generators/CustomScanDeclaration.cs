@@ -12,9 +12,18 @@ namespace Ankus.Generators;
 /// <param name="State">The fully qualified per-scan state type.</param>
 /// <param name="Rescan">Whether the provider restarts scans in place.</param>
 /// <param name="Explain">Whether the provider adds EXPLAIN properties.</param>
+/// <param name="Scroll">Whether the provider reads scans backward.</param>
+/// <param name="Mark">Whether the provider saves and restores scan positions.</param>
 /// <param name="Callback">The assembly-specific managed dispatcher symbol.</param>
-internal sealed record CustomScanDeclaration(string Name, string Provider, string State, bool Rescan, bool Explain, string Callback)
+internal sealed record CustomScanDeclaration(string Name, string Provider, string State, bool Rescan, bool Explain, bool Scroll, bool Mark,
+    string Callback)
 {
+    /// <summary>
+    /// The optional capability interfaces, each implemented for the provider's one state type.
+    /// </summary>
+    private static readonly string[] s_capabilities =
+        ["IPgRescannableCustomScan", "IPgExplainedCustomScan", "IPgScrollableCustomScan", "IPgMarkableCustomScan"];
+
     /// <summary>
     /// The longest name PostgreSQL registers, excluding the terminating zero byte of <c>EXTNODENAME_MAX_LEN</c>.
     /// </summary>
@@ -54,13 +63,11 @@ internal sealed record CustomScanDeclaration(string Name, string Provider, strin
         }
 
         ITypeSymbol state = states[0];
-        bool rescan = type.AllInterfaces.Any(value => Is(value, "IPgRescannableCustomScan") &&
-            SymbolEqualityComparer.Default.Equals(value.TypeArguments[0], state));
-        bool explain = type.AllInterfaces.Any(value => Is(value, "IPgExplainedCustomScan") &&
-            SymbolEqualityComparer.Default.Equals(value.TypeArguments[0], state));
+        bool[] capabilities = [.. s_capabilities.Select(name => type.AllInterfaces.Any(value => Is(value, name) &&
+            SymbolEqualityComparer.Default.Equals(value.TypeArguments[0], state)))];
         foreach (INamedTypeSymbol contract in type.AllInterfaces.Where(value => value.TypeArguments.Length == 1 &&
             SymbolEqualityComparer.Default.Equals(value.TypeArguments[0], state) &&
-            (Is(value, "IPgCustomScan") || Is(value, "IPgRescannableCustomScan") || Is(value, "IPgExplainedCustomScan"))))
+            (Is(value, "IPgCustomScan") || s_capabilities.Any(name => Is(value, name)))))
         {
             foreach (IMethodSymbol member in contract.GetMembers().OfType<IMethodSymbol>())
             {
@@ -75,7 +82,8 @@ internal sealed record CustomScanDeclaration(string Name, string Provider, strin
         }
 
         return new(name, type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat), state.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-            rescan, explain, PgFunctionGenerator.GetCallbackName(PgFunctionGenerator.SymbolScope(type.ContainingAssembly) + ":" +
+            capabilities[0], capabilities[1], capabilities[2], capabilities[3],
+            PgFunctionGenerator.GetCallbackName(PgFunctionGenerator.SymbolScope(type.ContainingAssembly) + ":" +
                 type.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat), "custom_scan"));
 
         CustomScanDeclaration? Report(DiagnosticDescriptor descriptor, Location? location, params string[] details)

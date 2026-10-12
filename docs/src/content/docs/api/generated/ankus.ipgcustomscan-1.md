@@ -24,7 +24,9 @@ The per-scan state, created when the executor starts the scan.
 Apply [PgCustomScanAttribute](/api/ankus.pgcustomscanattribute/) to the implementing class. PostgreSQL still evaluates the query's
 conditions and projection on each row the provider produces. A state that implements [IDisposable](https://learn.microsoft.com/dotnet/api/system.idisposable) is
 disposed when the scan ends, including when the query fails. Implement
-[IPgRescannableCustomScan&lt;TState&gt;](/api/ankus.ipgrescannablecustomscan-1/) to restart a scan in place and
+[IPgRescannableCustomScan&lt;TState&gt;](/api/ankus.ipgrescannablecustomscan-1/) to restart a scan in place,
+[IPgScrollableCustomScan&lt;TState&gt;](/api/ankus.ipgscrollablecustomscan-1/) to read it backward,
+[IPgMarkableCustomScan&lt;TState&gt;](/api/ankus.ipgmarkablecustomscan-1/) to return to a saved position and
 [IPgExplainedCustomScan&lt;TState&gt;](/api/ankus.ipgexplainedcustomscan-1/) to add EXPLAIN properties.
 
 ## Methods

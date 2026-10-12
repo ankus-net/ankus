@@ -34,6 +34,7 @@ internal static class NativeCustomScanBridge
         #include "optimizer/restrictinfo.h"
         #include "utils/float.h"
         #include "utils/lsyscache.h"
+        #include "utils/typcache.h"
 
         typedef struct AnkusCustomScanRequest
         {
@@ -59,6 +60,7 @@ internal static class NativeCustomScanBridge
         {
             const char *name;
             AnkusCustomScanCallback callback;
+            uint32 flags;
         } AnkusCustomScanProvider;
 
         """;
@@ -194,6 +196,78 @@ internal static class NativeCustomScanBridge
             return read;
         }
 
+        /* The path's order as canonical pathkeys, built as build_index_pathkeys builds an index's: each key uses the
+         * default B-tree ordering of its column's type, and the keys end at the first one the query has no use for. */
+        static List *
+        ankus_custom_scan_pathkeys(PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rte, StringInfo buffer)
+        {
+            List *pathkeys = NIL;
+            bool useful = true;
+            int32 count = pq_getmsgint(buffer, 4);
+            if (count < 0)
+                ereport(ERROR, (errcode(ERRCODE_INVALID_BINARY_REPRESENTATION), errmsg("Invalid Ankus custom scan path")));
+            for (int index = 0; index < count; index++)
+            {
+                int32 ordinal = pq_getmsgint(buffer, 4);
+                int32 flags = pq_getmsgint(buffer, 4);
+                Oid type;
+                int32 typmod;
+                Oid collation;
+                Oid ordering;
+                Oid equality = InvalidOid;
+                Oid opfamily;
+                Oid opcintype;
+        #if PG_VERSION_NUM >= 180000
+                CompareType strategy;
+        #else
+                int16 strategy;
+        #endif
+                List *opfamilies = NIL;
+                EquivalenceClass *eclass;
+                PathKey *pathkey;
+                bool redundant;
+                ListCell *cell;
+                if (ordinal < 0 || ordinal >= rel->max_attr || (flags & ~3) != 0)
+                    ereport(ERROR, (errcode(ERRCODE_INVALID_BINARY_REPRESENTATION), errmsg("Invalid Ankus custom scan path")));
+                if (!useful)
+                    continue;
+                get_atttypetypmodcoll(rte->relid, (AttrNumber) (ordinal + 1), &type, &typmod, &collation);
+                if (!OidIsValid(type))
+                    ereport(ERROR, (errcode(ERRCODE_INVALID_BINARY_REPRESENTATION), errmsg("Invalid Ankus custom scan path")));
+                ordering = (flags & 1) != 0 ? lookup_type_cache(type, TYPECACHE_GT_OPR)->gt_opr
+                    : lookup_type_cache(type, TYPECACHE_LT_OPR)->lt_opr;
+                if (OidIsValid(ordering) && get_ordering_op_properties(ordering, &opfamily, &opcintype, &strategy))
+                    equality = get_equality_op_for_ordering_op(ordering, NULL);
+                if (OidIsValid(equality))
+                    opfamilies = get_mergejoin_opfamilies(equality);
+                if (opfamilies == NIL)
+                    ereport(ERROR, (errcode(ERRCODE_UNDEFINED_FUNCTION),
+                        errmsg("could not identify an ordering operator for type %s", format_type_be(type)),
+                        errhint("Custom scan sort keys need a column type with a default B-tree operator class.")));
+                eclass = get_eclass_for_sort_expr(root, (Expr *) makeVar(rel->relid, (AttrNumber) (ordinal + 1), type, typmod, collation, 0),
+        #if PG_VERSION_NUM < 160000
+                    NULL,
+        #endif
+                    opfamilies, opcintype, collation, 0, rel->relids, false);
+                if (eclass == NULL)
+                {
+                    useful = false;
+                    continue;
+                }
+
+                /* A key fixed by a constant or already ordered by orders nothing further, as pathkey_is_redundant decides. */
+                redundant = EC_MUST_BE_REDUNDANT(eclass);
+                foreach(cell, pathkeys)
+                    redundant = redundant || ((PathKey *) lfirst(cell))->pk_eclass == eclass;
+                if (redundant)
+                    continue;
+                pathkey = make_canonical_pathkey(root, eclass, opfamily, strategy, (flags & 2) != 0);
+                pathkeys = lappend(pathkeys, pathkey);
+            }
+
+            return truncate_useless_pathkeys(root, rel, pathkeys);
+        }
+
         static void
         ankus_custom_scan_offer(int provider, PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rte)
         {
@@ -276,8 +350,9 @@ internal static class NativeCustomScanBridge
                     path->path.startup_cost = startup + quals.startup + rel->reltarget->cost.startup;
                     path->path.total_cost = total + quals.startup + quals.per_tuple * produced + rel->reltarget->cost.startup +
                         rel->reltarget->cost.per_tuple * path->path.rows;
-                    path->path.pathkeys = NIL;
-                    path->flags = 0;
+                    path->path.pathkeys = ankus_custom_scan_pathkeys(root, rel, rte, &buffer);
+                    /* The plan copies these flags, so PostgreSQL asks for backward reads and marks only of a capable provider. */
+                    path->flags = ankus_custom_scan_providers[provider].flags;
                     path->custom_paths = NIL;
                     path->custom_private = list_make2(makeInteger(provider),
                         makeConst(BYTEAOID, -1, InvalidOid, -1, PointerGetDatum(data), false, false));
@@ -431,7 +506,8 @@ internal static class NativeCustomScanBridge
             int status;
             ExecClearTuple(slot);
             MemoryContextReset(state->rows);
-            status = ankus_custom_scan_call(state->provider, 2, &state->request, state->row, &error, state->rows);
+            status = ankus_custom_scan_call(state->provider, ScanDirectionIsBackward(node->ps.state->es_direction) ? 7 : 2,
+                &state->request, state->row, &error, state->rows);
             if (status == 1)
                 ankus_raise_error(&error);
             if (status != 0)
@@ -483,6 +559,30 @@ internal static class NativeCustomScanBridge
             status = ankus_custom_scan_call(state->provider, 3, &state->request, NULL, &error, state->query);
             if (status != 0)
                 ankus_raise_error(&error);
+        }
+
+        /* The first read after a restore returns the row the first read after the mark returned; the provider keeps the
+         * position. */
+        static void
+        ankus_custom_scan_position(CustomScanState *node, int operation)
+        {
+            AnkusCustomScanState *state = (AnkusCustomScanState *) node;
+            AnkusError error = {0};
+            int status = ankus_custom_scan_call(state->provider, operation, &state->request, NULL, &error, state->query);
+            if (status != 0)
+                ankus_raise_error(&error);
+        }
+
+        static void
+        ankus_custom_scan_mark(CustomScanState *node)
+        {
+            ankus_custom_scan_position(node, 8);
+        }
+
+        static void
+        ankus_custom_scan_restore(CustomScanState *node)
+        {
+            ankus_custom_scan_position(node, 9);
         }
 
         static void
@@ -565,6 +665,12 @@ internal static class NativeCustomScanBridge
                 ankus_custom_scan_exec_methods[provider].EndCustomScan = ankus_custom_scan_end;
                 ankus_custom_scan_exec_methods[provider].ReScanCustomScan = ankus_custom_scan_rescan;
                 ankus_custom_scan_exec_methods[provider].ExplainCustomScan = ankus_custom_scan_explain;
+                if ((ankus_custom_scan_providers[provider].flags & CUSTOMPATH_SUPPORT_MARK_RESTORE) != 0)
+                {
+                    ankus_custom_scan_exec_methods[provider].MarkPosCustomScan = ankus_custom_scan_mark;
+                    ankus_custom_scan_exec_methods[provider].RestrPosCustomScan = ankus_custom_scan_restore;
+                }
+
                 /* A load that failed on a later name already registered this one; the retry reports the real conflict. */
                 if (GetCustomScanMethods(name, true) != &ankus_custom_scan_plan_methods[provider])
                     RegisterCustomScanMethods(&ankus_custom_scan_plan_methods[provider]);

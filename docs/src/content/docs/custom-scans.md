@@ -81,6 +81,41 @@ Implement `IPgExplainedCustomScan<TState>` to add EXPLAIN properties with
 `PgExplainWriter`. EXPLAIN shows the provider's name as the custom plan
 provider.
 
+### Ordered rows, cursors and merge joins
+
+A path whose rows come in order says so with `SortKeys`:
+
+```csharp
+planner.AddPath(new PgCustomScanPath(0, 1)
+{
+    SortKeys = [new(planner.Descriptor.GetOrdinal("value"))],
+});
+```
+
+Each key names a column, ascending unless `Descending` is set, with NULL last
+when ascending and first when descending unless `NullsFirst` says otherwise.
+Values compare as `ORDER BY` on the column compares them: by the default B-tree
+operator class of the column's type, with the column's collation. PostgreSQL
+then skips a sort for a matching `ORDER BY`, stops a `LIMIT` early or merge
+joins on the column. It does not check the order, so rows out of order give
+wrong results, as a corrupt index would. The planner keeps only the leading keys
+the query can use.
+
+Two more capabilities let PostgreSQL reuse rows without storing them:
+
+- `IPgScrollableCustomScan<TState>` adds `ReadBackward`. A cursor over the scan
+  can then fetch backward, even without `SCROLL`, and a `SCROLL` cursor needs no
+  `Materialize` node. The scan has a current row, like a cursor: `Read` moves to
+  the next row and `ReadBackward` to the previous one. A read that finds no row
+  leaves the scan before the first row or after the last, so reading the other
+  way returns the first or the last row.
+- `IPgMarkableCustomScan<TState>` adds `Mark` and `Restore`. A merge join marks
+  the inner scan at the first row of a key and restores it for each repeated
+  outer key; the first `Read` after `Restore` returns the row the first `Read`
+  after `Mark` returned. Without it, PostgreSQL stores the inner rows in a
+  `Materialize` node. A merge join needs its inner rows in order, so this pairs
+  with `SortKeys`.
+
 An exception from any of these methods becomes a PostgreSQL error, and the
 session can run the next statement. A row that leaves a `NOT NULL` column empty
 is rejected with an error, unless PostgreSQL does not read that column.
@@ -93,8 +128,7 @@ Ankus does not offer a provider's paths in these cases:
 - the extension has not finished loading, for example after its load failed.
 
 Managed paths are marked parallel-unsafe, so parallel workers never run them.
-They do not support mark and restore or backward scans. Use a native provider
-for those.
+Use a native provider for a parallel scan.
 
 The name defaults to the class name in snake_case. Set `Name` to choose another.
 A name is 1 to 63 ASCII letters, digits or underscores and does not start with a
@@ -111,7 +145,8 @@ one of its functions first, or add it to `session_preload_libraries`.
 | ANKUS539 | A provider method is `async` |
 
 The sample's [`NumberScan.cs`](https://github.com/willibrandon/ankus/blob/main/samples/Ankus.Examples.CustomScans/NumberScan.cs)
-is a complete provider with path data, rescans, EXPLAIN properties and disposal.
+is a complete provider with path data, ordered rows, rescans, backward reads,
+mark and restore, EXPLAIN properties and disposal.
 
 ## Native providers
 

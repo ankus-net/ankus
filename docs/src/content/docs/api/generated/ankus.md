@@ -17,11 +17,13 @@ Assembly: `Ankus.Runtime.dll`
 - [IPgExplainedCustomScan&lt;TState&gt;](/api/ankus.ipgexplainedcustomscan-1/)
 - [IPgFinalizingAggregate&lt;TState, TDirect, TResult&gt;](/api/ankus.ipgfinalizingaggregate-3/)
 - [IPgHashable](/api/ankus.ipghashable/)
+- [IPgMarkableCustomScan&lt;TState&gt;](/api/ankus.ipgmarkablecustomscan-1/)
 - [IPgMovingAggregate&lt;TState, TArgs&gt;](/api/ankus.ipgmovingaggregate-2/)
 - [IPgMovingFinalizingAggregate&lt;TState, TDirect, TResult&gt;](/api/ankus.ipgmovingfinalizingaggregate-3/)
 - [IPgNativeNode](/api/ankus.ipgnativenode/)
 - [IPgNativeType](/api/ankus.ipgnativetype/)
 - [IPgRescannableCustomScan&lt;TState&gt;](/api/ankus.ipgrescannablecustomscan-1/)
+- [IPgScrollableCustomScan&lt;TState&gt;](/api/ankus.ipgscrollablecustomscan-1/)
 - [IPgSerializableAggregate&lt;TState&gt;](/api/ankus.ipgserializableaggregate-1/)
 
 ## Classes
@@ -228,6 +230,7 @@ Assembly: `Ankus.Runtime.dll`
 - [PgCustomScanContext](/api/ankus.pgcustomscancontext/)
 - [PgCustomScanPath](/api/ankus.pgcustomscanpath/)
 - [PgCustomScanPlanner](/api/ankus.pgcustomscanplanner/)
+- [PgCustomScanSortKey](/api/ankus.pgcustomscansortkey/)
 - [PgDate](/api/ankus.pgdate/)
 - [PgExplainWriter](/api/ankus.pgexplainwriter/)
 - [PgFixedDequeEnumerator&lt;T&gt;](/api/ankus.pgfixeddequeenumerator-1/)

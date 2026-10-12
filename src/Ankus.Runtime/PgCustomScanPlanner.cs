@@ -19,6 +19,21 @@ public readonly ref struct PgCustomScanPlanner
     internal PgCustomScanPlanner(uint relationOid, string schemaName, string relationName, double rows,
         double cheapestStartupCost, double cheapestTotalCost, List<PgCustomScanPath> paths, uint rowTypeOid, int columns,
         ReadOnlySpan<byte> read)
+        : this(relationOid, schemaName, relationName, rows, cheapestStartupCost, cheapestTotalCost, paths, new RowType(rowTypeOid, columns),
+            read)
+    {
+    }
+
+    /// <summary>
+    /// Creates a planner over a descriptor that is already loaded.
+    /// </summary>
+    internal PgCustomScanPlanner(string relationName, List<PgCustomScanPath> paths, PgTupleDescriptor descriptor)
+        : this(0, "public", relationName, 0, 0, 0, paths, new RowType(descriptor), [])
+    {
+    }
+
+    private PgCustomScanPlanner(uint relationOid, string schemaName, string relationName, double rows, double cheapestStartupCost,
+        double cheapestTotalCost, List<PgCustomScanPath> paths, RowType rowType, ReadOnlySpan<byte> read)
     {
         RelationOid = relationOid;
         SchemaName = schemaName;
@@ -27,7 +42,7 @@ public readonly ref struct PgCustomScanPlanner
         CheapestStartupCost = cheapestStartupCost;
         CheapestTotalCost = cheapestTotalCost;
         _paths = paths;
-        _rowType = new RowType(rowTypeOid, columns);
+        _rowType = rowType;
         _read = read;
     }
 
@@ -84,9 +99,10 @@ public readonly ref struct PgCustomScanPlanner
     /// <summary>
     /// Offers a path. The planner keeps it only if no other path is cheaper for every purpose.
     /// </summary>
-    /// <param name="path">The path's costs, optional row estimate and data.</param>
-    /// <exception cref="ArgumentOutOfRangeException">A cost or row estimate is negative or not finite, or the total
-    /// cost is below the startup cost.</exception>
+    /// <param name="path">The path's costs, optional row estimate, data and sort keys.</param>
+    /// <exception cref="ArgumentOutOfRangeException">A cost or row estimate is negative or not finite, the total cost
+    /// is below the startup cost, or a sort key is not a column of the table.</exception>
+    /// <exception cref="ArgumentException">A sort key names a dropped column.</exception>
     public void AddPath(PgCustomScanPath path)
     {
         ValidateCost(path.StartupCost, nameof(PgCustomScanPath.StartupCost));
@@ -98,7 +114,25 @@ public readonly ref struct PgCustomScanPlanner
         }
 
         ArgumentOutOfRangeException.ThrowIfGreaterThan(path.Data.Length, 0x3FFFFFFF - 4, nameof(PgCustomScanPath.Data));
-        _paths.Add(path);
+        if (path.SortKeys is not { Count: > 0 } keys)
+        {
+            _paths.Add(path with { SortKeys = null });
+            return;
+        }
+
+        // The keys are copied, so a list changed after this call cannot change the path.
+        PgCustomScanSortKey[] copy = [.. keys];
+        foreach (PgCustomScanSortKey key in copy)
+        {
+            ArgumentOutOfRangeException.ThrowIfNegative(key.Ordinal, nameof(PgCustomScanPath.SortKeys));
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(key.Ordinal, _rowType.Columns, nameof(PgCustomScanPath.SortKeys));
+            if (Descriptor.Attributes[key.Ordinal].IsDropped)
+            {
+                throw new ArgumentException($"Custom scan sort key {key.Ordinal} names a dropped column.", nameof(path));
+            }
+        }
+
+        _paths.Add(path with { SortKeys = copy });
     }
 
     private static void ValidateCost(double value, string name)
@@ -117,6 +151,14 @@ public readonly ref struct PgCustomScanPlanner
     private sealed class RowType(uint oid, int columns)
     {
         private PgTupleDescriptor? _descriptor;
+
+        /// <summary>
+        /// Holds a descriptor that is already loaded.
+        /// </summary>
+        /// <param name="descriptor">The table's columns.</param>
+        internal RowType(PgTupleDescriptor descriptor)
+            : this(descriptor.TypeOid, descriptor.Attributes.Count)
+            => _descriptor = descriptor;
 
         internal int Columns => columns;
 

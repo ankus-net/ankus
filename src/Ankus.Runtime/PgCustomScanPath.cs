@@ -36,4 +36,18 @@ public readonly record struct PgCustomScanPath(double StartupCost, double TotalC
         get;
         init;
     }
+
+    /// <summary>
+    /// Gets the columns by which the path returns its rows in order, most significant first, or null when the rows have no
+    /// order.
+    /// </summary>
+    /// <remarks>
+    /// An ordered path can save a query a sort, for <c>ORDER BY</c>, a merge join or a <c>LIMIT</c>. The planner keeps
+    /// only the leading keys the query can use.
+    /// </remarks>
+    public IReadOnlyList<PgCustomScanSortKey>? SortKeys
+    {
+        get;
+        init;
+    }
 }
