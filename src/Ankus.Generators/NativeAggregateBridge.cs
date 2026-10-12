@@ -253,6 +253,7 @@ internal static class NativeAggregateBridge
         typedef struct AnkusAggregateSite
         {
             Oid *types;
+            Oid *base_types;
             int parameter_count;
             Oid result_type;
             Oid result_base_type;
@@ -341,8 +342,11 @@ internal static class NativeAggregateBridge
                     ereport(ERROR, (errcode(ERRCODE_DATATYPE_MISMATCH), errmsg("Aggregate result type was not resolved")));
             }
 
-            /* The result type is fixed for the call site, so each row skips the catalog lookups. */
+            /* The argument and result types are fixed for the call site, so each row skips the catalog lookups. */
             site->result_base_type = get_typtype(site->result_type) == '\0' ? InvalidOid : getBaseType(site->result_type);
+            site->base_types = palloc(sizeof(Oid) * Max(site->parameter_count, 1));
+            for (int index = 0; index < site->parameter_count; index++)
+                site->base_types[index] = getBaseType(site->types[index]);
 
             site->metadata = ankus_aggregate_metadata(fcinfo, kind, site, &site->metadata_count);
             site->arguments = palloc0(sizeof(AnkusValue) * Max(arguments_count, 1));
@@ -418,7 +422,6 @@ internal static class NativeAggregateBridge
             ankus_memory_protect(&protection, scope->owner, false);
             PG_TRY();
             {
-                Oid *types = site->types;
                 Oid result_type = site->result_type;
                 int metadata_count = site->metadata_count;
                 AnkusValue *metadata = site->metadata;
@@ -438,7 +441,7 @@ internal static class NativeAggregateBridge
                         if (internal_arguments[index])
                             arguments[index].integral = (intptr_t) DatumGetPointer(PG_GETARG_DATUM(index));
                         else
-                            ankus_read_value(PG_GETARG_DATUM(index), types[index], &arguments[index], &owned[index]);
+                            ankus_convert_base_value(PG_GETARG_DATUM(index), site->base_types[index], &arguments[index], &owned[index], false);
                     }
                 }
 

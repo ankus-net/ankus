@@ -454,10 +454,19 @@ internal static class NativeSpiBridge
                 request->read_only != 0, request->limit);
         }
 
+        static void ankus_convert_base_value(Datum datum, Oid type, AnkusValue *value, AnkusInputBuffer *owned, bool detach);
+
         static void
         ankus_convert_value(Datum datum, Oid type, AnkusValue *value, AnkusInputBuffer *owned, bool detach)
         {
-            type = getBaseType(type);
+            ankus_convert_base_value(datum, getBaseType(type), value, owned, detach);
+        }
+
+        /* Converts a value whose base type the caller has already resolved, such as a result column or an
+         * aggregate argument, without another catalog lookup. */
+        static void
+        ankus_convert_base_value(Datum datum, Oid type, AnkusValue *value, AnkusInputBuffer *owned, bool detach)
+        {
             switch (type)
             {
                 case INTERNALOID: value->integral = (int64) (uintptr_t) datum; break;
@@ -617,12 +626,17 @@ internal static class NativeSpiBridge
             return PointerGetDatum(copy);
         }
 
+        /* A result cell keeps an exact copy of a value Ankus cannot convert, and its type is its column's base
+         * type, resolved once per result. Other results convert from their declared type. */
         static void
-        ankus_result_converted(Datum datum, Oid type, AnkusValue *value, bool detach)
+        ankus_result_converted(Datum datum, Oid type, AnkusValue *value, bool cell)
         {
             AnkusValue input = {0};
             AnkusInputBuffer owned = {0};
-            ankus_convert_value(datum, type, &input, &owned, detach);
+            if (cell)
+                ankus_convert_base_value(datum, type, &input, &owned, true);
+            else
+                ankus_convert_value(datum, type, &input, &owned, false);
             *value = input;
             value->data = NULL;
             if (input.data != NULL)
@@ -640,9 +654,9 @@ internal static class NativeSpiBridge
         }
 
         static void
-        ankus_result_cell(Datum datum, Oid type, AnkusValue *value)
+        ankus_result_cell(Datum datum, Oid base_type, AnkusValue *value)
         {
-            ankus_result_converted(datum, type, value, true);
+            ankus_result_converted(datum, base_type, value, true);
         }
 
         static void

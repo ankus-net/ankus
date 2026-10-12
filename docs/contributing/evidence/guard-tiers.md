@@ -94,7 +94,9 @@ same site while one is running uses a private context as before. Sharing one
 empty sort-key list among aggregates without `ORDER BY`, instead of allocating
 and wrapping a copy for every row, brought it to 156 ns. Each returned state
 also checked its type and resolved its base type in the catalog caches; the
-call site now resolves them once, which brought the cost to 124 ns.
+call site now resolves them once, which brought the cost to 124 ns. Reading
+each argument resolved its base type again; resolving the arguments once as
+well brought it to 95 ns.
 
 ### Sets, arrays and SPI
 
@@ -121,13 +123,15 @@ domain columns still run their checks on every value.
 
 `Spi.Select` copies every row into managed memory, so its cost depends on how
 many rows one result retains. Reading `generate_series` rows and summing them
-costs 106 ns per row in total as 2,000 queries of 1,000 rows, including each
+costs 93 ns per row in total as 2,000 queries of 1,000 rows, including each
 query and `row.Get<int>(0)`, against 210 ns for a PL/pgSQL `FOR` loop over one
 two-million-row query. One two-million-row `Spi.Select` costs 290 ns per row,
 because the garbage collector promotes the retained rows; read results that
 large through a cursor. Reading a cell, or an array element, that already has
 the requested type now skips the four registry lookups that rule out
-`[PgDatumType]` mappings, which took the batched cost down from 134 ns.
+`[PgDatumType]` mappings, which took the batched cost down from 134 ns to
+106 ns, and converting each cell from its column's already resolved base type,
+without looking it up again, took it to 93 ns.
 
 Arrays crossed the boundary as one 28-byte big-endian record per element,
 which native code wrote and managed code parsed, boxing each value. PostgreSQL
