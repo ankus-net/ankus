@@ -1,8 +1,6 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/banner-dark.png">
-  <source media="(prefers-color-scheme: light)" srcset="assets/banner-light.png">
-  <img src="assets/banner-light.png" alt="Ankus" width="1280">
-</picture>
+<p align="center">
+  <img src="assets/banner.png" alt="Ankus" width="640">
+</p>
 
 # Ankus
 
