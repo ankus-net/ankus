@@ -39,7 +39,11 @@ public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.Sta
 
         byte[] data = new byte[4];
         BinaryPrimitives.WriteInt32LittleEndian(data, count);
-        planner.AddPath(new PgCustomScanPath(0, count * 0.001) { Rows = count, Data = data });
+
+        // Formatting labels doubles the work, so a query that reads them gets a dearer path.
+        int label = FindLabel(planner.Descriptor);
+        double perRow = label >= 0 && planner.IsColumnRead(label) ? 0.002 : 0.001;
+        planner.AddPath(new PgCustomScanPath(0, count * perRow) { Rows = count, Data = data });
     }
 
     /// <inheritdoc />
@@ -51,7 +55,7 @@ public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.Sta
             s_counts[3]++;
         }
 
-        // Settings are read once per scan; a backend call for every row would cost more than the row itself.
+        // The failure point is read once, so a SET during a scan does not change the scan already running.
         return new State(BinaryPrimitives.ReadInt32LittleEndian(context.Data), FailAt, context);
     }
 
@@ -93,6 +97,15 @@ public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.Sta
     }
 
     /// <summary>
+    /// Finds the optional <c>label</c> column.
+    /// </summary>
+    /// <param name="descriptor">The table's columns.</param>
+    /// <returns>The column's ordinal, or -1 when the table has none.</returns>
+    private static int FindLabel(PgTupleDescriptor descriptor)
+        => descriptor.Attributes.Select(static (attribute, index) => (attribute, index))
+            .FirstOrDefault(static item => item.attribute.Name == "label" && !item.attribute.IsDropped, (null!, -1)).index;
+
+    /// <summary>
     /// Reads begin, disposal and rescan counts, and the begins made only for EXPLAIN, in this backend.
     /// </summary>
     /// <returns>Four counters in that order.</returns>
@@ -109,8 +122,7 @@ public sealed partial class NumberScan : IPgRescannableCustomScan<NumberScan.Sta
             Count = count;
             FailAt = failAt;
             Value = context.Descriptor.GetOrdinal("value");
-            int label = context.Descriptor.Attributes.Select(static (attribute, index) => (attribute, index))
-                .FirstOrDefault(static item => item.attribute.Name == "label" && !item.attribute.IsDropped, (null!, -1)).index;
+            int label = FindLabel(context.Descriptor);
 
             // A query that does not read the label skips formatting it.
             Label = label >= 0 && context.IsColumnRead(label) ? label : -1;

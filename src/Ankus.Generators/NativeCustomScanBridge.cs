@@ -176,6 +176,24 @@ internal static class NativeCustomScanBridge
             return get_plan_rowmark(root->rowMarks, rti) != NULL;
         }
 
+        /* One byte per column, nonzero when PostgreSQL reads the column from the scan's rows: the columns the
+         * query needs above the scan, as postgres_fdw collects them, and those the conditions use. A whole-row
+         * reference reads them all. */
+        static bytea *
+        ankus_custom_scan_columns(RelOptInfo *rel, List *conditions)
+        {
+            Bitmapset *attributes = NULL;
+            bytea *read = palloc0(VARHDRSZ + Max(rel->max_attr, 0));
+            bool whole_row;
+            pull_varattnos((Node *) rel->reltarget->exprs, rel->relid, &attributes);
+            pull_varattnos((Node *) conditions, rel->relid, &attributes);
+            whole_row = bms_is_member(0 - FirstLowInvalidHeapAttributeNumber, attributes);
+            SET_VARSIZE(read, VARHDRSZ + Max(rel->max_attr, 0));
+            for (AttrNumber attribute = 1; attribute <= rel->max_attr; attribute++)
+                VARDATA(read)[attribute - 1] = whole_row || bms_is_member(attribute - FirstLowInvalidHeapAttributeNumber, attributes);
+            return read;
+        }
+
         static void
         ankus_custom_scan_offer(int provider, PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rte)
         {
@@ -187,6 +205,9 @@ internal static class NativeCustomScanBridge
             char *schema = get_namespace_name(get_rel_namespace(rte->relid));
             char *name_utf8;
             char *schema_utf8;
+            ParamPathInfo *parameters;
+            List *conditions;
+            bytea *read;
             int count;
             int status;
             if (name == NULL || schema == NULL)
@@ -205,6 +226,12 @@ internal static class NativeCustomScanBridge
 
             request.relation = rte->relid;
             request.row_type = get_rel_type_id(rte->relid);
+            request.columns = rel->max_attr;
+            parameters = get_baserel_parampathinfo(root, rel, rel->lateral_relids);
+            conditions = parameters == NULL ? rel->baserestrictinfo : list_concat_copy(rel->baserestrictinfo, parameters->ppi_clauses);
+            read = ankus_custom_scan_columns(rel, extract_actual_clauses(conditions, false));
+            request.read.data = (unsigned char *) VARDATA(read);
+            request.read.length = VARSIZE(read) - VARHDRSZ;
             request.relation_name.data = (unsigned char *) name_utf8;
             request.relation_name.length = strlen(name_utf8);
             request.schema_name.data = (unsigned char *) schema_utf8;
@@ -216,10 +243,6 @@ internal static class NativeCustomScanBridge
                 return;
             PG_TRY();
             {
-                Relids required_outer = rel->lateral_relids;
-                ParamPathInfo *parameters = get_baserel_parampathinfo(root, rel, required_outer);
-                List *conditions = parameters == NULL ? rel->baserestrictinfo
-                    : list_concat_copy(rel->baserestrictinfo, parameters->ppi_clauses);
                 Selectivity selectivity = clauselist_selectivity(root, conditions, 0, JOIN_INNER, NULL);
                 QualCost quals;
                 cost_qual_eval(&quals, conditions, root);
@@ -292,21 +315,12 @@ internal static class NativeCustomScanBridge
         {
             CustomScan *scan = makeNode(CustomScan);
             int provider = intVal(linitial(best_path->custom_private));
-            Bitmapset *attributes = NULL;
-            bytea *read = palloc0(VARHDRSZ + Max(rel->max_attr, 0));
-            bool whole_row;
+            bytea *read;
             (void) root;
             scan->scan.plan.targetlist = tlist;
             /* PostgreSQL evaluates the conditions on each row the provider produces. */
             scan->scan.plan.qual = extract_actual_clauses(clauses, false);
-            /* The columns PostgreSQL reads from the scan's rows: those the query needs above the scan, as
-             * postgres_fdw collects them, and those its conditions use. A whole-row reference reads all. */
-            pull_varattnos((Node *) rel->reltarget->exprs, rel->relid, &attributes);
-            pull_varattnos((Node *) scan->scan.plan.qual, rel->relid, &attributes);
-            whole_row = bms_is_member(0 - FirstLowInvalidHeapAttributeNumber, attributes);
-            SET_VARSIZE(read, VARHDRSZ + Max(rel->max_attr, 0));
-            for (AttrNumber attribute = 1; attribute <= rel->max_attr; attribute++)
-                VARDATA(read)[attribute - 1] = whole_row || bms_is_member(attribute - FirstLowInvalidHeapAttributeNumber, attributes);
+            read = ankus_custom_scan_columns(rel, scan->scan.plan.qual);
             scan->scan.scanrelid = rel->relid;
             scan->flags = best_path->flags;
             scan->custom_plans = custom_plans;

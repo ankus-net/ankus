@@ -173,6 +173,28 @@ public sealed partial class CustomScanTests
     }
 
     /// <summary>
+    /// The planner reports which columns a query reads, so a provider can price a path by the columns it must produce;
+    /// the sample charges twice as much when its label is read.
+    /// </summary>
+    [TestMethod]
+    public async Task ManagedProviderPricesReadColumns()
+    {
+        CancellationToken token = context.CancellationToken;
+        await using NpgsqlConnection connection = await OpenNumbersAsync(1000, token);
+        double[] costs = new double[3];
+        string[] queries = ["SELECT value FROM numbers_a", "SELECT label FROM numbers_a", "SELECT count(*) FROM numbers_a WHERE label > 'a'"];
+        for (int index = 0; index < queries.Length; index++)
+        {
+            using JsonDocument plan = await ExplainAsync(connection, queries[index], false, token);
+            costs[index] = FindNode(plan.RootElement[0].GetProperty("Plan"), "Custom Scan").GetProperty("Total Cost").GetDouble();
+        }
+
+        Assert.AreEqual(1.0, costs[0], 0.000001);
+        Assert.AreEqual(2.0, costs[1], 0.000001);
+        Assert.IsGreaterThan(2.0, costs[2]);
+    }
+
+    /// <summary>
     /// Rows keep their columns in place around a dropped column.
     /// </summary>
     [TestMethod]

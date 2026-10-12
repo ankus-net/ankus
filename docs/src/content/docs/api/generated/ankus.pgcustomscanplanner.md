@@ -42,6 +42,30 @@ Exceptions:
 - [ArgumentOutOfRangeException](https://learn.microsoft.com/dotnet/api/system.argumentoutofrangeexception): A cost or row estimate is negative or not finite, or the total
             cost is below the startup cost.
 
+<a id="member-c0b8a89d8b26d59e"></a>
+
+### IsColumnRead(int)
+
+Gets whether the query reads a column from this table's rows, for its output or its conditions.
+
+```csharp
+public bool IsColumnRead(int ordinal)
+```
+
+Parameters:
+
+`ordinal` — [int](https://learn.microsoft.com/dotnet/api/system.int32)
+
+The column's zero-based position in [Descriptor](/api/ankus.pgcustomscanplanner/#member-2f62b81003040c8b).
+
+Returns: [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
+
+Whether the column is read, so that a path's cost can include only the columns it must produce.
+
+Exceptions:
+
+- [ArgumentOutOfRangeException](https://learn.microsoft.com/dotnet/api/system.argumentoutofrangeexception): <code class="paramref">ordinal</code> is not a column of the table.
+
 
 ## Properties
 
@@ -68,6 +92,21 @@ public double CheapestTotalCost { get; }
 ```
 
 Value: [double](https://learn.microsoft.com/dotnet/api/system.double)
+
+<a id="member-2f62b81003040c8b"></a>
+
+### Descriptor
+
+Gets the table's columns, including dropped columns, in the order rows hold them.
+
+```csharp
+public PgTupleDescriptor Descriptor { get; }
+```
+
+Value: [PgTupleDescriptor](/api/ankus.pgtupledescriptor/)
+
+The descriptor is loaded from the catalog on first use, so a provider that ignores a table does not
+            pay for it.
 
 <a id="member-e4f01ac83af91a02"></a>
 

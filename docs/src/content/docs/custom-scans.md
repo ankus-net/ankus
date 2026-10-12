@@ -55,7 +55,8 @@ relation path hook after any existing one. The calls happen in this order:
 
 1. `Plan` runs when the planner considers a scan of a plain table or
    materialized view. `AddPath` offers a path with its costs, an optional row
-   estimate and optional bytes. PostgreSQL keeps the path only if it is cheaper
+   estimate and optional bytes. `Descriptor` and `IsColumnRead` let a provider
+   price a path by the columns the query reads. PostgreSQL keeps the path only if it is cheaper
    than its own scans. The bytes are stored in the plan, so prepared statements
    keep them.
 2. `Begin` runs when the executor starts the scan. The context has the table's
@@ -67,8 +68,8 @@ relation path hook after any existing one. The calls happen in this order:
 3. `Read` fills one row and returns `true`, or returns `false` when the scan has
    no more rows. Columns left unset are SQL NULL. PostgreSQL applies the query's
    conditions and projection to every row, so a provider can return more rows
-   than the query needs. Look up column ordinals and read settings in `Begin`
-   and keep them in the state; reading a setting is a backend call.
+   than the query needs. Look up column ordinals in `Begin` and keep them in
+   the state.
 4. When the scan ends, Ankus disposes a state that implements `IDisposable`.
    This also happens after an early stop such as `LIMIT`, a closed cursor or an
    error.

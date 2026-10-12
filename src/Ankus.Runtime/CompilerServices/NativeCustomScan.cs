@@ -163,8 +163,9 @@ public static unsafe class NativeCustomScan
     private static void Plan(NativeCustomScanRequest* request, delegate*<PgCustomScanPlanner, void> plan)
     {
         var paths = new List<PgCustomScanPath>();
+        byte[] read = request->_read.ReadBytes();
         plan(new PgCustomScanPlanner(request->_relation, request->_schemaName.ReadString(), request->_relationName.ReadString(),
-            request->_rows, request->_cheapestStartupCost, request->_cheapestTotalCost, paths));
+            request->_rows, request->_cheapestStartupCost, request->_cheapestTotalCost, paths, request->_rowType, request->_columns, read));
         var buffer = new ArrayBufferWriter<byte>();
         WriteInt(buffer, paths.Count);
         foreach (PgCustomScanPath path in paths)
