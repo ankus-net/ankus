@@ -307,7 +307,7 @@ internal static class NativeArrayBridge
                 Size overhead;
                 Size size;
                 bool has_nulls = false;
-                bits8 *bitmap;
+                uint8 *bitmap;
                 char *cursor;
                 for (int index = 0; index < count; index++)
                 {
@@ -368,7 +368,7 @@ internal static class NativeArrayBridge
 
                     if (bitmap != NULL)
                     {
-                        bitmap[index / 8] |= (bits8) (1 << (index % 8));
+                        bitmap[index / 8] |= (uint8) (1 << (index % 8));
                     }
 
                     SET_VARSIZE(cursor, VARHDRSZ + text_length);
