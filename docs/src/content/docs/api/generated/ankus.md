@@ -57,6 +57,7 @@ Assembly: `Ankus.Runtime.dll`
 - [PgCString](/api/ankus.pgcstring/)
 - [PgCStringView](/api/ankus.pgcstringview/)
 - [PgCastAttribute](/api/ankus.pgcastattribute/)
+- [PgChildProcess](/api/ankus.pgchildprocess/)
 - [PgColumnNamesAttribute](/api/ankus.pgcolumnnamesattribute/)
 - [PgCompositeTypeAttribute](/api/ankus.pgcompositetypeattribute/)
 - [PgContextValue&lt;T&gt;](/api/ankus.pgcontextvalue-1/)

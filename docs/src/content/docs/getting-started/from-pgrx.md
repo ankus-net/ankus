@@ -213,6 +213,9 @@ replication extensions, can be written in ordinary C#:
 - [Exit callbacks](/background-workers/#cleanup-at-exit) run managed cleanup
   when a backend or worker exits, where a pgrx extension registers
   `pg_sys::before_shmem_exit` callbacks itself.
+- [Running programs](/background-workers/#running-programs) starts a program
+  such as `pg_dump` and waits for it with cancellation, where a pgrx extension
+  forks or spawns it through `libc` itself.
 - [Applying replicated changes](/applying-changes/) writes rows through the
   executor's replication helpers, finds rows with their commit origin and time,
   and tracks progress with replication origins. A pgrx extension builds executor

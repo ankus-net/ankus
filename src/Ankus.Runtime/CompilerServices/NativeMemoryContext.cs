@@ -412,6 +412,10 @@ internal enum NativeMemoryOperation
     /// Registers the process-exit dispatcher.
     /// </summary>
     ProcessExit = 48,
+    /// <summary>
+    /// Runs a program and waits for it.
+    /// </summary>
+    ChildProcess = 49,
 }
 
 /// <summary>

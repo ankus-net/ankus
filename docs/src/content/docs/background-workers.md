@@ -257,6 +257,29 @@ a backend call raised, so an ordinary `try`/`finally` covers that case; use
 `OnExit` for cleanup that must also run when the process exits from inside
 PostgreSQL, such as on postmaster death during a wait.
 
+### Running programs
+
+A logical replication extension copies a schema by running `pg_dump` and
+`pg_restore`. `PgChildProcess.Run` starts a program and waits for its exit code:
+
+```csharp
+string pgDump = Path.Combine(binDirectory, OperatingSystem.IsWindows() ? "pg_dump.exe" : "pg_dump");
+int code = PgChildProcess.Run(pgDump, "--schema-only", "--file=" + schemaFile, "--dbname=" + provider);
+if (code != 0)
+{
+    throw new PgException(PgSqlStates.ExternalRoutineException, $"pg_dump exited with code {code}.");
+}
+```
+
+Do not use `System.Diagnostics.Process` in PostgreSQL: it installs its own
+`SIGCHLD` handling. `Run` starts the program with `posix_spawn` on Unix and
+`CreateProcessW` on Windows and passes each argument exactly, including spaces,
+quotes and non-ASCII text. It waits on the latch, so a query cancellation,
+statement timeout or termination stops the program before the usual error. The
+program inherits the server's environment, working directory and output streams,
+so its messages go to the server log; give it a file to write results to. On
+Unix, a program ended by a signal returns 128 plus the signal number.
+
 ## Signals and shared values
 
 Generated entries install native reload and termination handlers before calling

@@ -91,7 +91,7 @@ what pglogical uses and the PostgreSQL 13–19 interfaces behind each capability
 | Long-lived worker transactions | `PgBackgroundWorker.RunTransaction` already keeps one transaction open across any number of receives, latch waits and changes inside its callback, with Ankus's rollback and recovery rules. A port applies each remote transaction in one callback, from its begin message to its commit. | Done; the subscriber sample applies every remote transaction this way, and its backend test passes in CI on Linux x64, macOS ARM64 and Windows x64 |
 | Startup-sized shared memory | `PgLwLock<THeader, TElement>`: a header and an array whose length a `[PgModuleLoad]` method chooses, such as one slot per `max_worker_processes`, behind one lightweight lock, with copies, indexers and span callbacks under the existing guard rules. | Done; backend tests pass on PostgreSQL 13–19 beta 4 (Linux x64) |
 | Error context and exit cleanup | `PgErrorContext` adds lines to errors and messages raised while it is active, including managed exceptions. `PgProcess.OnExit` runs managed callbacks at process exit through one `before_shmem_exit` callback per process. `PG_ENSURE_ERROR_CLEANUP`'s FATAL case is covered by ordinary `try`/`finally`, because Ankus unwinds managed code before reporting a FATAL raised in a backend call. | Done; context and exit-callback tests pass on PostgreSQL 13, 18 and 19 |
-| Child processes | Starting a program such as `pg_dump` with `posix_spawn` or `CreateProcess`, without .NET `Process` and its `SIGCHLD` handling. | Planned |
+| Child processes | `PgChildProcess.Run` starts a program such as `pg_dump` with `posix_spawn` (Unix) or `CreateProcessW` (Windows), without .NET `Process` and its `SIGCHLD` handling, and waits on the latch so cancellation and termination stop it. | Done; backend tests pass on PostgreSQL 13, 18 and 19 (Linux x64) |
 | Output plugin aliases | A generated C-only library that forwards a second plugin name, such as `pglogical_output`, to the extension's managed plugin. | Planned |
 
 Order: the replication connection first, tested against the test cluster
@@ -401,6 +401,22 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   callback that frees it and records the exit code, and checks a normal
   disconnect (0) and `pg_terminate_backend` (1) with a throwing callback logged
   as a warning. It passes on PostgreSQL 13, 18 and 19.
+- `PgChildProcess.Run` runs a program from a backend or worker, as pglogical
+  runs `pg_dump` and `pg_restore`. Unix starts it with `posix_spawn`, because
+  `fork` is unsafe with runtime threads, and resets the signals PostgreSQL
+  handles or ignores (including `SIGPIPE`) to their defaults in the child;
+  Windows uses `CreateProcessW` with the C runtime's quoting rules. The wait
+  polls the child and sleeps on the latch: a termination stops the child
+  before PostgreSQL exits, and a cancellation error stops and reaps it before
+  propagating. The exit code follows .NET's convention of 128 plus the signal
+  for a signaled child. Backend tests run `pg_dump` with a table named
+  `Odd "Table" é` into a data-directory file whose name has spaces and an `é`,
+  check a failing exit code and a missing program's `58P01` (Npgsql closes a
+  connection after class 58 errors, so a new session continues), and cancel a
+  `psql` running `pg_sleep` with a statement timeout, after which its session
+  disappears (PostgreSQL 14 and later). They pass on PostgreSQL 13, 18 and 19,
+  and the full PostgreSQL 18 suite passes with them (14,950 tests, 52 platform
+  skips).
 - A replication benchmark runs one backlog through PostgreSQL's built-in
   subscriber and the subscriber sample on the same cluster: rows inserted and
   then updated while a lock holds the subscriber's table, timed from the lock's
@@ -1307,7 +1323,7 @@ review's findings are fixed or kept by documented design.
 3. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
 4. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees.
 5. Keep samples and guides current with API changes, and recheck changed guides before release. Test discovery for MSTest, xUnit and NUnit consumers and samples for all 37 pgrx examples are complete.
-6. Finish the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) that a pglogical port needs: child processes and output plugin aliases, and lower the per-transaction cost the replication benchmark shows.
+6. Finish the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) that a pglogical port needs: output plugin aliases, and lower the per-transaction cost the replication benchmark shows.
 7. Complete .NET servicing and every release requirement in the full inventory, using the release rehearsal, before publishing 0.1.0. If .NET 11 reaches GA first, complete its acceptance for that release; preview validation does not block the initial .NET 10 release.
 
 Continue independent work while CI runs. Before every commit and push, check and

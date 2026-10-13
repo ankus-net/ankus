@@ -81,7 +81,8 @@ internal static class NativeMemoryBridge
             ANKUS_MEMORY_REPLICATION_ORIGIN = 45,
             ANKUS_MEMORY_QUOTE = 46,
             ANKUS_MEMORY_ERROR_CONTEXT = 47,
-            ANKUS_MEMORY_PROCESS_EXIT = 48
+            ANKUS_MEMORY_PROCESS_EXIT = 48,
+            ANKUS_MEMORY_CHILD_PROCESS = 49
         } AnkusMemoryOperation;
 
         typedef struct AnkusMemoryRequest
@@ -1137,7 +1138,7 @@ internal static class NativeMemoryBridge
             result->length = request->length;
         }
 
-        """ + NativeStringInfoBridge.Source + NativeListBridge.Source + NativeItemPointerMemoryBridge.Source + NativeBindingBridge.Source + NativeNodeBridge.Source + NativeRawCallBridge.Source + NativeSharedMemoryBridge.Source + NativeSpinLockBridge.Source + NativeBackgroundWorkerBridge.Source + NativeReplicationBridge.Source + NativeReplicationOriginBridge.Source + NativeQuoteBridge.Source + NativeErrorContextBridge.Source + NativeProcessExitBridge.Source + NativeRelationWriterBridge.Source + """
+        """ + NativeStringInfoBridge.Source + NativeListBridge.Source + NativeItemPointerMemoryBridge.Source + NativeBindingBridge.Source + NativeNodeBridge.Source + NativeRawCallBridge.Source + NativeSharedMemoryBridge.Source + NativeSpinLockBridge.Source + NativeBackgroundWorkerBridge.Source + NativeReplicationBridge.Source + NativeReplicationOriginBridge.Source + NativeQuoteBridge.Source + NativeErrorContextBridge.Source + NativeProcessExitBridge.Source + NativeChildProcessBridge.Source + NativeRelationWriterBridge.Source + """
 
         static void
         ankus_memory_execute(AnkusMemoryApi *api, AnkusMemoryRequest *request, AnkusMemoryResult *result, volatile bool *recovered)
@@ -1235,6 +1236,9 @@ internal static class NativeMemoryBridge
                     break;
                 case ANKUS_MEMORY_PROCESS_EXIT:
                     ankus_memory_process_exit(request);
+                    break;
+                case ANKUS_MEMORY_CHILD_PROCESS:
+                    ankus_memory_child_process(request, result);
                     break;
                 case ANKUS_MEMORY_REPLICATION_ORIGIN:
                     ankus_memory_replication_origin(request, result);
