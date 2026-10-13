@@ -184,17 +184,22 @@ incorrect. See [the detailed review](docs/contributing/evidence/port-history.md#
 ## Current complete acceptance evidence
 
 Primary CI runs all six modules against real published Native AOT extensions.
-The latest successful primary CI source is **2ab2160**, with runtime **10.0.12-ankus.5**.
-[CI 38315500203](https://github.com/willibrandon/ankus/actions/runs/38315500203)
+The latest successful primary CI source is **623a333**, with runtime **10.0.13-ankus.1**.
+[CI 38461706610](https://github.com/willibrandon/ankus/actions/runs/38461706610)
 passes. Each platform completed all six modules with zero failures; no primary job
-timed out. The Linux job took 15m48s again after the other project's work on its
+timed out. The previous primary evidence, **2ab2160** with **10.0.12-ankus.5**
+([CI 38315500203](https://github.com/willibrandon/ankus/actions/runs/38315500203)),
+follows it in the table. The Linux job took 15m48s again after the other project's work on its
 host was stopped; at **8c91b6b** that work had doubled its test step. Earlier **ankus.4** evidence,
 including a complete [Intel refresh](https://github.com/willibrandon/ankus/actions/runs/37460600236)
 on source **e41c687**, is retained below.
 
 | Source | Platform / PostgreSQL | Result | Duration |
 | --- | --- | --- | --- |
-| [Latest primary CI 38315500203](https://github.com/willibrandon/ankus/actions/runs/38315500203), **2ab2160 / ankus.5** | Linux x64 / 18 | 14,883 total; 14,831 passed; 52 platform skips; zero failures | 13m24s test step; 15m48s job |
+| [Latest primary CI 38461706610](https://github.com/willibrandon/ankus/actions/runs/38461706610), **623a333 / 10.0.13-ankus.1** | Linux x64 / 18 | 14,986 total; 14,934 passed; 52 platform skips; zero failures | 16m15s job |
+| Same CI / revision / runtime | macOS ARM64 / 18 | 14,986 total; 14,921 passed; 65 platform skips; zero failures | 16m12s job |
+| Same CI / revision / runtime | Windows x64 / 17 | 14,986 total; 14,940 passed; 46 platform skips; zero failures | 17m50s job |
+| [Primary CI 38315500203](https://github.com/willibrandon/ankus/actions/runs/38315500203), **2ab2160 / ankus.5** | Linux x64 / 18 | 14,883 total; 14,831 passed; 52 platform skips; zero failures | 13m24s test step; 15m48s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 14,883 total; 14,818 passed; 65 platform skips; zero failures | 14m11s test step; 16m15s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 14,883 total; 14,837 passed; 46 platform skips; zero failures | 15m29s test step; 17m42s job |
 | Earlier primary CI, **8c91b6b / ankus.5** | Linux x64 / 18 | 14,862 total; 14,810 passed; 52 platform skips; zero failures | 30m49s test step under host contention; 36m07s job |
