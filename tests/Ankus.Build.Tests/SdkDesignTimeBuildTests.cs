@@ -14,7 +14,45 @@ namespace Ankus.Build.Tests;
 public sealed class SdkDesignTimeBuildTests(TestContext context)
 {
     /// <summary>
-    /// A fresh editor load builds its tools and preserves the consumer's nullable settings.
+    /// Editors list a design-time build's high-importance messages as problems, so every SDK command that runs the build
+    /// tool logs its progress at low importance there and at high importance in command-line builds.
+    /// </summary>
+    /// <param name="designTime">Whether the build is an editor's design-time build.</param>
+    /// <param name="expected">The expected importance of the build tool's output.</param>
+    [TestMethod]
+    [DataRow(true, "Low")]
+    [DataRow(false, "High")]
+    public async Task BuildToolOutputIsQuietInEditors(bool designTime, string expected)
+    {
+        string directory = Directory.CreateTempSubdirectory("ankus-sdk-importance-").FullName;
+        try
+        {
+            string project = Path.Combine(directory, "Probe.proj");
+            new XDocument(new XElement("Project",
+                new XElement("Import", new XAttribute("Project", Path.Combine(AppContext.BaseDirectory, "Sdk", "Ankus.props"))))).Save(project);
+            string output = await NativeBindingLayoutCommand.RunProcessAsync("dotnet",
+                ["msbuild", project, "-nologo", "-nodeReuse:false", "-property:DesignTimeBuild=" + (designTime ? "true" : "false"),
+                    "-getProperty:_AnkusToolOutputImportance"], directory, context.CancellationToken);
+            Assert.AreEqual(expected, output.Trim());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+
+        string[] commands = [.. Directory.EnumerateFiles(Path.Combine(AppContext.BaseDirectory, "AnkusSdk", "targets"), "*.targets")
+            .SelectMany(static file => XDocument.Load(file).Descendants("Exec"))
+            .Where(static exec => !((string?)exec.Attribute("Command") ?? "").Contains("--version", StringComparison.Ordinal))
+            .Select(static exec => (string?)exec.Attribute("StandardOutputImportance") ?? "")];
+        Assert.IsNotEmpty(commands);
+        Assert.IsTrue(commands.All(static importance => importance == "$(_AnkusToolOutputImportance)"),
+            "Every SDK command that runs the build tool must use the editor-aware output importance.");
+    }
+
+    /// <summary>
+    /// A fresh editor load builds its tools and preserves the consumer's nullable settings. Later loads build the tools
+    /// again only when a source has changed or an output is missing, so an unchanged repository loads without build
+    /// messages, which editors list as problems.
     /// </summary>
     /// <param name="configuration">The selected output configuration.</param>
     /// <param name="nullable">The consumer's nullable annotation setting.</param>
@@ -42,7 +80,10 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                     new XElement("Target", new XAttribute("Name", "RejectEditorOnlyCompilation"),
                         new XAttribute("BeforeTargets", "CoreCompile"),
                         new XElement("Error", new XAttribute("Condition", "'$(DesignTimeBuild)' == 'true' or '$(SkipCompilerExecution)' == 'true'"),
-                            new XAttribute("Text", "Dependencies must produce real assemblies."))))).Save(Path.Combine(dependency, name + ".csproj"));
+                            new XAttribute("Text", "Dependencies must produce real assemblies."))),
+                    new XElement("Target", new XAttribute("Name", "RecordBuild"), new XAttribute("AfterTargets", "Build"),
+                        new XElement("WriteLinesToFile", new XAttribute("File", Path.Combine(directory, "builds.log")),
+                            new XAttribute("Lines", "$(MSBuildProjectName)"))))).Save(Path.Combine(dependency, name + ".csproj"));
                 await File.WriteAllTextAsync(Path.Combine(dependency, "Proof.cs"),
                     "namespace " + name.Replace('.', '_') + " { public static class Proof { public static int Read() => 42; } }",
                     context.CancellationToken);
@@ -94,8 +135,20 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                 Assert.IsFalse(Directory.Exists(Path.Combine(directory, name, "bin")), "Restore must leave the dependencies unbuilt.");
             }
 
-            for (int load = 0; load < 2; load++)
+            string builds = Path.Combine(directory, "builds.log");
+            for (int load = 0; load < 4; load++)
             {
+                if (load == 2)
+                {
+                    // An edited dependency source makes the next load build again.
+                    File.SetLastWriteTimeUtc(Path.Combine(directory, "Ankus.Generators", "Proof.cs"), DateTime.UtcNow);
+                }
+                else if (load == 3)
+                {
+                    // So does a missing output.
+                    File.Delete(Path.Combine(directory, "Ankus.Build", "bin", configuration, "net10.0", "Ankus.Build.dll"));
+                }
+
                 string output = await NativeBindingLayoutCommand.RunProcessAsync("dotnet",
                     ["msbuild", project, "-nologo", "-nodeReuse:false", "-target:GetTargetPathWithTargetPlatformMoniker,Compile", "-property:Configuration=" + configuration,
                         "-property:TargetFramework=net10.0", "-property:DesignTimeBuild=true", "-property:BuildProjectReferences=false",
@@ -127,7 +180,20 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                 Assert.IsEmpty(compilation.GetDiagnostics(context.CancellationToken).Where(static diagnostic => diagnostic.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning));
                 Assert.IsFalse(File.Exists(Path.Combine(directory, "bin", configuration, "net10.0", "Extension.dll")),
                     "The editor must compile dependencies without building the extension itself.");
+                Assert.HasCount(dependencies.Length * (load == 0 ? 1 : load), await File.ReadAllLinesAsync(builds, context.CancellationToken),
+                    $"Load {load} built the dependencies an unexpected number of times.");
             }
+
+            // Editors list a design-time build's high-importance messages, warnings and errors as problems. Minimal
+            // verbosity shows exactly those, so a load that rebuilds every dependency must print nothing.
+            File.SetLastWriteTimeUtc(Path.Combine(directory, "Ankus.Runtime", "Proof.cs"), DateTime.UtcNow);
+            string visible = await NativeBindingLayoutCommand.RunProcessAsync("dotnet",
+                ["msbuild", project, "-nologo", "-nodeReuse:false", "-tl:off", "-verbosity:minimal", "-target:ResolveReferences",
+                    "-property:Configuration=" + configuration, "-property:TargetFramework=net10.0", "-property:DesignTimeBuild=true",
+                    "-property:BuildProjectReferences=false", "-property:BuildingProject=false"], directory, context.CancellationToken);
+            Assert.AreEqual("", visible.Trim());
+            Assert.HasCount(dependencies.Length * 4, await File.ReadAllLinesAsync(builds, context.CancellationToken),
+                "The silent load must still have rebuilt the dependencies.");
         }
         finally
         {

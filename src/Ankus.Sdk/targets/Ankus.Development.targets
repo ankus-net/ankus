@@ -3,15 +3,49 @@
        must exist before binding generation can supply the compiler references.
        The packaged SDK already contains its tools and uses NuGet references. -->
   <Target Name="_BuildAnkusDesignTimeDependencies" BeforeTargets="ResolveReferences"
-          Condition="'$(DesignTimeBuild)' == 'true'">
+          Condition="'$(DesignTimeBuild)' == 'true'"
+          DependsOnTargets="_FindAnkusDesignTimeDependencies;_BuildStaleAnkusDesignTimeDependencies" />
+
+  <Target Name="_FindAnkusDesignTimeDependencies">
     <ItemGroup>
       <_AnkusDesignTimeDependency Include="@(ProjectReference)"
                                   Condition="'%(Filename)' == 'Ankus.Build' or '%(Filename)' == 'Ankus.Runtime' or '%(Filename)' == 'Ankus.Generators' or '%(Filename)' == 'Ankus.CodeFixes'">
         <UndefineProperties>%(ProjectReference.GlobalPropertiesToRemove)</UndefineProperties>
       </_AnkusDesignTimeDependency>
     </ItemGroup>
+    <PropertyGroup>
+      <_AnkusDesignTimeProperties>DesignTimeBuild=false;BuildProjectReferences=true;BuildingProject=true;SkipCompilerExecution=false</_AnkusDesignTimeProperties>
+      <_AnkusDesignTimeProperties>$(_AnkusDesignTimeProperties);CustomAfterMicrosoftCommonTargets=$(MSBuildThisFileDirectory)Ankus.EditorDependency.targets</_AnkusDesignTimeProperties>
+      <_AnkusDesignTimeRemovedProperties>TargetFramework;NonExistentFile;ProvideCommandLineArgs;ContinueOnError</_AnkusDesignTimeRemovedProperties>
+      <_AnkusDesignTimeStamp>$(MSBuildProjectDirectory)/$(IntermediateOutputPath)ankus-design-time-dependencies.stamp</_AnkusDesignTimeStamp>
+    </PropertyGroup>
+    <MSBuild Projects="@(_AnkusDesignTimeDependency)" Targets="GetTargetPath" BuildInParallel="true"
+             Properties="$(_AnkusDesignTimeProperties)" RemoveProperties="$(_AnkusDesignTimeRemovedProperties)">
+      <Output TaskParameter="TargetOutputs" ItemName="_AnkusDesignTimeOutput" />
+    </MSBuild>
+    <ItemGroup>
+      <!-- The dependencies sit beside the projects they reference, as in the repository's src directory, so their
+           shared parent holds every source that can change them. -->
+      <_AnkusDesignTimeRoot Include="@(_AnkusDesignTimeDependency->'%(RootDir)%(Directory)..')" />
+      <_AnkusDesignTimeInput Include="%(_AnkusDesignTimeRoot.FullPath)/**/*.cs;%(_AnkusDesignTimeRoot.FullPath)/**/*.csproj;%(_AnkusDesignTimeRoot.FullPath)/**/*.props;%(_AnkusDesignTimeRoot.FullPath)/**/*.targets;%(_AnkusDesignTimeRoot.FullPath)/**/*.resx"
+                             Exclude="%(_AnkusDesignTimeRoot.FullPath)/**/bin/**;%(_AnkusDesignTimeRoot.FullPath)/**/obj/**" />
+      <_AnkusDesignTimeInput Include="$(MSBuildAllProjects)" />
+    </ItemGroup>
+    <!-- A missing output needs a build even when no source has changed. -->
+    <Delete Files="$(_AnkusDesignTimeStamp)"
+            Condition="'@(_AnkusDesignTimeOutput->Count())' != '@(_AnkusDesignTimeOutput->Exists()->Count())'" />
+  </Target>
+
+  <!-- Builds only when a source is newer than the last editor build, so an unchanged repository loads without
+       rebuilding its tools. -->
+  <Target Name="_BuildStaleAnkusDesignTimeDependencies"
+          Inputs="@(_AnkusDesignTimeInput)" Outputs="$(_AnkusDesignTimeStamp)">
     <MSBuild Projects="@(_AnkusDesignTimeDependency)" Targets="Build" BuildInParallel="true"
-             Properties="DesignTimeBuild=false;BuildProjectReferences=true;BuildingProject=true;SkipCompilerExecution=false"
-             RemoveProperties="TargetFramework;NonExistentFile;ProvideCommandLineArgs;ContinueOnError" />
+             Properties="$(_AnkusDesignTimeProperties)" RemoveProperties="$(_AnkusDesignTimeRemovedProperties)" />
+    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(_AnkusDesignTimeStamp)'))" />
+    <Touch Files="$(_AnkusDesignTimeStamp)" AlwaysCreate="true" />
+    <ItemGroup>
+      <FileWrites Include="$(_AnkusDesignTimeStamp)" />
+    </ItemGroup>
   </Target>
 </Project>

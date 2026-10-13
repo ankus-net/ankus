@@ -89,7 +89,7 @@
       <_AnkusTargetExportCommand>$(_AnkusTargetExportCommand) &quot;$(RuntimeIdentifier)&quot; &quot;@(_AnkusBindingToolchain->'%(TargetTriple)')&quot;</_AnkusTargetExportCommand>
       <_AnkusTargetExportCommand>$(_AnkusTargetExportCommand) &quot;$(AnkusClangPath)&quot; &quot;$(AnkusLibClangPath)&quot; &quot;$(_AnkusBindingCacheDirectory)&quot;</_AnkusTargetExportCommand>
     </PropertyGroup>
-    <Exec Command="$(_AnkusTargetExportCommand)" EnvironmentVariables="$(_AnkusNativeEnvironment)" />
+    <Exec Command="$(_AnkusTargetExportCommand)" EnvironmentVariables="$(_AnkusNativeEnvironment)" StandardOutputImportance="$(_AnkusToolOutputImportance)" />
   </Target>
 
   <!-- Resolve after project evaluation so consumer and Directory.Build.targets overrides apply.
@@ -148,7 +148,7 @@
       <_AnkusBindingRuntime Include="@(ReferencePath)" Condition="'%(Filename)' == 'Ankus.Runtime'" />
     </ItemGroup>
     <Error Condition="'@(_AnkusBindingRuntime)' == ''" Text="Native bindings require the resolved Ankus.Runtime assembly." />
-    <Exec Command="$(_AnkusBindingsCommand)" EnvironmentVariables="$(_AnkusNativeEnvironment)" />
+    <Exec Command="$(_AnkusBindingsCommand)" EnvironmentVariables="$(_AnkusNativeEnvironment)" StandardOutputImportance="$(_AnkusToolOutputImportance)" />
     <ReadLinesFromFile File="$(_AnkusBindingsDirectory)native-binding.assembly-name">
       <Output TaskParameter="Lines" PropertyName="_AnkusBindingAssemblyName" />
     </ReadLinesFromFile>
@@ -158,7 +158,7 @@
       <_AnkusBindingCompileCommand>dotnet &quot;$(_AnkusBuildTool)&quot; binding-compile &quot;$(_AnkusBindingsOutput)&quot; &quot;@(_AnkusBindingRuntime)&quot; &quot;$(TargetFramework)&quot; &quot;$(Configuration)&quot;</_AnkusBindingCompileCommand>
       <_AnkusBindingCompileCommand>$(_AnkusBindingCompileCommand) &quot;$(NETCoreSdkVersion)&quot; &quot;$(_AnkusBindingSdkDirectory)&quot; &quot;$(ProjectAssetsFile)&quot; &quot;$(_AnkusBindingCacheDirectory)&quot;</_AnkusBindingCompileCommand>
     </PropertyGroup>
-    <Exec Command="$(_AnkusBindingCompileCommand)" EnvironmentVariables="$(_AnkusNativeEnvironment)" />
+    <Exec Command="$(_AnkusBindingCompileCommand)" EnvironmentVariables="$(_AnkusNativeEnvironment)" StandardOutputImportance="$(_AnkusToolOutputImportance)" />
     <ReadLinesFromFile File="$(_AnkusBindingsDirectory)native-binding.assembly-path">
       <Output TaskParameter="Lines" ItemName="_AnkusBindingAssembly" />
     </ReadLinesFromFile>

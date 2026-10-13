@@ -126,7 +126,7 @@
     <MakeDir Directories="$(_AnkusArtifacts)" />
     <WriteLinesToFile File="$(_AnkusArtifacts)version-controls.txt" Lines="@(AnkusVersionControlFile->'%(FullPath)')"
                       Overwrite="true" Encoding="UTF-8" />
-    <Exec Command="$(_AnkusCommand)" EnvironmentVariables="$(_AnkusNativeEnvironment)" />
+    <Exec Command="$(_AnkusCommand)" EnvironmentVariables="$(_AnkusNativeEnvironment)" StandardOutputImportance="$(_AnkusToolOutputImportance)" />
     <ReadLinesFromFile File="$(_AnkusArtifacts)exports.txt">
       <Output TaskParameter="Lines" ItemName="_AnkusExport" />
     </ReadLinesFromFile>
@@ -152,7 +152,7 @@
       <_AnkusNativeCallsCommand>$(_AnkusNativeCallsCommand) &quot;$(NativeObject)&quot; &quot;$(CppLinker)&quot; &quot;$(_AnkusLibraries)&quot; &quot;$(TargetTriple)&quot;</_AnkusNativeCallsCommand>
       <_AnkusNativeCallsCommand>$(_AnkusNativeCallsCommand) &quot;$(_AnkusBindingCacheDirectory)&quot;</_AnkusNativeCallsCommand>
     </PropertyGroup>
-    <Exec Command="$(_AnkusNativeCallsCommand)" EnvironmentVariables="$(_AnkusNativeEnvironment)" />
+    <Exec Command="$(_AnkusNativeCallsCommand)" EnvironmentVariables="$(_AnkusNativeEnvironment)" StandardOutputImportance="$(_AnkusToolOutputImportance)" />
     <ReadLinesFromFile File="$(_AnkusArtifacts)native-call-libraries.txt">
       <Output TaskParameter="Lines" ItemName="_AnkusNativeCallLibrary" />
     </ReadLinesFromFile>
@@ -185,7 +185,7 @@
     <Copy SourceFiles="$(_AnkusArtifacts)schema.sql" DestinationFiles="$(PublishDir)$(TargetName).sql" />
     <WriteLinesToFile File="$(_AnkusArtifacts)upgrade-scripts.txt" Lines="@(AnkusUpgradeScript->'%(FullPath)')"
                       Overwrite="true" Encoding="UTF-8" />
-    <Exec Command="dotnet &quot;$(_AnkusBuildTool)&quot; publish-sql &quot;$(_AnkusArtifacts.TrimEnd('/').TrimEnd('\'))&quot; &quot;$(PublishDir.TrimEnd('/').TrimEnd('\'))&quot; &quot;$(_AnkusArtifacts)upgrade-scripts.txt&quot; &quot;$(MSBuildProjectDirectory)&quot; &quot;$(AnkusExtensionVersion)&quot; &quot;$(_AnkusSchemaOutput)&quot; &quot;$(_AnkusVersionedLibrary)&quot;" />
+    <Exec Command="dotnet &quot;$(_AnkusBuildTool)&quot; publish-sql &quot;$(_AnkusArtifacts.TrimEnd('/').TrimEnd('\'))&quot; &quot;$(PublishDir.TrimEnd('/').TrimEnd('\'))&quot; &quot;$(_AnkusArtifacts)upgrade-scripts.txt&quot; &quot;$(MSBuildProjectDirectory)&quot; &quot;$(AnkusExtensionVersion)&quot; &quot;$(_AnkusSchemaOutput)&quot; &quot;$(_AnkusVersionedLibrary)&quot;" StandardOutputImportance="$(_AnkusToolOutputImportance)" />
     <ItemGroup>
       <_AnkusPackageFile Include="$(_AnkusArtifacts)extension/$(AnkusExtensionName).control" />
       <_AnkusPackageFile Include="$(_AnkusArtifacts)extension/$(AnkusExtensionName)--$(AnkusExtensionVersion).sql" />

@@ -1,0 +1,24 @@
+<Project>
+  <!-- Imported through CustomAfterMicrosoftCommonTargets only when an editor's design-time build compiles the SDK's own
+       projects. Editors list a design-time build's high-importance messages as problems, and MSBuild's copy of the
+       main assembly logs one for every project it builds. The same files are copied here without that notice;
+       command-line builds are unchanged. -->
+  <PropertyGroup>
+    <CopyBuildOutputToOutputDirectory>false</CopyBuildOutputToOutputDirectory>
+  </PropertyGroup>
+
+  <Target Name="_CopyAnkusEditorBuildProduct" AfterTargets="CopyFilesToOutputDirectory"
+          Condition="'$(SkipCopyBuildProduct)' != 'true'">
+    <Copy SourceFiles="@(IntermediateAssembly)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="$(SkipCopyUnchangedFiles)"
+          OverwriteReadOnlyFiles="$(OverwriteReadOnlyFiles)" Retries="$(CopyRetryCount)"
+          RetryDelayMilliseconds="$(CopyRetryDelayMilliseconds)">
+      <Output TaskParameter="DestinationFiles" ItemName="MainAssembly" />
+      <Output TaskParameter="DestinationFiles" ItemName="FileWrites" />
+    </Copy>
+    <CopyRefAssembly SourcePath="@(IntermediateRefAssembly)" DestinationPath="$(TargetRefPath)"
+                     Condition="'$(ProduceReferenceAssembly)' == 'true'">
+      <Output TaskParameter="DestinationPath" ItemName="ReferenceAssembly" />
+      <Output TaskParameter="DestinationPath" ItemName="FileWrites" />
+    </CopyRefAssembly>
+  </Target>
+</Project>

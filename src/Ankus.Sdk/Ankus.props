@@ -1,6 +1,10 @@
 <Project>
   <PropertyGroup>
     <UsingAnkusSdk>true</UsingAnkusSdk>
+    <!-- Editors list a design-time build's high-importance messages as problems, so the build tool's progress
+         lines are quiet there and stay visible in command-line builds. -->
+    <_AnkusToolOutputImportance Condition="'$(DesignTimeBuild)' == 'true'">Low</_AnkusToolOutputImportance>
+    <_AnkusToolOutputImportance Condition="'$(_AnkusToolOutputImportance)' == ''">High</_AnkusToolOutputImportance>
     <_AnkusNativeEnvironment Condition="'$(ANKUS_HOME)' != ''">ANKUS_HOME=$([MSBuild]::Escape($([MSBuild]::NormalizePath('$(MSBuildStartupDirectory)', '$(ANKUS_HOME)'))))</_AnkusNativeEnvironment>
     <PublishAot>true</PublishAot>
     <IsAotCompatible>true</IsAotCompatible>

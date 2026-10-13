@@ -18,7 +18,7 @@
       <_AnkusControlCommand>$(_AnkusControlCommand) &quot;$(AnkusExtensionName)&quot; &quot;$(AnkusExtensionVersion)&quot; &quot;$(_AnkusNativeLibrary)&quot; &quot;$(AnkusExtensionControlFile)&quot;</_AnkusControlCommand>
       <_AnkusControlCommand>$(_AnkusControlCommand) &quot;$(_AnkusVersionedLibrary)&quot;</_AnkusControlCommand>
     </PropertyGroup>
-    <Exec Command="$(_AnkusControlCommand)" />
+    <Exec Command="$(_AnkusControlCommand)" StandardOutputImportance="$(_AnkusToolOutputImportance)" />
     <ItemGroup>
       <_AnkusGeneratedControlFile Include="$(AnkusControlOutput)" />
       <FileWrites Include="$(AnkusControlOutput)" />

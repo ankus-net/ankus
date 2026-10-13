@@ -8,6 +8,7 @@
     <None Include="../../src/Ankus.Sdk/Ankus.props" Link="Sdk/Ankus.props" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/Ankus.Sdk/targets/Ankus.Bindings.targets" Link="Sdk/Ankus.Bindings.targets" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/Ankus.Sdk/targets/Ankus.Development.targets" Link="Sdk/Ankus.Development.targets" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/Ankus.Sdk/targets/Ankus.EditorDependency.targets" Link="Sdk/Ankus.EditorDependency.targets" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/Ankus.Sdk/targets/Ankus.Native.targets" Link="Sdk/Ankus.Native.targets" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/Ankus.Sdk/targets/Ankus.PostgresSelection.targets" Link="Sdk/Ankus.PostgresSelection.targets" CopyToOutputDirectory="PreserveNewest" />
     <!-- The packaged MSBuild SDK layout, imported as Sdk="Ankus.Sdk" consumers import it, beside the repository's
