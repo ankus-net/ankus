@@ -14,7 +14,8 @@ internal static class UpgradeSqlCommand
     /// </summary>
     /// <param name="arguments">
     /// Artifact directory, publish directory, script list, project directory, extension version, optional schema snapshot
-    /// destination, and optional versioned-library mode.
+    /// destination, optional versioned-library mode, and an optional list of the output plugin modules built beside the
+    /// library.
     /// </param>
     /// <param name="cancellationToken">Cancels script reads and Git inspection.</param>
     /// <returns>A task that completes after the publication is installable.</returns>
@@ -25,21 +26,24 @@ internal static class UpgradeSqlCommand
     /// </remarks>
     internal static async Task RunAsync(string[] arguments, CancellationToken cancellationToken = default)
     {
-        if (arguments.Length is not (5 or 6 or 7))
+        if (arguments.Length is not (5 or 6 or 7 or 8))
         {
             throw new ArgumentException("Expected artifact directory, publish directory, upgrade list, project directory, extension version, " +
-                "optional schema snapshot destination, and optional versioned-library mode.", nameof(arguments));
+                "optional schema snapshot destination, optional versioned-library mode, and an optional plugin module list.", nameof(arguments));
         }
 
         cancellationToken.ThrowIfCancellationRequested();
-        bool versionedLibrary = arguments.Length == 7 && VersionedLibrary.ParseMode(arguments[6]);
+        bool versionedLibrary = arguments.Length >= 7 && VersionedLibrary.ParseMode(arguments[6]);
+        string[] plugins = arguments.Length == 8 && File.Exists(arguments[7])
+            ? [.. File.ReadAllLines(arguments[7]).Where(static line => line.Length > 0)] : [];
         string artifacts = Path.GetFullPath(arguments[0]);
         string output = Path.GetFullPath(arguments[1]);
         PublishedExtension.Invalidate(output);
         PublishedExtension original = PublishedExtension.Read(artifacts);
         string[] scripts = File.ReadAllLines(arguments[2]);
         var manifest = new PublishedExtension(original.PostgresMajor, original.RuntimeIdentifier, original.Library,
-            original.Control, original.Sql, [.. scripts.Select(static path => Path.GetFileName(path))], original.VersionControlFiles, original.ScriptDirectory);
+            original.Control, original.Sql, [.. scripts.Select(static path => Path.GetFileName(path))], original.VersionControlFiles,
+            original.ScriptDirectory, plugins);
         string? libraryBase = versionedLibrary ? VersionedLibrary.GetBaseName(original.Library, arguments[4]) : null;
         string versionPrefix = original.Control[..^".control".Length] + "--";
         var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);

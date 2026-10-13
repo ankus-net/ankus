@@ -97,6 +97,35 @@ An unlisted plugin fails with `library "MyDecoder" may not be used as an output
 plugin` and SQLSTATE `42501`. List only plugins that are safe for every role with
 the `REPLICATION` attribute.
 
+## Load the plugin under another name
+
+A slot names its plugin by library file, so a plugin has one name unless another
+library loads it. pglogical ships a small `pglogical_output` library for this.
+Add an `AnkusOutputPluginAlias` item for each extra name:
+
+```xml
+<ItemGroup>
+  <AnkusOutputPluginAlias Include="my_decoder_output" />
+</ItemGroup>
+```
+
+`dotnet publish` builds `my_decoder_output` with the library's suffix, such as
+`my_decoder_output.so`, beside the extension library, using the same compiler
+and PostgreSQL headers. It is a few lines of C that load the extension library
+by name and forward `_PG_output_plugin_init` to it, so both names run the same
+managed plugin in one loaded library. `ankus install` and `ankus package` copy
+it with the library, and publishing without the item removes it.
+
+```sql
+SELECT pg_create_logical_replication_slot('changes', 'my_decoder_output');
+```
+
+PostgreSQL checks `output_plugin_libraries` against the name the slot uses, so
+the DBA lists the alias itself. Listing only the extension library does not
+trust its aliases. An alias uses ASCII letters, digits, `.`, `_`, `+` and `-`,
+without a directory or suffix, and cannot be the library's own name. pgrx has no
+counterpart; a pgrx extension builds such a library itself.
+
 ## Write output
 
 Select text or binary output in the startup callback through

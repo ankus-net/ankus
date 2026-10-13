@@ -216,6 +216,10 @@ replication extensions, can be written in ordinary C#:
 - [Running programs](/background-workers/#running-programs) starts a program
   such as `pg_dump` and waits for it with cancellation, where a pgrx extension
   forks or spawns it through `libc` itself.
+- [Output plugin aliases](/logical-decoding/#load-the-plugin-under-another-name)
+  publish a small library that loads the extension's output plugin under a
+  second name, as pglogical's `pglogical_output` does. A pgrx extension builds
+  that library itself.
 - [Applying replicated changes](/applying-changes/) writes rows through the
   executor's replication helpers, finds rows with their commit origin and time,
   and tracks progress with replication origins. A pgrx extension builds executor

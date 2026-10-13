@@ -303,6 +303,33 @@ public sealed class UpgradeSqlCommandTests(TestContext context)
         Assert.IsFalse(Directory.Exists(Path.Combine(_root, "external SQL")));
     }
 
+    /// <summary>
+    /// The plugin module list adds the output plugin modules built beside the library to the manifest. A missing list
+    /// means none, a missing module leaves the publication uninstallable, and a later publish without a module deletes
+    /// it.
+    /// </summary>
+    [TestMethod]
+    public async Task PublishesOutputPluginModulesBesideTheLibrary()
+    {
+        string[] arguments = [.. Prepare(), "", "false", Path.Combine(_root, "plugin-libraries.txt")];
+        await UpgradeSqlCommand.RunAsync(arguments, context.CancellationToken);
+        Assert.IsEmpty(PublishedExtension.Read(arguments[1]).PluginLibraries);
+
+        File.WriteAllLines(arguments[7], ["probe_output.so", ""]);
+        await Assert.ThrowsExactlyAsync<FileNotFoundException>(() => UpgradeSqlCommand.RunAsync(arguments, context.CancellationToken));
+        Assert.IsFalse(File.Exists(Path.Combine(arguments[1], PublishedExtension.FileName)));
+        string module = Path.Combine(arguments[1], "probe_output.so");
+        File.WriteAllText(module, "module payload");
+        await UpgradeSqlCommand.RunAsync(arguments, context.CancellationToken);
+        Assert.AreSequenceEqual<string>(["probe_output.so"], PublishedExtension.Read(arguments[1]).PluginLibraries);
+
+        File.WriteAllText(arguments[7], "");
+        await UpgradeSqlCommand.RunAsync(arguments, context.CancellationToken);
+        Assert.IsEmpty(PublishedExtension.Read(arguments[1]).PluginLibraries);
+        Assert.IsFalse(File.Exists(module));
+        Assert.AreEqual("native payload", File.ReadAllText(Path.Combine(arguments[1], "Probe.so")));
+    }
+
     private string[] Prepare()
     {
         string artifacts = Path.Combine(_root, "artifacts");

@@ -92,7 +92,7 @@ what pglogical uses and the PostgreSQL 13–19 interfaces behind each capability
 | Startup-sized shared memory | `PgLwLock<THeader, TElement>`: a header and an array whose length a `[PgModuleLoad]` method chooses, such as one slot per `max_worker_processes`, behind one lightweight lock, with copies, indexers and span callbacks under the existing guard rules. | Done; backend tests pass on PostgreSQL 13–19 beta 4 (Linux x64) |
 | Error context and exit cleanup | `PgErrorContext` adds lines to errors and messages raised while it is active, including managed exceptions. `PgProcess.OnExit` runs managed callbacks at process exit through one `before_shmem_exit` callback per process. `PG_ENSURE_ERROR_CLEANUP`'s FATAL case is covered by ordinary `try`/`finally`, because Ankus unwinds managed code before reporting a FATAL raised in a backend call. | Done; context and exit-callback tests pass on PostgreSQL 13, 18 and 19 |
 | Child processes | `PgChildProcess.Run` starts a program such as `pg_dump` with `posix_spawn` (Unix) or `CreateProcessW` (Windows), without .NET `Process` and its `SIGCHLD` handling, and waits on the latch so cancellation and termination stop it. | Done; backend tests pass on PostgreSQL 13, 18 and 19 (Linux x64) |
-| Output plugin aliases | A generated C-only library that forwards a second plugin name, such as `pglogical_output`, to the extension's managed plugin. | Planned |
+| Output plugin aliases | `AnkusOutputPluginAlias` items publish a generated C library per name, such as `pglogical_output`, that loads the extension library and forwards `_PG_output_plugin_init` to its managed plugin; install and package copy it. | Done; backend tests pass on PostgreSQL 13, 18 and 19 (Linux x64) |
 
 Order: the replication connection first, tested against the test cluster
 itself, then relation writes, origins and long-lived worker transactions. The
@@ -101,8 +101,9 @@ background worker copies a publication's tables and streams and applies the
 provider's changes, with restart after an apply error; CI run 38361916466 on
 **18b64d5** passed it with the rest of the full suite on Linux x64 (PostgreSQL
 18), macOS ARM64 (18) and Windows x64 (17). A benchmark compares it with
-built-in logical replication (see the progress entry below). Still to come: the
-remaining capabilities below, each with its own tests and guide.
+built-in logical replication (see the progress entry below). Every capability
+in the table now has an API, tests and a guide; the remaining toolkit work is
+lowering the sample's per-transaction cost.
 
 ## Implementation status
 
@@ -414,9 +415,30 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   check a failing exit code and a missing program's `58P01` (Npgsql closes a
   connection after class 58 errors, so a new session continues), and cancel a
   `psql` running `pg_sleep` with a statement timeout, after which its session
-  disappears (PostgreSQL 14 and later). They pass on PostgreSQL 13, 18 and 19,
-  and the full PostgreSQL 18 suite passes with them (14,950 tests, 52 platform
-  skips).
+  disappears where PostgreSQL can notice a closed client (14 and later, not
+  Windows). They pass on PostgreSQL 13, 18 and 19, and the full PostgreSQL 18
+  suite passes with them (14,950 tests, 52 platform skips). CI run 38411604638
+  on **21b0972** failed both on Windows: that check cannot be enabled there,
+  and Windows gives `pg_dump`, like any program with a narrow `main`, its
+  arguments in the ANSI code page, so `é` did not survive. The Windows test now
+  passes quotes, spaces and backslashes only, and the guide states the limit.
+- Output plugin aliases: an `AnkusOutputPluginAlias` item makes `dotnet
+  publish` build a small C library under that name, beside the extension
+  library, that loads the library by name and forwards
+  `_PG_output_plugin_init`, as pglogical's `pglogical_output` loads
+  `pglogical`. It is compiled with the extension's compiler and PostgreSQL
+  headers, listed in manifest format 5 (`pluginLibraries`), and copied by
+  `ankus install` and `ankus package`; a publish without the item deletes the
+  module. PostgreSQL checks `output_plugin_libraries` against the slot's
+  plugin name, so the alias must be listed itself. Unit tests cover the
+  manifest's validation, round trip and cleanup, the build tool's names and
+  generated source, and `publish-sql`'s module list. A packaged-consumer
+  backend test creates slots under both names, checks that trusting the
+  library does not trust the alias (`42501`), decodes the same changes through
+  one loaded library (an initialization count continues across the names),
+  packages the module and removes it on republish. It passes on PostgreSQL 13,
+  18 and 19, and the full PostgreSQL 18 suite passes with it (14,985 tests, 52
+  platform skips).
 - A replication benchmark runs one backlog through PostgreSQL's built-in
   subscriber and the subscriber sample on the same cluster: rows inserted and
   then updated while a lock holds the subscriber's table, timed from the lock's
@@ -1323,7 +1345,7 @@ review's findings are fixed or kept by documented design.
 3. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
 4. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees.
 5. Keep samples and guides current with API changes, and recheck changed guides before release. Test discovery for MSTest, xUnit and NUnit consumers and samples for all 37 pgrx examples are complete.
-6. Finish the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) that a pglogical port needs: output plugin aliases, and lower the per-transaction cost the replication benchmark shows.
+6. Finish the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) that a pglogical port needs: lower the per-transaction cost the replication benchmark shows.
 7. Complete .NET servicing and every release requirement in the full inventory, using the release rehearsal, before publishing 0.1.0. If .NET 11 reaches GA first, complete its acceptance for that release; preview validation does not block the initial .NET 10 release.
 
 Continue independent work while CI runs. Before every commit and push, check and

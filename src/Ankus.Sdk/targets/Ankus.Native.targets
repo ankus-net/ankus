@@ -180,12 +180,36 @@
     </ItemGroup>
   </Target>
 
+  <!-- PostgreSQL finds an output plugin by its library's filename. Each AnkusOutputPluginAlias item builds a small
+       module beside the library that loads it and forwards _PG_output_plugin_init, as pglogical's pglogical_output
+       module does. The list is always rewritten, so removing every alias also removes their modules. -->
+  <Target Name="_PublishAnkusOutputPluginAliases" BeforeTargets="_PublishAnkusSchema" DependsOnTargets="_ResolveAnkusNativeLibrary"
+          Condition="'$(PublishAot)' == 'true'">
+    <Error Condition="'@(AnkusOutputPluginAlias)' != '' and !$([System.Text.RegularExpressions.Regex]::IsMatch('%(AnkusOutputPluginAlias.Identity)', '^[A-Za-z0-9_+-][A-Za-z0-9._+-]*$'))"
+           Text="AnkusOutputPluginAlias '%(AnkusOutputPluginAlias.Identity)' must be a filename without a suffix or directory, using ASCII letters, digits, '.', '_', '+' or '-'." />
+    <Error Condition="'@(AnkusOutputPluginAlias)' != '' and '%(AnkusOutputPluginAlias.Identity)' == '$(_AnkusNativeLibraryStem)'"
+           Text="AnkusOutputPluginAlias '%(AnkusOutputPluginAlias.Identity)' is already the library's own name." />
+    <WriteLinesToFile File="$(_AnkusArtifacts)plugin-aliases.txt" Lines="@(AnkusOutputPluginAlias)" Overwrite="true" Encoding="UTF-8" />
+    <PropertyGroup>
+      <_AnkusPluginAliasCommand>dotnet &quot;$(_AnkusBuildTool)&quot; plugin-aliases &quot;$(_AnkusArtifacts.TrimEnd('/').TrimEnd('\'))&quot;</_AnkusPluginAliasCommand>
+      <_AnkusPluginAliasCommand>$(_AnkusPluginAliasCommand) &quot;$(PublishDir.TrimEnd('/').TrimEnd('\'))&quot; &quot;$(_AnkusNativeLibrary)&quot;</_AnkusPluginAliasCommand>
+      <_AnkusPluginAliasCommand>$(_AnkusPluginAliasCommand) $(AnkusPostgresMajor) &quot;$(_AnkusResolvedPgConfigPath)&quot; &quot;$(CppLinker)&quot;</_AnkusPluginAliasCommand>
+      <_AnkusPluginAliasCommand>$(_AnkusPluginAliasCommand) &quot;@(AdditionalNativeLibraryDirectories, ';')&quot; &quot;$(TargetTriple)&quot;</_AnkusPluginAliasCommand>
+      <_AnkusPluginAliasCommand>$(_AnkusPluginAliasCommand) &quot;$(_AnkusArtifacts)plugin-aliases.txt&quot;</_AnkusPluginAliasCommand>
+    </PropertyGroup>
+    <Exec Command="$(_AnkusPluginAliasCommand)" EnvironmentVariables="$(_AnkusNativeEnvironment)" StandardOutputImportance="$(_AnkusToolOutputImportance)" />
+    <ItemGroup>
+      <FileWrites Include="$(_AnkusArtifacts)plugin-aliases.txt;$(_AnkusArtifacts)plugin-libraries.txt" />
+      <FileWrites Include="@(AnkusOutputPluginAlias->'$(PublishDir)%(Identity)$(NativeBinaryExt)')" />
+    </ItemGroup>
+  </Target>
+
   <Target Name="_PublishAnkusSchema" AfterTargets="Publish" DependsOnTargets="_ResolveAnkusNativeLibrary"
           Condition="'$(PublishAot)' == 'true'">
     <Copy SourceFiles="$(_AnkusArtifacts)schema.sql" DestinationFiles="$(PublishDir)$(TargetName).sql" />
     <WriteLinesToFile File="$(_AnkusArtifacts)upgrade-scripts.txt" Lines="@(AnkusUpgradeScript->'%(FullPath)')"
                       Overwrite="true" Encoding="UTF-8" />
-    <Exec Command="dotnet &quot;$(_AnkusBuildTool)&quot; publish-sql &quot;$(_AnkusArtifacts.TrimEnd('/').TrimEnd('\'))&quot; &quot;$(PublishDir.TrimEnd('/').TrimEnd('\'))&quot; &quot;$(_AnkusArtifacts)upgrade-scripts.txt&quot; &quot;$(MSBuildProjectDirectory)&quot; &quot;$(AnkusExtensionVersion)&quot; &quot;$(_AnkusSchemaOutput)&quot; &quot;$(_AnkusVersionedLibrary)&quot;" StandardOutputImportance="$(_AnkusToolOutputImportance)" />
+    <Exec Command="dotnet &quot;$(_AnkusBuildTool)&quot; publish-sql &quot;$(_AnkusArtifacts.TrimEnd('/').TrimEnd('\'))&quot; &quot;$(PublishDir.TrimEnd('/').TrimEnd('\'))&quot; &quot;$(_AnkusArtifacts)upgrade-scripts.txt&quot; &quot;$(MSBuildProjectDirectory)&quot; &quot;$(AnkusExtensionVersion)&quot; &quot;$(_AnkusSchemaOutput)&quot; &quot;$(_AnkusVersionedLibrary)&quot; &quot;$(_AnkusArtifacts)plugin-libraries.txt&quot;" StandardOutputImportance="$(_AnkusToolOutputImportance)" />
     <ItemGroup>
       <_AnkusPackageFile Include="$(_AnkusArtifacts)extension/$(AnkusExtensionName).control" />
       <_AnkusPackageFile Include="$(_AnkusArtifacts)extension/$(AnkusExtensionName)--$(AnkusExtensionVersion).sql" />

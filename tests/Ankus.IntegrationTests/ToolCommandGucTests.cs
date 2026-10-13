@@ -182,17 +182,20 @@ public sealed partial class ToolCommandTests
         => PublishPackageConsumerInDirectoryAsync(CreateDirectory(), name, extension, source, token, coldPackages);
 
     /// <summary>
-    /// Publishes a packaged consumer into the caller's test-owned or fixture-owned directory.
+    /// Publishes a packaged consumer into the caller's test-owned or fixture-owned directory, with any output plugin
+    /// aliases as <c>AnkusOutputPluginAlias</c> items.
     /// </summary>
     private static async Task<string> PublishPackageConsumerInDirectoryAsync(string directory, string name, string extension,
-        string source, CancellationToken token, bool coldPackages = false)
+        string source, CancellationToken token, bool coldPackages = false, string[]? outputPluginAliases = null)
     {
         string project = Path.Combine(directory, name + ".csproj");
         new XDocument(new XElement("Project", new XAttribute("Sdk", "Ankus.Sdk/" + s_version),
             new XElement("PropertyGroup", new XElement("TargetFramework", "net10.0"),
                 new XElement("Nullable", "enable"), new XElement("ImplicitUsings", "enable"),
                 new XElement("TreatWarningsAsErrors", "true"), new XElement("AnkusExtensionName", extension),
-                new XElement("AnkusExtensionVersion", "3.2.1")))).Save(project);
+                new XElement("AnkusExtensionVersion", "3.2.1")),
+            new XElement("ItemGroup", (outputPluginAliases ?? []).Select(static alias =>
+                new XElement("AnkusOutputPluginAlias", new XAttribute("Include", alias)))))).Save(project);
         await File.WriteAllTextAsync(Path.Combine(directory, "Settings.cs"), source, token);
         var environment = new Dictionary<string, string?>(s_environment);
         if (coldPackages)

@@ -120,6 +120,10 @@ Library names use ASCII letters, digits, `.`, `_`, `+` and `-`, without a
 directory or suffix, and cannot start with `.`. See the
 [custom library name sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.CustomLibraryName).
 
+`AnkusOutputPluginAlias` items publish extra libraries that load the extension's
+output plugin under other names, as pglogical's `pglogical_output` does. See
+[loading the plugin under another name](/logical-decoding/#load-the-plugin-under-another-name).
+
 ### Versioned libraries
 
 Set `AnkusVersionedLibrary` to install several versions of an extension side by

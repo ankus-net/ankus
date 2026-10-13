@@ -101,6 +101,7 @@ internal static class ExtensionInstaller
         (string Source, string Destination)[] files =
         [
             (Path.Combine(source, manifest.Library), Path.Combine(libraryDirectory, manifest.Library)),
+            .. manifest.PluginLibraries.Select(module => (Path.Combine(source, module), Path.Combine(libraryDirectory, module))),
             (Path.Combine(source, "extension", manifest.Sql), Path.Combine(scriptDirectory, manifest.Sql)),
             .. manifest.UpgradeScripts.Select(script =>
                 (Path.Combine(source, "extension", script), Path.Combine(scriptDirectory, script))),

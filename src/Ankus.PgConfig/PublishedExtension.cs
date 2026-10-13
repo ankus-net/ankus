@@ -72,6 +72,26 @@ public sealed class PublishedExtension
     /// <param name="scriptDirectory">The literal primary control directory setting, or null for PostgreSQL's default.</param>
     public PublishedExtension(int postgresMajor, string runtimeIdentifier, string library, string control, string sql,
         IReadOnlyList<string> upgradeScripts, IReadOnlyList<string> versionControlFiles, string? scriptDirectory)
+        : this(postgresMajor, runtimeIdentifier, library, control, sql, upgradeScripts, versionControlFiles, scriptDirectory, [])
+    {
+    }
+
+    /// <summary>
+    /// Creates a manifest whose publication also contains modules that load the extension's output plugin under other
+    /// names.
+    /// </summary>
+    /// <param name="postgresMajor">The PostgreSQL header major used to compile the extension.</param>
+    /// <param name="runtimeIdentifier">The Native AOT runtime identifier.</param>
+    /// <param name="library">The native library filename.</param>
+    /// <param name="control">The primary control filename under extension/.</param>
+    /// <param name="sql">The installation SQL filename under extension/.</param>
+    /// <param name="upgradeScripts">Upgrade filenames in extension--old--new.sql form.</param>
+    /// <param name="versionControlFiles">Secondary control filenames in extension--version.control form.</param>
+    /// <param name="scriptDirectory">The literal primary control directory setting, or null for PostgreSQL's default.</param>
+    /// <param name="pluginLibraries">Output plugin alias module filenames, installed beside the library.</param>
+    public PublishedExtension(int postgresMajor, string runtimeIdentifier, string library, string control, string sql,
+        IReadOnlyList<string> upgradeScripts, IReadOnlyList<string> versionControlFiles, string? scriptDirectory,
+        IReadOnlyList<string> pluginLibraries)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(postgresMajor, 13);
         ArgumentException.ThrowIfNullOrWhiteSpace(runtimeIdentifier);
@@ -131,6 +151,20 @@ public sealed class PublishedExtension
         }
 
         ScriptDirectory = scriptDirectory;
+        ArgumentNullException.ThrowIfNull(pluginLibraries);
+        string[] plugins = [.. pluginLibraries];
+        var libraries = new HashSet<string>(s_fileComparer) { library };
+        foreach (string plugin in plugins)
+        {
+            ValidateFileName(plugin);
+            if (!string.Equals(Path.GetExtension(plugin), Path.GetExtension(library), StringComparison.Ordinal) || !libraries.Add(plugin))
+            {
+                throw new ArgumentException("Output plugin modules need unique filenames with the library's suffix.", nameof(pluginLibraries));
+            }
+        }
+
+        Array.Sort(plugins, StringComparer.Ordinal);
+        PluginLibraries = Array.AsReadOnly(plugins);
         PostgresMajor = postgresMajor;
         RuntimeIdentifier = runtimeIdentifier;
         Library = library;
@@ -177,6 +211,12 @@ public sealed class PublishedExtension
     /// Gets the literal SQL directory setting, or null when PostgreSQL uses its control file directory.
     /// </summary>
     public string? ScriptDirectory { get; }
+
+    /// <summary>
+    /// Gets the filenames of modules that load the extension's output plugin under other names, installed beside the
+    /// library.
+    /// </summary>
+    public IReadOnlyList<string> PluginLibraries { get; }
 
     /// <summary>
     /// Verifies the published control's directory and returns its fully qualified PostgreSQL SQL path.
@@ -234,7 +274,7 @@ public sealed class PublishedExtension
             }
 
             int format = root.GetProperty("formatVersion").GetInt32();
-            if (format is not (1 or 2 or 3 or 4))
+            if (format is not (1 or 2 or 3 or 4 or 5))
             {
                 throw new FormatException("Unsupported Ankus extension manifest version.");
             }
@@ -259,10 +299,19 @@ public sealed class PublishedExtension
             string[] controls = format >= 3
                 ? [.. root.GetProperty("versionControlFiles").EnumerateArray().Select(static item => item.GetString()!)] : [];
             string? directory = format == 4
-                ? root.GetProperty("scriptDirectory").GetString() ?? throw new FormatException("A version-four manifest requires a SQL directory string.") : null;
+                ? root.GetProperty("scriptDirectory").GetString() ?? throw new FormatException("A version-four manifest requires a SQL directory string.")
+                : format == 5 && root.TryGetProperty("scriptDirectory", out JsonElement optional)
+                    ? optional.GetString() ?? throw new FormatException("A SQL directory must be a string.") : null;
+            if (format < 5 && root.TryGetProperty("pluginLibraries", out _))
+            {
+                throw new FormatException("Output plugin modules require extension manifest version 5.");
+            }
+
+            string[] plugins = format == 5
+                ? [.. root.GetProperty("pluginLibraries").EnumerateArray().Select(static item => item.GetString()!)] : [];
             return new PublishedExtension(root.GetProperty("postgresMajor").GetInt32(),
                 root.GetProperty("runtimeIdentifier").GetString()!, root.GetProperty("library").GetString()!,
-                root.GetProperty("control").GetString()!, root.GetProperty("sql").GetString()!, upgrades, controls, directory);
+                root.GetProperty("control").GetString()!, root.GetProperty("sql").GetString()!, upgrades, controls, directory, plugins);
         }
         catch (Exception error) when (error is JsonException or InvalidOperationException or KeyNotFoundException or
             ArgumentException or OverflowException)
@@ -280,13 +329,14 @@ public sealed class PublishedExtension
         using FileStream stream = File.Create(Path.Combine(directory, FileName));
         using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
         writer.WriteStartObject();
-        writer.WriteNumber("formatVersion", ScriptDirectory is not null ? 4 : VersionControlFiles.Count > 0 ? 3 : UpgradeScripts.Count > 0 ? 2 : 1);
+        writer.WriteNumber("formatVersion", PluginLibraries.Count > 0 ? 5 : ScriptDirectory is not null ? 4 :
+            VersionControlFiles.Count > 0 ? 3 : UpgradeScripts.Count > 0 ? 2 : 1);
         writer.WriteNumber("postgresMajor", PostgresMajor);
         writer.WriteString("runtimeIdentifier", RuntimeIdentifier);
         writer.WriteString("library", Library);
         writer.WriteString("control", Control);
         writer.WriteString("sql", Sql);
-        if (UpgradeScripts.Count > 0 || VersionControlFiles.Count > 0 || ScriptDirectory is not null)
+        if (UpgradeScripts.Count > 0 || VersionControlFiles.Count > 0 || ScriptDirectory is not null || PluginLibraries.Count > 0)
         {
             writer.WriteStartArray("upgradeScripts");
             foreach (string script in UpgradeScripts)
@@ -297,7 +347,7 @@ public sealed class PublishedExtension
             writer.WriteEndArray();
         }
 
-        if (VersionControlFiles.Count > 0 || ScriptDirectory is not null)
+        if (VersionControlFiles.Count > 0 || ScriptDirectory is not null || PluginLibraries.Count > 0)
         {
             writer.WriteStartArray("versionControlFiles");
             foreach (string control in VersionControlFiles)
@@ -311,6 +361,17 @@ public sealed class PublishedExtension
         if (ScriptDirectory is not null)
         {
             writer.WriteString("scriptDirectory", ScriptDirectory);
+        }
+
+        if (PluginLibraries.Count > 0)
+        {
+            writer.WriteStartArray("pluginLibraries");
+            foreach (string plugin in PluginLibraries)
+            {
+                writer.WriteStringValue(plugin);
+            }
+
+            writer.WriteEndArray();
         }
 
         writer.WriteEndObject();
@@ -330,7 +391,8 @@ public sealed class PublishedExtension
     }
 
     /// <summary>
-    /// Validates the complete payload, removes obsolete owned SQL and control files, and makes the publication installable.
+    /// Validates the complete payload, removes obsolete owned SQL, control and output plugin files, and makes the publication
+    /// installable.
     /// </summary>
     /// <param name="directory">The directory containing the native library and extension files.</param>
     public void CompletePublish(string directory)
@@ -338,6 +400,7 @@ public sealed class PublishedExtension
         Invalidate(directory);
         string[] files = [Control, Sql, .. UpgradeScripts, .. VersionControlFiles];
         foreach (string path in files.Select(file => Path.Combine(directory, "extension", file))
+                     .Concat(PluginLibraries.Select(file => Path.Combine(directory, file)))
                      .Prepend(Path.Combine(directory, Library)))
         {
             if (!File.Exists(path))
@@ -359,6 +422,12 @@ public sealed class PublishedExtension
             foreach (string file in previousFiles.Except(files, s_fileComparer))
             {
                 File.Delete(Path.Combine(directory, "extension", file));
+            }
+
+            // A module that became the library's own name stays.
+            foreach (string file in previous.PluginLibraries.Except([.. PluginLibraries, Library], s_fileComparer))
+            {
+                File.Delete(Path.Combine(directory, file));
             }
         }
 

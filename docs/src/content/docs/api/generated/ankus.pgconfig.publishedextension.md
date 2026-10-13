@@ -171,6 +171,55 @@ Secondary control filenames in extension--version.control form.
 
 The literal primary control directory setting, or null for PostgreSQL's default.
 
+<a id="member-f821d70bcfec05b0"></a>
+
+### PublishedExtension(int, string, string, string, string, IReadOnlyList&lt;string&gt;, IReadOnlyList&lt;string&gt;, string?, IReadOnlyList&lt;string&gt;)
+
+Creates a manifest whose publication also contains modules that load the extension's output plugin under other
+names.
+
+```csharp
+public PublishedExtension(int postgresMajor, string runtimeIdentifier, string library, string control, string sql, IReadOnlyList<string> upgradeScripts, IReadOnlyList<string> versionControlFiles, string? scriptDirectory, IReadOnlyList<string> pluginLibraries)
+```
+
+Parameters:
+
+`postgresMajor` — [int](https://learn.microsoft.com/dotnet/api/system.int32)
+
+The PostgreSQL header major used to compile the extension.
+
+`runtimeIdentifier` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+The Native AOT runtime identifier.
+
+`library` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+The native library filename.
+
+`control` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+The primary control filename under extension/.
+
+`sql` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+The installation SQL filename under extension/.
+
+`upgradeScripts` — [IReadOnlyList&lt;string&gt;](https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1)
+
+Upgrade filenames in extension--old--new.sql form.
+
+`versionControlFiles` — [IReadOnlyList&lt;string&gt;](https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1)
+
+Secondary control filenames in extension--version.control form.
+
+`scriptDirectory` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+The literal primary control directory setting, or null for PostgreSQL's default.
+
+`pluginLibraries` — [IReadOnlyList&lt;string&gt;](https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1)
+
+Output plugin alias module filenames, installed beside the library.
+
 
 ## Methods
 
@@ -178,7 +227,8 @@ The literal primary control directory setting, or null for PostgreSQL's default.
 
 ### CompletePublish(string)
 
-Validates the complete payload, removes obsolete owned SQL and control files, and makes the publication installable.
+Validates the complete payload, removes obsolete owned SQL, control and output plugin files, and makes the publication
+installable.
 
 ```csharp
 public void CompletePublish(string directory)
@@ -299,6 +349,19 @@ public string Library { get; }
 ```
 
 Value: [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+<a id="member-1c92a22312a05fc5"></a>
+
+### PluginLibraries
+
+Gets the filenames of modules that load the extension's output plugin under other names, installed beside the
+library.
+
+```csharp
+public IReadOnlyList<string> PluginLibraries { get; }
+```
+
+Value: [IReadOnlyList&lt;string&gt;](https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1)
 
 <a id="member-4001f9e88e7b32e3"></a>
 
