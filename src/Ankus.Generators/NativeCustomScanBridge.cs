@@ -352,7 +352,7 @@ internal static class NativeCustomScanBridge
                     if (workers < 0 || (workers > 0 && !ankus_custom_scan_providers[provider].parallel))
                         ereport(ERROR, (errcode(ERRCODE_INVALID_BINARY_REPRESENTATION), errmsg("Invalid Ankus custom scan path")));
                     path->path.pathkeys = ankus_custom_scan_pathkeys(root, rel, rte, &buffer);
-                    /* PostgreSQL builds no parallel path inside a lateral join, as add_partial_path explains. */
+                    /* PostgreSQL builds no parameterized parallel path, as add_partial_path explains. */
                     if (workers > 0 && (!parallel_safe || parameters != NULL || max_parallel_workers_per_gather <= 0))
                         continue;
                     if (workers > 0)

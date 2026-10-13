@@ -70,6 +70,37 @@ globals, callbacks and checked managed APIs. Typed pointer contracts and explici
 scalar-call unsafe contexts pass the current complete .NET 10 compositions;
 that evidence does not establish the future .NET 11 contract.
 
+## Beyond pgrx: logical replication toolkit
+
+Goal: Ankus must make it possible to port a logical replication extension such
+as pglogical to idiomatic C#. pgrx has no counterpart for most of this: its
+workers run work in scoped `transaction(|| ...)` closures, its shared memory has
+a fixed compile-time size, and replication, apply and child processes are only
+reachable through raw `pg_sys`. Each capability below is therefore an Ankus
+addition beyond pgrx parity, documented as such in the
+[pgrx migration guide](docs/src/content/docs/getting-started/from-pgrx.md) when
+it lands. Raw bindings remain available for anything not covered. The
+[inventory](docs/contributing/evidence/logical-replication-toolkit.md) records
+what pglogical uses and the PostgreSQL 13–19 interfaces behind each capability.
+
+| Capability | Design | Status |
+| --- | --- | --- |
+| Replication connection | A managed client over PostgreSQL's own `libpqwalreceiver` (`walrcv_*`), as core's subscriber uses: connect, run SQL with rows, create slots, stream with feedback, and read `COPY` data, waiting on the latch with cancellation. No extra native dependency on any platform. | Planned |
+| Relation writes and lookups | Safe wrappers over `execReplication.c` (`ExecSimpleRelationInsert/Update/Delete`, `RelationFindReplTupleByIndex/Seq`) with executor state, indexes, constraints and triggers handled; locked lookups with a row's commit origin and timestamp for conflict handling; bulk load of a COPY stream through in-process `BeginCopyFrom`. | Planned |
+| Replication origins | Session origin, progress and advance over `replorigin_*`, including PostgreSQL 19's renamed origin state. | Planned |
+| Long-lived worker transactions | A worker transaction that stays open across loop iterations and latch waits, with Ankus's existing rollback and recovery rules. | Planned |
+| Startup-sized shared memory | Shared arrays sized when PostgreSQL requests shared memory, for example from `max_worker_processes`, including Windows reattach. | Planned |
+| Error context and exit cleanup | Managed error-context callbacks and `before_shmem_exit` registration, covering what `PG_ENSURE_ERROR_CLEANUP` does for FATAL exits. | Planned |
+| Child processes | Starting a program such as `pg_dump` with `posix_spawn` or `CreateProcess`, without .NET `Process` and its `SIGCHLD` handling. | Planned |
+| Output plugin aliases | A generated C-only library that forwards a second plugin name, such as `pglogical_output`, to the extension's managed plugin. | Planned |
+
+Order: the replication connection first, tested against the test cluster
+itself, then relation writes, origins and long-lived worker transactions. A
+sample extension that streams one table's changes from a provider and applies
+them on a subscriber then proves them together on Linux, macOS and Windows, with
+backend tests and a benchmark against built-in logical replication. The
+remaining capabilities follow, each with its own tests and guide.
+
 ## Implementation status
 
 This matrix summarizes current conclusions. The complete inventory linked above
@@ -282,8 +313,8 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   implements `IPgParallelCustomScan<TState, TShared>` offers paths with
   `PgCustomScanPlanner.AddParallelPath`; Ankus adds them as partial paths with
   PostgreSQL's parallel divisor for rows and run cost, skips them for tables
-  and queries that cannot run in parallel and inside lateral joins, and caps
-  their workers at `max_parallel_workers_per_gather`. The provider lays out
+  and queries that cannot run in parallel and for scans that depend on an outer
+  row, and caps their workers at `max_parallel_workers_per_gather`. The provider lays out
   dynamic shared memory as an unmanaged `TShared`: the leader clears and
   initializes it before workers start and again before a rescan, every process
   that reads gets a `PgCustomScanSharedMemory<TShared>` handle before its first
@@ -1108,7 +1139,8 @@ review's findings are fixed or kept by documented design.
 3. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
 4. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees.
 5. Keep samples and guides current with API changes, and recheck changed guides before release. Test discovery for MSTest, xUnit and NUnit consumers and samples for all 37 pgrx examples are complete.
-6. Complete .NET servicing and every release requirement in the full inventory, using the release rehearsal, before publishing 0.1.0. If .NET 11 reaches GA first, complete its acceptance for that release; preview validation does not block the initial .NET 10 release.
+6. Build the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) that a pglogical port needs, starting with the streaming and apply sample.
+7. Complete .NET servicing and every release requirement in the full inventory, using the release rehearsal, before publishing 0.1.0. If .NET 11 reaches GA first, complete its acceptance for that release; preview validation does not block the initial .NET 10 release.
 
 Continue independent work while CI runs. Before every commit and push, check and
 record previous run outcomes, including live runs, and resolve reported failures.

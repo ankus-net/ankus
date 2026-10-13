@@ -171,7 +171,8 @@ public static bool Read(State state, PgHeapTuple row)
 cost and the rows among the processes as PostgreSQL does for a parallel
 sequential scan, and caps the workers at `max_parallel_workers_per_gather`.
 PostgreSQL considers the path only when the table and query can run in
-parallel, which rules out temporary tables, and never inside a lateral join.
+parallel, which rules out temporary tables, and not for a scan whose conditions
+depend on an outer row.
 
 Ankus clears the shared memory and calls `InitializeShared` in the leader
 before workers start, and again before a rescan starts new ones. Every process
