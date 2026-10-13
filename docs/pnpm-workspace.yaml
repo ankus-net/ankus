@@ -1,2 +1,8 @@
 onlyBuiltDependencies:
   - esbuild
+
+overrides:
+  # expressive-code 0.44 still asks for postcss-nested 6, whose postcss-selector-parser 6 has a quadratic-time parsing
+  # flaw (GHSA-rj75-hqrm-r3gf) fixed only in 7.1.6. postcss-nested 7.0.2 is the same plugin built on parser 7, and the
+  # site builds byte for byte the same with it. Remove this once expressive-code depends on postcss-nested 7 or later.
+  'postcss-nested@^6': 7.0.2

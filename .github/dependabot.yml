@@ -1,0 +1,49 @@
+# Dependabot reads this file from the default branch and opens a pull request for each update it finds.
+version: 2
+updates:
+  # Directory.Packages.props holds every package version, and global.json holds MSTest.Sdk.
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    assignees:
+      - willibrandon
+    labels:
+      - dependencies
+    ignore:
+      # The generators and code fixes load into the compiler of the oldest SDK global.json accepts, so Roslyn must not be
+      # newer than that compiler. These versions move by hand, together with the minimum SDK.
+      - dependency-name: Microsoft.CodeAnalysis.CSharp
+      - dependency-name: Microsoft.CodeAnalysis.CSharp.Workspaces
+      # These libraries match the Native AOT runtime that extensions embed, and move with it in each .NET servicing
+      # update (see docs/contributing/dotnet-support.md).
+      - dependency-name: System.Formats.Cbor
+      - dependency-name: System.Diagnostics.EventLog
+
+  # One pull request for the actions the workflows use, since they are tested together anyway.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    assignees:
+      - willibrandon
+    labels:
+      - dependencies
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  # The documentation site. Its packages never reach an extension, so they also arrive as one pull request.
+  - package-ecosystem: npm
+    directory: /docs
+    schedule:
+      interval: weekly
+    assignees:
+      - willibrandon
+    labels:
+      - dependencies
+    groups:
+      docs:
+        patterns:
+          - "*"

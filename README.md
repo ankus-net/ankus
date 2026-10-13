@@ -781,3 +781,8 @@ for local preview and build commands.
 
 The [public API reference](docs/src/content/docs/api/index.md) is generated from C# XML
 documentation. See [API reference generation](docs/contributing/api-reference.md).
+
+## Contributing and security
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) to build and test Ankus and to propose a change.
+Report a vulnerability privately as [SECURITY.md](SECURITY.md) describes.

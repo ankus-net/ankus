@@ -507,6 +507,20 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   transaction, a writer's executor state per table, and a key lookup before
   each insert. It passes on PostgreSQL 13, 18 and 19, and with exit callbacks
   the full PostgreSQL 18 suite passes (14,947 tests, 52 platform skips).
+- Repository security: private vulnerability reporting, Dependabot alerts and
+  security updates, secret scanning and push protection are on (non-provider
+  patterns and validity checks need GitHub Secret Protection, which a personal
+  repository lacks). `.github/dependabot.yml` updates NuGet, workflow actions and
+  the documentation site weekly. The five open alerts were all in the site's
+  lockfile; updating Astro and Starlight and refreshing transitive versions fixed
+  four, and an override moves expressive-code's `postcss-nested` from 6 to 7.0.2,
+  whose only change is `postcss-selector-parser` 7.1.6, the fixed version; the site
+  builds byte for byte the same. The `CodeQL` workflow scans actions, C/C++, C# and
+  TypeScript with `security-and-quality` and fails on any finding through
+  `eng/Ankus.CodeQl.cs`. The `Secret scan` workflow runs Picket on every change.
+  Picket's scan of the tree found one false positive, a 64-digit test cache key,
+  which the tests now build from its repeating pattern; the history scan finds only
+  that key's original commit. `SECURITY.md` and `CONTRIBUTING.md` are new.
 - The subscriber sample's cost per remote transaction fell from about 20 µs to
   10 µs, slightly below the built-in subscriber's. Profiling the apply worker
   and in-backend benchmarks (`WriterBenchmarks` in the sample, run with

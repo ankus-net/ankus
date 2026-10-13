@@ -1,0 +1,5 @@
+name: Ankus CodeQL configuration
+
+# Every query of the suite runs on every file, and the workflow fails on any finding. Nothing is excluded here.
+queries:
+  - uses: security-and-quality

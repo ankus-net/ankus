@@ -541,6 +541,26 @@ package tests run the generated solution's `dotnet test` outside the checkout,
 then change an extension function and verify its backend test fails. The same
 tests check keyword namespaces, path handling, and preservation of existing files.
 
+## Security checks
+
+The `CodeQL` workflow scans the C#, C, documentation-site TypeScript and workflow
+sources with the `security-and-quality` suite. Code scanning only lists results, so
+`eng/Ankus.CodeQl.cs` fails the workflow for any finding; fix the code rather than
+suppressing a query. The `Secret scan` workflow runs
+[Picket](https://github.com/willibrandon/picket) on every change. Run the same scan
+locally before pushing:
+
+```console
+picket scan . --redact=100
+```
+
+A genuine false positive's fingerprint goes in `.picketignore` with a comment
+explaining it; prefer changing the code so it no longer looks like a secret.
+Dependabot proposes NuGet, workflow and documentation-site updates weekly;
+`.github/dependabot.yml` explains the packages that move only with the SDK or the
+embedded runtime. Report vulnerabilities as [SECURITY.md](../../SECURITY.md)
+describes.
+
 ## C# type style
 
 Ankus follows the `dotnet/runtime` and `dotnet/msbuild` convention: use explicit

@@ -1,0 +1,60 @@
+name: CodeQL
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '41 8 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze ${{ matrix.language }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        # C and C++ are the native probes and binding sources; JavaScript and TypeScript are the documentation site.
+        language: [actions, c-cpp, csharp, javascript-typescript]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      # Each language is read from source, so the scan does not need the patched runtime or PostgreSQL.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+          config-file: ./.github/codeql-config.yml
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}
+          output: artifacts/codeql-results
+          wait-for-processing: false
+
+      - name: Archive CodeQL results
+        uses: actions/upload-artifact@v7
+        with:
+          name: codeql-results-${{ matrix.language }}-${{ github.run_attempt }}
+          path: artifacts/codeql-results/**/*.sarif
+          if-no-files-found: error
+
+      # Code scanning lists findings without failing anything, so a new one would go unseen.
+      - name: Require zero findings
+        run: dotnet run --file ./eng/Ankus.CodeQl.cs -- artifacts/codeql-results
