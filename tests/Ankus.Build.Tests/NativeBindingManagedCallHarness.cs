@@ -20,11 +20,12 @@ internal static class NativeBindingManagedCallHarness
 
         public static unsafe class NativeCallTestBridge
         {
-            [ThreadStatic] private static Scope? current;
+            // The API pointer every call receives identifies its scope, as it identifies the native context in an
+            // extension; this avoids thread statics in the collectible test assembly.
+            private static readonly Dictionary<nint, Scope> scopes = [];
             public static int Accessors;
             public sealed class Scope : IDisposable
             {
-                private readonly Scope? prior = current;
                 private readonly Api* api;
                 private readonly nint previous;
                 public string Identity = "__EXPECTED_IDENTITY__";
@@ -35,13 +36,13 @@ internal static class NativeBindingManagedCallHarness
                 {
                     api = (Api*)NativeMemory.Alloc((nuint)sizeof(Api));
                     *api = new Api { Provider = 17, Current = 19, Invoke = &Invoke, ResultContext = 23 };
+                    lock (scopes) scopes.Add((nint)api, this);
                     previous = NativeMemoryContext.Enter((nint)api);
-                    current = this;
                 }
                 public void Dispose()
                 {
                     NativeMemoryContext.Exit(previous);
-                    current = prior;
+                    lock (scopes) scopes.Remove((nint)api);
                     NativeMemory.Free(api);
                 }
             }
@@ -51,6 +52,9 @@ internal static class NativeBindingManagedCallHarness
                 public nint Provider, Current;
                 public delegate* unmanaged[Cdecl]<nint, Request*, Result*, NativeCallError*, int> Invoke;
                 public nint ResultContext;
+                // The rest of the runtime's layout, left empty: no interrupt flags and no direct reads.
+                public int* InterruptPending, FailedFrames, SignalQueue, SignalMask;
+                public int DirectReads;
             }
             [StructLayout(LayoutKind.Sequential)]
             public struct Request
@@ -81,7 +85,8 @@ internal static class NativeBindingManagedCallHarness
                 try
                 {
                     *result = default;
-                    Scope state = current!;
+                    Scope state;
+                    lock (scopes) state = scopes[api];
                     if (request->Operation == 32)
                     {
                         state.Validations++;
