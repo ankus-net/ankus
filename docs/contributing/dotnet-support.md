@@ -34,11 +34,13 @@ The repository and generated projects select SDK 10.0.400 or a later stable
 installs the latest stable 10.0 SDK. This selection must remain separate from the
 runtime included in published extensions.
 
-`eng/Ankus.Ci.cs` pins upstream `v10.0.12`, fork commit
-`e3f084f4590644bcf7c191c0d281076757c0b93c`, runtime and compiler-host packages
-`10.0.12-ankus.5`, and ILCompiler targets/framework packs `10.0.12`. The SDK
+`eng/Ankus.Ci.cs` pins upstream 10.0.13 as shipped (dotnet/dotnet
+`4099f83977f4d29604a9aeb971fb0a7bc1d5f699`, whose `src/runtime` is dotnet/runtime
+`6aa72daa24f66c01c3d7b6a32519e9d21396deec` plus the release's security changes),
+fork commit `b9bc34320018070cedb42841c1ab622032f6a4d0`, runtime and compiler-host packages
+`10.0.13-ankus.1`, and ILCompiler targets/framework packs `10.0.13`. The SDK
 target and per-RID package properties carry matching target runtime and host
-compiler identities. Framework runtime packs also use 10.0.12 instead of
+compiler identities. Framework runtime packs also use 10.0.13 instead of
 following the installed SDK's default patch. Check
 `PROGRESS.md` for completed platform evidence and recheck upstream servicing
 before publishing `0.1.0`.
@@ -162,6 +164,15 @@ Review upstream servicing and security releases monthly and when an out-of-band
 fix is announced. Track the latest upstream patch, the embedded patch and any
 gap for each supported major. Prioritize security fixes; do not claim that a
 custom payload receives Microsoft's automatic runtime updates.
+
+Base each update on the runtime source Microsoft shipped. .NET 10 is built from
+dotnet/dotnet: its `src/source-manifest.json` at the release commit names the
+dotnet/runtime commit it took, and its `src/runtime` adds the release's security
+fixes, which reach dotnet/runtime later. Commit that `src/runtime` tree on top of
+the named dotnet/runtime commit and merge it into the fork. A dotnet/runtime
+release tag alone can lack those fixes: shipped 10.0.12 changed 13 files beyond
+its tag (HttpListener requests, WebSocket compression and EventPipe's diagnostic
+socket), and `10.0.12-ankus.5`, built from the tag, did not have them.
 
 For each update, rebase the minimal patch, rebuild the native payloads and update
 the pinned compiler/runtime identities together. Use immutable package versions

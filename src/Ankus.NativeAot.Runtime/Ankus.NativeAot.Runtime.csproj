@@ -2,7 +2,7 @@
   <PropertyGroup>
     <PackageId>Ankus.NativeAot.Runtime</PackageId>
     <PackageId Condition="'$(AnkusRuntimeIdentifier)' != ''">Ankus.NativeAot.Runtime.$(AnkusRuntimeIdentifier)</PackageId>
-    <PackageVersion>10.0.12-ankus.5</PackageVersion>
+    <PackageVersion>10.0.13-ankus.1</PackageVersion>
     <Description>Patched .NET Native AOT runtime for Ankus PostgreSQL extensions.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>

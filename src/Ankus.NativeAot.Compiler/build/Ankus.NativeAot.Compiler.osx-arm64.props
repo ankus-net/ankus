@@ -1,8 +1,8 @@
 <Project>
   <PropertyGroup>
     <_AnkusNativeAotCompilerToolsPath>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', 'tools', 'ilc'))</_AnkusNativeAotCompilerToolsPath>
-    <_AnkusNativeAotCompilerPayloadVersion>10.0.12-ankus.5</_AnkusNativeAotCompilerPayloadVersion>
-    <_AnkusNativeAotCompilerPayloadBaseVersion>10.0.12</_AnkusNativeAotCompilerPayloadBaseVersion>
+    <_AnkusNativeAotCompilerPayloadVersion>10.0.13-ankus.1</_AnkusNativeAotCompilerPayloadVersion>
+    <_AnkusNativeAotCompilerPayloadBaseVersion>10.0.13</_AnkusNativeAotCompilerPayloadBaseVersion>
     <_AnkusNativeAotCompilerPayloadRid>osx-arm64</_AnkusNativeAotCompilerPayloadRid>
   </PropertyGroup>
 </Project>

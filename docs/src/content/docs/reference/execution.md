@@ -102,8 +102,8 @@ handling:
 These effects are documented by the
 [signal registration API](https://learn.microsoft.com/en-us/dotnet/api/system.runtime.interopservices.posixsignalregistration.create?view=net-10.0)
 and the .NET 10 implementations of
-[Console](https://github.com/dotnet/runtime/blob/v10.0.12/src/libraries/System.Console/src/System/Console.cs)
-and [Process](https://github.com/dotnet/runtime/blob/v10.0.12/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/Process.Unix.cs).
+[Console](https://github.com/dotnet/runtime/blob/6aa72daa24f66c01c3d7b6a32519e9d21396deec/src/libraries/System.Console/src/System/Console.cs)
+and [Process](https://github.com/dotnet/runtime/blob/6aa72daa24f66c01c3d7b6a32519e9d21396deec/src/libraries/System.Diagnostics.Process/src/System/Diagnostics/Process.Unix.cs).
 
 The kernel can deliver a signal sent to the backend process to any thread that
 leaves it unblocked, but PostgreSQL's handlers must interrupt the backend thread.

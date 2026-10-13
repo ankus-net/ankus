@@ -13,10 +13,10 @@ using System.Xml.Linq;
 using Ankus.PgConfig;
 
 const string RuntimeRepository = "willibrandon/runtime";
-const string RuntimeBase = "v10.0.12";
-const string RuntimeCommit = "e3f084f4590644bcf7c191c0d281076757c0b93c";
-const string RuntimeVersion = "10.0.12-ankus.5";
-const string RuntimeCompilerVersion = "10.0.12";
+const string RuntimeBase = "v10.0.13";
+const string RuntimeCommit = "b9bc34320018070cedb42841c1ab622032f6a4d0";
+const string RuntimeVersion = "10.0.13-ankus.1";
+const string RuntimeCompilerVersion = "10.0.13";
 
 string repositoryRoot = FindRepositoryRoot();
 Directory.SetCurrentDirectory(repositoryRoot);

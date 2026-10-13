@@ -48,12 +48,23 @@ immutable patched-runtime and compiler packages, matching compiler selection,
 complete backend validation and extension rebuild/redeployment. Check current
 upstream servicing before releasing 0.1.0.
 
-.NET 10.0.13 is due on 2026-10-13. On 2026-10-11, upstream `release/10.0`
-was 67 commits past `v10.0.12`, and a trial merge into the fork applied
-without conflicts. One change, which skips chaining to an ignored or default
-activation handler, is in `PalUnix.cpp` beside the fork's signal patches; it
-does not touch the code they change. It fixes a hang the release rehearsal
-found (see below), so the servicing update must add a fork probe for it.
+.NET 10.0.13 shipped on 2026-10-13 with security fixes, and the servicing
+update to **10.0.13-ankus.1** is in validation. Microsoft builds .NET 10 from
+dotnet/dotnet, whose release commit `4099f83977f4d29604a9aeb971fb0a7bc1d5f699`
+took dotnet/runtime `6aa72daa24f66c01c3d7b6a32519e9d21396deec` and changes 75
+more files in `src/runtime`: the release's security fixes and versions, which
+reach dotnet/runtime later. The fork branch `ankus/runtime-10.0.13` therefore
+merges a commit whose tree is that shipped `src/runtime` (`bc04ae377af`), on
+top of the activation probe (`fcf0c5cd13e`); merge commit
+`b9bc34320018070cedb42841c1ab622032f6a4d0` applied without conflicts. It
+includes the upstream check that skips chaining to an ignored or default
+activation handler, which fixes a hang the release rehearsal found (see below)
+and which the probe exercises. The same comparison for 10.0.12 found 13 shipped
+files beyond the dotnet/runtime tag (HttpListener requests, WebSocket
+compression, EventPipe's diagnostic socket) that **ankus.5**, built from the
+tag, lacks; 10.0.13-ankus.1 has them. CI must build the runtime from the fork
+and pass the probes and complete suites before the release rehearsal and
+platform matrices are rerun.
 
 | Runtime line | Evidence and remaining requirements |
 | --- | --- |

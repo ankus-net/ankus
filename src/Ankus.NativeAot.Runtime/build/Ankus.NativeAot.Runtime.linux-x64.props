@@ -1,8 +1,8 @@
 <Project>
   <PropertyGroup>
     <_AnkusNativeAotSdkPath>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', 'tools', 'aotsdk'))</_AnkusNativeAotSdkPath>
-    <_AnkusNativeAotPayloadVersion>10.0.12-ankus.5</_AnkusNativeAotPayloadVersion>
-    <_AnkusNativeAotPayloadCompilerVersion>10.0.12</_AnkusNativeAotPayloadCompilerVersion>
+    <_AnkusNativeAotPayloadVersion>10.0.13-ankus.1</_AnkusNativeAotPayloadVersion>
+    <_AnkusNativeAotPayloadCompilerVersion>10.0.13</_AnkusNativeAotPayloadCompilerVersion>
     <_AnkusNativeAotPayloadRid>linux-x64</_AnkusNativeAotPayloadRid>
   </PropertyGroup>
 </Project>
