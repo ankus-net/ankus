@@ -203,6 +203,13 @@ replication extensions, can be written in ordinary C#:
   from a backend through PostgreSQL's own `libpqwalreceiver` to run SQL, copy
   tables and stream logical changes. A pgrx extension links a client library
   such as libpq itself.
+- [Arrays sized at startup](/shared-memory/#arrays-sized-at-startup) keep a
+  header and an array whose length comes from a server setting, such as
+  `max_worker_processes`, behind one lock. pgrx's shared collections have a
+  capacity fixed at compile time.
+- [Error context](/logging/#error-context) adds a line to errors and messages
+  reported while it is active, where a pgrx extension links an
+  `ErrorContextCallback` into `pg_sys::error_context_stack` itself.
 - [Applying replicated changes](/applying-changes/) writes rows through the
   executor's replication helpers, finds rows with their commit origin and time,
   and tracks progress with replication origins. A pgrx extension builds executor

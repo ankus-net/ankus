@@ -404,6 +404,10 @@ internal enum NativeMemoryOperation
     /// Quotes an identifier or literal outside a SQL callback.
     /// </summary>
     Quote = 46,
+    /// <summary>
+    /// Pushes, updates or pops a managed error context.
+    /// </summary>
+    ErrorContext = 47,
 }
 
 /// <summary>

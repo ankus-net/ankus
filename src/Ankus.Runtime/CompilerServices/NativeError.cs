@@ -43,7 +43,7 @@ public static class NativeError
                 WriteField(error, NativeDiagnosticField.Message, postgres.Message);
                 WriteField(error, NativeDiagnosticField.Detail, postgres.Detail);
                 WriteField(error, NativeDiagnosticField.Hint, postgres.Hint);
-                WriteField(error, NativeDiagnosticField.Context, postgres.Context);
+                WriteField(error, NativeDiagnosticField.Context, postgres.Context ?? PgErrorContext.Captured(exception));
                 WriteField(error, NativeDiagnosticField.Schema, postgres.SchemaName);
                 WriteField(error, NativeDiagnosticField.Table, postgres.TableName);
                 WriteField(error, NativeDiagnosticField.Column, postgres.ColumnName);
@@ -59,6 +59,7 @@ public static class NativeError
             else
             {
                 WriteField(error, NativeDiagnosticField.Message, exception.Message);
+                WriteField(error, NativeDiagnosticField.Context, PgErrorContext.Captured(exception));
             }
         }
         catch

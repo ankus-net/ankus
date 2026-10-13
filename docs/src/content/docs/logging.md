@@ -137,6 +137,31 @@ version: for example, `TransactionTimeout` was added in PostgreSQL 17, while
 differences. Custom codes remain ordinary strings and retain their exact value;
 they do not need registration or a catalog entry.
 
+### Error context
+
+A C extension describes what it was doing when something failed with an error
+context callback, such as which remote transaction an apply worker was applying.
+`PgErrorContext` adds such a line:
+
+```csharp
+using PgErrorContext context = PgErrorContext.Push("applying remote transaction");
+foreach (Change change in changes)
+{
+    context.Text = $"applying {change.Kind} on {change.Table} in remote transaction {change.Xid}";
+    Apply(change);
+}
+```
+
+While it is active, PostgreSQL adds the text to the context of every error,
+warning and log message that a backend call reports, after any inner lines, and
+a managed exception thrown in the meantime is reported with it too. Contexts
+nest, innermost first. Change `Text` as the work moves on: PostgreSQL never calls
+back into .NET to build the line, so the context costs nothing until something
+is reported. Disposing removes the context; a function's leftover contexts are
+removed when it returns, and a background worker's last until it disposes them
+or exits. pgrx has no wrapper; a pgrx extension links an `ErrorContextCallback`
+into `pg_sys::error_context_stack` itself.
+
 PostgreSQL query cancellation throws `PgQueryCanceledException`, which derives
 from `OperationCanceledException`. Its `Diagnostic` property retains SQLSTATE
 `57014` and the original PostgreSQL error fields. Catching it allows managed

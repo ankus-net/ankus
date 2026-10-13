@@ -79,7 +79,8 @@ internal static class NativeMemoryBridge
             ANKUS_MEMORY_REPLICATION = 43,
             ANKUS_MEMORY_RELATION_WRITER = 44,
             ANKUS_MEMORY_REPLICATION_ORIGIN = 45,
-            ANKUS_MEMORY_QUOTE = 46
+            ANKUS_MEMORY_QUOTE = 46,
+            ANKUS_MEMORY_ERROR_CONTEXT = 47
         } AnkusMemoryOperation;
 
         typedef struct AnkusMemoryRequest
@@ -1135,7 +1136,7 @@ internal static class NativeMemoryBridge
             result->length = request->length;
         }
 
-        """ + NativeStringInfoBridge.Source + NativeListBridge.Source + NativeItemPointerMemoryBridge.Source + NativeBindingBridge.Source + NativeNodeBridge.Source + NativeRawCallBridge.Source + NativeSharedMemoryBridge.Source + NativeSpinLockBridge.Source + NativeBackgroundWorkerBridge.Source + NativeReplicationBridge.Source + NativeReplicationOriginBridge.Source + NativeQuoteBridge.Source + NativeRelationWriterBridge.Source + """
+        """ + NativeStringInfoBridge.Source + NativeListBridge.Source + NativeItemPointerMemoryBridge.Source + NativeBindingBridge.Source + NativeNodeBridge.Source + NativeRawCallBridge.Source + NativeSharedMemoryBridge.Source + NativeSpinLockBridge.Source + NativeBackgroundWorkerBridge.Source + NativeReplicationBridge.Source + NativeReplicationOriginBridge.Source + NativeQuoteBridge.Source + NativeErrorContextBridge.Source + NativeRelationWriterBridge.Source + """
 
         static void
         ankus_memory_execute(AnkusMemoryApi *api, AnkusMemoryRequest *request, AnkusMemoryResult *result, volatile bool *recovered)
@@ -1227,6 +1228,9 @@ internal static class NativeMemoryBridge
                     break;
                 case ANKUS_MEMORY_QUOTE:
                     ankus_memory_quote(request, result);
+                    break;
+                case ANKUS_MEMORY_ERROR_CONTEXT:
+                    ankus_memory_error_context(request, result);
                     break;
                 case ANKUS_MEMORY_REPLICATION_ORIGIN:
                     ankus_memory_replication_origin(request, result);
@@ -1880,6 +1884,12 @@ internal static class NativeMemoryBridge
                 return 0;
             }
 
+            if (request->operation == ANKUS_MEMORY_ERROR_CONTEXT && request->flags == 3)
+            {
+                ankus_error_context_pop((AnkusErrorContextEntry *) request->context);
+                return 0;
+            }
+
             if (request->operation == ANKUS_MEMORY_SHARED && request->flags == 5)
             {
                 /* Lease release never allocates or raises ERROR. It remains available
@@ -1942,8 +1952,12 @@ internal static class NativeMemoryBridge
             }
 
             /* The frame lives outside the function containing sigsetjmp, so its
-             * modified fields remain defined after a PostgreSQL longjmp. */
+             * modified fields remain defined after a PostgreSQL longjmp. Managed error
+             * contexts apply to everything the operation does. */
+            ErrorContextCallback managed_context;
+            bool context_entered = ankus_error_context_enter(&managed_context);
             int status = ankus_memory_execute_guarded(api, request, result, error, &recovered);
+            ankus_error_context_exit(&managed_context, context_entered);
             if (worker_boundary)
             {
                 /* Failure without proven native recovery still poisons the

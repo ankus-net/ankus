@@ -548,9 +548,80 @@ internal static class NativeErrorBridge
         """;
 
     /// <summary>
+    /// Gets the managed error contexts that <c>PgErrorContext</c> pushes, and the callback that reports them.
+    /// </summary>
+    /// <remarks>
+    /// <c>PG_END_TRY</c> restores <c>error_context_stack</c> even on success, so a guarded operation cannot leave a
+    /// callback on it. The contexts live in a list instead, and each guarded entry into PostgreSQL puts one callback for
+    /// all of them on the stack while it runs, as a C extension's callback is active while its code runs.
+    /// </remarks>
+    internal const string ManagedContexts = """
+        typedef struct AnkusErrorContextEntry
+        {
+            struct AnkusErrorContextEntry *next;
+            char *text;
+        } AnkusErrorContextEntry;
+
+        /* Innermost first. */
+        static AnkusErrorContextEntry *ankus_error_contexts = NULL;
+
+        static inline void
+        ankus_error_context_report(void *argument)
+        {
+            (void) argument;
+            for (AnkusErrorContextEntry *entry = ankus_error_contexts; entry != NULL; entry = entry->next)
+                errcontext("%s", entry->text);
+        }
+
+        /* Puts the contexts' callback on the stack for one guarded entry, unless an enclosing entry already did. */
+        static inline bool
+        ankus_error_context_enter(ErrorContextCallback *frame)
+        {
+            if (ankus_error_contexts == NULL)
+                return false;
+            for (ErrorContextCallback *callback = error_context_stack; callback != NULL; callback = callback->previous)
+            {
+                if (callback->callback == ankus_error_context_report)
+                    return false;
+            }
+
+            frame->callback = ankus_error_context_report;
+            frame->arg = NULL;
+            frame->previous = error_context_stack;
+            error_context_stack = frame;
+            return true;
+        }
+
+        static inline void
+        ankus_error_context_exit(ErrorContextCallback *frame, bool entered)
+        {
+            if (entered && error_context_stack == frame)
+                error_context_stack = frame->previous;
+        }
+
+        /* Removes an entry wherever it is. It raises no ERROR, so it stays available during callback cleanup.
+         * Inline because extensions without the memory bridge never call it. */
+        static inline void
+        ankus_error_context_pop(AnkusErrorContextEntry *entry)
+        {
+            for (AnkusErrorContextEntry **link = &ankus_error_contexts; *link != NULL; link = &(*link)->next)
+            {
+                if (*link == entry)
+                {
+                    *link = entry->next;
+                    pfree(entry->text);
+                    pfree(entry);
+                    return;
+                }
+            }
+        }
+
+        """;
+
+    /// <summary>
     /// Gets diagnostic capture, allocator-matched cleanup, and backend error reconstruction helpers.
     /// </summary>
-    internal const string Source = Declarations + "\n" + Conversion + "\n" + Logging + "\n" + Capture + "\n" + Reporting;
+    internal const string Source = Declarations + "\n" + Conversion + "\n" + Logging + "\n" + Capture + "\n" + Reporting + "\n" + ManagedContexts;
 
     /// <summary>
     /// Gets a guarded initializer logging capability that never opens a transaction or enables SPI.

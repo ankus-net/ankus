@@ -73,6 +73,7 @@ Assembly: `Ankus.Runtime.dll`
 - [PgEnumLabelAttribute](/api/ankus.pgenumlabelattribute/)
 - [PgEnums](/api/ankus.pgenums/)
 - [PgEqualityAttribute](/api/ankus.pgequalityattribute/)
+- [PgErrorContext](/api/ankus.pgerrorcontext/)
 - [PgEventTriggerAttribute](/api/ankus.pgeventtriggerattribute/)
 - [PgEventTriggerContext](/api/ankus.pgeventtriggercontext/)
 - [PgException](/api/ankus.pgexception/)
@@ -110,8 +111,11 @@ Assembly: `Ankus.Runtime.dll`
 - [PgList&lt;T&gt;](/api/ankus.pglist-1/)
 - [PgLog](/api/ankus.pglog/)
 - [PgLwLockExclusiveGuard&lt;T&gt;](/api/ankus.pglwlockexclusiveguard-1/)
+- [PgLwLockExclusiveGuard&lt;THeader, TElement&gt;](/api/ankus.pglwlockexclusiveguard-2/)
 - [PgLwLockShareGuard&lt;T&gt;](/api/ankus.pglwlockshareguard-1/)
+- [PgLwLockShareGuard&lt;THeader, TElement&gt;](/api/ankus.pglwlockshareguard-2/)
 - [PgLwLock&lt;T&gt;](/api/ankus.pglwlock-1/)
+- [PgLwLock&lt;THeader, TElement&gt;](/api/ankus.pglwlock-2/)
 - [PgMemoryCallback](/api/ankus.pgmemorycallback/)
 - [PgMemoryContext](/api/ankus.pgmemorycontext/)
 - [PgMemoryContextOptions](/api/ankus.pgmemorycontextoptions/)
@@ -273,5 +277,7 @@ Assembly: `Ankus.Runtime.dll`
 
 ## Delegates
 
+- [PgSharedArrayMutator&lt;THeader, TElement, TResult&gt;](/api/ankus.pgsharedarraymutator-3/)
+- [PgSharedArrayReader&lt;THeader, TElement, TResult&gt;](/api/ankus.pgsharedarrayreader-3/)
 - [PgSharedMutator&lt;T, TResult&gt;](/api/ankus.pgsharedmutator-2/)
 - [PgSharedReader&lt;T, TResult&gt;](/api/ankus.pgsharedreader-2/)

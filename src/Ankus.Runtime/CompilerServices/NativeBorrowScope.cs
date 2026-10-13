@@ -12,6 +12,7 @@ internal sealed class NativeBorrowScope(nint provider, int depth, NativeBorrowSc
     private List<NativeBackgroundWorkerLease>? _workers;
     private List<PgArrayView>? _arrays;
     private List<NativeBorrowedBuffer>? _buffers;
+    private List<PgErrorContext>? _errorContexts;
 
     /// <summary>
     /// Gets the nesting depth that owns this unique lease.
@@ -77,6 +78,12 @@ internal sealed class NativeBorrowScope(nint provider, int depth, NativeBorrowSc
             _buffers[^1].Dispose();
         }
 
+        // A context the callback leaves open would otherwise describe later, unrelated errors.
+        while (_errorContexts is { Count: > 0 })
+        {
+            _errorContexts[^1].Dispose();
+        }
+
         _alive = false;
     }
 
@@ -89,6 +96,16 @@ internal sealed class NativeBorrowScope(nint provider, int depth, NativeBorrowSc
     /// Stops retaining a view after successful explicit or callback cleanup.
     /// </summary>
     internal void Unregister(PgArrayView view) => _arrays?.Remove(view);
+
+    /// <summary>
+    /// Retains an error context until explicit disposal or callback exit.
+    /// </summary>
+    internal void Register(PgErrorContext context) => (_errorContexts ??= []).Add(context);
+
+    /// <summary>
+    /// Stops retaining a popped error context.
+    /// </summary>
+    internal void Unregister(PgErrorContext context) => _errorContexts?.Remove(context);
 
     /// <summary>
     /// Retains private buffer storage until explicit disposal or callback exit.

@@ -52,11 +52,11 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.Contains("if (ankus_internal_subtransaction(event, subtransaction_id))\n    {\n        return;\n    }", native);
         Assert.Contains("registry->entries[index].subtransaction == subtransaction && registry->entries[index].transaction == transaction", native);
         int rollback = native.IndexOf("RollbackAndReleaseCurrentSubTransaction();",
-            native.IndexOf("ankus_spi_execute(AnkusRequest *request, AnkusResult *result, AnkusError *error)\n{", StringComparison.Ordinal),
+            native.IndexOf("ankus_spi_execute_core(AnkusRequest *request, AnkusResult *result, AnkusError *error)\n{", StringComparison.Ordinal),
             StringComparison.Ordinal);
         Assert.IsGreaterThanOrEqualTo(0, rollback);
         Assert.IsGreaterThan(rollback, native.IndexOf("ankus_trim_internal_subtransactions();", rollback, StringComparison.Ordinal));
-        Assert.DoesNotContain("BeginInternalSubTransaction(NULL);", native[native.IndexOf("static int\nankus_spi_execute(", StringComparison.Ordinal)..]);
+        Assert.DoesNotContain("BeginInternalSubTransaction(NULL);", native[native.IndexOf("static int\nankus_spi_execute_core(", StringComparison.Ordinal)..]);
     }
 
     /// <summary>

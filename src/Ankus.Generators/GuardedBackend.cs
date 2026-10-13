@@ -32,7 +32,7 @@ internal static class GuardedBackend
         }
 
         static int
-        ankus_spi_execute(AnkusRequest *request, AnkusResult *result, AnkusError *error)
+        ankus_spi_execute_core(AnkusRequest *request, AnkusResult *result, AnkusError *error)
         {
             if (request->operation == ANKUS_SPI_REPORT && request->log_level >= 11)
                 return ankus_recovery_terminal(request->log_level, request->diagnostic, error);
@@ -624,6 +624,17 @@ internal static class GuardedBackend
                 ankus_pending_error_release(pending);
             InterruptHoldoffCount = ankus_shared_restore_interrupts(interrupt_holdoff, shared_held_before);
             QueryCancelHoldoffCount = cancel_holdoff;
+            return status;
+        }
+
+        /* Managed error contexts apply to everything a backend call does. */
+        static int
+        ankus_spi_execute(AnkusRequest *request, AnkusResult *result, AnkusError *error)
+        {
+            ErrorContextCallback managed_context;
+            bool context_entered = ankus_error_context_enter(&managed_context);
+            int status = ankus_spi_execute_core(request, result, error);
+            ankus_error_context_exit(&managed_context, context_entered);
             return status;
         }
 

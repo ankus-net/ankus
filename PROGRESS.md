@@ -88,9 +88,9 @@ what pglogical uses and the PostgreSQL 13–19 interfaces behind each capability
 | Replication connection | `PgReplicationConnection`, a managed client over PostgreSQL's own `libpqwalreceiver` (`walrcv_*`), as core's subscriber uses: connect, run SQL with rows, replication commands, `COPY` out and logical streaming with feedback, waiting on the socket and latch with cancellation. `CopyInto` reads a remote `COPY` into a local table through in-process `BeginCopyFrom`, as table synchronization does. No extra native dependency on any platform. | Done; backend tests pass on PostgreSQL 13–19 beta 4 (Linux x64) |
 | Relation writes and lookups | `PgRelationWriter` over `execReplication.c` (`ExecSimpleRelationInsert/Update/Delete`, `RelationFindReplTupleByIndex/Seq`) with executor state, indexes, constraints, triggers, privileges and row-level security handled as the apply worker does; locked lookups with a row's commit origin and timestamp for conflict handling. `PgReplicatedRow` carries values in replication's text or binary form through type input and receive functions, with defaults and unchanged values. | Done; backend tests pass on PostgreSQL 13–19 beta 4 (Linux x64) |
 | Replication origins | `PgReplicationOrigin` and `PgLsn`: create, find, drop, session setup and reset, per-transaction remote commit, progress and advance over `replorigin_*`, with the checks of the `pg_replication_origin_*` SQL functions and PostgreSQL 19's renamed origin state. | Done; backend tests pass on PostgreSQL 13–19 beta 4 (Linux x64) |
-| Long-lived worker transactions | `PgBackgroundWorker.RunTransaction` already keeps one transaction open across any number of receives, latch waits and changes inside its callback, with Ankus's rollback and recovery rules. A port applies each remote transaction in one callback, from its begin message to its commit. | Done; the subscriber sample applies every remote transaction this way |
-| Startup-sized shared memory | Shared arrays sized when PostgreSQL requests shared memory, for example from `max_worker_processes`, including Windows reattach. | Planned |
-| Error context and exit cleanup | Managed error-context callbacks and `before_shmem_exit` registration, covering what `PG_ENSURE_ERROR_CLEANUP` does for FATAL exits. | Planned |
+| Long-lived worker transactions | `PgBackgroundWorker.RunTransaction` already keeps one transaction open across any number of receives, latch waits and changes inside its callback, with Ankus's rollback and recovery rules. A port applies each remote transaction in one callback, from its begin message to its commit. | Done; the subscriber sample applies every remote transaction this way, and its backend test passes in CI on Linux x64, macOS ARM64 and Windows x64 |
+| Startup-sized shared memory | `PgLwLock<THeader, TElement>`: a header and an array whose length a `[PgModuleLoad]` method chooses, such as one slot per `max_worker_processes`, behind one lightweight lock, with copies, indexers and span callbacks under the existing guard rules. | Done; backend tests pass on PostgreSQL 13–19 beta 4 (Linux x64) |
+| Error context and exit cleanup | `PgErrorContext` adds lines to errors and messages raised while it is active, including managed exceptions. `PG_ENSURE_ERROR_CLEANUP`'s FATAL case is covered by ordinary `try`/`finally`, because Ankus unwinds managed code before reporting a FATAL raised in a backend call; still to do: `before_shmem_exit` registration for exits that never return to managed code. | Context done (PostgreSQL 13, 18 and 19); exit callbacks planned |
 | Child processes | Starting a program such as `pg_dump` with `posix_spawn` or `CreateProcess`, without .NET `Process` and its `SIGCHLD` handling. | Planned |
 | Output plugin aliases | A generated C-only library that forwards a second plugin name, such as `pglogical_output`, to the extension's managed plugin. | Planned |
 
@@ -98,9 +98,11 @@ Order: the replication connection first, tested against the test cluster
 itself, then relation writes, origins and long-lived worker transactions. The
 [subscriber sample](samples/Ankus.Examples.Subscriber/) proves them together: a
 background worker copies a publication's tables and streams and applies the
-provider's changes, with restart after an apply error. Still to come: its
-macOS and Windows evidence, a benchmark against built-in logical replication,
-and the remaining capabilities below, each with its own tests and guide.
+provider's changes, with restart after an apply error; CI run 38361916466 on
+**18b64d5** passed it with the rest of the full suite on Linux x64 (PostgreSQL
+18), macOS ARM64 (18) and Windows x64 (17). Still to come: a benchmark against
+built-in logical replication and the remaining capabilities below, each with its
+own tests and guide.
 
 ## Implementation status
 
@@ -353,6 +355,38 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   importance settings, that every SDK command uses them, that unchanged loads
   build nothing while edited sources and missing outputs rebuild, and that a
   load which rebuilds every dependency prints nothing at minimal verbosity.
+- `PgLwLock<THeader, TElement>` sizes shared memory at startup, the fifth
+  toolkit piece: pglogical keeps one worker slot per `max_worker_processes`,
+  while pgrx's shared values have a compile-time size. The registration's size
+  is fixed when the extension registers it during load, so PostgreSQL 15's
+  request hook and earlier versions' load-time requests both see it, and Windows
+  backends that load the library again attach to the same size. Elements start
+  at the first 8-byte boundary after the header. Guards copy the header or an
+  element by index (rejected before PostgreSQL when out of range) and pass the
+  header and a span to `Read` and `Mutate` callbacks; the lease gained
+  length-checked block reads and writes that the existing typed accessors now
+  use too. Unit tests cover registration, identity, initializers, impossible
+  lengths, copies, spans and bounds; a packaged-consumer backend test sizes an
+  array from `max_worker_processes` (13 and 3), claims slots from two backends,
+  and checks an out-of-range index. It passes on PostgreSQL 13–19 beta 4, and
+  the existing shared-memory backend tests pass after the lease change.
+- `PgErrorContext` adds context lines to errors and messages, as an
+  `ErrorContextCallback` does in C. `PG_END_TRY` restores
+  `error_context_stack` even on success, so a guarded call cannot leave a
+  callback on it; contexts live in a native list instead, and each guarded
+  entry into PostgreSQL (memory-bridge operations and SPI calls) puts one
+  callback for all of them on the stack while it runs. The text is copied to
+  native memory when set, so PostgreSQL never calls managed code while
+  reporting. A managed exception thrown while contexts are active records them
+  on first throw and is reported with them. A function's leftover contexts are
+  removed when it returns, through an unguarded removal that works during
+  error cleanup. Backend tests check an SPI division by zero, a managed
+  exception with nested and updated contexts, notices before and after an inner
+  context is removed, and that a forgotten context does not reach later errors;
+  they pass on PostgreSQL 13, 18 and 19. With both changes the full PostgreSQL 18
+  suite ran 14,945 tests with 52 platform skips and one failure, a generator test
+  that searched the generated SPI entry by its old name; it now anchors on the
+  entry's core, and the 5,033 generator tests pass.
 - The generated-binding test harness found its scope through a thread static in
   each collectible test assembly; one PostgreSQL 15 run of the build tests saw
   it read as null. It now finds the scope from the API pointer each call
@@ -1244,7 +1278,7 @@ review's findings are fixed or kept by documented design.
 3. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
 4. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees.
 5. Keep samples and guides current with API changes, and recheck changed guides before release. Test discovery for MSTest, xUnit and NUnit consumers and samples for all 37 pgrx examples are complete.
-6. Finish the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) that a pglogical port needs: the subscriber sample's macOS and Windows evidence and a benchmark against built-in logical replication, then startup-sized shared memory, error context and exit cleanup, child processes and output plugin aliases.
+6. Finish the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) that a pglogical port needs: exit cleanup, child processes and output plugin aliases, and a benchmark against built-in logical replication.
 7. Complete .NET servicing and every release requirement in the full inventory, using the release rehearsal, before publishing 0.1.0. If .NET 11 reaches GA first, complete its acceptance for that release; preview validation does not block the initial .NET 10 release.
 
 Continue independent work while CI runs. Before every commit and push, check and
