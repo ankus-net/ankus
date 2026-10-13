@@ -76,6 +76,19 @@ type reader and writer now count a decimal as a level in both JSON and CBOR,
 which keeps .NET's default and makes every written value readable in either
 form; the guide states the limit.
 
+The next run (38456292720 on **3efe451**) failed one build test on all three
+platforms: two consumers restoring into different package folders compiled the
+same binding companion twice. Their compilation keys differed only in
+`Microsoft.NET.ILLink.Tasks` 10.0.13, whose copy in the runner's shared NuGet cache
+came from a dnceng staging feed rather than nuget.org. The fork's runtime build
+and probes had restored through the runtime repository's feeds into that shared
+cache, which on behemoth then held about 150 staging copies, including
+`Microsoft.NETCore.App.Runtime.linux-x64` and `Microsoft.DotNet.ILCompiler` 10.0.13
+and the 10.0.12 app host, so consumer builds on the runners had used them. The test
+reproduced as the runner account and not as another user. `runtime-build` now
+restores into its own package folder, and the CI commands that restore for
+consumers first remove staging-feed packages from the shared cache.
+
 | Runtime line | Evidence and remaining requirements |
 | --- | --- |
 | .NET 10 LTS | Patched runtime and complete primary-platform suites exist. Complete supported PostgreSQL/platform combinations and final release acceptance remain required. |

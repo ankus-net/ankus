@@ -45,6 +45,12 @@ following the installed SDK's default patch. Check
 `PROGRESS.md` for completed platform evidence and recheck upstream servicing
 before publishing `0.1.0`.
 
+The runtime repository restores from dnceng staging feeds, which carry builds of
+official package versions before or beside nuget.org's signed copies.
+`runtime-build` gives the runtime build and its probes their own package folder,
+and every CI command that restores for a consumer first removes any staging-feed
+package from the shared cache, so consumer builds always use nuget.org's packages.
+
 The compiler executable embeds Native AOT runtime code too. Building ILCompiler
 from the fork does not automatically link the fork's runtime: its publish command
 must explicitly select the freshly built `aotsdk` through `IlcSdkPath`.

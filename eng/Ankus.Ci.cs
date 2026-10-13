@@ -8,6 +8,7 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.IO.Compression;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Ankus.PgConfig;
@@ -69,6 +70,7 @@ try
         case "runtime-build":
             RequireArguments(args, 4);
             ValidateRuntimeIdentity(repositoryRoot);
+            IsolateRuntimeBuildPackages(repositoryRoot);
             InstallRuntimePrerequisites();
             BuildRuntime(repositoryRoot, args[1], args[2]);
             StageRuntime(repositoryRoot, args[1], args[2], args[3]);
@@ -77,6 +79,7 @@ try
         case "runtime-pack":
             RequireArguments(args, 2);
             ValidateRuntimeIdentity(repositoryRoot);
+            RemoveStagingFeedPackages();
             VerifyStagedRuntime(repositoryRoot, args[1]);
             PackRuntime(
                 repositoryRoot,
@@ -90,6 +93,7 @@ try
         case "runtime-test-build":
             RequireArguments(args, 3);
             ValidateRuntimeIdentity(repositoryRoot);
+            RemoveStagingFeedPackages();
             VerifyStagedRuntime(repositoryRoot, args[1]);
             InstallPostgreSql(repositoryRoot, args[2]);
             ConfigureHeaderFrontend(repositoryRoot);
@@ -117,6 +121,7 @@ try
         case "target-export":
             RequireArguments(args, 4);
             ValidateRuntimeIdentity(repositoryRoot);
+            RemoveStagingFeedPackages();
             VerifyStagedRuntime(repositoryRoot, args[1]);
             InstallPostgreSql(repositoryRoot, args[2]);
             ConfigureHeaderFrontend(repositoryRoot);
@@ -128,6 +133,7 @@ try
         case "target-build":
             RequireArguments(args, 4);
             ValidateRuntimeIdentity(repositoryRoot);
+            RemoveStagingFeedPackages();
             VerifyStagedRuntime(repositoryRoot, RuntimeInformation.RuntimeIdentifier);
             VerifyStagedRuntime(repositoryRoot, args[2]);
             ConfigureMacOsSdk();
@@ -472,6 +478,52 @@ static void WriteOutput(string name, string value)
     string outputPath = Environment.GetEnvironmentVariable("GITHUB_OUTPUT")
         ?? throw new InvalidOperationException("GITHUB_OUTPUT is required.");
     File.AppendAllText(outputPath, $"{name}={value}{Environment.NewLine}");
+}
+
+// The runtime repository restores from dnceng staging feeds, which carry builds of official package versions, such as
+// Microsoft.NETCore.App.Runtime 10.0.13, before or beside nuget.org's signed copies. Its build and probes therefore get
+// their own package folder, so no consumer restore on the runner finds a staging copy in the shared cache.
+static void IsolateRuntimeBuildPackages(string repositoryRoot)
+{
+    string? toolCache = Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE");
+    string packages = string.IsNullOrWhiteSpace(toolCache)
+        ? Path.Combine(repositoryRoot, "runtime", ".packages")
+        : Path.Combine(toolCache, "ankus-runtime-nuget");
+    Directory.CreateDirectory(packages);
+    Environment.SetEnvironmentVariable("NUGET_PACKAGES", packages);
+    Console.WriteLine($"Runtime build packages: {packages}");
+}
+
+// Earlier runtime builds shared the runner's package cache, so remove any staging-feed copy before a consumer restores.
+static void RemoveStagingFeedPackages()
+{
+    string packages = Environment.GetEnvironmentVariable("NUGET_PACKAGES") is { Length: > 0 } configured ? configured
+        : Capture(GetDotNetHost(), ["nuget", "locals", "global-packages", "--list"]).Split(':', 2) is [_, string listed] ? listed.Trim()
+        : throw new InvalidOperationException("Could not find the NuGet global packages folder.");
+    if (!Directory.Exists(packages))
+    {
+        return;
+    }
+
+    var options = new EnumerationOptions { RecurseSubdirectories = true, MaxRecursionDepth = 2, IgnoreInaccessible = true };
+    List<string> staging = [];
+    foreach (string metadata in Directory.EnumerateFiles(packages, ".nupkg.metadata", options))
+    {
+        using JsonDocument document = JsonDocument.Parse(File.ReadAllText(metadata));
+        if (document.RootElement.TryGetProperty("source", out JsonElement source) &&
+            source.GetString() is string feed && feed.StartsWith("https://pkgs.dev.azure.com/dnceng/", StringComparison.OrdinalIgnoreCase))
+        {
+            staging.Add(Path.GetDirectoryName(metadata)!);
+        }
+    }
+
+    // Delete after enumerating, so no directory is removed while it is being read.
+    foreach (string directory in staging)
+    {
+        Directory.Delete(directory, recursive: true);
+    }
+
+    Console.WriteLine($"Removed {staging.Count} staging-feed packages from {packages}.");
 }
 
 static void BuildRuntime(string repositoryRoot, string platform, string architecture)
