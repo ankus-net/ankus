@@ -87,7 +87,21 @@ cache, which on behemoth then held about 150 staging copies, including
 and the 10.0.12 app host, so consumer builds on the runners had used them. The test
 reproduced as the runner account and not as another user. `runtime-build` now
 restores into its own package folder, and the CI commands that restore for
-consumers first remove staging-feed packages from the shared cache.
+consumers first remove staging-feed packages from the shared cache. .NET reports
+`.nupkg.metadata` as hidden on Unix, so the first purge found nothing there
+(**0294822**); **623a333** includes hidden files and removed 126 staging copies on
+behemoth and 126 on the macOS ARM64 runner; Windows had removed 124 the run before.
+CI run 38461706610 on **623a333** then passed the complete suites on
+**10.0.13-ankus.1**: Linux x64 (PostgreSQL 18), macOS ARM64 (18) and Windows x64
+(17). The release rehearsal and the platform matrices rerun on it next.
+
+Before the servicing update, the Linux version matrix
+([38441422083](https://github.com/willibrandon/ankus/actions/runs/38441422083)) passed
+**5370b64**, with the replication toolkit, on **10.0.12-ankus.5** for PostgreSQL 13,
+14, 15, 16, 17 and 19. Its first PostgreSQL 15 job lost its runner: debian-dev's
+container ran four version suites at once and the kernel killed the runner
+service for memory. The container now has 48 GB, two of its runners take
+version jobs instead of four, and the rerun passed.
 
 | Runtime line | Evidence and remaining requirements |
 | --- | --- |
