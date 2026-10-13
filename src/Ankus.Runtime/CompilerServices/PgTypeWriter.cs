@@ -170,6 +170,13 @@ public sealed class PgTypeWriter : IDisposable
             throw new ArgumentException("Negative decimal zero cannot be represented losslessly in custom-type storage.", nameof(value));
         }
 
+        // Binary storage writes a decimal as a two-element array, one level below its object, and .NET's CBOR reader
+        // reads at most 64 levels. Both formats count it, so every value written can be read back in either.
+        if (_depth >= 64)
+        {
+            throw new InvalidOperationException("Custom-type nesting exceeds 64 levels.");
+        }
+
         if (_cbor is not null)
         {
             _cbor.WriteDecimal(value);

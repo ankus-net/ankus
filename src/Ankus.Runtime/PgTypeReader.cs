@@ -257,6 +257,12 @@ public ref struct PgTypeReader
     /// <returns>The value.</returns>
     public decimal ReadDecimal()
     {
+        // A decimal counts as a nesting level in both formats, as the writer counts it.
+        if (_depth >= 64)
+        {
+            throw new FormatException("Custom-type nesting exceeds 64 levels.");
+        }
+
         if (_cbor is not null)
         {
             return _cbor.PeekState() switch
@@ -584,6 +590,11 @@ public ref struct PgTypeReader
         {
             if (reader.PeekTag() == CborTag.DecimalFraction)
             {
+                if (_depth + extraDepth >= 64)
+                {
+                    throw new FormatException("Custom-type nesting exceeds 64 levels.");
+                }
+
                 SkipCborDecimal(reader);
                 return;
             }

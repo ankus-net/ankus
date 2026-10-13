@@ -512,6 +512,13 @@ the persisted contract. Plan a data migration before making incompatible changes
 CBOR use alone does not guarantee interchangeability with every pgrx/Serde contract;
 match member names and value representations explicitly.
 
+Default serialization nests at most 64 levels. Each object, array, list and
+dictionary is a level, and so is a `decimal`, which CBOR stores as a two-element
+array; .NET's CBOR reader reads at most 64 levels. Writing a deeper value or a
+cyclic graph fails, and reading deeper text or CBOR fails with `22P02` or
+`22P03`. The limit is the same for text and binary, so any value that can be
+written can be read back in either form.
+
 ## Declaration diagnostics
 
 Custom-type diagnostics identify the exact option, codec, field, member,

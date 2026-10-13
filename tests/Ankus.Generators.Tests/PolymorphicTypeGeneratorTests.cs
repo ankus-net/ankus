@@ -208,7 +208,8 @@ public sealed partial class PgFunctionGeneratorTests
     }
 
     /// <summary>
-    /// Bounds recursive tagged objects with exact decimal leaves and rejects self cycles.
+    /// Bounds recursive tagged objects with exact decimal leaves and rejects self cycles. A decimal counts as a level,
+    /// because binary storage writes it as an array and .NET's CBOR reader reads at most 64 levels.
     /// </summary>
     /// <param name="amount">The decimal value whose exact scale must survive lookahead.</param>
     [TestMethod]
@@ -223,7 +224,7 @@ public sealed partial class PgFunctionGeneratorTests
             public sealed class Leaf : Value { public decimal Amount { get; set; } }
             """, $$"""
             Value head = new Leaf { Amount = decimal.Parse("{{amount}}", System.Globalization.CultureInfo.InvariantCulture) };
-            for (int i = 0; i < 63; i++) head = new Link { Next = head };
+            for (int i = 0; i < 62; i++) head = new Link { Next = head };
             var bytes = new System.Buffers.ArrayBufferWriter<byte>();
             codec.Write(head, bytes);
             string Describe(Value value)
@@ -239,11 +240,18 @@ public sealed partial class PgFunctionGeneratorTests
             }
             var cycle = new Link();
             cycle.Next = cycle;
+            string Reject(System.Action action)
+            {
+                try { action(); return "accepted"; }
+                catch (Ankus.PgException error) when (error.SqlState == "22P02") { return "rejected"; }
+            }
+            string deeper = "{\"$type\":\"link\",\"Next\":" + codec.Format(head) + "}";
             return new[] { Describe(codec.Read(bytes.WrittenSpan)), Describe(codec.Parse(codec.Format(head))),
                 Fail(() => codec.Write(new Link { Next = head }, new System.Buffers.ArrayBufferWriter<byte>())),
+                Fail(() => codec.Format(new Link { Next = head })), Reject(() => codec.Parse(deeper)),
                 Fail(() => codec.Format(cycle)), Fail(() => codec.Write(cycle, new System.Buffers.ArrayBufferWriter<byte>())) };
             """);
-        Assert.AreSequenceEqual(["64:" + amount, "64:" + amount, "bounded", "bounded", "bounded"], actual);
+        Assert.AreSequenceEqual(["63:" + amount, "63:" + amount, "bounded", "bounded", "rejected", "bounded", "bounded"], actual);
     }
 
     /// <summary>

@@ -66,6 +66,16 @@ tag, lacks; 10.0.13-ankus.1 has them. CI must build the runtime from the fork
 and pass the probes and complete suites before the release rehearsal and
 platform matrices are rerun.
 
+The first servicing CI run (38448888187 on **84504b5**) built the runtime from
+the fork on all three platforms and passed every Linux integration test, but
+one generator test failed on Linux and Windows: System.Formats.Cbor 10.0.13 now
+reads at most 64 nested levels, and a custom type 64 objects deep with a
+`decimal` leaf is 65 levels in CBOR, because a decimal is a two-element array.
+Ankus had written such values and could no longer read them back. The custom
+type reader and writer now count a decimal as a level in both JSON and CBOR,
+which keeps .NET's default and makes every written value readable in either
+form; the guide states the limit.
+
 | Runtime line | Evidence and remaining requirements |
 | --- | --- |
 | .NET 10 LTS | Patched runtime and complete primary-platform suites exist. Complete supported PostgreSQL/platform combinations and final release acceptance remain required. |
