@@ -193,6 +193,21 @@ the returned `PgGucSetting<T>`. The `define_*_guc_with_hooks` variants map to th
 optional `PgGucHooks<T>` argument. See
 [configuration settings](/configuration/#run-time-definitions).
 
+## Beyond pgrx
+
+Some Ankus APIs have no pgrx counterpart. They exist so that extensions which
+pgrx leaves to raw `pg_sys` calls and external libraries, such as logical
+replication extensions, can be written in ordinary C#:
+
+- [Replication connections](/replication-connections/) reach another server
+  from a backend through PostgreSQL's own `libpqwalreceiver` to run SQL, copy
+  tables and stream logical changes. A pgrx extension links a client library
+  such as libpq itself.
+- [Applying replicated changes](/applying-changes/) writes rows through the
+  executor's replication helpers, finds rows with their commit origin and time,
+  and tracks progress with replication origins. A pgrx extension builds executor
+  state and calls those functions through `pg_sys` for each PostgreSQL version.
+
 ## Extension workflow
 
 | cargo-pgrx workflow | Ankus workflow |

@@ -85,21 +85,22 @@ what pglogical uses and the PostgreSQL 13–19 interfaces behind each capability
 
 | Capability | Design | Status |
 | --- | --- | --- |
-| Replication connection | A managed client over PostgreSQL's own `libpqwalreceiver` (`walrcv_*`), as core's subscriber uses: connect, run SQL with rows, create slots, stream with feedback, and read `COPY` data, waiting on the latch with cancellation. No extra native dependency on any platform. | Planned |
-| Relation writes and lookups | Safe wrappers over `execReplication.c` (`ExecSimpleRelationInsert/Update/Delete`, `RelationFindReplTupleByIndex/Seq`) with executor state, indexes, constraints and triggers handled; locked lookups with a row's commit origin and timestamp for conflict handling; bulk load of a COPY stream through in-process `BeginCopyFrom`. | Planned |
-| Replication origins | Session origin, progress and advance over `replorigin_*`, including PostgreSQL 19's renamed origin state. | Planned |
-| Long-lived worker transactions | A worker transaction that stays open across loop iterations and latch waits, with Ankus's existing rollback and recovery rules. | Planned |
+| Replication connection | `PgReplicationConnection`, a managed client over PostgreSQL's own `libpqwalreceiver` (`walrcv_*`), as core's subscriber uses: connect, run SQL with rows, replication commands, `COPY` out and logical streaming with feedback, waiting on the socket and latch with cancellation. `CopyInto` reads a remote `COPY` into a local table through in-process `BeginCopyFrom`, as table synchronization does. No extra native dependency on any platform. | Done; backend tests pass on PostgreSQL 13–19 beta 4 (Linux x64) |
+| Relation writes and lookups | `PgRelationWriter` over `execReplication.c` (`ExecSimpleRelationInsert/Update/Delete`, `RelationFindReplTupleByIndex/Seq`) with executor state, indexes, constraints, triggers, privileges and row-level security handled as the apply worker does; locked lookups with a row's commit origin and timestamp for conflict handling. `PgReplicatedRow` carries values in replication's text or binary form through type input and receive functions, with defaults and unchanged values. | Done; backend tests pass on PostgreSQL 13–19 beta 4 (Linux x64) |
+| Replication origins | `PgReplicationOrigin` and `PgLsn`: create, find, drop, session setup and reset, per-transaction remote commit, progress and advance over `replorigin_*`, with the checks of the `pg_replication_origin_*` SQL functions and PostgreSQL 19's renamed origin state. | Done; backend tests pass on PostgreSQL 13–19 beta 4 (Linux x64) |
+| Long-lived worker transactions | `PgBackgroundWorker.RunTransaction` already keeps one transaction open across any number of receives, latch waits and changes inside its callback, with Ankus's rollback and recovery rules. A port applies each remote transaction in one callback, from its begin message to its commit. | Done; the subscriber sample applies every remote transaction this way |
 | Startup-sized shared memory | Shared arrays sized when PostgreSQL requests shared memory, for example from `max_worker_processes`, including Windows reattach. | Planned |
 | Error context and exit cleanup | Managed error-context callbacks and `before_shmem_exit` registration, covering what `PG_ENSURE_ERROR_CLEANUP` does for FATAL exits. | Planned |
 | Child processes | Starting a program such as `pg_dump` with `posix_spawn` or `CreateProcess`, without .NET `Process` and its `SIGCHLD` handling. | Planned |
 | Output plugin aliases | A generated C-only library that forwards a second plugin name, such as `pglogical_output`, to the extension's managed plugin. | Planned |
 
 Order: the replication connection first, tested against the test cluster
-itself, then relation writes, origins and long-lived worker transactions. A
-sample extension that streams one table's changes from a provider and applies
-them on a subscriber then proves them together on Linux, macOS and Windows, with
-backend tests and a benchmark against built-in logical replication. The
-remaining capabilities follow, each with its own tests and guide.
+itself, then relation writes, origins and long-lived worker transactions. The
+[subscriber sample](samples/Ankus.Examples.Subscriber/) proves them together: a
+background worker copies a publication's tables and streams and applies the
+provider's changes, with restart after an apply error. Still to come: its
+macOS and Windows evidence, a benchmark against built-in logical replication,
+and the remaining capabilities below, each with its own tests and guide.
 
 ## Implementation status
 
@@ -253,6 +254,110 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   supported major: the 540 trigger, composite, tuple, domain, setting and
   custom scan backend tests pass on Linux x64 with PostgreSQL 14, 15, 16, 17
   and 19 beta 4, as they did earlier on 13 and 18.
+- `PgReplicationConnection` connects from a backend to a PostgreSQL server
+  through `libpqwalreceiver`, the first piece of the
+  [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit). A new
+  guarded memory operation loads the module once, calls the `walrcv_*` table
+  through each version's macros (the connect signature changes in 16 and 17),
+  keeps connections in a backend-local registry with a scratch context for the
+  last result, and waits with `WaitLatchOrSocket` so latch wakeups, query
+  cancellation and statement timeouts end a wait. `Query` returns rows as text
+  in UTF-8, `Execute` runs commands, `StartCopy`, `Receive`, `Send` and
+  `EndStreaming` cover `COPY` out and `START_REPLICATION`, and a failure on the
+  server throws `PgRemoteException` with its SQLSTATE (from PostgreSQL 14)
+  without touching the local transaction. Closing counts as cleanup, so a
+  `using` block still closes a connection after an error and the server
+  releases its slot. Backend tests run queries with NULL and non-ASCII text,
+  `IDENTIFY_SYSTEM` against `pg_control_system()`, a remote division by zero
+  followed by another query, a three-row `COPY`, use after dispose, an
+  unreachable server, a logical stream of three inserts whose status update
+  advances the slot's confirmed position, and a wait that a statement timeout
+  ends, after which the slot becomes inactive. All seven pass on PostgreSQL 13,
+  14, 15, 16, 17, 18 and 19 beta 4, and the full PostgreSQL 18 suite passes with
+  them (14,901 tests, 52 platform skips).
+- `PgReplicationConnection.CopyInto` reads a running `COPY ... TO STDOUT` into
+  a local table, as table synchronization does: a data source callback hands
+  `BeginCopyFrom` the stream's bytes, waiting on the socket and latch, and
+  PostgreSQL's own `CopyFrom` checks constraints, fills indexes, routes
+  partitions and fires triggers. It makes tablesync's checks (`INSERT`
+  privilege, and refusal of tables whose row-level security applies to the
+  user). Backend tests copy three rows with NULL and non-ASCII text into a table
+  with reordered columns and a default, reject a row through a check
+  constraint, and check the privilege and row-level security refusals as an
+  unprivileged role.
+- `PgRelationWriter` writes rows as the apply worker does, the second toolkit
+  piece. It opens the table in `ROW EXCLUSIVE` mode and builds executor state
+  through each version's range-table and result-relation interfaces, then
+  inserts, updates and deletes through `ExecSimpleRelation*`, finding rows with
+  `RelationFindReplTupleByIndex` on the replica identity index or primary key,
+  or `RelationFindReplTupleSeq`, under an exclusive tuple lock. `Find` returns
+  the row with its `xmin`, commit origin and commit timestamp. Each operation
+  makes `TargetPrivilegesCheck`'s checks, including the row-level security
+  refusal, because these helpers apply no policies. `AFTER` triggers run when
+  the writer closes, a pre-commit callback fails a commit that leaves one open,
+  and each change's memory, including the executor's per-tuple context, is
+  reset before the next, as the apply worker resets its message context.
+  `PgReplicatedRow` carries values in replication's text or binary form; the
+  writer converts them with each type's input or receive function, checks text
+  encoding, gives unsent columns their defaults on insert and keeps them on
+  update, as `slot_store_data`, `slot_fill_defaults` and `slot_modify_data` do.
+  Backend tests cover keyed and keyless updates, unique and check violations
+  with session recovery, triggers under `session_replication_role`, an open
+  writer at commit, found rows' transactions, privileges and row-level security
+  as an unprivileged role, 50,000 inserts in one writer with less than 1 MB of
+  memory growth (PostgreSQL 14 and later, through
+  `pg_backend_memory_contexts`), and replicated rows with defaults, NULLs,
+  binary values, unsent update columns and invalid text, binary and encoding.
+- `PgReplicationOrigin` and `PgLsn` manage replication origins. Each operation
+  makes the checks of its `pg_replication_origin_*` SQL function except
+  privileges, sets and clears the session origin as those functions do, and
+  follows PostgreSQL 19's move of the session's transaction fields into
+  `replorigin_xact_state`. Backend tests on a cluster with
+  `track_commit_timestamp` apply a row on an origin's behalf and check
+  `pg_replication_origin_progress`, the commit timestamp and the found row's
+  origin, a second session's refusal, drop while in use, reset, advance forward
+  and backward, reserved names and missing origins.
+- The [subscriber sample](samples/Ankus.Examples.Subscriber/) proves the toolkit
+  together. Its background worker creates a `pgoutput` slot, copies the
+  published tables in the slot's snapshot with the starting position recorded
+  through the origin in the same transaction, then applies each remote
+  transaction in one `RunTransaction` call with `PgReplicatedRow`, and reports
+  durable progress. Its backend test, on a cluster with a provider and a
+  subscriber database, checks the copy, streamed inserts, an update that leaves
+  a 100,000-byte TOAST value unchanged, a delete, a truncate, local defaults,
+  commit origin and timestamps, origin progress, recovery after an apply error
+  rolls back and the worker restarts, and unsubscribing. Building it found
+  three toolkit gaps, now fixed: the quoting helpers worked only inside a SQL
+  callback (they now also work in a worker between transactions, through the
+  memory bridge with a per-call context); replication commands converted their
+  text in the worker's process-lifetime context; and a replication query that
+  returns rows outside a transaction crashed in `libpqwalreceiver`'s catalog
+  lookups (it now raises an error, and the guide says rows need a
+  transaction). The 60 toolkit, sample and SPI quoting backend tests pass on
+  PostgreSQL 14, 15, 16, 17 and 18. On 13 the sample first failed because
+  PostgreSQL 13 reports no SQLSTATE for remote errors, and on 19 an origin test
+  compared PostgreSQL 19's newly zero-padded position text; with the sample
+  looking slots up and the test comparing positions as values, the sample and
+  origin tests pass on 13, 18 and 19. `PgLsn` keeps the unpadded form Npgsql
+  and rust-postgres use and parses both. The full PostgreSQL 18 suite passes
+  (14,933 tests, 52 platform skips).
+- C# Dev Kit lists a design-time build's high-importance messages as problems.
+  Opening this repository showed 217: four binding progress lines from every
+  extension project and MSBuild's "project -> output" line for each SDK
+  project the editor's background build compiled. The SDK now logs the build
+  tool's output at low importance in design-time builds, rebuilds its own
+  projects only when an input changed or an output is missing (a stamp file),
+  and when it does rebuild them, copies their assemblies through an editor-only
+  `CustomAfterMicrosoftCommonTargets` file that skips MSBuild's high-importance
+  copy notice. Command-line builds are unchanged. Build tests check both
+  importance settings, that every SDK command uses them, that unchanged loads
+  build nothing while edited sources and missing outputs rebuild, and that a
+  load which rebuilds every dependency prints nothing at minimal verbosity.
+- The generated-binding test harness found its scope through a thread static in
+  each collectible test assembly; one PostgreSQL 15 run of the build tests saw
+  it read as null. It now finds the scope from the API pointer each call
+  receives and declares the runtime's full API layout, so the runtime never reads
+  past it. The 368 binding tests pass.
 - Every native memory call cleared a 2 KB error record and zero-initialized a
   recovery frame that holds another, though only worker transaction boundaries
   use the frame and readers treat the message as a C string. The entry now
@@ -1139,7 +1244,7 @@ review's findings are fixed or kept by documented design.
 3. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
 4. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees.
 5. Keep samples and guides current with API changes, and recheck changed guides before release. Test discovery for MSTest, xUnit and NUnit consumers and samples for all 37 pgrx examples are complete.
-6. Build the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) that a pglogical port needs, starting with the streaming and apply sample.
+6. Finish the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) that a pglogical port needs: the subscriber sample's macOS and Windows evidence and a benchmark against built-in logical replication, then startup-sized shared memory, error context and exit cleanup, child processes and output plugin aliases.
 7. Complete .NET servicing and every release requirement in the full inventory, using the release rehearsal, before publishing 0.1.0. If .NET 11 reaches GA first, complete its acceptance for that release; preview validation does not block the initial .NET 10 release.
 
 Continue independent work while CI runs. Before every commit and push, check and

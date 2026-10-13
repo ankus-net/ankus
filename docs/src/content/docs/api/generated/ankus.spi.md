@@ -715,6 +715,9 @@ Returns: [string](https://learn.microsoft.com/dotnet/api/system.string)
 
 The quoted identifier or the original spelling when quoting is unnecessary.
 
+The quoting helpers need no transaction, so a background worker can also use them between transactions, for
+example to build replication commands.
+
 <a id="member-b06197fde1284699"></a>
 
 ### QuoteLiteral(string)

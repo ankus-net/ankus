@@ -571,6 +571,18 @@ library can serve as a logical decoding output plugin. The method receives
 PostgreSQL's callback table and assigns `[PgNativeCallback]` properties. See
 [logical decoding output plugins](docs/src/content/docs/logical-decoding.md).
 
+`PgReplicationConnection` connects from a backend to another server through
+PostgreSQL's own `libpqwalreceiver`, as the built-in subscriber does, to run SQL,
+copy tables and stream logical changes with no client library.
+`PgRelationWriter` applies rows as the built-in apply worker does, and
+`PgReplicationOrigin` tracks how far each source has been applied. They are part
+of a toolkit for logical replication extensions such as pglogical, which pgrx
+leaves to raw calls; see
+[replication connections](docs/src/content/docs/replication-connections.md) and
+[applying replicated changes](docs/src/content/docs/applying-changes.md). The
+[subscriber sample](samples/Ankus.Examples.Subscriber/) uses them together to
+copy and stream a publication's tables from another server.
+
 `[PgCustomScan]` turns a class that implements `IPgCustomScan<TState>` into a
 custom scan provider. Its static `Plan`, `Begin` and `Read` methods offer a path,
 start a scan and produce rows; PostgreSQL still applies the query's conditions.

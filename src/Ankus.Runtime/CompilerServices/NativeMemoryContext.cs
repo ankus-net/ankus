@@ -101,6 +101,11 @@ public static unsafe class NativeMemoryContext
     internal static bool IsUtf8Database => s_api != 0 && ((NativeMemoryApi*)s_api)->_directReads >= 2;
 
     /// <summary>
+    /// Gets whether this thread has a native memory scope, as a background worker has between transactions.
+    /// </summary>
+    internal static bool IsActive => s_api != 0;
+
+    /// <summary>
     /// Gets whether managed code may read flat values in place, and text as well as bytes.
     /// </summary>
     /// <param name="text">Whether the value is text.</param>
@@ -383,6 +388,22 @@ internal enum NativeMemoryOperation
     /// Gets a registered context's native MemoryContext address.
     /// </summary>
     NativePointer = 42,
+    /// <summary>
+    /// Runs one operation on a replication connection.
+    /// </summary>
+    Replication = 43,
+    /// <summary>
+    /// Runs one operation on a relation writer.
+    /// </summary>
+    RelationWriter = 44,
+    /// <summary>
+    /// Runs one replication origin operation.
+    /// </summary>
+    ReplicationOrigin = 45,
+    /// <summary>
+    /// Quotes an identifier or literal outside a SQL callback.
+    /// </summary>
+    Quote = 46,
 }
 
 /// <summary>

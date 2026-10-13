@@ -359,6 +359,8 @@ Spi.Execute($"INSERT INTO {table} ({column}) VALUES ($1)", SpiParameter.Create("
 `QuoteQualifiedIdentifier` quotes its two components independently; a null
 qualifier omits the prefix, while an empty qualifier represents an empty name.
 These functions use the server's keyword table and `quote_all_identifiers` setting.
+They need no transaction, so a background worker can also use them between
+transactions, for example to build replication commands.
 
 ANKUS044 accepts these direct helper calls and locals whose reaching values remain completely quoted. It
 continues to reject an unquoted runtime value mixed into the same raw command;

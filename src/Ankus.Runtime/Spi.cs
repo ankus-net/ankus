@@ -10,10 +10,15 @@ public static partial class Spi
     /// </summary>
     /// <param name="identifier">One identifier; dots are part of its name.</param>
     /// <returns>The quoted identifier or the original spelling when quoting is unnecessary.</returns>
+    /// <remarks>
+    /// The quoting helpers need no transaction, so a background worker can also use them between transactions, for
+    /// example to build replication commands.
+    /// </remarks>
     public static string QuoteIdentifier(string identifier)
     {
         ArgumentNullException.ThrowIfNull(identifier);
-        return NativeBackend.Quote(SpiOperation.QuoteIdentifier, SpiParameter.Create(identifier));
+        return NativeBackend.HasBinding ? NativeBackend.Quote(SpiOperation.QuoteIdentifier, SpiParameter.Create(identifier))
+            : NativeQuote.Quote(1, identifier, null);
     }
 
     /// <summary>
@@ -25,7 +30,9 @@ public static partial class Spi
     public static string QuoteQualifiedIdentifier(string? qualifier, string identifier)
     {
         ArgumentNullException.ThrowIfNull(identifier);
-        return NativeBackend.Quote(SpiOperation.QuoteQualifiedIdentifier, SpiParameter.Create(qualifier), SpiParameter.Create(identifier));
+        return NativeBackend.HasBinding
+            ? NativeBackend.Quote(SpiOperation.QuoteQualifiedIdentifier, SpiParameter.Create(qualifier), SpiParameter.Create(identifier))
+            : NativeQuote.Quote(2, identifier, qualifier);
     }
 
     /// <summary>
@@ -36,7 +43,8 @@ public static partial class Spi
     public static string QuoteLiteral(string value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        return NativeBackend.Quote(SpiOperation.QuoteLiteral, SpiParameter.Create(value));
+        return NativeBackend.HasBinding ? NativeBackend.Quote(SpiOperation.QuoteLiteral, SpiParameter.Create(value))
+            : NativeQuote.Quote(3, value, null);
     }
 
     /// <summary>

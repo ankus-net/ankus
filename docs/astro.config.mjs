@@ -123,6 +123,8 @@ export default defineConfig({
             { label: 'Raw values and custom types', slug: 'raw-values' },
             { label: 'Custom scan providers', slug: 'custom-scans' },
             { label: 'Logical decoding output plugins', slug: 'logical-decoding' },
+            { label: 'Replication connections', slug: 'replication-connections' },
+            { label: 'Applying replicated changes', slug: 'applying-changes' },
             { label: 'Internal state', slug: 'internal-state' },
             { label: 'JSON and UUID values', slug: 'json-and-uuid' },
             { label: 'Numeric values', slug: 'numeric' },

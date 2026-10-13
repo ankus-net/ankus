@@ -75,7 +75,11 @@ internal static class NativeMemoryBridge
             ANKUS_MEMORY_RECORD_TERMINAL = 39,
             ANKUS_MEMORY_BORROW_NATIVE = 40,
             ANKUS_MEMORY_CHUNK_OWNER = 41,
-            ANKUS_MEMORY_NATIVE_POINTER = 42
+            ANKUS_MEMORY_NATIVE_POINTER = 42,
+            ANKUS_MEMORY_REPLICATION = 43,
+            ANKUS_MEMORY_RELATION_WRITER = 44,
+            ANKUS_MEMORY_REPLICATION_ORIGIN = 45,
+            ANKUS_MEMORY_QUOTE = 46
         } AnkusMemoryOperation;
 
         typedef struct AnkusMemoryRequest
@@ -1131,7 +1135,7 @@ internal static class NativeMemoryBridge
             result->length = request->length;
         }
 
-        """ + NativeStringInfoBridge.Source + NativeListBridge.Source + NativeItemPointerMemoryBridge.Source + NativeBindingBridge.Source + NativeNodeBridge.Source + NativeRawCallBridge.Source + NativeSharedMemoryBridge.Source + NativeSpinLockBridge.Source + NativeBackgroundWorkerBridge.Source + """
+        """ + NativeStringInfoBridge.Source + NativeListBridge.Source + NativeItemPointerMemoryBridge.Source + NativeBindingBridge.Source + NativeNodeBridge.Source + NativeRawCallBridge.Source + NativeSharedMemoryBridge.Source + NativeSpinLockBridge.Source + NativeBackgroundWorkerBridge.Source + NativeReplicationBridge.Source + NativeReplicationOriginBridge.Source + NativeQuoteBridge.Source + NativeRelationWriterBridge.Source + """
 
         static void
         ankus_memory_execute(AnkusMemoryApi *api, AnkusMemoryRequest *request, AnkusMemoryResult *result, volatile bool *recovered)
@@ -1218,6 +1222,20 @@ internal static class NativeMemoryBridge
                 case ANKUS_MEMORY_WORKER:
                     ankus_memory_worker(request, result, recovered);
                     break;
+                case ANKUS_MEMORY_REPLICATION:
+                    ankus_memory_replication(request, result);
+                    break;
+                case ANKUS_MEMORY_QUOTE:
+                    ankus_memory_quote(request, result);
+                    break;
+                case ANKUS_MEMORY_REPLICATION_ORIGIN:
+                    ankus_memory_replication_origin(request, result);
+                    break;
+        #ifdef ANKUS_TUPLE_BRIDGE
+                case ANKUS_MEMORY_RELATION_WRITER:
+                    ankus_memory_relation_writer(request, result);
+                    break;
+        #endif
                 case ANKUS_MEMORY_LIST:
                     ankus_list_execute(request, result);
                     break;
@@ -1883,7 +1901,8 @@ internal static class NativeMemoryBridge
              * memory. Keep these checked operations guarded, including callbacks
              * they invoke, while refusing new allocations and raw backend work. */
             bool cleanup = request->operation == ANKUS_MEMORY_SWITCH || request->operation == ANKUS_MEMORY_FREE ||
-                request->operation == ANKUS_MEMORY_DELETE || request->operation == ANKUS_MEMORY_CANCEL_CALLBACK;
+                request->operation == ANKUS_MEMORY_DELETE || request->operation == ANKUS_MEMORY_CANCEL_CALLBACK ||
+                (request->operation == ANKUS_MEMORY_REPLICATION && request->flags == 6);
             if (!cleanup && ankus_recovery_failed(error))
                 return 1;
 

@@ -27,6 +27,11 @@ public static unsafe partial class NativeBackend
     internal static nint CleanupBinding => s_execute;
 
     /// <summary>
+    /// Gets whether a SQL callback's backend binding is active on this thread.
+    /// </summary>
+    internal static bool HasBinding => s_execute != 0;
+
+    /// <summary>
     /// Gets whether the current thread is the backend thread inside a native callback scope, where PostgreSQL calls are permitted.
     /// </summary>
     internal static bool InCallback => s_callbackDepth > 0;

@@ -265,6 +265,7 @@ internal static class IntegrationEnvironment
             ("samples", "Ankus.Examples.Notify"),
             ("samples", "Ankus.Examples.PglzInspect"),
             ("samples", "Ankus.Examples.WalDecoder"),
+            ("samples", "Ankus.Examples.Subscriber"),
             ("samples", "Ankus.Examples.CustomLibraryName"),
             ("samples", "Ankus.Examples.VersionedLibrary"),
             ("samples", "Ankus.Examples.VersionedCustomLibraryName"),

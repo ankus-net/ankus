@@ -51,6 +51,7 @@
     <ProjectReference Include="../../samples/Ankus.Examples.Notify/Ankus.Examples.Notify.csproj" />
     <ProjectReference Include="../../samples/Ankus.Examples.PglzInspect/Ankus.Examples.PglzInspect.csproj" />
     <ProjectReference Include="../../samples/Ankus.Examples.WalDecoder/Ankus.Examples.WalDecoder.csproj" />
+    <ProjectReference Include="../../samples/Ankus.Examples.Subscriber/Ankus.Examples.Subscriber.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../../samples/Ankus.Examples.CustomLibraryName/Ankus.Examples.CustomLibraryName.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../../samples/Ankus.Examples.VersionedLibrary/Ankus.Examples.VersionedLibrary.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../../samples/Ankus.Examples.VersionedCustomLibraryName/Ankus.Examples.VersionedCustomLibraryName.csproj" ReferenceOutputAssembly="false" />

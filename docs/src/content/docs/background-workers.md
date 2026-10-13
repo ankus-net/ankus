@@ -224,6 +224,13 @@ Worker transactions cannot nest. Do not retain transaction-owned native views
 or return asynchronous work from a transaction callback. Keep PostgreSQL calls
 on the worker's owning thread; a task or timer callback is not a backend entry.
 
+A transaction lasts as long as its callback, which may loop, wait on the latch
+and receive from a [replication connection](/replication-connections/) many
+times. An apply worker therefore runs each remote transaction in one callback,
+from its begin message to its commit, where a C extension would start a
+transaction in one handler and commit in another. See
+[applying replicated changes](/applying-changes/).
+
 ## Signals and shared values
 
 Generated entries install native reload and termination handlers before calling

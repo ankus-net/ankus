@@ -34,6 +34,7 @@
     <Project Path="samples/Ankus.Examples.SharedMemory/Ankus.Examples.SharedMemory.csproj" />
     <Project Path="samples/Ankus.Examples.Spi/Ankus.Examples.Spi.csproj" />
     <Project Path="samples/Ankus.Examples.Strings/Ankus.Examples.Strings.csproj" />
+    <Project Path="samples/Ankus.Examples.Subscriber/Ankus.Examples.Subscriber.csproj" />
     <Project Path="samples/Ankus.Examples.Subtransactions/Ankus.Examples.Subtransactions.csproj" />
     <Project Path="samples/Ankus.Examples.Threads/Ankus.Examples.Threads.csproj" />
     <Project Path="samples/Ankus.Examples.Triggers/Ankus.Examples.Triggers.csproj" />

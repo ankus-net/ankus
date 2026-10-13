@@ -9,6 +9,7 @@ internal static class NativeTupleBridge
     /// Gets composite readers, validated reconstruction, and descriptor serialization helpers.
     /// </summary>
     internal const string Source = """
+        #define ANKUS_TUPLE_BRIDGE 1
         #include "access/htup_details.h"
         #include "funcapi.h"
         #include "libpq/pqformat.h"
