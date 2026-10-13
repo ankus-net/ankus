@@ -200,34 +200,23 @@ public sealed class PgTypeDiscriminatorTests
     }
 
     /// <summary>
-    /// Treats decimal-fraction storage as one scalar at the same depth used by the writer and value reader.
+    /// Counts a decimal as a nesting level, as CBOR's two-element decimal fraction is: it reads back one level below
+    /// the limit, and the writer and reader both refuse it at the limit, in either format.
     /// </summary>
     [TestMethod]
     [DataRow(false)]
     [DataRow(true)]
-    public void DecimalScalarLookaheadSharesTheWriterDepthLimit(bool json)
+    public void DecimalsCountAsANestingLevel(bool json)
     {
         var destination = new ArrayBufferWriter<byte>();
-        using var writer = new PgTypeWriter(destination, json);
-        for (int position = 0; position < 63; position++)
+        using (var writer = new PgTypeWriter(destination, json))
         {
-            writer.WriteStartArray(1);
+            WriteDecimalAtDepth(writer, 62);
+            writer.Complete();
         }
 
-        writer.WriteStartObject(2);
-        writer.WritePropertyName("$kind");
-        writer.WriteInt64(1);
-        writer.WritePropertyName("Price");
-        writer.WriteDecimal(1.23m);
-        writer.WriteEndObject();
-        for (int position = 0; position < 63; position++)
-        {
-            writer.WriteEndArray();
-        }
-
-        writer.Complete();
         var reader = new PgTypeReader(destination.WrittenSpan, json);
-        for (int position = 0; position < 63; position++)
+        for (int position = 0; position < 62; position++)
         {
             reader.ReadStartArray();
         }
@@ -239,17 +228,28 @@ public sealed class PgTypeDiscriminatorTests
         Assert.AreEqual("Price", reader.ReadPropertyName());
         Assert.AreSequenceEqual<int>([123, 0, 0, 2 << 16], decimal.GetBits(reader.ReadDecimal()));
         Assert.IsNull(reader.ReadPropertyName());
-        for (int position = 0; position < 63; position++)
+        for (int position = 0; position < 62; position++)
         {
             Assert.IsTrue(reader.ReadEndArray());
         }
 
         reader.Complete();
+        using (var writer = new PgTypeWriter(new ArrayBufferWriter<byte>(), json))
+        {
+            Assert.ThrowsExactly<InvalidOperationException>(() => WriteDecimalAtDepth(writer, 63));
+        }
+
+        byte[] deeper = json
+            ? Encoding.UTF8.GetBytes(string.Concat(Enumerable.Repeat("[", 63)) + "{\"$kind\":1,\"Price\":1.23}" + string.Concat(Enumerable.Repeat("]", 63)))
+            : [.. Enumerable.Repeat((byte)0x81, 63), .. Convert.FromHexString("A265246B696E6401655072696365C48221187B")];
+        Assert.ThrowsExactly<FormatException>(() => ReadDecimalAtDepth(deeper, json, 63));
     }
 
     /// <summary>
-    /// Skips valid decimal fractions at depth 64 without narrowing unknown values to the .NET decimal range.
+    /// Skips a valid unknown decimal fraction as one value one level below the limit, without narrowing it to the .NET
+    /// decimal range, and rejects it at the limit, where .NET's CBOR reader would refuse its array.
     /// </summary>
+    /// <param name="hex">The decimal fraction's CBOR encoding.</param>
     [TestMethod]
     [DataRow("C48221187B")]
     [DataRow("C49F21187BFF")]
@@ -260,16 +260,10 @@ public sealed class PgTypeDiscriminatorTests
     [DataRow("C482003BFFFFFFFFFFFFFFFF")]
     [DataRow("C4821BFFFFFFFFFFFFFFFF01")]
     [DataRow("C4823BFFFFFFFFFFFFFFFF01")]
-    public void UnknownDecimalFractionsRemainScalarsAtTheDepthBoundary(string hex)
+    public void UnknownDecimalFractionsCountAsANestingLevel(string hex)
     {
-        byte[] payload = [.. Enumerable.Repeat((byte)0x81, 63), .. Convert.FromHexString("A265246B696E6401655072696365" + hex)];
-        var reader = new PgTypeReader(payload, json: false);
-        for (int position = 0; position < 63; position++)
-        {
-            reader.ReadStartArray();
-        }
-
-        Assert.AreEqual(1, reader.PeekDiscriminator("$kind"));
+        Assert.AreEqual(1, ProbeDecimalAtDepth(hex, 62));
+        Assert.ThrowsExactly<FormatException>(() => ProbeDecimalAtDepth(hex, 63));
     }
 
     /// <summary>
@@ -330,6 +324,52 @@ public sealed class PgTypeDiscriminatorTests
     /// <summary>
     /// Builds an actual nested cursor and returns only the probe's result without a later validating traversal.
     /// </summary>
+    private static void WriteDecimalAtDepth(PgTypeWriter writer, int arrays)
+    {
+        for (int position = 0; position < arrays; position++)
+        {
+            writer.WriteStartArray(1);
+        }
+
+        writer.WriteStartObject(2);
+        writer.WritePropertyName("$kind");
+        writer.WriteInt64(1);
+        writer.WritePropertyName("Price");
+        writer.WriteDecimal(1.23m);
+        writer.WriteEndObject();
+        for (int position = 0; position < arrays; position++)
+        {
+            writer.WriteEndArray();
+        }
+    }
+
+    private static decimal ReadDecimalAtDepth(byte[] payload, bool json, int arrays)
+    {
+        var reader = new PgTypeReader(payload, json);
+        for (int position = 0; position < arrays; position++)
+        {
+            reader.ReadStartArray();
+        }
+
+        reader.ReadStartObject();
+        Assert.AreEqual("$kind", reader.ReadPropertyName());
+        Assert.AreEqual(1L, reader.ReadInt64());
+        Assert.AreEqual("Price", reader.ReadPropertyName());
+        return reader.ReadDecimal();
+    }
+
+    private static object? ProbeDecimalAtDepth(string hex, int arrays)
+    {
+        byte[] payload = [.. Enumerable.Repeat((byte)0x81, arrays), .. Convert.FromHexString("A265246B696E6401655072696365" + hex)];
+        var reader = new PgTypeReader(payload, json: false);
+        for (int position = 0; position < arrays; position++)
+        {
+            reader.ReadStartArray();
+        }
+
+        return reader.PeekDiscriminator("$kind");
+    }
+
     private static object? ProbeAtDepth(bool json, int arrays, bool nestedUnknown)
     {
         string value = nestedUnknown ? "[0]" : "0";
