@@ -210,6 +210,9 @@ replication extensions, can be written in ordinary C#:
 - [Error context](/logging/#error-context) adds a line to errors and messages
   reported while it is active, where a pgrx extension links an
   `ErrorContextCallback` into `pg_sys::error_context_stack` itself.
+- [Exit callbacks](/background-workers/#cleanup-at-exit) run managed cleanup
+  when a backend or worker exits, where a pgrx extension registers
+  `pg_sys::before_shmem_exit` callbacks itself.
 - [Applying replicated changes](/applying-changes/) writes rows through the
   executor's replication helpers, finds rows with their commit origin and time,
   and tracks progress with replication origins. A pgrx extension builds executor

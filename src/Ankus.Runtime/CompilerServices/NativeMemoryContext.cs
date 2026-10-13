@@ -408,6 +408,10 @@ internal enum NativeMemoryOperation
     /// Pushes, updates or pops a managed error context.
     /// </summary>
     ErrorContext = 47,
+    /// <summary>
+    /// Registers the process-exit dispatcher.
+    /// </summary>
+    ProcessExit = 48,
 }
 
 /// <summary>

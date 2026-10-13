@@ -231,6 +231,32 @@ from its begin message to its commit, where a C extension would start a
 transaction in one handler and commit in another. See
 [applying replicated changes](/applying-changes/).
 
+### Cleanup at exit
+
+A worker that claims a slot in shared memory must give it back however it
+stops. `PgProcess.OnExit` registers a callback that runs when the process exits,
+before it detaches from shared memory, as a C extension's `before_shmem_exit`
+callback does:
+
+```csharp
+int slot = ClaimSlot();
+PgProcess.OnExit(code => ReleaseSlot(slot));
+```
+
+Callbacks run newest first after a normal exit, a FATAL error or a stop request,
+with the exit code; they do not run when the process crashes. They can use
+shared memory and lightweight locks but not SQL or logging, and must not wait
+for a lock the process may already hold. An exception is reported as a warning
+and the other callbacks still run. Register in the process that needs the
+callback, not while the library loads in the postmaster. Disposing the returned
+registration removes the callback.
+
+C's `PG_ENSURE_ERROR_CLEANUP` exists because a FATAL error exits without
+unwinding the C stack. Ankus unwinds managed code before it reports a FATAL that
+a backend call raised, so an ordinary `try`/`finally` covers that case; use
+`OnExit` for cleanup that must also run when the process exits from inside
+PostgreSQL, such as on postmaster death during a wait.
+
 ## Signals and shared values
 
 Generated entries install native reload and termination handlers before calling

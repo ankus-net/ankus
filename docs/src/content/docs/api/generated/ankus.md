@@ -134,6 +134,7 @@ Assembly: `Ankus.Runtime.dll`
 - [PgParameterAttribute](/api/ankus.pgparameterattribute/)
 - [PgPath](/api/ankus.pgpath/)
 - [PgPolygon](/api/ankus.pgpolygon/)
+- [PgProcess](/api/ankus.pgprocess/)
 - [PgPropertyException](/api/ankus.pgpropertyexception/)
 - [PgPropertyOptions](/api/ankus.pgpropertyoptions/)
 - [PgPropertyRunner](/api/ankus.pgpropertyrunner/)

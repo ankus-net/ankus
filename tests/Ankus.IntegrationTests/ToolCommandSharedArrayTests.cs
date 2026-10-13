@@ -8,7 +8,8 @@ public sealed partial class ToolCommandTests
     /// <summary>
     /// A preloaded extension sizes a lock-protected array from <c>max_worker_processes</c>, as pglogical sizes its
     /// worker table. Backends see each other's claims, an index outside the array fails without harming the session,
-    /// and a different server setting gives a different length.
+    /// and a different server setting gives a different length. A backend's exit callbacks release its slot after a
+    /// normal disconnect and after a termination, newest first, with a failing callback reported as a warning.
     /// </summary>
     [TestMethod]
     public async Task SharedArraysAreSizedAtStartup()
@@ -33,6 +34,38 @@ public sealed partial class ToolCommandTests
                 PackageGucScalarAsync(first, $"SELECT slot_process({workers})"));
             Assert.Contains($"less than the length, {workers}", outside.MessageText);
             Assert.AreEqual(0, await PackageGucScalarAsync(first, "SELECT slot_process(2)"));
+            if (workers != 13)
+            {
+                continue;
+            }
+
+            await using (NpgsqlConnection leaving = await cluster.OpenConnectionAsync(token))
+            {
+                Assert.AreEqual(2, await PackageGucScalarAsync(leaving, "SELECT claim_slot_until_exit(false)"));
+                Assert.AreEqual($"{leaving.ProcessID}|2", await PackageGucScalarAsync(first, "SELECT slot_state(2)"));
+            }
+
+            await WaitForSlotAsync(first, "0|0", token);
+            await using NpgsqlConnection terminated = await cluster.OpenConnectionAsync(token);
+            Assert.AreEqual(2, await PackageGucScalarAsync(terminated, "SELECT claim_slot_until_exit(true)"));
+            await PackageGucScalarAsync(first, $"SELECT pg_terminate_backend({terminated.ProcessID})");
+            await WaitForSlotAsync(first, "0|1", token);
+            Assert.AreEqual($"2|7|{workers - 2}|{workers - 1}", await PackageGucScalarAsync(first, "SELECT describe_slots()"));
+            Assert.Contains("exit callback failed", cluster.ReadServerLog());
+        }
+    }
+
+    /// <summary>
+    /// Waits for slot 2's process and generation, which an exit callback writes after the backend disconnects.
+    /// </summary>
+    private async Task WaitForSlotAsync(NpgsqlConnection connection, string expected, CancellationToken token)
+    {
+        DateTime deadline = DateTime.UtcNow.AddSeconds(30);
+        string? state;
+        while ((state = (string?)await PackageGucScalarAsync(connection, "SELECT slot_state(2)")) != expected)
+        {
+            Assert.IsLessThan(deadline, DateTime.UtcNow, $"Slot 2 stayed {state} instead of {expected}.");
+            await Task.Delay(50, token);
         }
     }
 
@@ -101,6 +134,34 @@ public sealed partial class ToolCommandTests
 
                     return header.Claimed + "|" + header.Generation + "|" + free + "|" + slots[slots.Length - 1].Generation;
                 });
+            }
+
+            [PgFunction]
+            public static int ClaimSlotUntilExit(bool failFirst)
+            {
+                int index = ClaimSlot();
+                _ = PgProcess.OnExit(code => Release(index, code));
+                if (failFirst)
+                {
+                    _ = PgProcess.OnExit(static _ => throw new System.InvalidOperationException("exit callback failed"));
+                }
+
+                return index;
+            }
+
+            [PgFunction]
+            public static string SlotState(int index)
+            {
+                using PgLwLockShareGuard<WorkerTable, WorkerSlot> guard = Workers.Share();
+                WorkerSlot slot = guard[index];
+                return slot.ProcessId + "|" + slot.Generation;
+            }
+
+            private static void Release(int index, int code)
+            {
+                using PgLwLockExclusiveGuard<WorkerTable, WorkerSlot> guard = Workers.Exclusive();
+                guard[index] = new WorkerSlot(0, code);
+                guard.Header = guard.Header with { Claimed = guard.Header.Claimed - 1 };
             }
 
             [PgFunction]
