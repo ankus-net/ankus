@@ -41,7 +41,7 @@ SELECT add(40, 2);  -- 42
     <span class="feature-label">Query from inside the backend. Interpolated values become bound parameters, not SQL text.</span>
   </div>
   <div class="feature-item">
-    <span class="feature-key">PgReplicationConnection</span>
+    <span class="feature-key">Replication</span>
     <span class="feature-label">Stream logical changes from another server and apply them through the executor, as PostgreSQL's own subscriber does.</span>
   </div>
   <div class="feature-item">
