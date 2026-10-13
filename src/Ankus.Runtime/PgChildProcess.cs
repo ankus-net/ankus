@@ -16,7 +16,9 @@ namespace Ankus;
 /// <para>
 /// The program inherits the server's environment, working directory and standard streams, so its output goes to the
 /// server log; pass options such as <c>--file</c> to write results to a file. Arguments are passed exactly, including
-/// spaces, quotes and non-ASCII text.
+/// spaces, quotes and non-ASCII text. On Windows, a program with a narrow <c>main</c>, which includes PostgreSQL's own
+/// programs, receives them converted to the system's ANSI code page, so non-ASCII text arrives only when that code page
+/// contains it.
 /// </para>
 /// </remarks>
 public static unsafe class PgChildProcess

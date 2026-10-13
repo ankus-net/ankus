@@ -274,7 +274,9 @@ if (code != 0)
 Do not use `System.Diagnostics.Process` in PostgreSQL: it installs its own
 `SIGCHLD` handling. `Run` starts the program with `posix_spawn` on Unix and
 `CreateProcessW` on Windows and passes each argument exactly, including spaces,
-quotes and non-ASCII text. It waits on the latch, so a query cancellation,
+quotes and non-ASCII text. On Windows, PostgreSQL's programs and others with a
+narrow `main` receive their arguments in the system's ANSI code page, so
+non-ASCII text survives only if that code page contains it. It waits on the latch, so a query cancellation,
 statement timeout or termination stops the program before the usual error. The
 program inherits the server's environment, working directory and output streams,
 so its messages go to the server log; give it a file to write results to. On

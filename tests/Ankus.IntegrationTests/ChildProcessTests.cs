@@ -14,20 +14,22 @@ public sealed class ChildProcessTests(TestContext context)
     private static readonly string[] s_badOption = ["--no-such-option"];
 
     /// <summary>
-    /// <c>pg_dump</c> receives arguments with spaces, quotes and non-ASCII text exactly and writes the table's
-    /// definition to the requested file.
+    /// <c>pg_dump</c> receives arguments with spaces, quotes and, except on Windows, non-ASCII text exactly and writes
+    /// the table's definition to the requested file. Windows gives a program with a narrow <c>main</c>, such as
+    /// <c>pg_dump</c>, its arguments in the system's ANSI code page, which need not contain every character.
     /// </summary>
     [TestMethod]
     public async Task PgDumpReceivesExactArguments()
     {
         CancellationToken token = context.CancellationToken;
         await using NpgsqlConnection connection = await PostgresFixture.Cluster.OpenConnectionAsync(token);
-        string table = "Odd \"Table\" é " + Guid.NewGuid().ToString("N")[..8];
+        string text = OperatingSystem.IsWindows() ? "" : " é";
+        string table = "Odd \"Table\"" + text + " " + Guid.NewGuid().ToString("N")[..8];
         string quoted = "\"" + table.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
         await ExecuteAsync(connection, $"CREATE TABLE tests.{quoted} (id integer, \"note é\" text)", token);
         try
         {
-            string output = Path.Combine(PostgresFixture.Cluster.DataDirectory, "ankus child dump é.sql");
+            string output = Path.Combine(PostgresFixture.Cluster.DataDirectory, "ankus child dump" + text + ".sql");
             string result = await ScalarAsync<string>(connection, "SELECT datatype.child_run_and_read(@path, @arguments, @output)", token,
                 ("path", Program("pg_dump")), ("output", output),
                 ("arguments", new[] { "--schema-only", "--table=tests." + quoted, "--file=" + output, "--dbname=" + ConnectionString(connection) }));
@@ -66,17 +68,19 @@ public sealed class ChildProcessTests(TestContext context)
     }
 
     /// <summary>
-    /// A statement timeout stops a running program and fails with the usual error. From PostgreSQL 14 the program's
-    /// own session, which notices its client is gone, disappears too.
+    /// A statement timeout stops a running program and fails with the usual error. Where PostgreSQL can check for a
+    /// closed client connection, the program's own session disappears too.
     /// </summary>
     [TestMethod]
     public async Task CancellationStopsTheProgram()
     {
         CancellationToken token = context.CancellationToken;
         await using NpgsqlConnection connection = await PostgresFixture.Cluster.OpenConnectionAsync(token);
-        int version = await ScalarAsync<int>(connection, "SELECT current_setting('server_version_num')::integer", token);
+        bool checksClient = await ChecksClientConnectionAsync(connection, token);
         string application = "ankus_child_" + Guid.NewGuid().ToString("N")[..8];
-        string sql = (version >= 140000 ? "SET client_connection_check_interval = '100ms'; " : "") + "SELECT pg_sleep(60)";
+
+        // Without the check, the orphaned session runs until its sleep ends.
+        string sql = checksClient ? "SET client_connection_check_interval = '100ms'; SELECT pg_sleep(60)" : "SELECT pg_sleep(10)";
         await ExecuteAsync(connection, "SET statement_timeout = '1s'", token);
         Stopwatch watch = Stopwatch.StartNew();
         PostgresException canceled = await Assert.ThrowsExactlyAsync<PostgresException>(() => ScalarAsync<int>(connection,
@@ -85,7 +89,7 @@ public sealed class ChildProcessTests(TestContext context)
         Assert.AreEqual(PostgresErrorCodes.QueryCanceled, canceled.SqlState);
         Assert.IsLessThan(TimeSpan.FromSeconds(20), watch.Elapsed);
         await ExecuteAsync(connection, "RESET statement_timeout", token);
-        if (version >= 140000)
+        if (checksClient)
         {
             DateTime deadline = DateTime.UtcNow.AddSeconds(20);
             while (await ScalarAsync<long>(connection, "SELECT count(*) FROM pg_stat_activity WHERE application_name = @name", token,
@@ -95,6 +99,30 @@ public sealed class ChildProcessTests(TestContext context)
                 await Task.Delay(100, token);
             }
         }
+    }
+
+    /// <summary>
+    /// Gets whether PostgreSQL can notice a closed client connection during a query: from PostgreSQL 14 on Linux, and on
+    /// more platforms in later versions, but not on Windows.
+    /// </summary>
+    private static async Task<bool> ChecksClientConnectionAsync(NpgsqlConnection connection, CancellationToken token)
+    {
+        if (await ScalarAsync<int>(connection, "SELECT current_setting('server_version_num')::integer", token) < 140000)
+        {
+            return false;
+        }
+
+        try
+        {
+            await ExecuteAsync(connection, "SET client_connection_check_interval = '100ms'", token);
+        }
+        catch (PostgresException error) when (error.SqlState == PostgresErrorCodes.InvalidParameterValue)
+        {
+            return false;
+        }
+
+        await ExecuteAsync(connection, "RESET client_connection_check_interval", token);
+        return true;
     }
 
     private static string Program(string name)
