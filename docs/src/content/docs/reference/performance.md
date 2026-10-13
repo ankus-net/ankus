@@ -30,20 +30,29 @@ built-in subscriber and through the
 [subscriber sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Subscriber),
 which uses [relation writers](/applying-changes/) and
 [replication connections](/replication-connections/), on the same PostgreSQL
-18.6 cluster. Every row is inserted and then updated; timing runs from
-releasing a lock that held the changes back until the subscriber matches the
-provider.
+18.6 cluster (Linux x64, `fsync = off`). Every row is inserted and then updated;
+timing runs from releasing a lock that held the changes back until the
+subscriber matches the provider.
 
 | Workload | Built-in subscriber | Subscriber sample |
 |---|---:|---:|
-| 100,000 rows in transactions of 1,000 | 290,000 changes/s | 255,000 changes/s |
-| 20,000 rows in single-row transactions | 160,000 changes/s | 61,000 changes/s |
+| 100,000 rows in transactions of 1,000 | 268,000 changes/s | 225,000 changes/s |
+| 100,000 rows in single-row transactions | 90,000 changes/s | 100,000 changes/s |
 
-Large transactions apply at about 90% of the built-in rate. Each remote
-transaction costs the sample about 16 µs against 6 µs, because it starts a
-managed transaction, opens a writer with its executor state for each table, and
-looks for an existing row before each insert, as pglogical's conflict handling
-does.
+A remote transaction costs the sample about 10 µs, a little less than the
+built-in subscriber. Two things got it there from 20 µs. Writers for a table
+share a descriptor until the table changes, so opening one no longer copies the
+table's columns, and the sample keeps its column map and rows while the
+descriptor stays the same. And the sample commits with `synchronous_commit` off,
+as the built-in subscriber and pglogical do; on a server with `fsync` on, a
+synchronous commit per remote transaction costs far more. Large transactions
+apply at about 84% of the built-in rate because the sample looks for an
+existing row before each insert, as pglogical's conflict handling does.
+
+Inside PostgreSQL, opening and closing a writer takes about 0.5 µs once its
+descriptor is shared (1.7 µs when it loads one), and inserting a row in
+replication's text form takes about 2 µs, against about 7 µs for the same
+`INSERT` through SPI.
 
 ## Keeping hot paths cheap
 

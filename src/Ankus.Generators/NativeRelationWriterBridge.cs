@@ -36,6 +36,7 @@ internal static class NativeRelationWriterBridge
         #include "utils/rel.h"
         #include "utils/relcache.h"
         #include "utils/rls.h"
+        #include "utils/typcache.h"
 
         typedef struct AnkusRelationWriter
         {
@@ -185,6 +186,9 @@ internal static class NativeRelationWriterBridge
             result->context = (intptr_t) writer->id;
             result->value = (intptr_t) relation->rd_rel->reltype;
             result->data = (intptr_t) writer->key;
+
+            /* The type cache numbers each row descriptor it loads, so the caller reuses its copy until the table changes. */
+            result->length = (uintptr_t) lookup_type_cache(relation->rd_rel->reltype, TYPECACHE_TUPDESC)->tupDesc_identifier;
         }
 
         /*

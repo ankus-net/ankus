@@ -102,8 +102,8 @@ provider's changes, with restart after an apply error; CI run 38361916466 on
 **18b64d5** passed it with the rest of the full suite on Linux x64 (PostgreSQL
 18), macOS ARM64 (18) and Windows x64 (17). A benchmark compares it with
 built-in logical replication (see the progress entry below). Every capability
-in the table now has an API, tests and a guide; the remaining toolkit work is
-lowering the sample's per-transaction cost.
+in the table now has an API, tests and a guide, and the sample applies a remote
+transaction slightly faster than the built-in subscriber.
 
 ## Implementation status
 
@@ -454,6 +454,30 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   transaction, a writer's executor state per table, and a key lookup before
   each insert. It passes on PostgreSQL 13, 18 and 19, and with exit callbacks
   the full PostgreSQL 18 suite passes (14,947 tests, 52 platform skips).
+- The subscriber sample's cost per remote transaction fell from about 20 µs to
+  10 µs, slightly below the built-in subscriber's. Profiling the apply worker
+  and in-backend benchmarks (`WriterBenchmarks` in the sample, run with
+  `ankus bench`) showed that copying the table's descriptor took 1.07 µs of a
+  writer's 1.67 µs open and close. A writer now gets PostgreSQL's type cache
+  number for the table's row descriptor when it opens and reuses the managed
+  descriptor while that number is the same, so opening and closing takes
+  0.54 µs; an `ALTER TABLE` in the same transaction or another session yields
+  a new descriptor. The sample keeps its column map and rows while the
+  descriptor instance is unchanged, and now commits with `synchronous_commit`
+  off, as the built-in subscriber and pglogical do. Inserting a replicated row
+  through a writer takes 1.8 µs against 7.1 µs through SPI. On PostgreSQL 18.6
+  (Linux x64, `fsync = off`), 100,000 single-row transactions applied at
+  50,400 changes/s before, 67,000 with the caching alone and 100,400 with both,
+  against 84,000 to 90,700 built in. In 1,000-row transactions the sample
+  went from 219,000 to 225,000 changes/s against about 270,000; the rest is the
+  key lookup before each insert that pglogical's conflict handling needs. The
+  writer tests pass on PostgreSQL 13, 18 and 19, and the full PostgreSQL 18
+  suite passes with these changes (14,986 tests, 52 platform skips).
+- Output plugin aliases passed CI run 38421871434 on **6a34324** with the rest
+  of the full suite on Linux x64 (PostgreSQL 18), macOS ARM64 (18) and Windows
+  x64 (17), so the generated module builds and loads with Clang on macOS and
+  MSVC on Windows. CI run 38421841668 on **bda942a** passed the corrected child
+  process tests on the same three platforms.
 - The generated-binding test harness found its scope through a thread static in
   each collectible test assembly; one PostgreSQL 15 run of the build tests saw
   it read as null. It now finds the scope from the API pointer each call
@@ -1345,7 +1369,7 @@ review's findings are fixed or kept by documented design.
 3. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
 4. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees.
 5. Keep samples and guides current with API changes, and recheck changed guides before release. Test discovery for MSTest, xUnit and NUnit consumers and samples for all 37 pgrx examples are complete.
-6. Finish the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) that a pglogical port needs: lower the per-transaction cost the replication benchmark shows.
+6. Keep the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) current as a pglogical port exercises it; every planned capability is done.
 7. Complete .NET servicing and every release requirement in the full inventory, using the release rehearsal, before publishing 0.1.0. If .NET 11 reaches GA first, complete its acceptance for that release; preview validation does not block the initial .NET 10 release.
 
 Continue independent work while CI runs. Before every commit and push, check and

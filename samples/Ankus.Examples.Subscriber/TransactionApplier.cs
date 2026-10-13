@@ -134,13 +134,18 @@ internal sealed class TransactionApplier(IReadOnlyDictionary<uint, RemoteRelatio
         PgRelationWriter writer = PgRelationWriter.Open(relation.LocalOid.Value);
         try
         {
-            int[] map = new int[relation.Columns.Count];
-            for (int index = 0; index < map.Length; index++)
+            if (relation.Map is null || !ReferenceEquals(relation.Map.Descriptor, writer.Descriptor))
             {
-                map[index] = writer.Descriptor.GetOrdinal(relation.Columns[index]);
+                int[] positions = new int[relation.Columns.Count];
+                for (int index = 0; index < positions.Length; index++)
+                {
+                    positions[index] = writer.Descriptor.GetOrdinal(relation.Columns[index]);
+                }
+
+                relation.Map = new ColumnMap(writer, positions);
             }
 
-            table = new LocalTable(writer, map);
+            table = new LocalTable(writer, relation.Map);
         }
         catch
         {
@@ -153,15 +158,17 @@ internal sealed class TransactionApplier(IReadOnlyDictionary<uint, RemoteRelatio
     }
 
     /// <summary>
-    /// Holds a local table's writer, the local position of each replicated column, and rows reused for each change.
+    /// Holds a local table's writer for this transaction and the table's column map.
     /// </summary>
-    private sealed class LocalTable(PgRelationWriter writer, int[] map)
+    private sealed class LocalTable(PgRelationWriter writer, ColumnMap map)
     {
+        private readonly int[] _positions = map.Positions;
+
         public PgRelationWriter Writer { get; } = writer;
 
-        public PgReplicatedRow Row { get; } = writer.CreateReplicatedRow();
+        public PgReplicatedRow Row { get; } = map.Row;
 
-        public PgReplicatedRow Key { get; } = writer.CreateReplicatedRow();
+        public PgReplicatedRow Key { get; } = map.Key;
 
         /// <summary>
         /// Reads a row's columns into <paramref name="row"/>. An unchanged TOAST value stays unsent, so an update
@@ -171,9 +178,9 @@ internal sealed class TransactionApplier(IReadOnlyDictionary<uint, RemoteRelatio
         {
             row.Clear();
             int count = reader.ReadInt16();
-            if (count != map.Length)
+            if (count != _positions.Length)
             {
-                throw new InvalidDataException($"A row has {count} columns where the table's description has {map.Length}.");
+                throw new InvalidDataException($"A row has {count} columns where the table's description has {_positions.Length}.");
             }
 
             for (int index = 0; index < count; index++)
@@ -181,15 +188,15 @@ internal sealed class TransactionApplier(IReadOnlyDictionary<uint, RemoteRelatio
                 switch (reader.ReadByte())
                 {
                     case (byte)'n':
-                        row.SetNull(map[index]);
+                        row.SetNull(_positions[index]);
                         break;
                     case (byte)'u':
                         break;
                     case (byte)'t':
-                        row.SetText(map[index], reader.ReadBytes(reader.ReadInt32()));
+                        row.SetText(_positions[index], reader.ReadBytes(reader.ReadInt32()));
                         break;
                     case (byte)'b':
-                        row.SetBinary(map[index], reader.ReadBytes(reader.ReadInt32()));
+                        row.SetBinary(_positions[index], reader.ReadBytes(reader.ReadInt32()));
                         break;
                     default:
                         throw new InvalidDataException("A row has a column of an unknown kind.");

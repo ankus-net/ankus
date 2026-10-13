@@ -207,6 +207,22 @@ public sealed class RelationWriterTests(TestContext context)
         });
 
     /// <summary>
+    /// Writers for one table share a descriptor until the table changes, whether this transaction or another session
+    /// changes it.
+    /// </summary>
+    [TestMethod]
+    public async Task WritersSeeTableChanges()
+        => await WithTableAsync("id integer PRIMARY KEY, name text", async (connection, table, token) =>
+        {
+            Assert.AreEqual("True|False|id,name,extra", await ScalarAsync<string>(connection,
+                $"SELECT datatype.writer_descriptor_after_alter('{table}'::regclass::oid, 'ALTER TABLE {table} ADD COLUMN extra integer')", token));
+            Assert.AreEqual("1:one:5", await ScalarAsync<string>(connection, $"SELECT id || ':' || name || ':' || extra FROM {table}", token));
+            await using NpgsqlConnection other = await PostgresFixture.Cluster.OpenConnectionAsync(token);
+            await ExecuteAsync(other, $"ALTER TABLE {table} RENAME COLUMN name TO label; ALTER TABLE {table} DROP COLUMN extra", token);
+            Assert.AreEqual("id,label", await ScalarAsync<string>(connection, $"SELECT datatype.writer_columns('{table}'::regclass::oid)", token));
+        });
+
+    /// <summary>
     /// Creates a table with the given columns, runs the test, and drops the table.
     /// </summary>
     private async Task WithTableAsync(string columns, Func<NpgsqlConnection, string, CancellationToken, Task> test)

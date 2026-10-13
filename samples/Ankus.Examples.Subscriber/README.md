@@ -15,8 +15,8 @@ runs in its own background worker, which:
 4. reports its durable progress to the provider once a second.
 
 Like the built-in subscriber, it applies changes with `session_replication_role`
-set to `replica`, keeps local columns' defaults, and skips updates and deletes
-whose row is missing. An insert whose key already exists replaces the local row,
+set to `replica` and `synchronous_commit` off, keeps local columns' defaults, and
+skips updates and deletes whose row is missing. An insert whose key already exists replaces the local row,
 as pglogical does by default. An error rolls back the remote transaction and
 stops the worker; PostgreSQL restarts it five seconds later, and it resumes from
 the last transaction it committed.
@@ -42,6 +42,11 @@ SELECT unsubscribe('shop');
 subscription's origin. Workers are registered dynamically, so after a server
 restart, call `subscribe` again or adapt the sample to start them from a
 preloaded supervisor, as pglogical does.
+
+Each table's column positions and reusable rows last across transactions until
+the local table changes, which writers signal by handing out a new descriptor.
+`WriterBenchmarks` measures opening a writer and inserting through it inside
+PostgreSQL; run them with `ankus bench --pg 18` in this directory.
 
 The sample keeps to `pgoutput`'s protocol version 1. It does not stream large
 transactions before they commit, synchronize tables added to the publication

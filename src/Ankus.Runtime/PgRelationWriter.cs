@@ -21,6 +21,10 @@ namespace Ankus;
 /// </remarks>
 public sealed unsafe class PgRelationWriter : IDisposable
 {
+    private const int DescriptorCacheLimit = 1024;
+
+    private static readonly Dictionary<uint, (nuint Identifier, PgTupleDescriptor Descriptor)> s_descriptors = [];
+
     private readonly int _thread = Environment.CurrentManagedThreadId;
 
     private nint _id;
@@ -41,6 +45,10 @@ public sealed unsafe class PgRelationWriter : IDisposable
     /// <summary>
     /// Gets the table's columns, including dropped columns, in the order rows hold them.
     /// </summary>
+    /// <remarks>
+    /// Writers for a table share one descriptor instance until the table's definition changes, so a caller can keep
+    /// data it derives from the columns, such as a column map, while the instance stays the same.
+    /// </remarks>
     public PgTupleDescriptor Descriptor { get; }
 
     /// <summary>
@@ -68,7 +76,7 @@ public sealed unsafe class PgRelationWriter : IDisposable
         PgTupleDescriptor descriptor;
         try
         {
-            descriptor = PgTupleDescriptor.Load(checked((uint)result._value));
+            descriptor = GetDescriptor(checked((uint)result._value), result._length);
         }
         catch
         {
@@ -77,6 +85,35 @@ public sealed unsafe class PgRelationWriter : IDisposable
         }
 
         return new PgRelationWriter(result._context, relationOid, descriptor, unchecked((uint)result._data));
+    }
+
+    /// <summary>
+    /// Gets the table's descriptor, reusing the copy from an earlier writer while PostgreSQL's type cache still holds the
+    /// same row descriptor. The cache numbers each descriptor it loads, and a change to the table loads a new one.
+    /// </summary>
+    private static PgTupleDescriptor GetDescriptor(uint typeOid, nuint identifier)
+    {
+        lock (s_descriptors)
+        {
+            if (s_descriptors.TryGetValue(typeOid, out (nuint Identifier, PgTupleDescriptor Descriptor) cached) && cached.Identifier == identifier)
+            {
+                return cached.Descriptor;
+            }
+        }
+
+        PgTupleDescriptor descriptor = PgTupleDescriptor.Load(typeOid);
+        lock (s_descriptors)
+        {
+            // Dropped tables leave entries behind, so a backend that writes many tables starts over occasionally.
+            if (s_descriptors.Count >= DescriptorCacheLimit)
+            {
+                s_descriptors.Clear();
+            }
+
+            s_descriptors[typeOid] = (identifier, descriptor);
+        }
+
+        return descriptor;
     }
 
     /// <summary>

@@ -305,6 +305,9 @@ public PgTupleDescriptor Descriptor { get; }
 
 Value: [PgTupleDescriptor](/api/ankus.pgtupledescriptor/)
 
+Writers for a table share one descriptor instance until the table's definition changes, so a caller can keep
+data it derives from the columns, such as a column map, while the instance stays the same.
+
 <a id="member-33be27c6d315756a"></a>
 
 ### KeyIndexOid

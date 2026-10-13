@@ -170,6 +170,50 @@ public static class RelationWriterFunctions
     }
 
     /// <summary>
+    /// Opens writers before and after adding a column in the same transaction, then inserts through the last one.
+    /// </summary>
+    /// <param name="table">The table's OID.</param>
+    /// <param name="alter">The statement that adds an <c>extra integer</c> column.</param>
+    /// <returns>Whether the first two writers shared a descriptor, whether the third did, and its live columns.</returns>
+    [PgFunction]
+    public static string WriterDescriptorAfterAlter(uint table, string alter)
+    {
+        PgTupleDescriptor first;
+        PgTupleDescriptor second;
+        using (PgRelationWriter writer = PgRelationWriter.Open(table))
+        {
+            first = writer.Descriptor;
+        }
+
+        using (PgRelationWriter writer = PgRelationWriter.Open(table))
+        {
+            second = writer.Descriptor;
+        }
+
+        Spi.Execute(alter);
+        using PgRelationWriter altered = PgRelationWriter.Open(table);
+        PgHeapTuple row = Row(altered, 1, "one");
+        row.Set("extra", 5);
+        altered.Insert(row);
+        return string.Join('|', ReferenceEquals(first, second), ReferenceEquals(second, altered.Descriptor), Columns(altered.Descriptor));
+    }
+
+    /// <summary>
+    /// Opens a writer and lists the table's live columns as it sees them.
+    /// </summary>
+    /// <param name="table">The table's OID.</param>
+    /// <returns>The column names, in order.</returns>
+    [PgFunction]
+    public static string WriterColumns(uint table)
+    {
+        using PgRelationWriter writer = PgRelationWriter.Open(table);
+        return Columns(writer.Descriptor);
+    }
+
+    private static string Columns(PgTupleDescriptor descriptor)
+        => string.Join(',', descriptor.Attributes.Where(static attribute => !attribute.IsDropped).Select(static attribute => attribute.Name));
+
+    /// <summary>
     /// Builds a row of <c>(id, name)</c> for a writer's table.
     /// </summary>
     private static PgHeapTuple Row(PgRelationWriter writer, int id, string? name)

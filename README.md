@@ -10,8 +10,9 @@ configuration settings in C#.
 
 Run background workers, share memory between backends,
 and extend the planner and executor with native hooks and custom scan providers.
-Access PostgreSQL's native APIs through generated bindings. Publish it all as a
-native extension.
+Write logical decoding output plugins and logical replication subscribers that
+stream, apply and track changes. Access PostgreSQL's native APIs through
+generated bindings. Publish it all as a native extension.
 
 [Read the documentation](https://willibrandon.github.io/ankus/).
 

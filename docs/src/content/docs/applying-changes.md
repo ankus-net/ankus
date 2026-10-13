@@ -79,6 +79,13 @@ replication connection are already in the database's encoding and are checked
 rather than converted; text from a string is converted. `Clear` resets a row
 for the next change, so an apply loop can reuse one row per table.
 
+Writers for a table share one `Descriptor` instance until the table's
+definition changes. An apply loop can keep its column positions and rows
+across transactions while `ReferenceEquals(saved, writer.Descriptor)`, and
+rebuild them when the table changes. The
+[subscriber sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Subscriber)
+does this.
+
 ## Detecting conflicts
 
 `Find` locks and returns the row that matches a key, along with the transaction

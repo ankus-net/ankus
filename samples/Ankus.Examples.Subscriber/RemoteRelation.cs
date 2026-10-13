@@ -31,6 +31,12 @@ internal sealed class RemoteRelation(string schema, string name, string[] column
     public uint? LocalOid { get; set; }
 
     /// <summary>
+    /// Gets or sets where each replicated column goes in the local table, with rows reused for each change. Writers
+    /// share a descriptor until the local table changes, so the map is rebuilt only then.
+    /// </summary>
+    public ColumnMap? Map { get; set; }
+
+    /// <summary>
     /// Reads a relation message after its type byte.
     /// </summary>
     /// <param name="reader">The message.</param>

@@ -37,6 +37,10 @@ internal sealed class ApplyWorker(string name, string provider, string publicati
         {
             // As in the built-in subscriber, only triggers enabled for replicas fire for applied changes.
             Spi.Execute("SET session_replication_role = replica");
+
+            // Commits do not wait for WAL to reach disk, as in the built-in subscriber and pglogical. Feedback reports
+            // only flushed progress, so the provider keeps any change a crash could lose.
+            Spi.Execute("SET synchronous_commit = off");
             string origin = OriginName(name);
             PgReplicationOrigin.SetupSession(PgReplicationOrigin.Find(origin) ?? PgReplicationOrigin.Create(origin));
         });
