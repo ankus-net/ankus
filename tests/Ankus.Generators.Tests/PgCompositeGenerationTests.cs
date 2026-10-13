@@ -45,7 +45,14 @@ public sealed partial class PgFunctionGeneratorTests
             Assert.DoesNotContain("CREATE TYPE", sql);
             string native = ManifestValue(compilation, "Ankus.NativeSource");
             Assert.Contains(array ? "get_element_type(get_func_rettype(fcinfo->flinfo->fn_oid))" :
-                "ankus_write_tuple(&result, get_func_rettype(fcinfo->flinfo->fn_oid), descriptor)", native);
+                "ankus_write_tuple(&result, result_type, descriptor)", native);
+            if (!array)
+            {
+                // A record result alone asks for the caller's columns.
+                Assert.Contains("if (result_type == RECORDOID)\n            (void) get_call_result_type(fcinfo, NULL, &descriptor);",
+                    native.ReplaceLineEndings("\n"));
+            }
+
             if (!array)
             {
                 Assert.Contains("ankus_read_tuple(PG_GETARG_DATUM(0), &arguments[0], &owned[0])", native);

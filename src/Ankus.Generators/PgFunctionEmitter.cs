@@ -370,9 +370,14 @@ internal static class PgFunctionEmitter
         }
         else if (result.IsComposite)
         {
+            source.AppendLine("        Oid result_type = get_fn_expr_rettype(fcinfo->flinfo);");
             source.AppendLine("        TupleDesc descriptor = NULL;");
-            source.AppendLine("        (void) get_call_result_type(fcinfo, NULL, &descriptor);");
-            source.AppendLine("        datum = ankus_write_tuple(&result, get_func_rettype(fcinfo->flinfo->fn_oid), descriptor);");
+            source.AppendLine("        if (!OidIsValid(result_type))");
+            source.AppendLine("            result_type = get_func_rettype(fcinfo->flinfo->fn_oid);");
+            source.AppendLine("        /* A named result type describes the value itself; only a record needs the caller's columns. */");
+            source.AppendLine("        if (result_type == RECORDOID)");
+            source.AppendLine("            (void) get_call_result_type(fcinfo, NULL, &descriptor);");
+            source.AppendLine("        datum = ankus_write_tuple(&result, result_type, descriptor);");
         }
         else if (result.CustomType is not null)
         {

@@ -222,6 +222,19 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   supported major: the 540 trigger, composite, tuple, domain, setting and
   custom scan backend tests pass on Linux x64 with PostgreSQL 14, 15, 16, 17
   and 19 beta 4, as they did earlier on 13 and 18.
+- A function returning a named composite type no longer asks the catalog for
+  its return type, the type's kind and base type, and a copied result
+  descriptor on every call, or forms the row twice. The return type comes from
+  the call expression, one type lookup answers whether the type exists and is
+  a domain, and only `record` results are laid out again in the caller's
+  columns. A call that reads and returns a composite went from 1.36 µs to
+  1.12 µs, alternating the two builds on one PostgreSQL 18.6 cluster. The
+  1,310 composite, tuple, set, SPI, domain, record and function-call backend
+  tests pass on PostgreSQL 13, 16, 18 and 19 beta 4, and the full PostgreSQL
+  18 suite passes (14,889 tests, 52 platform skips). The native row serializer
+  also lost the unavailable-column mask that only trigger rows used; 1,096
+  tuple, trigger, relation, index, SPI and generated-column backend tests pass
+  on PostgreSQL 13 and 18 without it.
 - Trigger rows cross the boundary as one value per column. Sampling the
   backend with gdb showed much of a row trigger's remaining overhead was the
   self-describing row format: every column's name, types, modifier, collation

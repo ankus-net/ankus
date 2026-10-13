@@ -12,6 +12,8 @@ internal static class NativeTupleBridge
         #include "access/htup_details.h"
         #include "funcapi.h"
         #include "libpq/pqformat.h"
+        #include "catalog/pg_type.h"
+        #include "utils/syscache.h"
         #include "utils/typcache.h"
         #include "utils/builtins.h"
         #include "executor/executor.h"
@@ -228,7 +230,7 @@ internal static class NativeTupleBridge
 
         static void
         ankus_tuple_transport_shaped(TupleDesc descriptor, Oid declared_type, AnkusTupleShape *shape, const Datum *values,
-            const bool *nulls, const bool *unavailable, AnkusValue *value, AnkusInputBuffer *owned)
+            const bool *nulls, AnkusValue *value, AnkusInputBuffer *owned)
         {
             StringInfoData buffer;
             check_stack_depth();
@@ -248,8 +250,6 @@ internal static class NativeTupleBridge
                 if (shape == NULL)
                     ankus_tuple_shape_field(attribute, &resolved, false);
                 flags = field->flags;
-                if (unavailable != NULL && unavailable[index])
-                    flags |= 8;
                 pq_sendint32(&buffer, attribute->atttypid);
                 pq_sendint32(&buffer, field->base_type);
                 pq_sendint32(&buffer, attribute->atttypmod);
@@ -259,7 +259,7 @@ internal static class NativeTupleBridge
                 pq_sendbytes(&buffer, field->name, field->name_length);
                 if (shape == NULL && resolved.name != NameStr(attribute->attname))
                     pfree(resolved.name);
-                cell.is_null = values == NULL || attribute->attisdropped || (flags & 8) != 0 || nulls[index];
+                cell.is_null = values == NULL || attribute->attisdropped || nulls[index];
                 if (!cell.is_null)
                 {
                     if (!field->enum_checked)
@@ -294,17 +294,10 @@ internal static class NativeTupleBridge
         }
 
         static void
-        ankus_tuple_transport_available(TupleDesc descriptor, Oid declared_type, const Datum *values,
-            const bool *nulls, const bool *unavailable, AnkusValue *value, AnkusInputBuffer *owned)
-        {
-            ankus_tuple_transport_shaped(descriptor, declared_type, NULL, values, nulls, unavailable, value, owned);
-        }
-
-        static void
         ankus_tuple_transport(TupleDesc descriptor, Oid declared_type, const Datum *values,
             const bool *nulls, AnkusValue *value, AnkusInputBuffer *owned)
         {
-            ankus_tuple_transport_available(descriptor, declared_type, values, nulls, NULL, value, owned);
+            ankus_tuple_transport_shaped(descriptor, declared_type, NULL, values, nulls, value, owned);
         }
 
         /* Resolves a descriptor's column facts once, in the current memory context. */
@@ -434,7 +427,7 @@ internal static class NativeTupleBridge
                 entered = true;
                 ankus_tuple_shape_depth++;
                 heap_deform_tuple(&tuple, descriptor, values, nulls);
-                ankus_tuple_transport_shaped(descriptor, type, shape, values, nulls, NULL, value, owned);
+                ankus_tuple_transport_shaped(descriptor, type, shape, values, nulls, value, owned);
             }
             PG_FINALLY();
             {
@@ -532,7 +525,10 @@ internal static class NativeTupleBridge
             Datum *values;
             bool *nulls;
             HeapTuple tuple;
+            HeapTuple type_tuple;
             Datum result;
+            Oid base;
+            Oid expected_base;
             bool anonymous;
             volatile bool entered = false;
             check_stack_depth();
@@ -544,15 +540,22 @@ internal static class NativeTupleBridge
                         errmsg("Unavailable trigger attributes cannot be used as ordinary composite values")));
             }
 
-            if (get_typtype(type) == '\0')
+            /* One catalog lookup answers whether the type still exists and whether it is a domain. */
+            type_tuple = SearchSysCache1(TYPEOID, ObjectIdGetDatum(type));
+            if (!HeapTupleIsValid(type_tuple))
                 ereport(ERROR, (errcode(ERRCODE_UNDEFINED_OBJECT), errmsg("Composite type OID %u no longer exists", type)));
+            base = ((Form_pg_type) GETSTRUCT(type_tuple))->typtype == TYPTYPE_DOMAIN ? InvalidOid : type;
+            ReleaseSysCache(type_tuple);
+            if (!OidIsValid(base))
+                base = getBaseType(type);
+            expected_base = expected_type == type ? base : getBaseType(expected_type);
             anonymous = type == RECORDOID && modifier < 0;
-            if (expected_type != RECORDOID && getBaseType(type) != getBaseType(expected_type))
+            if (expected_type != RECORDOID && base != expected_base)
                 ereport(ERROR, (errcode(ERRCODE_DATATYPE_MISMATCH), errmsg("Composite type OID %u cannot be returned as type OID %u", type, expected_type)));
             if (anonymous)
                 descriptor = ankus_tuple_descriptor(fields, count);
             else
-                descriptor = lookup_rowtype_tupdesc_copy(getBaseType(type), modifier);
+                descriptor = lookup_rowtype_tupdesc_copy(base, modifier);
             if (descriptor->natts != count)
                 ereport(ERROR, (errcode(ERRCODE_DATATYPE_MISMATCH), errmsg("Composite tuple layout changed after the managed value was captured")));
             values = palloc0(sizeof(Datum) * Max(count, 1));
@@ -611,7 +614,9 @@ internal static class NativeTupleBridge
             PG_END_TRY();
 
             tuple = heap_form_tuple(descriptor, values, nulls);
-            if (expected_descriptor != NULL)
+            /* A named expected type is the value's own type, already checked above; only a record result is laid
+             * out again in the caller's columns. */
+            if (expected_descriptor != NULL && expected_type == RECORDOID)
             {
                 int source = 0;
                 Datum *output = palloc0(sizeof(Datum) * Max(expected_descriptor->natts, 1));
@@ -644,10 +649,10 @@ internal static class NativeTupleBridge
             pfree(values);
             pfree(nulls);
             pfree(fields);
-            result = heap_copy_tuple_as_datum(tuple, expected_descriptor != NULL ? expected_descriptor : descriptor);
+            result = heap_copy_tuple_as_datum(tuple, expected_descriptor != NULL && expected_type == RECORDOID ? expected_descriptor : descriptor);
             heap_freetuple(tuple);
             FreeTupleDesc(descriptor);
-            if (getBaseType(expected_type) != expected_type)
+            if (expected_base != expected_type)
             {
                 bool is_null = false;
                 Datum coerced = ankus_coerce_domain(result, &is_null, expected_type);

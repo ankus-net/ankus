@@ -258,3 +258,12 @@ byte, which brought the call to 1.66 µs. The native side keeps the resolved
 facts of up to 16 row types and uses an entry only while every column still has
 the type, modifier, collation, flags and name it was built from; with it the
 call costs 1.35 µs.
+
+Sampling that call showed the result path still asking the catalog on every
+call: the function's return type, the result type's kind and base type twice
+over, and the caller's result descriptor, which PostgreSQL copies; the row was
+then formed a second time against that copy. Only a `record` result needs the
+caller's columns, since a named type is the value's own type and is checked
+against it, so a named result now skips that descriptor and the second form,
+takes its return type from the call expression, and makes one type lookup. The
+call now costs 1.12 µs, measured with both builds alternated on one cluster.
