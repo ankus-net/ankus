@@ -14,7 +14,9 @@ reporting a gap. Each gap was then implemented or recorded below.
 
 Statuses: **Mapped** (an equivalent existed), **Added** (implemented by this
 audit), **Different** (a deliberate, documented difference) and **Rust-specific**
-(no .NET meaning). No item is open.
+(no .NET meaning). No item is open. APIs with no pgrx counterpart, such as the
+logical replication toolkit, are listed in the migration guide's
+[Beyond pgrx](../../src/content/docs/getting-started/from-pgrx.md#beyond-pgrx) section.
 
 ## Datum conversion and values
 
@@ -80,7 +82,7 @@ audit), **Different** (a deliberate, documented difference) and **Rust-specific*
 | GUC enum ordinals, string encoding, preload metadata, hooked runtime definitions | C# enum values as ordinals; UTF-8 strings; ASCII preload metadata; up to 64 hooked run-time definitions ([configuration](../../src/content/docs/configuration.md)) | Different |
 | `BackgroundWorkerBuilder`, `BackgroundWorker` methods, handles | `PgBackgroundWorkerOptions`, `PgBackgroundWorker`, `PgBackgroundWorkerHandle` | Mapped |
 | `From<&BackgroundWorkerBuilder> for pg_sys::BackgroundWorker`, handle lifetime, SIGTERM during a transaction | Registration stays inside Ankus; handles belong to their callback; SIGTERM rolls back and exits ([background workers](../../src/content/docs/background-workers.md)) | Different |
-| `pg_shmem_init!`, `PgLwLock`, `PgAtomic`, `PgSpinLock` | `PgSharedMemory.Initialize`, `PgLwLock<T>`, `PgAtomic<T>`, `PgSpinLock<T>` | Mapped |
+| `pg_shmem_init!`, `PgLwLock`, `PgAtomic`, `PgSpinLock` | `PgSharedMemory.Initialize`, `PgLwLock<T>`, `PgAtomic<T>`, `PgSpinLock<T>`; `PgLwLock<THeader, TElement>` adds an array sized at startup | Mapped |
 | `PgAtomic::get` ordering, `fetch_max`, `fetch_min` | Sequentially consistent operations; `Max`, `Min`; other updates use `CompareExchange` | Mapped; `Max`/`Min` Added |
 | Custom `PgSharedMemoryInitialization` types | Raw shared-memory hooks through `[PgNativeCallback]` | Different |
 | Logging macros, `ereport!`, `PgLogLevel`, `PgSqlErrorCode` | `PgLog.*`, `PgLog.Write(level, PgDiagnostic)`, `PgLogLevel`, `PgSqlStates` | Mapped |
