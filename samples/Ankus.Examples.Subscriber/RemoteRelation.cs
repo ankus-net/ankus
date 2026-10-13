@@ -25,6 +25,12 @@ internal sealed class RemoteRelation(string schema, string name, string[] column
     public IReadOnlyList<string> Columns { get; } = columns;
 
     /// <summary>
+    /// Gets or sets the local table's OID once looked up. A new relation message replaces this description, so a
+    /// renamed or redefined table is looked up again, as the built-in subscriber's relation map does.
+    /// </summary>
+    public uint? LocalOid { get; set; }
+
+    /// <summary>
     /// Reads a relation message after its type byte.
     /// </summary>
     /// <param name="reader">The message.</param>

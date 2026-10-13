@@ -90,7 +90,7 @@ what pglogical uses and the PostgreSQL 13–19 interfaces behind each capability
 | Replication origins | `PgReplicationOrigin` and `PgLsn`: create, find, drop, session setup and reset, per-transaction remote commit, progress and advance over `replorigin_*`, with the checks of the `pg_replication_origin_*` SQL functions and PostgreSQL 19's renamed origin state. | Done; backend tests pass on PostgreSQL 13–19 beta 4 (Linux x64) |
 | Long-lived worker transactions | `PgBackgroundWorker.RunTransaction` already keeps one transaction open across any number of receives, latch waits and changes inside its callback, with Ankus's rollback and recovery rules. A port applies each remote transaction in one callback, from its begin message to its commit. | Done; the subscriber sample applies every remote transaction this way, and its backend test passes in CI on Linux x64, macOS ARM64 and Windows x64 |
 | Startup-sized shared memory | `PgLwLock<THeader, TElement>`: a header and an array whose length a `[PgModuleLoad]` method chooses, such as one slot per `max_worker_processes`, behind one lightweight lock, with copies, indexers and span callbacks under the existing guard rules. | Done; backend tests pass on PostgreSQL 13–19 beta 4 (Linux x64) |
-| Error context and exit cleanup | `PgErrorContext` adds lines to errors and messages raised while it is active, including managed exceptions. `PG_ENSURE_ERROR_CLEANUP`'s FATAL case is covered by ordinary `try`/`finally`, because Ankus unwinds managed code before reporting a FATAL raised in a backend call; still to do: `before_shmem_exit` registration for exits that never return to managed code. | Context done (PostgreSQL 13, 18 and 19); exit callbacks planned |
+| Error context and exit cleanup | `PgErrorContext` adds lines to errors and messages raised while it is active, including managed exceptions. `PgProcess.OnExit` runs managed callbacks at process exit through one `before_shmem_exit` callback per process. `PG_ENSURE_ERROR_CLEANUP`'s FATAL case is covered by ordinary `try`/`finally`, because Ankus unwinds managed code before reporting a FATAL raised in a backend call. | Done; context and exit-callback tests pass on PostgreSQL 13, 18 and 19 |
 | Child processes | Starting a program such as `pg_dump` with `posix_spawn` or `CreateProcess`, without .NET `Process` and its `SIGCHLD` handling. | Planned |
 | Output plugin aliases | A generated C-only library that forwards a second plugin name, such as `pglogical_output`, to the extension's managed plugin. | Planned |
 
@@ -100,9 +100,9 @@ itself, then relation writes, origins and long-lived worker transactions. The
 background worker copies a publication's tables and streams and applies the
 provider's changes, with restart after an apply error; CI run 38361916466 on
 **18b64d5** passed it with the rest of the full suite on Linux x64 (PostgreSQL
-18), macOS ARM64 (18) and Windows x64 (17). Still to come: a benchmark against
-built-in logical replication and the remaining capabilities below, each with its
-own tests and guide.
+18), macOS ARM64 (18) and Windows x64 (17). A benchmark compares it with
+built-in logical replication (see the progress entry below). Still to come: the
+remaining capabilities below, each with its own tests and guide.
 
 ## Implementation status
 
@@ -387,6 +387,35 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   suite ran 14,945 tests with 52 platform skips and one failure, a generator test
   that searched the generated SPI entry by its old name; it now anchors on the
   entry's core, and the 5,033 generator tests pass.
+- `PgProcess.OnExit` runs managed cleanup when a backend or worker exits, as a
+  C extension's `before_shmem_exit` callback does; pglogical releases its
+  worker slot this way. One native callback per process, registered on first
+  use (forked children clear inherited ones), runs the process's managed
+  callbacks newest first with the exit code, with a memory scope for shared
+  memory and locks but no SQL or logging. A managed failure is reported as a
+  warning, because an ERROR during exit becomes FATAL, and the remaining
+  callbacks still run. `PG_ENSURE_ERROR_CLEANUP` needs no counterpart: Ankus
+  unwinds managed code before reporting a FATAL raised in a backend call, so
+  `try`/`finally` runs. A unit test checks registration, order, removal and the
+  reported failure; the shared-array backend test claims a slot with an exit
+  callback that frees it and records the exit code, and checks a normal
+  disconnect (0) and `pg_terminate_backend` (1) with a throwing callback logged
+  as a warning. It passes on PostgreSQL 13, 18 and 19.
+- A replication benchmark runs one backlog through PostgreSQL's built-in
+  subscriber and the subscriber sample on the same cluster: rows inserted and
+  then updated while a lock holds the subscriber's table, timed from the lock's
+  release until the subscriber matches. In the suite it runs 2,000 rows and
+  checks that both copies converge; `ANKUS_REPLICATION_BENCHMARK_ROWS` and
+  `_BATCH` size it. On PostgreSQL 18.6 (Linux x64), 100,000 rows in
+  1,000-row transactions applied at about 290,000 changes/s built in and
+  255,000 through the sample (three runs), and 20,000 single-row transactions
+  at about 160,000 and 61,000 (two runs). The sample first looked its local
+  table up with SPI in every transaction (41,000 changes/s); it now caches the
+  OID per remote relation until a new relation message, as the built-in
+  relation map does. The remaining gap is per transaction: a managed
+  transaction, a writer's executor state per table, and a key lookup before
+  each insert. It passes on PostgreSQL 13, 18 and 19, and with exit callbacks
+  the full PostgreSQL 18 suite passes (14,947 tests, 52 platform skips).
 - The generated-binding test harness found its scope through a thread static in
   each collectible test assembly; one PostgreSQL 15 run of the build tests saw
   it read as null. It now finds the scope from the API pointer each call
@@ -1278,7 +1307,7 @@ review's findings are fixed or kept by documented design.
 3. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
 4. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees.
 5. Keep samples and guides current with API changes, and recheck changed guides before release. Test discovery for MSTest, xUnit and NUnit consumers and samples for all 37 pgrx examples are complete.
-6. Finish the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) that a pglogical port needs: exit cleanup, child processes and output plugin aliases, and a benchmark against built-in logical replication.
+6. Finish the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) that a pglogical port needs: child processes and output plugin aliases, and lower the per-transaction cost the replication benchmark shows.
 7. Complete .NET servicing and every release requirement in the full inventory, using the release rehearsal, before publishing 0.1.0. If .NET 11 reaches GA first, complete its acceptance for that release; preview validation does not block the initial .NET 10 release.
 
 Continue independent work while CI runs. Before every commit and push, check and

@@ -23,6 +23,28 @@ approaches, not as guarantees, and measure your own code with
 | A `BEFORE INSERT` row trigger that trims one text column, per row | 0.90 µs, against 0.54 µs for PL/pgSQL |
 | A `BEFORE INSERT` row trigger that only checks its row, per row | 0.55 µs |
 
+## Applying replicated changes
+
+The replication benchmark applies one backlog of changes through PostgreSQL's
+built-in subscriber and through the
+[subscriber sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Subscriber),
+which uses [relation writers](/applying-changes/) and
+[replication connections](/replication-connections/), on the same PostgreSQL
+18.6 cluster. Every row is inserted and then updated; timing runs from
+releasing a lock that held the changes back until the subscriber matches the
+provider.
+
+| Workload | Built-in subscriber | Subscriber sample |
+|---|---:|---:|
+| 100,000 rows in transactions of 1,000 | 290,000 changes/s | 255,000 changes/s |
+| 20,000 rows in single-row transactions | 160,000 changes/s | 61,000 changes/s |
+
+Large transactions apply at about 90% of the built-in rate. Each remote
+transaction costs the sample about 16 µs against 6 µs, because it starts a
+managed transaction, opens a writer with its executor state for each table, and
+looks for an existing row before each insert, as pglogical's conflict handling
+does.
+
 ## Keeping hot paths cheap
 
 - Prefer scalar types where a value crosses often. Text is converted between

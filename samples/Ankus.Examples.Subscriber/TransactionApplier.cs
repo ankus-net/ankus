@@ -128,10 +128,10 @@ internal sealed class TransactionApplier(IReadOnlyDictionary<uint, RemoteRelatio
         }
 
         RemoteRelation relation = Relation(unchecked((uint)id));
-        string qualified = Spi.QuoteQualifiedIdentifier(relation.Schema, relation.Name);
-        uint oid = Spi.ExecuteScalar<uint?>("SELECT to_regclass($1)::oid", SpiParameter.Create(qualified))
-            ?? throw new InvalidOperationException($"The subscriber has no table {qualified}.");
-        PgRelationWriter writer = PgRelationWriter.Open(oid);
+        relation.LocalOid ??= Spi.ExecuteScalar<uint?>("SELECT to_regclass($1)::oid",
+            SpiParameter.Create(Spi.QuoteQualifiedIdentifier(relation.Schema, relation.Name)))
+            ?? throw new InvalidOperationException($"The subscriber has no table {relation.Schema}.{relation.Name}.");
+        PgRelationWriter writer = PgRelationWriter.Open(relation.LocalOid.Value);
         try
         {
             int[] map = new int[relation.Columns.Count];
