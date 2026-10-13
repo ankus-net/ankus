@@ -28,6 +28,9 @@ approaches, not as guarantees, and measure your own code with
 - Prefer scalar types where a value crosses often. Text is converted between
   the server encoding and UTF-16 on every crossing, and a composite row
   converts every column.
+- A `string` argument is the cheapest way to receive short text. A borrowed
+  `PgTextView` checks its lifetime, which costs more than decoding a few bytes,
+  and pays off for large text or text read only in part.
 - Return many rows from one call. A set or table function pays the call
   boundary once and then a per-row cost like those above, while separate calls
   pay it each time.

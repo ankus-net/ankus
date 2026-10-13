@@ -89,6 +89,15 @@ with nothing to free. With the two builds alternated, best of four runs of two
 million calls, `string Echo(string)` went from 124 ns to 97 ns per call over
 reading the value.
 
+A borrowed `PgTextView` argument made two native memory calls, one to capture
+the input's context and one to check it again in the view's constructor, and
+each call cleared a 2 KB error record and a recovery frame that holds another.
+The memory entry now clears only the record's fields, as the call boundary
+does, sets only the link and flag of a frame it uses, and the view's first
+check trusts the generation it has just read. `int ViewLength(PgTextView)` went
+from 0.42 µs to 0.28 µs per call with the two builds alternated; every native
+memory call is cheaper by the same clearing.
+
 ### Aggregate transitions
 
 A sum aggregate over `int` with a `long` state cost 1.9 µs per row on the

@@ -1847,7 +1847,8 @@ internal static class NativeMemoryBridge
         ankus_memory_invoke(AnkusMemoryApi *api, AnkusMemoryRequest *request,
             AnkusMemoryResult *result, AnkusError *error)
         {
-            memset(error, 0, sizeof(*error));
+            /* Readers treat the message as a C string, so clearing every byte of it on each call is not needed. */
+            ankus_error_clear(error);
             if (request->operation == ANKUS_MEMORY_RECORD_TERMINAL)
             {
                 /* This only copies diagnostics into the callback's native frame.
@@ -1903,7 +1904,7 @@ internal static class NativeMemoryBridge
             }
 
             volatile bool recovered = false;
-            AnkusRecoveryFrame transaction = {0};
+            AnkusRecoveryFrame transaction;
             bool worker_transaction = request->operation == ANKUS_MEMORY_WORKER && request->flags == 13;
             bool worker_idle_interrupt = ankus_worker_active && !IsTransactionState() &&
                 ((request->operation == ANKUS_MEMORY_WORKER && request->flags == 10) ||
@@ -1913,8 +1914,11 @@ internal static class NativeMemoryBridge
             {
                 /* Transactions own a complete commit/abort boundary. An idle
                  * worker owns only its wait/interrupt boundary. Keep failures
-                 * here until that operation ends instead of the worker lifetime. */
+                 * here until that operation ends instead of the worker lifetime.
+                 * As in ANKUS_MANAGED_INVOKE, the failure is written before it is
+                 * read, so only the link and flag are set. */
                 transaction.previous = ankus_recovery_frame;
+                transaction.failed = false;
                 ankus_recovery_frame = &transaction;
             }
 

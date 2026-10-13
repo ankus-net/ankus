@@ -222,6 +222,17 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   supported major: the 540 trigger, composite, tuple, domain, setting and
   custom scan backend tests pass on Linux x64 with PostgreSQL 14, 15, 16, 17
   and 19 beta 4, as they did earlier on 13 and 18.
+- Every native memory call cleared a 2 KB error record and zero-initialized a
+  recovery frame that holds another, though only worker transaction boundaries
+  use the frame and readers treat the message as a C string. The entry now
+  clears only the record's fields and sets only the frame's link and flag, as
+  the managed call boundary already does. A borrowed input's lifetime also
+  skips re-reading the generation it captured a moment earlier on its first
+  check. `int ViewLength(PgTextView)` went from 0.42 µs to 0.28 µs per call,
+  alternating the two builds. The 1,431 memory, worker, recovery, error,
+  cancellation, transaction, borrowed view and callback backend tests pass on
+  PostgreSQL 13, 16, 18 and 19 beta 4, and the full PostgreSQL 18 suite
+  passes (14,894 tests, 52 platform skips).
 - A scalar function's text result is encoded into a buffer each thread reuses
   rather than its own allocation, which native code copied and then freed
   through a callback into managed code. The wrapper copies the bytes before any

@@ -9,6 +9,7 @@ internal sealed class PgDatumLifetime
     private readonly int _thread = Environment.CurrentManagedThreadId;
     private readonly PgDatumLifetime? _source;
     private readonly NativeBorrowedBuffer? _view;
+    private bool _captured;
 
     /// <summary>
     /// Captures the generation of a live context.
@@ -49,14 +50,20 @@ internal sealed class PgDatumLifetime
     /// </summary>
     /// <param name="scope">The callback lease the input expires with.</param>
     /// <returns>The input's lifetime.</returns>
+    /// <remarks>
+    /// Every caller wraps the input in a view whose constructor checks the lifetime before anything else, so that
+    /// first check can trust the generation just read instead of reading it again.
+    /// </remarks>
     internal static PgDatumLifetime ForCurrentInput(NativeBorrowScope scope)
     {
         NativeMemoryRequest request = new() { _operation = NativeMemoryOperation.Current };
         NativeMemoryContext.Invoke(ref request, out NativeMemoryResult result);
         nint provider = NativeMemoryContext.Provider;
-        return result._value == 0
+        PgDatumLifetime lifetime = result._value == 0
             ? new PgDatumLifetime(PgMemoryContext.FromId(provider, result._context), scope)
             : new PgDatumLifetime(provider, result._context, unchecked((nuint)result._value), scope);
+        lifetime._captured = true;
+        return lifetime;
     }
 
     /// <summary>
@@ -137,6 +144,13 @@ internal sealed class PgDatumLifetime
 
         Scope?.Validate();
         NativeMemoryContext.CheckProvider(_provider);
+        if (_captured)
+        {
+            // The generation was read for this input a moment ago; later checks read it again.
+            _captured = false;
+            return;
+        }
+
         NativeMemoryRequest request = new()
         {
             _operation = NativeMemoryOperation.CaptureGeneration,
