@@ -505,7 +505,14 @@ static void RemoveStagingFeedPackages()
         return;
     }
 
-    var options = new EnumerationOptions { RecurseSubdirectories = true, MaxRecursionDepth = 2, IgnoreInaccessible = true };
+    // .NET treats .nupkg.metadata as hidden on Unix because of its leading dot; hidden files are skipped by default.
+    var options = new EnumerationOptions
+    {
+        RecurseSubdirectories = true,
+        MaxRecursionDepth = 2,
+        IgnoreInaccessible = true,
+        AttributesToSkip = 0,
+    };
     List<string> staging = [];
     foreach (string metadata in Directory.EnumerateFiles(packages, ".nupkg.metadata", options))
     {
