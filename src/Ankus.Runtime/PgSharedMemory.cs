@@ -108,4 +108,50 @@ public static class PgSharedMemory
             Unsafe.WriteUnaligned((void*)destination, value);
         });
     }
+
+    /// <summary>
+    /// Registers a lock-protected header and array of the given length, all zero.
+    /// </summary>
+    /// <typeparam name="THeader">The unmanaged header.</typeparam>
+    /// <typeparam name="TElement">The unmanaged element.</typeparam>
+    /// <param name="storage">The static named descriptor.</param>
+    /// <param name="length">The number of elements, such as a setting fixed at server start.</param>
+    public static void Initialize<THeader, TElement>(PgLwLock<THeader, TElement> storage, int length)
+        where THeader : unmanaged where TElement : unmanaged
+        => Initialize(storage, length, static () => default, static _ => default);
+
+    /// <summary>
+    /// Registers a lock-protected header and array whose values are built at shared-memory startup.
+    /// </summary>
+    /// <typeparam name="THeader">The unmanaged header.</typeparam>
+    /// <typeparam name="TElement">The unmanaged element.</typeparam>
+    /// <param name="storage">The static named descriptor.</param>
+    /// <param name="length">The number of elements, such as a setting fixed at server start.</param>
+    /// <param name="header">The header's factory, run only when PostgreSQL creates the storage.</param>
+    /// <param name="element">Each element's factory, given its index.</param>
+    /// <remarks>
+    /// Every process must register the same length. Register from a <see cref="PgModuleLoadAttribute"/> method, where
+    /// settings such as <c>max_worker_processes</c> already have their server-start values.
+    /// </remarks>
+    public static unsafe void Initialize<THeader, TElement>(PgLwLock<THeader, TElement> storage, int length, Func<THeader> header,
+        Func<int, TElement> element) where THeader : unmanaged where TElement : unmanaged
+    {
+        ArgumentNullException.ThrowIfNull(storage);
+        ArgumentNullException.ThrowIfNull(header);
+        ArgumentNullException.ThrowIfNull(element);
+        storage.Register(length, (destination, size) =>
+        {
+            if (destination == 0 || size != storage.Size)
+            {
+                throw new InvalidOperationException("The PostgreSQL shared-memory initializer has invalid array storage.");
+            }
+
+            Unsafe.WriteUnaligned((void*)destination, header());
+            byte* elements = (byte*)destination + PgLwLock<THeader, TElement>.ElementOffset;
+            for (int index = 0; index < storage.Length; index++)
+            {
+                Unsafe.WriteUnaligned(elements + ((nint)index * sizeof(TElement)), element(index));
+            }
+        });
+    }
 }

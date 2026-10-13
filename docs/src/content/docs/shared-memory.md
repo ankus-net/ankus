@@ -514,4 +514,57 @@ and hashing. Do not rely on record-generated `GetHashCode`, `HashCode.Combine`,
 process-local addresses, mutable settings, or randomized hashing. Use the same
 comparer semantics for every attachment to a populated map.
 
+## Arrays sized at startup
+
+Bounded collections have a capacity fixed when the extension is compiled, as
+pgrx's `heapless` collections do. A C extension often sizes shared memory from a
+setting fixed at server start instead, such as one slot per
+`max_worker_processes`. `PgLwLock<THeader, TElement>` keeps a header and an
+array of that length behind one lightweight lock. pgrx has no equivalent.
+
+```csharp
+public readonly record struct WorkerTable(int Claimed);
+public readonly record struct WorkerSlot(int ProcessId, uint Subscription);
+
+private static readonly PgLwLock<WorkerTable, WorkerSlot> s_workers = new("my_extension.workers");
+
+[PgModuleLoad]
+public static void Load()
+{
+    int length;
+    unsafe
+    {
+        length = NativeGlobals.max_worker_processes;
+    }
+
+    PgSharedMemory.Initialize(s_workers, length);
+}
+
+public static int Claim(uint subscription)
+{
+    using PgLwLockExclusiveGuard<WorkerTable, WorkerSlot> guard = s_workers.Exclusive();
+    return guard.Mutate((ref header, slots) =>
+    {
+        int index = slots.IndexOf(default(WorkerSlot));
+        if (index >= 0)
+        {
+            slots[index] = new WorkerSlot(Environment.ProcessId, subscription);
+            header = header with { Claimed = header.Claimed + 1 };
+        }
+
+        return index;
+    });
+}
+```
+
+Register the array from a `[PgModuleLoad]` method, where settings that need a
+restart already have their server values. Every process must register the same
+length: on Windows each backend loads the library again and attaches to the
+existing storage, which fails if the size differs. `Length` reports the size.
+Guards copy the `Header` or one element by index, and `Read` and `Mutate` pass
+the header and a span of every element to a callback, under the rules of the
+other lock guards. An index outside the array throws before PostgreSQL is
+called. Elements start at the first 8-byte boundary after the header, as in a C
+struct with a flexible array member.
+
 Background workers can share these values; see [background workers](/background-workers/).

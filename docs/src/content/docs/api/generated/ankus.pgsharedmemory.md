@@ -172,3 +172,74 @@ The static named shared descriptor.
 `initializer` — [Func&lt;T&gt;](https://learn.microsoft.com/dotnet/api/system.func-1)
 
 The factory run at shared-memory startup.
+
+<a id="member-733143e10cc5c2ad"></a>
+
+### Initialize&lt;THeader, TElement&gt;(PgLwLock&lt;THeader, TElement&gt;, int)
+
+Registers a lock-protected header and array of the given length, all zero.
+
+```csharp
+public static void Initialize<THeader, TElement>(PgLwLock<THeader, TElement> storage, int length) where THeader : unmanaged where TElement : unmanaged
+```
+
+Type parameters:
+
+`THeader`
+
+The unmanaged header.
+
+`TElement`
+
+The unmanaged element.
+
+Parameters:
+
+`storage` — <code>PgLwLock&lt;THeader, TElement&gt;</code>
+
+The static named descriptor.
+
+`length` — [int](https://learn.microsoft.com/dotnet/api/system.int32)
+
+The number of elements, such as a setting fixed at server start.
+
+<a id="member-eb2310259eea8549"></a>
+
+### Initialize&lt;THeader, TElement&gt;(PgLwLock&lt;THeader, TElement&gt;, int, Func&lt;THeader&gt;, Func&lt;int, TElement&gt;)
+
+Registers a lock-protected header and array whose values are built at shared-memory startup.
+
+```csharp
+public static void Initialize<THeader, TElement>(PgLwLock<THeader, TElement> storage, int length, Func<THeader> header, Func<int, TElement> element) where THeader : unmanaged where TElement : unmanaged
+```
+
+Type parameters:
+
+`THeader`
+
+The unmanaged header.
+
+`TElement`
+
+The unmanaged element.
+
+Parameters:
+
+`storage` — <code>PgLwLock&lt;THeader, TElement&gt;</code>
+
+The static named descriptor.
+
+`length` — [int](https://learn.microsoft.com/dotnet/api/system.int32)
+
+The number of elements, such as a setting fixed at server start.
+
+`header` — [Func&lt;THeader&gt;](https://learn.microsoft.com/dotnet/api/system.func-1)
+
+The header's factory, run only when PostgreSQL creates the storage.
+
+`element` — [Func&lt;int, TElement&gt;](https://learn.microsoft.com/dotnet/api/system.func-2)
+
+Each element's factory, given its index.
+
+Every process must register the same length. Register from a [PgModuleLoadAttribute](/api/ankus.pgmoduleloadattribute/) method, where
+settings such as <code>max_worker_processes</code> already have their server-start values.

@@ -3,6 +3,20 @@ using System.Runtime.CompilerServices;
 namespace Ankus.CompilerServices;
 
 /// <summary>
+/// Works on admitted shared storage during a scoped read or mutation.
+/// </summary>
+/// <typeparam name="TResult">The owned result.</typeparam>
+internal interface INativeSharedBlock<out TResult>
+{
+    /// <summary>
+    /// Runs with the storage's address, valid only during this call.
+    /// </summary>
+    /// <param name="address">The storage's first byte.</param>
+    /// <returns>The owned result.</returns>
+    TResult Invoke(nint address);
+}
+
+/// <summary>
 /// Tracks one callback-owned lock acquisition without exposing a shared-memory address.
 /// </summary>
 internal sealed unsafe class NativeSharedMemoryLease(NativeBorrowScope scope, nint storage) : IDisposable
@@ -52,7 +66,7 @@ internal sealed unsafe class NativeSharedMemoryLease(NativeBorrowScope scope, ni
         if (_readDepth != 0 || _mutating)
         {
             Validate();
-            ValidateReadLength<T>();
+            ValidateReadLength((nuint)sizeof(T));
             return Unsafe.ReadUnaligned<T>((void*)_readAddress);
         }
 
@@ -67,15 +81,26 @@ internal sealed unsafe class NativeSharedMemoryLease(NativeBorrowScope scope, ni
     internal TResult Read<T, TResult>(PgSharedReader<T, TResult> reader) where T : unmanaged
     {
         ArgumentNullException.ThrowIfNull(reader);
+        return ReadBlock<ValueReader<T, TResult>, TResult>((nuint)sizeof(T), new(reader));
+    }
+
+    /// <summary>
+    /// Borrows original protected storage of the registered size without permitting native lock retirement during
+    /// the body.
+    /// </summary>
+    /// <param name="length">The registered size in bytes.</param>
+    /// <param name="body">The work done with the storage's address.</param>
+    internal TResult ReadBlock<TBody, TResult>(nuint length, TBody body) where TBody : struct, INativeSharedBlock<TResult>
+    {
         Validate();
         CheckNoMutation();
         if (_readDepth == 0)
         {
-            Admit<T>(mutable: false);
+            Admit(length, mutable: false);
         }
         else
         {
-            ValidateReadLength<T>();
+            ValidateReadLength(length);
         }
 
         int depth = checked(_readDepth + 1);
@@ -86,7 +111,7 @@ internal sealed unsafe class NativeSharedMemoryLease(NativeBorrowScope scope, ni
         NativeSharedReadScope.Push(&frame, NativeMemoryContext.Provider, _readAddress, _readLength);
         try
         {
-            return reader(in Unsafe.AsRef<T>((void*)_readAddress));
+            return body.Invoke(_readAddress);
         }
         finally
         {
@@ -113,16 +138,26 @@ internal sealed unsafe class NativeSharedMemoryLease(NativeBorrowScope scope, ni
     internal TResult Mutate<T, TResult>(PgSharedMutator<T, TResult> mutator) where T : unmanaged
     {
         ArgumentNullException.ThrowIfNull(mutator);
+        return MutateBlock<ValueMutator<T, TResult>, TResult>((nuint)sizeof(T), new(mutator));
+    }
+
+    /// <summary>
+    /// Mutates original storage of the registered size after independently validating exclusive native ownership.
+    /// </summary>
+    /// <param name="length">The registered size in bytes.</param>
+    /// <param name="body">The work done with the storage's address.</param>
+    internal TResult MutateBlock<TBody, TResult>(nuint length, TBody body) where TBody : struct, INativeSharedBlock<TResult>
+    {
         Validate();
         CheckNoBorrowers();
-        Admit<T>(mutable: true);
+        Admit(length, mutable: true);
         s_borrows = checked(s_borrows + 1);
         _mutating = true;
         NativeSharedReadScope frame = default;
         NativeSharedReadScope.PushMutation(&frame, NativeMemoryContext.Provider, _readAddress, _readLength);
         try
         {
-            return mutator(ref Unsafe.AsRef<T>((void*)_readAddress));
+            return body.Invoke(_readAddress);
         }
         finally
         {
@@ -143,7 +178,7 @@ internal sealed unsafe class NativeSharedMemoryLease(NativeBorrowScope scope, ni
     /// <summary>
     /// Validates a nonthrowing native address reply before exposing original storage.
     /// </summary>
-    private void Admit<T>(bool mutable) where T : unmanaged
+    private void Admit(nuint length, bool mutable)
     {
         NativeMemoryRequest request = new()
         {
@@ -151,10 +186,10 @@ internal sealed unsafe class NativeSharedMemoryLease(NativeBorrowScope scope, ni
             _flags = mutable ? 7 : 6,
             _context = storage,
             _other = _token,
-            _length = (nuint)sizeof(T),
+            _length = length,
         };
         NativeMemoryContext.Invoke(ref request, out NativeMemoryResult result);
-        if (result._data == 0 || (nuint)result._data % sizeof(long) != 0 || result._length != (nuint)sizeof(T))
+        if (result._data == 0 || (nuint)result._data % sizeof(long) != 0 || result._length != length)
         {
             throw new InvalidOperationException("PostgreSQL returned invalid lightweight-lock storage.");
         }
@@ -240,9 +275,9 @@ internal sealed unsafe class NativeSharedMemoryLease(NativeBorrowScope scope, ni
     /// <summary>
     /// Keeps repeated typed accesses within the exact originally admitted representation.
     /// </summary>
-    private void ValidateReadLength<T>() where T : unmanaged
+    private void ValidateReadLength(nuint length)
     {
-        if (_readLength != (nuint)sizeof(T))
+        if (_readLength != length)
         {
             throw new InvalidOperationException("The lightweight-lock reader value size does not match its admission.");
         }
@@ -256,5 +291,21 @@ internal sealed unsafe class NativeSharedMemoryLease(NativeBorrowScope scope, ni
         {
             throw new InvalidOperationException("A PostgreSQL shared-memory lock guard must remain in its acquiring backend process.");
         }
+    }
+
+    /// <summary>
+    /// Passes the storage to a value reader as a readonly reference.
+    /// </summary>
+    private readonly struct ValueReader<T, TResult>(PgSharedReader<T, TResult> reader) : INativeSharedBlock<TResult> where T : unmanaged
+    {
+        public TResult Invoke(nint address) => reader(in Unsafe.AsRef<T>((void*)address));
+    }
+
+    /// <summary>
+    /// Passes the storage to a value mutator as a mutable reference.
+    /// </summary>
+    private readonly struct ValueMutator<T, TResult>(PgSharedMutator<T, TResult> mutator) : INativeSharedBlock<TResult> where T : unmanaged
+    {
+        public TResult Invoke(nint address) => mutator(ref Unsafe.AsRef<T>((void*)address));
     }
 }
