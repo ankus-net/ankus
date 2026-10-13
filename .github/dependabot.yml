@@ -1,9 +1,16 @@
 # Dependabot reads this file from the default branch and opens a pull request for each update it finds.
 version: 2
 updates:
-  # Directory.Packages.props holds every package version, and global.json holds MSTest.Sdk.
+  # Directory.Packages.props holds every package version, and global.json holds MSTest.Sdk. Only these projects restore
+  # from nuget.org alone: extensions, samples and the integration tests also need the patched Native AOT runtime packages
+  # that CI builds. Together they reference every package in Directory.Packages.props.
   - package-ecosystem: nuget
-    directory: /
+    directories:
+      - /src/*
+      - /tests/Ankus.Build.Tests
+      - /tests/Ankus.Generators.Tests
+      - /tests/Ankus.PgConfig.Tests
+      - /tests/Ankus.Runtime.Tests
     schedule:
       interval: weekly
     assignees:
@@ -47,3 +54,7 @@ updates:
       docs:
         patterns:
           - "*"
+    ignore:
+      # astro check supports TypeScript 5 and 6. Take TypeScript 7 once @astrojs/check accepts it.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
