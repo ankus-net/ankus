@@ -81,6 +81,14 @@ these changes:
 | `string MakeText(int)` against `textin(int4out(g))` | 95 ns |
 | `int ViewLength(PgTextView)` | 0.43 µs |
 
+A scalar function's text result was encoded into its own native allocation,
+copied into PostgreSQL memory by the wrapper, and then freed through a callback
+back into managed code. Native code copies the bytes before any managed code
+runs again, so the result is now encoded into one buffer each thread reuses,
+with nothing to free. With the two builds alternated, best of four runs of two
+million calls, `string Echo(string)` went from 124 ns to 97 ns per call over
+reading the value.
+
 ### Aggregate transitions
 
 A sum aggregate over `int` with a `long` state cost 1.9 µs per row on the

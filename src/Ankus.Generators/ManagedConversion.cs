@@ -64,7 +64,15 @@ internal static class ManagedConversion
     /// <summary>
     /// Writes a present managed value through a pointer to the shared transport.
     /// </summary>
-    internal static string Write(FunctionType result, string value, string target, string numericSuffix)
+    /// <param name="result">The result's type.</param>
+    /// <param name="value">The managed expression holding the present value.</param>
+    /// <param name="target">The transport pointer to write.</param>
+    /// <param name="numericSuffix">The precision applied to numeric results.</param>
+    /// <param name="consumedAtReturn">
+    /// Whether native code copies the value as soon as the managed call returns, so text can use the thread's reusable
+    /// result buffer.
+    /// </param>
+    internal static string Write(FunctionType result, string value, string target, string numericSuffix, bool consumedAtReturn = false)
     {
         string temporalValue = result.IsTemporal && result.ClrTemporalName.Length != 0
             ? $"global::Ankus.Pg{result.TemporalName}.From{result.ClrTemporalName}({value})" : value;
@@ -88,7 +96,7 @@ internal static class ManagedConversion
             _ when result.Enumeration is not null => $"*{target} = global::Ankus.CompilerServices.NativeValue.FromString(global::Ankus.PgEnums.GetLabel({value}));",
             _ when result.IsComposite => $"*{target} = global::Ankus.CompilerServices.NativeValue.FromTuple({value});",
             _ when result.IsRelation => $"*{target} = global::Ankus.CompilerServices.NativeValue.FromRelation({value});",
-            "string" => $"*{target} = global::Ankus.CompilerServices.NativeValue.FromString({value});",
+            "string" => $"*{target} = global::Ankus.CompilerServices.NativeValue.{(consumedAtReturn ? "FromResultString" : "FromString")}({value});",
             "byte[]" => $"*{target} = global::Ankus.CompilerServices.NativeValue.FromBytes({value});",
             "global::Ankus.PgCString" => $"*{target} = global::Ankus.CompilerServices.NativeValue.FromCString({value});",
             "global::System.Guid" => $"*{target} = global::Ankus.CompilerServices.NativeValue.FromGuid({value});",

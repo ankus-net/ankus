@@ -112,7 +112,7 @@ internal static class PgFunctionEmitter
                 source.AppendLine();
             }
 
-            source.AppendLine("            " + ManagedConversion.Write(result, value, "result", numericSuffix));
+            source.AppendLine("            " + ManagedConversion.Write(result, value, "result", numericSuffix, consumedAtReturn: true));
         }
 
         source.AppendLine("            return 0;");

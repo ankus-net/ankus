@@ -15,6 +15,12 @@ public unsafe partial struct NativeValue
 {
     private static readonly UTF8Encoding s_utf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
+    [ThreadStatic]
+    private static byte* s_resultText;
+
+    [ThreadStatic]
+    private static int s_resultTextCapacity;
+
     /// <summary>
     /// Gets whether the native value carries an enum label and its exact PostgreSQL type identity.
     /// </summary>
@@ -276,6 +282,44 @@ public unsafe partial struct NativeValue
             NativeMemory.Free(result._data);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Encodes a scalar function's text result into a buffer this thread reuses, so the result needs no allocation or
+    /// release of its own. PostgreSQL text cannot contain a zero character.
+    /// </summary>
+    /// <param name="value">The managed string.</param>
+    /// <returns>A value that borrows the thread's result buffer.</returns>
+    /// <remarks>
+    /// The native wrapper copies the bytes into PostgreSQL memory as soon as the managed call returns, before any
+    /// managed code can write another result. Values that wait, such as the rows of a set, use <see cref="FromString"/>.
+    /// </remarks>
+    public static NativeValue FromResultString(string value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        if (value.Contains('\0', StringComparison.Ordinal))
+        {
+            throw new ArgumentException("PostgreSQL text cannot contain a zero character.", nameof(value));
+        }
+
+        // A buffer of three bytes per character holds any string in one encoding pass; a long string is counted
+        // first, so the buffer does not grow to three times its size.
+        int length = value.Length <= 0x55555 ? (value.Length * 3) + 1 : s_utf8.GetByteCount(value);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(length, 0x3FFFFFFF - 4, nameof(value));
+        if (length > s_resultTextCapacity || (s_resultTextCapacity > 65536 && length <= 65536))
+        {
+            // A large result does not keep its buffer for the rest of the backend's life.
+            NativeMemory.Free(s_resultText);
+            s_resultText = null;
+            s_resultTextCapacity = 0;
+            int capacity = Math.Max(length, 256);
+            s_resultText = (byte*)NativeMemory.Alloc((nuint)capacity + 1);
+            s_resultTextCapacity = capacity;
+        }
+
+        int written = s_utf8.GetBytes(value, new Span<byte>(s_resultText, s_resultTextCapacity));
+        s_resultText[written] = 0;
+        return new NativeValue { _data = s_resultText, _length = written };
     }
 
     /// <summary>

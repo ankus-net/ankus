@@ -222,6 +222,17 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   supported major: the 540 trigger, composite, tuple, domain, setting and
   custom scan backend tests pass on Linux x64 with PostgreSQL 14, 15, 16, 17
   and 19 beta 4, as they did earlier on 13 and 18.
+- A scalar function's text result is encoded into a buffer each thread reuses
+  rather than its own allocation, which native code copied and then freed
+  through a callback into managed code. The wrapper copies the bytes before any
+  managed code can write another result, so set rows and other values that wait
+  keep owned strings. `string Echo(string)` went from 124 ns to 97 ns per call,
+  alternating the two builds on one PostgreSQL 18.6 cluster. Unit tests cover
+  reuse, the terminating zero, long results that are counted and do not keep
+  their buffer, and rejected text; a generator test checks that only scalar
+  results use the buffer. The 1,598 text, string, encoding, function, JSON,
+  enum and SPI backend tests pass on PostgreSQL 13, 16, 18 and 19 beta 4, and
+  the full PostgreSQL 18 suite passes (14,894 tests, 52 platform skips).
 - A function returning a named composite type no longer asks the catalog for
   its return type, the type's kind and base type, and a copied result
   descriptor on every call, or forms the row twice. The return type comes from

@@ -12,7 +12,7 @@ approaches, not as guarantees, and measure your own code with
 | Path | Cost |
 |---|---:|
 | `int AddOne(int)`, per call | 27 ns |
-| `string Echo(string)`, per call | 148 ns |
+| `string Echo(string)`, per call | 97 ns |
 | `IEnumerable<int>` set function, per row | 50 ns |
 | `IEnumerable<(int, string)>` table function, per row | 142 ns |
 | Aggregate transition from `int` into a `long` state, per row | 95 ns |
