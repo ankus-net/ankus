@@ -359,9 +359,11 @@ public sealed class PostgresValgrindTests(TestContext context)
         int port = reservation.Port;
         reservation.Dispose();
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
+        // The timeout case must still reach the preload before its deadline, and starting PostgreSQL under Valgrind
+        // takes several seconds on a host running other suites.
         var options = new PostgresDevelopmentOptions
         {
-            Port = port, UseValgrind = true, TimeoutSeconds = cancel ? 60 : 5,
+            Port = port, UseValgrind = true, TimeoutSeconds = cancel ? 60 : 30,
             Settings = new Dictionary<string, string> { ["shared_preload_libraries"] = library },
         };
         Task<bool>? starting = null;
