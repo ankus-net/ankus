@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -10,6 +11,7 @@ namespace Ankus.CompilerServices;
 /// </summary>
 /// <param name="literalLength">The compiler's literal character count.</param>
 /// <param name="formattedCount">The compiler's interpolated value count.</param>
+[EditorBrowsable(EditorBrowsableState.Never)]
 [InterpolatedStringHandler]
 public readonly ref struct SpiSqlInterpolatedStringHandler(int literalLength, int formattedCount)
 {

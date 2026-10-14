@@ -928,7 +928,7 @@ public static SpiCommand Sql(SpiSqlInterpolatedStringHandler sql)
 
 Parameters:
 
-`sql` — [SpiSqlInterpolatedStringHandler](/api/ankus.compilerservices.spisqlinterpolatedstringhandler/)
+`sql` — <code>SpiSqlInterpolatedStringHandler</code>
 
 The compiler-built SQL interpolation.
 
