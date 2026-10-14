@@ -184,19 +184,25 @@ incorrect. See [the detailed review](docs/contributing/evidence/port-history.md#
 ## Current complete acceptance evidence
 
 Primary CI runs all six modules against real published Native AOT extensions.
-The latest successful primary CI source is **623a333**, with runtime **10.0.13-ankus.1**.
-[CI 38461706610](https://github.com/willibrandon/ankus/actions/runs/38461706610)
+The latest successful primary CI source is **6d446a8**, with runtime **10.0.13-ankus.1**
+built from fork commit `f97c4de`.
+[CI 38533123229](https://github.com/willibrandon/ankus/actions/runs/38533123229)
 passes. Each platform completed all six modules with zero failures; no primary job
-timed out. The previous primary evidence, **2ab2160** with **10.0.12-ankus.5**
-([CI 38315500203](https://github.com/willibrandon/ankus/actions/runs/38315500203)),
-follows it in the table. The Linux job took 15m48s again after the other project's work on its
+timed out. The macOS and Windows jobs shared their hosts with two version matrices.
+The previous primary evidence, **623a333** on fork commit `b9bc343`, and
+**2ab2160** with **10.0.12-ankus.5**
+([CI 38315500203](https://github.com/willibrandon/ankus/actions/runs/38315500203))
+follow it in the table. The Linux job took 15m48s again after the other project's work on its
 host was stopped; at **8c91b6b** that work had doubled its test step. Earlier **ankus.4** evidence,
 including a complete [Intel refresh](https://github.com/willibrandon/ankus/actions/runs/37460600236)
 on source **e41c687**, is retained below.
 
 | Source | Platform / PostgreSQL | Result | Duration |
 | --- | --- | --- | --- |
-| [Latest primary CI 38461706610](https://github.com/willibrandon/ankus/actions/runs/38461706610), **623a333 / 10.0.13-ankus.1** | Linux x64 / 18 | 14,986 total; 14,934 passed; 52 platform skips; zero failures | 16m15s job |
+| [Latest primary CI 38533123229](https://github.com/willibrandon/ankus/actions/runs/38533123229), **6d446a8 / 10.0.13-ankus.1 (f97c4de)** | Linux x64 / 18 | 14,990 total; 14,938 passed; 52 platform skips; zero failures | 16m20s job |
+| Same CI / revision / runtime | macOS ARM64 / 18 | 14,990 total; 14,925 passed; 65 platform skips; zero failures | 24m55s job |
+| Same CI / revision / runtime | Windows x64 / 17 | 14,990 total; 14,944 passed; 46 platform skips; zero failures | 23m30s job |
+| [Primary CI 38461706610](https://github.com/willibrandon/ankus/actions/runs/38461706610), **623a333 / 10.0.13-ankus.1 (b9bc343)** | Linux x64 / 18 | 14,986 total; 14,934 passed; 52 platform skips; zero failures | 16m15s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 14,986 total; 14,921 passed; 65 platform skips; zero failures | 16m12s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 14,986 total; 14,940 passed; 46 platform skips; zero failures | 17m50s job |
 | [Primary CI 38315500203](https://github.com/willibrandon/ankus/actions/runs/38315500203), **2ab2160 / ankus.5** | Linux x64 / 18 | 14,883 total; 14,831 passed; 52 platform skips; zero failures | 13m24s test step; 15m48s job |
@@ -285,7 +291,15 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   restore the patched 10.0.13; they only run during the build, so the runtime and
   compiler packages keep version `10.0.13-ankus.1`. The unpatched tree reproduces
   the failure and the patched one restores both tasks and the ILCompiler publish
-  project. Ankus's own 72 projects have no vulnerable package.
+  project. Ankus's own 72 projects have no vulnerable package. On the new commit,
+  Linux version run 38523429618 passed PostgreSQL 13, 15, 16, 17 and 19 beta 4,
+  and 14 failed one Valgrind case whose five-second startup timeout expired
+  before PostgreSQL reached its preload on the shared host; it now allows 30
+  seconds. Platform-version run 38523432351 passed macOS ARM64 13, 14, 16, 17
+  and 19 beta and Windows x64 13–16 and 19. The macOS 15 suite passed, but
+  runner cleanup failed when another runner's job kept the shared compiler
+  server busy; cleanup now reports that as a warning. A host restart cut off
+  Windows 18. Both cells are running again on current `main`.
 - `ankus status` and `ankus info` seemed to hang when run from a large solution's
   directory, such as this repository's root. Without `--pg`, these commands use
   the PostgreSQL selection of the project or solution in the current directory.
