@@ -25,7 +25,7 @@ jobs:
         # JavaScript and TypeScript are the documentation site.
         language: [actions, csharp, javascript-typescript]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -71,7 +71,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -83,13 +83,13 @@ jobs:
         id: runtime
         run: dotnet run --file ./eng/Ankus.Ci.cs -- metadata
 
-      - uses: actions/cache/restore@v5
+      - uses: actions/cache/restore@v6
         id: runtime-cache
         with:
           path: artifacts/nativeaot/linux-x64
           key: nativeaot-v3-linux-x64-dedicated-${{ steps.runtime.outputs.commit }}
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         if: steps.runtime-cache.outputs.cache-hit != 'true'
         with:
           repository: ${{ steps.runtime.outputs.repository }}

@@ -48,7 +48,7 @@ jobs:
     runs-on: [self-hosted, '${{ matrix.runner }}']
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -59,13 +59,13 @@ jobs:
         run: dotnet run --file ./eng/Ankus.Ci.cs -- metadata
 
       - name: Restore native runtime
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         id: runtime-cache
         with:
           path: artifacts/nativeaot/${{ matrix.rid }}
           key: nativeaot-v3-${{ matrix.rid }}-${{ runner.os != 'Windows' && 'dedicated-' || '' }}${{ steps.runtime.outputs.commit }}
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         if: steps.runtime-cache.outputs.cache-hit != 'true'
         with:
           repository: ${{ steps.runtime.outputs.repository }}
@@ -78,7 +78,7 @@ jobs:
 
       - name: Save native runtime
         if: steps.runtime-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: artifacts/nativeaot/${{ matrix.rid }}
           key: ${{ steps.runtime-cache.outputs.cache-primary-key }}
@@ -110,7 +110,7 @@ jobs:
     runs-on: [self-hosted, "${{ matrix.rid == 'win-x64' && 'ankus-windows-x64' || 'ankus-macos-arm64' }}"]
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-dotnet@v6
         with:
@@ -130,7 +130,7 @@ jobs:
 
       - name: Restore native binding cache
         if: runner.environment != 'self-hosted'
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         id: binding-cache
         with:
           path: artifacts/binding-cache
@@ -149,7 +149,7 @@ jobs:
 
       - name: Save native binding cache
         if: runner.environment != 'self-hosted' && steps.binding-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: artifacts/binding-cache
           key: ${{ steps.binding-cache.outputs.cache-primary-key }}
