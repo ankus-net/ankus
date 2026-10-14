@@ -1169,7 +1169,14 @@ static void CleanRunnerWorkspace(string repositoryRoot)
     }
 
     StopJobPostgreSqlServers();
-    Run(GetDotNetHost(), ["build-server", "shutdown"], repositoryRoot);
+
+    // Runners on one host share the user's build servers, so a compiler server still working for another runner's
+    // job can refuse to stop. It holds nothing in this checkout, so the refusal is reported and cleaning continues.
+    if (RunForExitCode(GetDotNetHost(), ["build-server", "shutdown"], repositoryRoot) != 0)
+    {
+        Console.WriteLine("::warning::A build server did not stop; another job on this host may still be using it.");
+    }
+
     Run("git", ["clean", "-ffdx"], repositoryRoot);
     RemoveAbandonedPackageTestDirectories();
 }
@@ -1852,6 +1859,22 @@ static void Run(
     IReadOnlyDictionary<string, string?>? environment = null,
     string? sensitiveValue = null)
 {
+    int exitCode = RunForExitCode(fileName, arguments, workingDirectory, useShellExecute, environment, sensitiveValue);
+    if (exitCode != 0)
+    {
+        throw new InvalidOperationException($"Command failed with exit code {exitCode}: {fileName}");
+    }
+}
+
+// Runs a command, echoing its output, and returns its exit code for the caller to judge.
+static int RunForExitCode(
+    string fileName,
+    IReadOnlyList<string> arguments,
+    string? workingDirectory = null,
+    bool useShellExecute = false,
+    IReadOnlyDictionary<string, string?>? environment = null,
+    string? sensitiveValue = null)
+{
     using Process process = new();
     process.StartInfo.FileName = fileName;
     process.StartInfo.WorkingDirectory = workingDirectory ?? Directory.GetCurrentDirectory();
@@ -1910,11 +1933,7 @@ static void Run(
     }
 
     process.WaitForExit();
-
-    if (process.ExitCode != 0)
-    {
-        throw new InvalidOperationException($"Command failed with exit code {process.ExitCode}: {fileName}");
-    }
+    return process.ExitCode;
 }
 
 static string Capture(string fileName, IReadOnlyList<string> arguments)
