@@ -197,7 +197,7 @@ internal static class GuardedBackend
             AnkusPendingError *volatile pending = ankus_pending_error_save();
             PG_TRY();
             {
-                PG_TRY();
+                ANKUS_PG_TRY_INNER();
                 {
                     /* PostgreSQL may reset ErrorContext even after a nonthrowing report.
                      * Retain an identity, not a pointer probe into a possibly deleted child. */
@@ -534,7 +534,7 @@ internal static class GuardedBackend
                     if (relation)
                         ankus_relation_finish(request, result);
                 }
-                PG_CATCH();
+                ANKUS_PG_CATCH_INNER();
                 {
                     ErrorData *data;
                     MemoryContext diagnostic_context;
@@ -608,7 +608,7 @@ internal static class GuardedBackend
                     ankus_release_result(result);
                     status = 1;
                 }
-                PG_END_TRY();
+                ANKUS_PG_END_TRY_INNER();
             }
             PG_CATCH();
             {

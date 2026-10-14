@@ -145,11 +145,12 @@ internal static class NativeAggregateBridge
             AnkusPendingError *volatile pending = ankus_pending_error_save();
             PG_TRY();
             {
-                PG_TRY();
+                ANKUS_PG_TRY_INNER();
                 {
                     if (ankus_aggregate_scope == NULL)
                         ereport(ERROR, (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
                             errmsg("No active Ankus aggregate callback")));
+                    /* 0 ties managed state to the aggregate's memory context, so its reset releases it. */
                     if (operation == 0)
                     {
                         AnkusAggregateState *state;
@@ -169,6 +170,7 @@ internal static class NativeAggregateBridge
                         *output = handle;
                         pending_state = NULL;
                     }
+                    /* 1 compares two values with the aggregate's sort operator, in a subtransaction when it may fail. */
                     else if (operation == 1)
                     {
                         MemoryContext temporary;
@@ -186,6 +188,7 @@ internal static class NativeAggregateBridge
                         CurrentResourceOwner = resource_owner;
                         *output = (void *) (intptr_t) ((comparison > 0) - (comparison < 0));
                     }
+                    /* 2 names the aggregate's memory context for managed allocations. */
                     else if (operation == 2)
                     {
                         if (handle != ankus_aggregate_scope->owner)
@@ -196,8 +199,9 @@ internal static class NativeAggregateBridge
                     else
                         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("Invalid aggregate operation")));
                 }
-                PG_CATCH();
+                ANKUS_PG_CATCH_INNER();
                 {
+                    /* Roll back to the caller's nesting level and hand the diagnostic to managed code. */
                     ErrorData *data;
                     MemoryContext diagnostics;
                     if (pending_state != NULL)
@@ -230,7 +234,7 @@ internal static class NativeAggregateBridge
                     *output = NULL;
                     status = 1;
                 }
-                PG_END_TRY();
+                ANKUS_PG_END_TRY_INNER();
             }
             PG_CATCH();
             {

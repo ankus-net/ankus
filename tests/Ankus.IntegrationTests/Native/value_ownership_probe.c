@@ -21,6 +21,7 @@ Datum ankus_test_value_ownership(PG_FUNCTION_ARGS)
     request.parameters = &parameter;
     request.parameter_count = 1;
     parameter.type_oid = TEXTOID;
+    /* Families 0 through 4 read a scalar through a type's input function; family 5 copies an array datum. */
     const char *inputs[] = {"42", "2026-01-01", "127.0.0.1", "(1,2)", "[1,3)"};
     if (family < 5)
     {
@@ -37,6 +38,9 @@ Datum ankus_test_value_ownership(PG_FUNCTION_ARGS)
         ArrayType *array = construct_array(&cell, 1, INT4OID, sizeof(int32), true, 'i');
         intptr_t identity = (intptr_t) ankus_memory_context_id(caller);
         AnkusMemoryContext *context = ankus_memory_context_by_id((uint64) identity);
+        if (context == NULL)
+            elog(ERROR, "the caller's context was not registered");
+
         reference.bits = (uintptr_t) array;
         reference.context = identity;
         reference.generation = context->generation;
@@ -52,6 +56,7 @@ Datum ankus_test_value_ownership(PG_FUNCTION_ARGS)
     else
         elog(ERROR, "unknown ownership probe family");
 
+    /* The guarded call fails while it holds a syscache reference, inside a subtransaction that can roll it back. */
     BeginInternalSubTransaction(NULL);
     AnkusRecoveryFrame frame = {0};
     frame.previous = ankus_recovery_frame;
@@ -77,6 +82,8 @@ Datum ankus_test_value_ownership(PG_FUNCTION_ARGS)
     int locked_before = owner_error_lock_initialized && LWLockHeldByMe(&owner_error_lock);
     int lookups = owner_lookups;
     ankus_release_error(&error);
+
+    /* Until the failed call recovers, another backend call is refused without touching the catalog. */
     memset(&error, 0, sizeof(error));
     memset(&result, 0, sizeof(result));
     AnkusRequest retry = {0};
@@ -85,6 +92,7 @@ Datum ankus_test_value_ownership(PG_FUNCTION_ARGS)
     int blocked = ankus_spi_execute(&retry, &result, &error);
     if (owner_lookups != lookups)
         elog(ERROR, "a blocked guard performed a catalog lookup");
+    /* Rolling back releases the failed call's reference and leaves the caller's own pin and holdoffs as they were. */
     status = ankus_recovery_finish(&frame, &error, status);
     ankus_release_error(&error);
     MemoryContextSwitchTo(caller);

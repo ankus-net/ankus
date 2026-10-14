@@ -1,8 +1,19 @@
 name: Ankus CodeQL configuration
 
-# Every query of the suite runs on every file, and the workflow fails on any finding. Nothing is excluded here.
+# Every query of the suite runs on every file, and the workflow fails on any finding.
 queries:
   - uses: security-and-quality
+
+# PostgreSQL recovers from an error by jumping to the nearest PG_TRY, which links a jump buffer on its own stack into
+# the global PG_exception_stack and unlinks it before the block ends or rethrows. The bridge's recovery, transaction,
+# trigger and memory-protection frames follow the same idiom. Each of the thousands of PG_TRY expansions reads to
+# these two queries as a stack address escaping into a global, and a comment cannot mark a macro expansion, so they
+# do not run. Reviews hold every such frame to the rule PG_TRY follows: restore the previous link on every exit.
+query-filters:
+  - exclude:
+      id: cpp/stack-address-escape
+  - exclude:
+      id: cpp/using-expired-stack-address
 
 # A `// codeql[rule] reason` comment marks a finding the code must keep. CodeQL only reads those comments when the
 # alert suppression query runs alongside the suite, so each finding carries the comment into its result.

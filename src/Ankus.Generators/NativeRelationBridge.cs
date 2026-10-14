@@ -209,6 +209,7 @@ internal static class NativeRelationBridge
         static void
         ankus_relation_operation(AnkusRequest *request, AnkusResult *result, ResourceOwner caller_owner)
         {
+            /* 0 closes a reference, and 1 through 4 open one under the caller's resource owner. */
             int operation = request->scalar_operation;
             if (operation == 0)
             {
@@ -231,6 +232,7 @@ internal static class NativeRelationBridge
                 case 5:
                     /* Validate now; transfer the close obligation only after successful guard completion. */
                     break;
+                /* 6 through 15 read the relation's identity, statistics, descriptor and indexes. */
                 case 6:
                     result->text.integral = RelationGetRelid(relation);
                     break;
@@ -292,6 +294,7 @@ internal static class NativeRelationBridge
                 case 15:
                     result->text.integral = (intptr_t) relation;
                     break;
+                /* 16 through 22 add scan work to the relation's statistics. */
                 case 16:
                     pgstat_count_heap_scan(relation);
                     break;

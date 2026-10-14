@@ -130,6 +130,7 @@ ankus_test_worker_allocation_fault(PG_FUNCTION_ARGS)
     fault_worker_allocations = 0;
     fault_worker_stage = mode == 4 ? 0 : mode;
     fault_worker_monitor = true;
+    /* Modes 1 through 3 fail one allocation of registration, and mode 4 exhausts the handle identities. */
     if (mode == 4)
     {
         ankus_worker_next_id = INTPTR_MAX;
@@ -168,6 +169,7 @@ ankus_test_worker_allocation_fault(PG_FUNCTION_ARGS)
             "worker failure retained a result or changed the caller context");
         fault_require(ankus_worker_handles == NULL && fault_worker_owner == NULL && fault_worker_contexts() == contexts,
             "worker failure leaked its owner or linked registry entry");
+        /* The failure's counts and diagnostics are copied before its owned fields are released. */
         int created = fault_worker_created;
         int deleted = fault_worker_deleted;
         int allocations = fault_worker_allocations;
@@ -183,6 +185,7 @@ ankus_test_worker_allocation_fault(PG_FUNCTION_ARGS)
                 "worker diagnostics retained owned fields after release");
         }
 
+        /* Mode 3 fails after PostgreSQL started the worker, which then runs without a handle and is stopped here. */
         if (mode == 3)
         {
             published_process = fault_worker_ready(failed_extra);
@@ -190,6 +193,7 @@ ankus_test_worker_allocation_fault(PG_FUNCTION_ARGS)
             termination_requested = true;
         }
 
+        /* A retry registers, starts, terminates, waits for and releases a worker without leaking state. */
         definition.extra = retry_extra;
         memset(&result, 0, sizeof(result));
         fault_require(ankus_memory_invoke(&api, &request, &result, &error) == 0 && result.value == 1 && result.context > 0,

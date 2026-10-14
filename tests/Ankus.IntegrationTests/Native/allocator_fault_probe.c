@@ -321,6 +321,7 @@ ankus_test_stringinfo_fault(PG_FUNCTION_ARGS)
         request.data = (intptr_t) "live";
         request.length = 4;
         request.value = 4096;
+        /* Modes 8 and 9 create the buffer in a bump or slab context, which cannot free one chunk. */
         if (mode >= 8)
         {
             MemoryContext special = mode == 8 ? fault_create_bump(root) :
@@ -333,6 +334,7 @@ ankus_test_stringinfo_fault(PG_FUNCTION_ARGS)
         int before_freed = fault_released_reservations;
         fault_stringinfo_frees = 0;
         fault_stringinfo_monitor = true;
+        /* Modes 1 through 4 fail one step of creation; nothing may be published or kept, and a retry succeeds. */
         if (mode <= 4 || mode >= 8)
         {
             fault_stringinfo_stage = mode <= 2 ? mode : 0;
@@ -369,6 +371,7 @@ ankus_test_stringinfo_fault(PG_FUNCTION_ARGS)
         }
         else
         {
+            /* Modes 5 through 7 create 128 large buffers, releasing each by disposal, context reset or transfer. */
             for (int iteration = 0; iteration < 128; iteration++)
             {
                 request.operation = ANKUS_MEMORY_STRINGINFO;
@@ -455,6 +458,7 @@ ankus_test_item_pointer_fault(PG_FUNCTION_ARGS)
         int before_live = fault_live_records;
         int before_allocated = fault_successful_reservations;
         int before_freed = fault_released_reservations;
+        /* Modes 1 through 3 fail registry storage, identity assignment or a storage error raised inside the bridge. */
         if (mode <= 3)
         {
             fault_fail_calloc = mode == 1;
@@ -471,10 +475,12 @@ ankus_test_item_pointer_fault(PG_FUNCTION_ARGS)
             int freed = fault_released_reservations - before_freed;
             int calls = fault_storage_calls;
             ankus_release_error(&error);
+
+            /* A retry after the failure succeeds with the exact native size and fields. */
             fault_require(CurrentMemoryContext == caller, "item-pointer failure changed the caller context");
             fault_require(ankus_memory_invoke(&api, &request, &result, &error) == 0,
                 "item-pointer allocation retry failed");
-            AnkusMemoryAllocation *allocation = ankus_memory_allocation_by_id((uint64) result.pointer);
+            AnkusMemoryAllocation *allocation = ankus_memory_allocation_required((uint64) result.pointer);
             ItemPointer pointer = (ItemPointer) allocation->pointer;
             fault_require(allocation->size == sizeof(ItemPointerData) && pointer->ip_blkid.bi_hi == 65535 &&
                 pointer->ip_blkid.bi_lo == 65535 && pointer->ip_posid == 65535,
@@ -486,6 +492,7 @@ ankus_test_item_pointer_fault(PG_FUNCTION_ARGS)
         }
         else
         {
+            /* Modes 4 through 6 create 4096 item pointers, releasing each by disposal, context reset or transfer. */
             fault_require(ankus_memory_invoke(&api, &request, &result, &error) == 0,
                 "item-pointer warmup failed");
             fault_invoke_success(&api, ANKUS_MEMORY_FREE, result.pointer, 0, 0);
@@ -496,7 +503,7 @@ ankus_test_item_pointer_fault(PG_FUNCTION_ARGS)
                 request.length = index;
                 fault_require(ankus_memory_invoke(&api, &request, &result, &error) == 0,
                     "repeated item-pointer creation failed");
-                AnkusMemoryAllocation *allocation = ankus_memory_allocation_by_id((uint64) result.pointer);
+                AnkusMemoryAllocation *allocation = ankus_memory_allocation_required((uint64) result.pointer);
                 ItemPointer pointer = (ItemPointer) allocation->pointer;
                 fault_require(ItemPointerGetBlockNumberNoCheck(pointer) == PG_UINT32_MAX - index &&
                     ItemPointerGetOffsetNumberNoCheck(pointer) == index && GetMemoryChunkContext(pointer) == root,
@@ -576,6 +583,7 @@ ankus_test_list_fault(PG_FUNCTION_ARGS)
         int before_freed = fault_released_reservations;
         fault_list_frees = 0;
         fault_list_monitor = true;
+        /* Modes 1 through 4 fail one step of creation, and modes 12 and 13 create the list in a bump or slab context. */
         if (mode <= 4 || mode >= 12)
         {
             if (mode >= 12)
@@ -602,6 +610,8 @@ ankus_test_list_fault(PG_FUNCTION_ARGS)
             int frees = fault_released_reservations - before_freed;
             int chunks = fault_list_frees;
             ankus_release_error(&error);
+
+            /* Nothing may be published or kept, and a retry in an ordinary context keeps every value. */
             fault_require(CurrentMemoryContext == caller, "list acquisition changed the caller's context");
             request.context = (intptr_t) owner;
             fault_require(ankus_memory_invoke(&api, &request, &result, &error) == 0, "list retry failed");
@@ -616,6 +626,7 @@ ankus_test_list_fault(PG_FUNCTION_ARGS)
         }
         else if (mode <= 6)
         {
+            /* Modes 5 and 6 fail growth of a short or full list, which must leave its storage and cells untouched. */
             request.length = mode == 5 ? 1 : 128;
             fault_require(ankus_memory_invoke(&api, &request, &result, &error) == 0, "list growth setup failed");
             uint64 handle = (uint64) result.pointer;
@@ -647,6 +658,10 @@ ankus_test_list_fault(PG_FUNCTION_ARGS)
         }
         else
         {
+            /*
+             * Modes 7 through 11 grow 128 lists to more than a megabyte of cells, releasing each by disposal, context
+             * reset, transfer, clearing or draining. Each release must return the cell buffer.
+             */
             for (int iteration = 0; iteration < 128; iteration++)
             {
                 request.flags = ANKUS_LIST_CREATE;

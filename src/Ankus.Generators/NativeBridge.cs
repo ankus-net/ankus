@@ -20,6 +20,47 @@ internal static class NativeBridge
         #include "utils/date.h"
         #include "utils/timestamp.h"
         #include "mb/pg_wchar.h"
+
+        /* A PG_TRY nested in another gives its bookkeeping variables their own names, so they do not hide the outer
+         * block's. PostgreSQL 16 takes the suffix itself; earlier releases get the same expansion with renamed
+         * variables. */
+        #if PG_VERSION_NUM >= 160000
+        #define ANKUS_PG_TRY_INNER() PG_TRY(_inner)
+        #define ANKUS_PG_CATCH_INNER() PG_CATCH(_inner)
+        #define ANKUS_PG_FINALLY_INNER() PG_FINALLY(_inner)
+        #define ANKUS_PG_END_TRY_INNER() PG_END_TRY(_inner)
+        #else
+        #define ANKUS_PG_TRY_INNER() \
+            do { \
+                sigjmp_buf *_save_exception_stack_inner = PG_exception_stack; \
+                ErrorContextCallback *_save_context_stack_inner = error_context_stack; \
+                sigjmp_buf _local_sigjmp_buf_inner; \
+                bool _do_rethrow_inner = false; \
+                if (sigsetjmp(_local_sigjmp_buf_inner, 0) == 0) \
+                { \
+                    PG_exception_stack = &_local_sigjmp_buf_inner
+        #define ANKUS_PG_CATCH_INNER() \
+                } \
+                else \
+                { \
+                    PG_exception_stack = _save_exception_stack_inner; \
+                    error_context_stack = _save_context_stack_inner
+        #define ANKUS_PG_FINALLY_INNER() \
+                } \
+                else \
+                    _do_rethrow_inner = true; \
+                { \
+                    PG_exception_stack = _save_exception_stack_inner; \
+                    error_context_stack = _save_context_stack_inner
+        #define ANKUS_PG_END_TRY_INNER() \
+                } \
+                if (_do_rethrow_inner) \
+                    PG_RE_THROW(); \
+                PG_exception_stack = _save_exception_stack_inner; \
+                error_context_stack = _save_context_stack_inner; \
+            } while (0)
+        #endif
+
         typedef struct AnkusValue
         {
             int64 integral;
