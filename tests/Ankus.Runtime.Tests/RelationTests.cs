@@ -215,6 +215,7 @@ public sealed unsafe class RelationTests
         try
         {
             Assert.ThrowsExactly<InvalidOperationException>(() => _ = relation.Oid);
+            // codeql[cs/dispose-not-called-on-throw] The test disposes this at the step it checks; the fake native layer holds nothing an earlier failure could leak.
             relation.Dispose();
             Assert.AreEqual((byte)1, fixture.Requests[^1]._cleanupOnly);
             Assert.AreEqual(0L, fixture.Requests[^1]._sessionId);
@@ -395,10 +396,13 @@ public sealed unsafe class RelationTests
         Assert.AreEqual(2205U, row.GetTypeOid("r"));
         Assert.AreEqual(2210U, row.GetTypeOid("a"));
         using var ownership = new NativeRelationScope();
-        PgRelation first = ownership.Add(row.Get<PgRelation>("r"));
-        PgRelation second = ownership.Add(row.Get<PgRelation>("r"));
-        Assert.AreNotSame(first, second);
-        first.Dispose();
+        PgRelation second;
+        using (PgRelation first = ownership.Add(row.Get<PgRelation>("r")))
+        {
+            second = ownership.Add(row.Get<PgRelation>("r"));
+            Assert.AreNotSame(first, second);
+        }
+
         Assert.AreEqual(42U, second.Oid);
         Assert.AreEqual(42U, ownership.Add(tuple.Get<PgRelation>("r")).Oid);
         PgRelation?[] copiedVector = ownership.Add(row.Get<PgRelation?[]>("v"));

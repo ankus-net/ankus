@@ -240,6 +240,7 @@ try
     Console.WriteLine($"Ankus: generated PostgreSQL {major} native boundaries and SQL.");
     return 0;
 }
+// codeql[cs/catch-of-all-exceptions] MSBuild runs this tool, so any failure becomes one reported error and exit code instead of a crash.
 catch (Exception error)
 {
     Console.Error.WriteLine($"Ankus build failed: {error}");

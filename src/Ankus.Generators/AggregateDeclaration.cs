@@ -201,7 +201,7 @@ internal sealed class AggregateDeclaration(INamedTypeSymbol type, AttributeData 
             return Invalid(AggregateDiagnostics.Container, type.Locations.FirstOrDefault());
         }
 
-        for (INamedTypeSymbol? container = type; container is not null; container = container.ContainingType)
+        foreach (INamedTypeSymbol container in TypeNesting.SelfAndContainers(type))
         {
             if (container.IsGenericType || container.IsFileLocal || container.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal))
             {

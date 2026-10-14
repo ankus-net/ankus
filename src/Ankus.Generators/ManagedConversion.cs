@@ -55,6 +55,7 @@ internal static class ManagedConversion
             "double" => "global::System.BitConverter.Int64BitsToDouble(" + slot + ".Integral)",
             _ when type.IsTemporal => slot + ".Read" + type.TemporalName + "()" +
                 (type.ClrTemporalName.Length == 0 ? string.Empty : ".To" + type.ClrTemporalName + "()"),
+            "long" when type.Field == "Integral" => slot + ".Integral",
             _ => "(" + type.Managed + ")" + slot + "." + type.Field,
         };
         string absent = slot + ".IsNull != 0" + (type.Managed == "global::Ankus.PgCStringView" ? " || " + slot + ".Integral == 0" : string.Empty);

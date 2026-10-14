@@ -518,19 +518,10 @@ internal sealed class DefaultTypeSerializer(INamedTypeSymbol root, IAssemblySymb
     /// Requires every containing declaration to be visible to generated code.
     /// </summary>
     private static bool Accessible(INamedTypeSymbol type, IAssemblySymbol assembly)
-    {
-        for (INamedTypeSymbol? current = type; current is not null; current = current.ContainingType)
-        {
-            if (current.IsFileLocal || current.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal) ||
-                current.DeclaredAccessibility is Accessibility.Internal or Accessibility.ProtectedOrInternal &&
-                !current.ContainingAssembly.GivesAccessTo(assembly))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
+        => !TypeNesting.SelfAndContainers(type).Any(current => current.IsFileLocal ||
+            current.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal) ||
+            current.DeclaredAccessibility is Accessibility.Internal or Accessibility.ProtectedOrInternal &&
+            !current.ContainingAssembly.GivesAccessTo(assembly));
 
     /// <summary>
     /// Accepts public and assembly-visible constructor and setter access.

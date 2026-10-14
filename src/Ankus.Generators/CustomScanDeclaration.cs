@@ -40,13 +40,12 @@ internal sealed record CustomScanDeclaration(string Name, string Provider, strin
     /// <returns>The immutable invocation contract, or null after an error.</returns>
     internal static CustomScanDeclaration? Create(INamedTypeSymbol type, AttributeData attribute, GeneratorDiagnostics context)
     {
-        for (INamedTypeSymbol? container = type; container is not null; container = container.ContainingType)
+        INamedTypeSymbol? unusable = TypeNesting.SelfAndContainers(type).FirstOrDefault(static container =>
+            container.TypeParameters.Length != 0 || container.IsFileLocal ||
+            container.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal));
+        if (unusable is not null)
         {
-            if (container.TypeParameters.Length != 0 || container.IsFileLocal ||
-                container.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal))
-            {
-                return Report(CustomScanDiagnostics.Container, container.Locations.FirstOrDefault(), container.Name);
-            }
+            return Report(CustomScanDiagnostics.Container, unusable.Locations.FirstOrDefault(), unusable.Name);
         }
 
         INamedTypeSymbol[] contracts = [.. type.AllInterfaces.Where(static value => Is(value, "IPgCustomScan"))];

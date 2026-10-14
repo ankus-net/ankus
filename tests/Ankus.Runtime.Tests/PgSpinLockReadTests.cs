@@ -70,15 +70,17 @@ public sealed class PgSpinLockReadTests
         var owner = new PgSpinLock<Nested>(new Nested(7));
         using PgSpinLockGuard<Nested> parent = owner.Lock();
         nint parentAddress = Assert.ContainsSingle(fixture.Held);
-        PgSpinLockGuard<long> expired = parent.Read(static (in value) =>
+        using (PgSpinLockGuard<long> expired = parent.Read(static (in value) =>
         {
             PgSpinLockGuard<long> child = value._inner.Lock();
             Assert.AreEqual(31L, child.Value);
             child.Value = 47;
             return child;
-        });
-        Assert.ThrowsExactly<ObjectDisposedException>(() => expired.Value);
-        expired.Dispose();
+        }))
+        {
+            Assert.ThrowsExactly<ObjectDisposedException>(() => expired.Value);
+        }
+
         Assert.HasCount(1, fixture.Released);
         Assert.AreEqual(parentAddress, Assert.ContainsSingle(fixture.Held));
         Assert.AreEqual(47L, parent.Read(static (in value) =>

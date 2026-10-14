@@ -141,7 +141,9 @@ jobs:
             rid: win-x64
             postgresql: 17
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 120
+    # The dedicated runners finish the suite in about 20 minutes. GitHub-hosted runners, which pull requests from
+    # others use, take 70 minutes to over two hours.
+    timeout-minutes: ${{ startsWith(matrix.runner, 'ankus-') && 120 || 180 }}
     steps:
       - uses: actions/checkout@v5
 

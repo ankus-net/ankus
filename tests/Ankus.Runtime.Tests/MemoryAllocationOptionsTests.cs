@@ -486,17 +486,19 @@ public sealed unsafe class MemoryAllocationOptionsTests
     {
         using var fixture = new MemoryContextTestFixture();
         using MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter();
-        PgAllocation allocation = PgMemoryContext.Current.DangerousAdopt((void*)701, 37, huge, 4096);
-        NativeMemoryRequest request = Find(fixture, NativeMemoryOperation.Adopt);
-        Assert.AreEqual(101, request._context);
-        Assert.AreEqual(701, request._pointer);
-        Assert.AreEqual((nuint)37, request._length);
-        Assert.AreEqual(huge ? 4 : 0, request._flags);
-        Assert.AreEqual((nuint)4096, request._alignment);
-        Assert.AreEqual((nuint)37, allocation.Length);
-        Assert.AreEqual(huge ? PgAllocationOptions.Huge : PgAllocationOptions.None, allocation.Options);
-        Assert.AreEqual((nuint)4096, allocation.Alignment);
-        allocation.Dispose();
+        using (PgAllocation allocation = PgMemoryContext.Current.DangerousAdopt((void*)701, 37, huge, 4096))
+        {
+            NativeMemoryRequest request = Find(fixture, NativeMemoryOperation.Adopt);
+            Assert.AreEqual(101, request._context);
+            Assert.AreEqual(701, request._pointer);
+            Assert.AreEqual((nuint)37, request._length);
+            Assert.AreEqual(huge ? 4 : 0, request._flags);
+            Assert.AreEqual((nuint)4096, request._alignment);
+            Assert.AreEqual((nuint)37, allocation.Length);
+            Assert.AreEqual(huge ? PgAllocationOptions.Huge : PgAllocationOptions.None, allocation.Options);
+            Assert.AreEqual((nuint)4096, allocation.Alignment);
+        }
+
         Assert.AreEqual(601, Find(fixture, NativeMemoryOperation.Free)._context);
     }
 
