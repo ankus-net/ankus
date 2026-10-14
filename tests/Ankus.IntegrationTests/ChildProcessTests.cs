@@ -26,20 +26,28 @@ public sealed class ChildProcessTests(TestContext context)
         string text = OperatingSystem.IsWindows() ? "" : " é";
         string table = "Odd \"Table\"" + text + " " + Guid.NewGuid().ToString("N")[..8];
         string quoted = "\"" + table.Replace("\"", "\"\"", StringComparison.Ordinal) + "\"";
-        await ExecuteAsync(connection, $"CREATE TABLE tests.{quoted} (id integer, \"note é\" text)", token);
+        // pg_dump reads every object in the database it dumps, and the shared test database holds same-named types in
+        // several schemas, whose casts PostgreSQL 19's assertion-enabled pg_dump cannot order. A database of its own
+        // holds only the table.
+        string database = "ankus_child_dump_" + Guid.NewGuid().ToString("N")[..8];
+        await ExecuteAsync(connection, $"CREATE DATABASE {database}", token);
         try
         {
-            string output = Path.Combine(PostgresFixture.Cluster.DataDirectory, "ankus child dump" + text + ".sql");
+            var builder = new NpgsqlConnectionStringBuilder(connection.ConnectionString) { Database = database, Pooling = false };
+            await using var dumped = new NpgsqlConnection(builder.ConnectionString);
+            await dumped.OpenAsync(token);
+            await ExecuteAsync(dumped, $"CREATE TABLE public.{quoted} (id integer, \"note é\" text)", token);
+            string output = Path.Join(PostgresFixture.Cluster.DataDirectory, "ankus child dump" + text + ".sql");
             string result = await ScalarAsync<string>(connection, "SELECT datatype.child_run_and_read(@path, @arguments, @output)", token,
                 ("path", Program("pg_dump")), ("output", output),
-                ("arguments", new[] { "--schema-only", "--table=tests." + quoted, "--file=" + output, "--dbname=" + ConnectionString(connection) }));
+                ("arguments", new[] { "--schema-only", "--table=public." + quoted, "--file=" + output, "--dbname=" + ConnectionString(dumped) }));
             Assert.StartsWith("0|", result);
-            Assert.Contains($"CREATE TABLE tests.{quoted} (", result);
+            Assert.Contains($"CREATE TABLE public.{quoted} (", result);
             Assert.Contains("\"note é\" text", result);
         }
         finally
         {
-            await ExecuteAsync(connection, $"DROP TABLE tests.{quoted}", token);
+            await ExecuteAsync(connection, $"DROP DATABASE {database} WITH (FORCE)", token);
         }
     }
 
@@ -57,7 +65,7 @@ public sealed class ChildProcessTests(TestContext context)
                 ("path", Program("pg_dump")), ("arguments", s_badOption)));
             PostgresException missing = await Assert.ThrowsExactlyAsync<PostgresException>(() => ScalarAsync<int>(connection,
                 "SELECT datatype.child_run(@path, @arguments)", token,
-                ("path", Path.Combine(PostgresFixture.Cluster.Installation.BinDirectory, "ankus_missing_program")), ("arguments", Array.Empty<string>())));
+                ("path", Path.Join(PostgresFixture.Cluster.Installation.BinDirectory, "ankus_missing_program")), ("arguments", Array.Empty<string>())));
             Assert.AreEqual(PostgresErrorCodes.UndefinedFile, missing.SqlState);
             Assert.StartsWith("could not execute", missing.MessageText);
         }
@@ -126,7 +134,7 @@ public sealed class ChildProcessTests(TestContext context)
     }
 
     private static string Program(string name)
-        => Path.Combine(PostgresFixture.Cluster.Installation.BinDirectory, OperatingSystem.IsWindows() ? name + ".exe" : name);
+        => Path.Join(PostgresFixture.Cluster.Installation.BinDirectory, OperatingSystem.IsWindows() ? name + ".exe" : name);
 
     private static string ConnectionString(NpgsqlConnection connection)
     {
