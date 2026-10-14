@@ -548,6 +548,22 @@ public sealed partial class ToolCommandTests
     }
 
     /// <summary>
+    /// Removes the junction to the installation, leaving the installation itself in place.
+    /// </summary>
+    /// <remarks>
+    /// A recursive delete of the work root treats a junction as a volume mount point and reports an error when it is
+    /// not one, so the junction is removed on its own first.
+    /// </remarks>
+    private static void RemoveInstallationLink()
+    {
+        string link = Path.Join(s_root, "postgresql");
+        if (Directory.Exists(link))
+        {
+            Directory.Delete(link);
+        }
+    }
+
+    /// <summary>
     /// Reserves and restores an incremental packed consumer for one selection case.
     /// </summary>
     /// <param name="pool">The reusable project pool shared by version-selection cases.</param>

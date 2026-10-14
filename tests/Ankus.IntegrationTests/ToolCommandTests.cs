@@ -243,6 +243,7 @@ public sealed partial class ToolCommandTests(TestContext context)
 
         if (s_root is not null && Directory.Exists(s_root))
         {
+            RemoveInstallationLink();
             Directory.Delete(s_root, recursive: true);
         }
 
