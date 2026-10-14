@@ -12,17 +12,19 @@ public sealed class TestLogRetentionTests(TestContext context)
     private const string Id = "0123456789abcdef0123456789abcdef";
 
     /// <summary>
-    /// Server logs, their Windows event sidecars and publish binary logs are the fixtures' own; nothing else is.
+    /// Server logs, the files their collector keeps beside them and publish binary logs are the fixtures' own;
+    /// nothing else is.
     /// </summary>
     /// <param name="name">The file name.</param>
     /// <param name="owned">Whether a fixture created a file of that name.</param>
     [TestMethod]
     [DataRow("18-4242-" + Id + ".log", true)]
+    [DataRow("17-9-" + Id + ".log.stderr.log", true)]
     [DataRow("13-1-" + Id + ".log.events.lock", true)]
     [DataRow("19-77-" + Id + ".log.events." + Id + ".json", true)]
+    [DataRow("18-4242-" + Id + ".log." + Id + ".tmp", true)]
     [DataRow(Id + ".binlog", true)]
-    [DataRow("18-4242-" + Id + ".log.bak", false)]
-    [DataRow("18-4242-" + Id + ".log.events." + Id + ".txt", false)]
+    [DataRow("18-4242-" + Id + ".logs", false)]
     [DataRow("18-" + Id + ".log", false)]
     [DataRow("x-4242-" + Id + ".log", false)]
     [DataRow("18-4242-0123.log", false)]
@@ -44,7 +46,7 @@ public sealed class TestLogRetentionTests(TestContext context)
         {
             DateTime now = DateTime.UtcNow;
             string expiredLog = Write(directory, "18-1-" + Id + ".log", now.AddDays(-8));
-            string expiredSidecar = Write(directory, "18-1-" + Id + ".log.events.lock", now.AddDays(-8));
+            string expiredSidecar = Write(directory, "18-1-" + Id + ".log.stderr.log", now.AddDays(-8));
             string expiredBuild = Write(directory, Id + ".binlog", now.AddDays(-8));
             string recentLog = Write(directory, "18-2-" + Id + ".log", now.AddDays(-1));
             string foreign = Write(directory, "notes.log", now.AddDays(-30));
@@ -87,6 +89,8 @@ public sealed class TestLogRetentionTests(TestContext context)
             };
             await using (PostgresTestCluster cluster = await PostgresTestCluster.StartAsync(options, token))
             {
+                // Windows collects the retained log from its sidecars when it is read.
+                _ = cluster.ReadServerLog();
                 Assert.IsTrue(File.Exists(cluster.LogFilePath));
             }
 

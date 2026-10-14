@@ -363,22 +363,17 @@ internal static class IntegrationEnvironment
         // The server account may own a directory this account cannot read; skip it rather than fail the run.
         var everything = new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = 0 };
         DateTime cutoff = DateTime.UtcNow - TestLogRetention.Retention;
-        foreach (string path in Directory.EnumerateFiles(root, "*", everything))
+        foreach (string path in Directory.EnumerateFiles(root, "*", everything).Where(path => File.GetLastWriteTimeUtc(path) < cutoff))
         {
-            if (File.GetLastWriteTimeUtc(path) < cutoff)
-            {
-                TryDelete(() => File.Delete(path));
-            }
+            TryDelete(() => File.Delete(path));
         }
 
         // Removing a file refreshes its directory's write time, so an emptied directory goes regardless of age. This
         // runs before any test writes, and deepest first, so a directory its subdirectories leave empty goes as well.
-        foreach (string path in Directory.EnumerateDirectories(root, "*", everything).OrderDescending(StringComparer.Ordinal))
+        foreach (string path in Directory.EnumerateDirectories(root, "*", everything).OrderDescending(StringComparer.Ordinal)
+            .Where(path => !Directory.EnumerateFileSystemEntries(path).Any()))
         {
-            if (!Directory.EnumerateFileSystemEntries(path).Any())
-            {
-                TryDelete(() => Directory.Delete(path));
-            }
+            TryDelete(() => Directory.Delete(path));
         }
 
         static void TryDelete(Action delete)

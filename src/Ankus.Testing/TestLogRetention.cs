@@ -69,8 +69,9 @@ internal static class TestLogRetention
     }
 
     /// <summary>
-    /// Recognizes a cluster's server log (<c>major-process-id.log</c>), the event sidecars Windows collection keeps
-    /// beside it, and an extension publish's binary log (<c>id.binlog</c>), where each id is a 32-digit GUID.
+    /// Recognizes a cluster's server log (<c>major-process-id.log</c>), the files its collector keeps beside it, such
+    /// as Windows' <c>.stderr.log</c> and event sidecars, and an extension publish's binary log (<c>id.binlog</c>),
+    /// where each id is a 32-digit GUID that no other file shares.
     /// </summary>
     /// <param name="name">The file name.</param>
     /// <returns>Whether the fixture created a file of that name.</returns>
@@ -88,9 +89,7 @@ internal static class TestLogRetention
         }
 
         ReadOnlySpan<char> sidecar = name.AsSpan(extension + ".log".Length);
-        return sidecar.IsEmpty || sidecar.SequenceEqual(".events.lock") ||
-               (sidecar.Length == ".events.".Length + 32 + ".json".Length && sidecar.StartsWith(".events.", StringComparison.Ordinal) &&
-                sidecar.EndsWith(".json", StringComparison.Ordinal) && IsId(sidecar.Slice(".events.".Length, 32)));
+        return sidecar.IsEmpty || sidecar[0] == '.';
     }
 
     /// <summary>
