@@ -45,7 +45,7 @@ public unsafe partial struct NativeValue
         (uint constraintOid, int constraintFlags) = ReadTriggerConstraint(arguments[14]);
         return new PgTriggerContext(eventBits, relationOid, triggerOid, site.Name, site.TableName, site.TableSchema,
             site.OldTransition, site.NewTransition, site.Arguments, oldRow, newRow, site.Descriptor,
-            site.UpdateOf, updated, constraintOid, constraintFlags);
+            site.UpdateOf, updated, constraintOid, constraintFlags, metadataValidated: true);
     }
 
     /// <summary>
@@ -248,6 +248,10 @@ public unsafe partial struct NativeValue
         }
 
         int[] updateOf = arguments[12].ReadArray<int>().ToVector();
+
+        // The site's names, arguments and columns are the same for every row it sends, so they are checked here once.
+        PgTriggerContext.ValidateMetadata(name, tableName, tableSchema, oldTransition, newTransition, triggerArguments, updateOf,
+            descriptor.Descriptor);
         var buffers = new (nint Data, int Length, byte IsNull)[s_siteSlots.Length];
         for (int index = 0; index < s_siteSlots.Length; index++)
         {

@@ -25,10 +25,15 @@ public sealed class PgTriggerContext
     /// Validates the event and takes ownership of converted rows, sharing read-only argument and column lists that
     /// nothing can change, such as those a trigger call site parsed once.
     /// </summary>
+    /// <remarks>
+    /// A call site passes <paramref name="metadataValidated"/> after checking its names, arguments and columns once
+    /// with <see cref="ValidateMetadata"/>; they do not change between its rows.
+    /// </remarks>
     internal PgTriggerContext(uint eventBits, uint relationOid, uint triggerOid, string name, string tableName,
         string tableSchema, string? oldTransitionTableName, string? newTransitionTableName,
         ReadOnlyCollection<string> arguments, PgHeapTuple? oldRow, PgHeapTuple? newRow, PgTupleDescriptor descriptor,
-        ReadOnlyCollection<int> updateOfColumns, int[]? updatedColumns, uint constraintOid, int constraintFlags)
+        ReadOnlyCollection<int> updateOfColumns, int[]? updatedColumns, uint constraintOid, int constraintFlags,
+        bool metadataValidated = false)
     {
         if ((eventBits & ~127U) != 0 || (eventBits & 24U) == 24U ||
             ((eventBits & 4U) != 0 && (eventBits & 3U) == 3U) ||
@@ -42,28 +47,13 @@ public sealed class PgTriggerContext
             throw new InvalidOperationException("Trigger and relation identities must be valid PostgreSQL OIDs.");
         }
 
-        ValidateName(name);
-        ValidateName(tableName);
-        ValidateName(tableSchema);
-        if (oldTransitionTableName is not null)
-        {
-            ValidateName(oldTransitionTableName);
-        }
-
-        if (newTransitionTableName is not null)
-        {
-            ValidateName(newTransitionTableName);
-        }
-
         ArgumentNullException.ThrowIfNull(arguments);
         ArgumentNullException.ThrowIfNull(descriptor);
-        // Indexed loops: this runs for every row, and enumerating a read-only list allocates.
-        for (int index = 0; index < arguments.Count; index++)
+        ArgumentNullException.ThrowIfNull(updateOfColumns);
+        if (!metadataValidated)
         {
-            if (arguments[index] is null || arguments[index].Contains('\0', StringComparison.Ordinal))
-            {
-                throw new InvalidOperationException("Trigger arguments cannot contain SQL NULL or zero characters.");
-            }
+            ValidateMetadata(name, tableName, tableSchema, oldTransitionTableName, newTransitionTableName, arguments,
+                updateOfColumns, descriptor);
         }
 
         Event = eventBits;
@@ -85,8 +75,6 @@ public sealed class PgTriggerContext
 
         ValidateRow(oldRow, descriptor);
         ValidateRow(newRow, descriptor);
-        ArgumentNullException.ThrowIfNull(updateOfColumns);
-        ValidateColumns(updateOfColumns, descriptor);
         if (updatedColumns is not null)
         {
             if (Operation != PgTriggerOperation.Update)
@@ -228,6 +216,46 @@ public sealed class PgTriggerContext
     /// Gets whether the constraint trigger is initially deferred until transaction commit.
     /// </summary>
     public bool IsInitiallyDeferred { get; }
+
+    /// <summary>
+    /// Checks the parts of a trigger's metadata that stay the same for every row its call site sends.
+    /// </summary>
+    /// <param name="name">The trigger's name.</param>
+    /// <param name="tableName">The relation's name.</param>
+    /// <param name="tableSchema">The relation's schema.</param>
+    /// <param name="oldTransitionTableName">The OLD transition table's name, or null.</param>
+    /// <param name="newTransitionTableName">The NEW transition table's name, or null.</param>
+    /// <param name="arguments">The trigger's arguments.</param>
+    /// <param name="updateOfColumns">The ordinals of the trigger's <c>UPDATE OF</c> columns.</param>
+    /// <param name="descriptor">The relation's row descriptor.</param>
+    internal static void ValidateMetadata(string name, string tableName, string tableSchema, string? oldTransitionTableName,
+        string? newTransitionTableName, IReadOnlyList<string> arguments, IReadOnlyList<int> updateOfColumns,
+        PgTupleDescriptor descriptor)
+    {
+        ValidateName(name);
+        ValidateName(tableName);
+        ValidateName(tableSchema);
+        if (oldTransitionTableName is not null)
+        {
+            ValidateName(oldTransitionTableName);
+        }
+
+        if (newTransitionTableName is not null)
+        {
+            ValidateName(newTransitionTableName);
+        }
+
+        // Indexed loops: enumerating a read-only list allocates.
+        for (int index = 0; index < arguments.Count; index++)
+        {
+            if (arguments[index] is null || arguments[index].Contains('\0', StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Trigger arguments cannot contain SQL NULL or zero characters.");
+            }
+        }
+
+        ValidateColumns(updateOfColumns, descriptor);
+    }
 
     private static void ValidateName(string name)
     {

@@ -263,6 +263,19 @@ cluster, best of five runs of 500,000 rows, the trimming trigger's overhead went
 from 1.27 µs to 0.90 µs per row, against 0.54 µs for PL/pgSQL, and the sample
 changed to validate without trimming went from 0.75 µs to 0.55 µs.
 
+On 2026-10-14, 200 gdb samples of a 40-million-row insert into the trimming
+sample's table (PostgreSQL 18.6, Linux x64) put 110 in the trigger. 69 were in
+managed code: 38 reading the context and its NEW row, 15 in the sample's own
+`Get`, `Trim` and `Set`, and 13 converting the replaced cell back. Reading the
+context re-checked the trigger, table and schema names, the arguments and the
+`UPDATE OF` columns for every row, though the call site parses them once and
+they cannot change, so they are now checked once when the site is read. On that
+shared host, best of eight alternated runs of 2,000,000 rows went from 2,649 ms
+to 2,585 ms, about 0.03 µs per row and within the host's noise. The remaining
+managed cost is mostly allocation (the context, the row and its cells) and
+`Set`'s type lookups, which consult registries that generated code can still
+extend.
+
 ### Composite arguments and results
 
 Calling the `ankus_composites` sample's `scritch_dog`, which reads a `dog`
