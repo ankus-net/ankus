@@ -476,20 +476,20 @@ internal static class NativeTriggerBridge
                 if (result->release != NULL)
                     result->release(result->data);
                 ankus_release_error(error);
-                PG_TRY();
+                ANKUS_PG_TRY_INNER();
                 {
                     /* Iterator disposal can still query this invocation's transition tables.
                      * If it raises, keep the environment under the caller for abort cleanup. */
                     ankus_close_trigger_cursors(scope.identity);
                     MemoryContextDelete(scope.context);
                 }
-                PG_FINALLY();
+                ANKUS_PG_FINALLY_INNER();
                 {
                     ankus_trigger_scope = previous_scope;
                     ankus_function_oid = previous_function;
                     MemoryContextSwitchTo(caller);
                 }
-                PG_END_TRY();
+                ANKUS_PG_END_TRY_INNER();
             }
             PG_END_TRY();
             /* A NULL HeapTuple pointer means skip, never SQL NULL. */

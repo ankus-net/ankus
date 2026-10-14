@@ -575,7 +575,7 @@ ankus_test_internal_invoke(PG_FUNCTION_ARGS)
     call->args[0].isnull = mode == 0;
     call->args[0].value = mode == 2 ? PointerGetDatum(&stored) : (Datum) 0;
     Datum result = FunctionCallInvoke(call);
-    if (mode == 2 && stored != 42)
+    if (mode == 2 && *(int64 *) DatumGetPointer(call->args[0].value) != 42)
         ereport(ERROR, (errmsg("managed internal callback did not update the native pointee")));
     if (call->isnull)
         PG_RETURN_NULL();

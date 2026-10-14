@@ -110,6 +110,7 @@ internal static class NativeExtendedTypes
         static Datum
         ankus_write_typed_buffer(const AnkusValue *value, Oid type)
         {
+            /* A C string must not contain a NUL byte, since PostgreSQL would end it there. */
             if (type == CSTRINGOID)
             {
                 if (value->length < 0 || (Size) value->length >= MaxAllocSize ||
@@ -146,6 +147,8 @@ internal static class NativeExtendedTypes
                 return ankus_write_geometry(value, type);
             }
 
+            /* Network addresses arrive in PostgreSQL's binary form with the family as 4 or 6 instead of PostgreSQL's
+             * constants, and go through its receive function. */
             if (type == INETOID || type == CIDROID)
             {
                 char bytes[20];
@@ -166,6 +169,7 @@ internal static class NativeExtendedTypes
                 return result;
             }
 
+            /* A numeric arrives either as its exact datum, when managed code kept one, or in binary form. */
             if (type == NUMERICOID)
             {
                 Size raw_length;

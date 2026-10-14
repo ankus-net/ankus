@@ -47,6 +47,22 @@ internal static class NativeArrayBridge
             }
         }
 
+        /* Starts a transported array: its rank, element count and element type, then each dimension's length and
+         * lower bound. */
+        static void
+        ankus_array_send_header(StringInfo buffer, ArrayType *array, int rank, int count, Oid type)
+        {
+            initStringInfo(buffer);
+            pq_sendint32(buffer, rank);
+            pq_sendint32(buffer, count);
+            pq_sendint32(buffer, type);
+            for (int index = 0; index < rank; index++)
+            {
+                pq_sendint32(buffer, ARR_DIMS(array)[index]);
+                pq_sendint32(buffer, ARR_LBOUND(array)[index]);
+            }
+        }
+
         static void
         ankus_read_array(Datum datum, AnkusValue *value, AnkusInputBuffer *owned)
         {
@@ -79,15 +95,7 @@ internal static class NativeArrayBridge
                 /* Without NULLs these elements are already a packed native array; managed code copies it once. */
                 int width = ankus_array_packed_width(base_type);
                 count = ArrayGetNItems(rank, ARR_DIMS(array));
-                initStringInfo(&buffer);
-                pq_sendint32(&buffer, rank);
-                pq_sendint32(&buffer, count);
-                pq_sendint32(&buffer, base_type);
-                for (int index = 0; index < rank; index++)
-                {
-                    pq_sendint32(&buffer, ARR_DIMS(array)[index]);
-                    pq_sendint32(&buffer, ARR_LBOUND(array)[index]);
-                }
+                ankus_array_send_header(&buffer, array, rank, count, base_type);
 
                 appendBinaryStringInfo(&buffer, ARR_DATA_PTR(array), count * width);
                 owned->serialized = buffer.data;
@@ -104,15 +112,7 @@ internal static class NativeArrayBridge
             if ((base_type == TEXTOID || base_type == VARCHAROID || base_type == BPCHAROID) && GetDatabaseEncoding() == PG_UTF8)
             {
                 /* UTF-8 text needs no transcoding: send each element as a native length, -1 for NULL, and its bytes. */
-                initStringInfo(&buffer);
-                pq_sendint32(&buffer, rank);
-                pq_sendint32(&buffer, count);
-                pq_sendint32(&buffer, base_type);
-                for (int index = 0; index < rank; index++)
-                {
-                    pq_sendint32(&buffer, ARR_DIMS(array)[index]);
-                    pq_sendint32(&buffer, ARR_LBOUND(array)[index]);
-                }
+                ankus_array_send_header(&buffer, array, rank, count, base_type);
 
                 for (int index = 0; index < count; index++)
                 {
@@ -154,16 +154,8 @@ internal static class NativeArrayBridge
                 return;
             }
 
-            initStringInfo(&buffer);
-            pq_sendint32(&buffer, rank);
-            pq_sendint32(&buffer, count);
-            pq_sendint32(&buffer, composite ? type : base_type);
-            for (int index = 0; index < rank; index++)
-            {
-                pq_sendint32(&buffer, ARR_DIMS(array)[index]);
-                pq_sendint32(&buffer, ARR_LBOUND(array)[index]);
-            }
-
+            /* Any other element is read as a scalar and sent with all of its transport fields. */
+            ankus_array_send_header(&buffer, array, rank, count, composite ? type : base_type);
             for (int index = 0; index < count; index++)
             {
                 AnkusValue item = {0};
@@ -236,16 +228,21 @@ internal static class NativeArrayBridge
             rank = pq_getmsgint(&buffer, 4);
             count = pq_getmsgint(&buffer, 4);
             transported_type = pq_getmsgint(&buffer, 4);
-            if (rank < 0 || rank > MAXDIM || count < 0 ||
-                (transported_type != element_type && !(get_typtype(base_type) == TYPTYPE_COMPOSITE &&
-                    (transported_type == RECORDOID || getBaseType(transported_type) == base_type))) ||
-                !ankus_array_element_supported(element_type) ||
-                (value->auxiliary2 == 4 && (packed == 0 ||
-                    (int64) 12 + rank * 8 + (int64) count * packed != value->length)) ||
-                (packed_text && (GetDatabaseEncoding() != PG_UTF8 ||
-                    (base_type != TEXTOID && base_type != VARCHAROID && base_type != BPCHAROID) ||
-                    (int64) 12 + rank * 8 + (int64) count * 4 > value->length)) ||
-                (value->auxiliary2 != 4 && !packed_text && (int64) 12 + rank * 8 + (int64) count * 28 > value->length))
+            /* The shape must be possible, the elements of the declared type or rows of it, and the length what the
+             * transported form needs: exact for packed values, at least the minimum for the others. */
+            bool valid = rank >= 0 && rank <= MAXDIM && count >= 0;
+            valid = valid && (transported_type == element_type || (get_typtype(base_type) == TYPTYPE_COMPOSITE &&
+                (transported_type == RECORDOID || getBaseType(transported_type) == base_type)));
+            valid = valid && ankus_array_element_supported(element_type);
+            int64 header_length = (int64) 12 + rank * 8;
+            if (valid && value->auxiliary2 == 4)
+                valid = packed != 0 && header_length + (int64) count * packed == value->length;
+            else if (valid && packed_text)
+                valid = GetDatabaseEncoding() == PG_UTF8 && (base_type == TEXTOID || base_type == VARCHAROID ||
+                    base_type == BPCHAROID) && header_length + (int64) count * 4 <= value->length;
+            else if (valid)
+                valid = header_length + (int64) count * 28 <= value->length;
+            if (!valid)
             {
                 ereport(ERROR, (errcode(ERRCODE_INVALID_BINARY_REPRESENTATION), errmsg("Invalid Ankus array shape or element type")));
             }
