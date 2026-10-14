@@ -17,11 +17,11 @@ internal static class NativeNodeBridge
         => "#include \"nodes/nodes.h\"\n" + LayoutLookup(layouts);
 
     /// <summary>
-    /// Validates complete layout metadata before emitting any native switch arms.
+    /// Validates complete layout metadata before emitting the native layout table.
     /// </summary>
     private static string LayoutLookup(string? encoded)
     {
-        var cases = new StringBuilder();
+        var entries = new StringBuilder();
         var tags = new HashSet<uint>();
         bool valid = !string.IsNullOrEmpty(encoded);
         foreach (string[] fields in (encoded ?? "").Split(';').Select(static record => record.Split(':')))
@@ -35,14 +35,24 @@ internal static class NativeNodeBridge
                 break;
             }
 
-            cases.AppendLine(string.Format(CultureInfo.InvariantCulture,
-                "        case {0}U: *size = {1}; *alignment = {2}; return;", tag, size, alignment));
+            entries.AppendLine(string.Format(CultureInfo.InvariantCulture, "    [{0}] = {{{1}, {2}}},", tag, size, alignment));
         }
 
-        return "static void ankus_node_layout(uint32 tag, Size *size, Size *alignment)\n{\n" +
-            (valid ? "    switch (tag)\n    {\n" + cases +
-                "        default: *size = sizeof(Node); *alignment = sizeof(NodeTag); return;\n    }\n" :
-                "    ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED), errmsg(\"this extension has no measured node layout contract\")));\n") + "}\n";
+        if (!valid)
+        {
+            return "static void ankus_node_layout(uint32 tag, Size *size, Size *alignment)\n{\n" +
+                "    ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED), errmsg(\"this extension has no measured node layout contract\")));\n}\n";
+        }
+
+        return "/* The size and alignment of each node type in this PostgreSQL build, by tag, as the build measured them. */\n" +
+            "static const struct { uint32 size; uint32 alignment; } ankus_node_layouts[] =\n{\n" + entries + "};\n\n" +
+            "static void ankus_node_layout(uint32 tag, Size *size, Size *alignment)\n{\n" +
+            "    if (tag < lengthof(ankus_node_layouts) && ankus_node_layouts[tag].size != 0)\n    {\n" +
+            "        *size = ankus_node_layouts[tag].size;\n" +
+            "        *alignment = ankus_node_layouts[tag].alignment;\n" +
+            "        return;\n    }\n\n" +
+            "    *size = sizeof(Node);\n" +
+            "    *alignment = sizeof(NodeTag);\n}\n";
     }
 
     /// <summary>
@@ -77,7 +87,7 @@ internal static class NativeNodeBridge
 
                 address = (char *) allocation->pointer + offset;
                 available = (Size) request->length;
-                owner = ankus_memory_context_by_id(allocation->context_id);
+                owner = ankus_memory_allocation_owner(allocation);
             }
             else
             {

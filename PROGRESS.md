@@ -238,6 +238,71 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- Security checks run on every change. `SECURITY.md` describes private
+  vulnerability reporting, Dependabot proposes NuGet, workflow and site updates
+  weekly, secret scanning and push protection are on, and
+  [Picket](https://github.com/willibrandon/picket) scans each change; its one
+  false positive, a test key, was rewritten rather than ignored. The `CodeQL`
+  workflow runs the `security-and-quality` suite on C#, workflows and the site's
+  TypeScript, and on `main` a dedicated Linux runner traces the C bridge and
+  fixtures that the integration tests compile. `eng/Ankus.CodeQl.cs` fails the
+  workflow on any result. The first scan reported 3,181 C# results; all are fixed
+  in code except 89 that describe code which must stay, each marked with a
+  `// codeql[rule]` comment saying why: catches that hand every exception to
+  PostgreSQL at the native boundary or report a cleanup failure with the one that
+  caused it, two `GC.Collect` test helpers, interpolated SQL that `Spi.Sql` binds
+  as parameters, and resources whose ownership passes elsewhere. A local scan of
+  the committed tree reports zero unsuppressed C# and workflow results. Code
+  scanning keeps a marked result open, so on `main` the same app dismisses its
+  alert as won't fix with the comment's reason, and reopens it if a later
+  analysis reports the result without the comment. CI run
+  38489425334 passed on Linux x64, macOS ARM64 and Windows x64, and the Linux
+  version matrix 38491737010 passed the complete suite on PostgreSQL 13 through
+  19 beta 4.
+- The traced C now passes CodeQL too. Its first scan reported 8,450 results in
+  the emitted bridges and the fixtures composed from them. 7,524 came from two
+  queries that read every `PG_TRY` as a stack address escaping into a global,
+  since it links a jump buffer on its own stack into `PG_exception_stack`; a
+  comment cannot mark a macro expansion, so `.github/codeql-config.yml` turns
+  those two off and says why. The rest are fixed in the generator: a `PG_TRY`
+  nested in another names its variables apart, through PostgreSQL's
+  `PG_TRY(name)` from 16 and the same expansion before it; node layouts and an
+  extension's base types are tables; long cases of the memory and list switches
+  are functions; a strict function's NULL checks and frees are loops; handles
+  are found through one checked lookup; and long functions and fixtures explain
+  their steps. Local scans of the PostgreSQL 13 and 18 bridges of every sample
+  and test extension, and of the fixtures, report no results. Generator and
+  runtime unit tests pass (5,033 and 2,489). The complete PostgreSQL 18 suite on
+  Linux x64 passed 14,935 of 14,987 with 52 platform skips before the last three
+  memory switch cases moved into functions; the 763 memory, allocator, list,
+  node and ownership backend tests pass after it, and the PostgreSQL 13
+  integration suite passed 5,523 of 5,540 with 17 platform skips.
+- Two tests depended on their host. The first exception thrown under a
+  `PgErrorContext` could go unrecorded when another thread pushed the first
+  context at the same moment, because the push marked the exception handler as
+  installed before installing it; macOS ARM64 hit this once in the runtime unit
+  tests. The handler is now installed under a lock before any push returns. The
+  relative `pg_config` selection tests could not form a relative path on
+  GitHub-hosted Windows, whose work directory is on another drive than
+  PostgreSQL; such a consumer now reaches the installation through a directory
+  junction in the shared work root. The eight selection cases still pass on
+  Linux x64 with PostgreSQL 18.
+- Assertion-enabled PostgreSQL builds on macOS ARM64 stopped in
+  `PgRelationWriter`. A writer began one `AFTER`-trigger query when it opened and
+  ended it when disposed, so a writer left open at commit left the query on the
+  stack; it also reopened the table's indexes for each change, which PostgreSQL
+  19 asserts against. Each change is now its own trigger query, as in the
+  built-in apply worker, so its `AFTER` triggers fire when it completes, and the
+  writer opens the indexes once. A new backend test counts an `AFTER` trigger's
+  rows after each change and after disposal. The subscriber sample now drops a
+  slot with `WAIT`, because PostgreSQL 13 still reported the stopped worker's
+  sender as active. PostgreSQL 19's assertion-enabled `pg_dump` cannot order
+  casts of same-named types in different schemas, since it names casts by type
+  names alone; the child-process test dumps a database of its own. Windows can
+  reset a connection before the client reads the FATAL that closed it, so that
+  test reads the server log. The writer, subscriber, replication, child-process,
+  transaction-callback and C-string backend tests pass on Linux x64 with
+  PostgreSQL 13, 18 and 19 beta 4 (80 each).
 - Managed custom scan providers: a class marked `[PgCustomScan]` implements
   `IPgCustomScan<TState>` with static `Plan`, `Begin` and `Read` methods, and
   optionally `IPgRescannableCustomScan<TState>` and

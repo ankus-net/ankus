@@ -332,6 +332,7 @@ internal static class NativeGucBridge
                     errmsg("Postmaster configuration must be registered through shared_preload_libraries")));
             int flags = ankus_guc_flags(definition->flags, definition->unit);
             ankus_guc_prepare(definition);
+            /* A reloaded library finds its own setting already defined and adopts it. */
             struct config_generic *existing = ankus_guc_find(definition->name);
             if (ankus_guc_is_owned(definition, existing))
             {
@@ -343,6 +344,8 @@ internal static class NativeGucBridge
             if (existing != NULL && (existing->flags & GUC_CUSTOM_PLACEHOLDER) == 0)
                 ereport(ERROR, (errcode(ERRCODE_DUPLICATE_OBJECT),
                     errmsg("configuration parameter \"%s\" is already defined by another owner", definition->name)));
+            /* On Windows, a backend-context setting whose placeholder holds a value from the configuration file keeps
+             * that value: it is saved here and set again once the setting is defined. */
             char *reload_value = NULL;
             bool reload_pending = false;
             GucContext reload_context = PGC_INTERNAL;
@@ -422,6 +425,7 @@ internal static class NativeGucBridge
                         errmsg("Ankus configuration could not apply a reloaded backend value")));
             }
 
+            /* PostgreSQL may have replaced the record while defining it, so its extra state is read again. */
             struct config_generic *registered = ankus_guc_find(definition->name);
             if (!ankus_guc_is_owned(definition, registered))
                 ereport(ERROR, (errcode(ERRCODE_INTERNAL_ERROR),
@@ -753,11 +757,11 @@ internal static class NativeGucBridge
             AnkusPendingError *volatile pending = ankus_pending_error_save();
             PG_TRY();
             {
-                PG_TRY();
+                ANKUS_PG_TRY_INNER();
                 {
                     ankus_guc_define_runtime_core(name, (const AnkusGucDefinitionRequest *) request);
                 }
-                PG_CATCH();
+                ANKUS_PG_CATCH_INNER();
                 {
                     MemoryContextSwitchTo(caller);
                     ErrorData *data = ankus_copy_error_data();
@@ -767,7 +771,7 @@ internal static class NativeGucBridge
                     ankus_free_error_data(data);
                     status = 1;
                 }
-                PG_END_TRY();
+                ANKUS_PG_END_TRY_INNER();
             }
             PG_CATCH();
             {
@@ -1084,7 +1088,7 @@ internal static class NativeGucBridge
             AnkusPendingError *volatile pending = ankus_pending_error_save();
             PG_TRY();
             {
-                PG_TRY();
+                ANKUS_PG_TRY_INNER();
                 {
                     work = AllocSetContextCreate(caller, "Ankus configuration read", ALLOCSET_SMALL_SIZES);
                     MemoryContextSwitchTo(work);
@@ -1098,7 +1102,7 @@ internal static class NativeGucBridge
                     else
                         ankus_guc_value(definition, definition->variable, value);
                 }
-                PG_CATCH();
+                ANKUS_PG_CATCH_INNER();
                 {
                     MemoryContextSwitchTo(caller);
                     ErrorData *data = ankus_copy_error_data();
@@ -1109,7 +1113,7 @@ internal static class NativeGucBridge
                     ankus_free_error_data(data);
                     status = 1;
                 }
-                PG_END_TRY();
+                ANKUS_PG_END_TRY_INNER();
             }
             PG_CATCH();
             {
@@ -1266,7 +1270,7 @@ internal static class NativeGucBridge
             AnkusPendingError *volatile pending = ankus_pending_error_save();
             PG_TRY();
             {
-                PG_TRY();
+                ANKUS_PG_TRY_INNER();
                 {
                     if ((operation != 0 && operation != 1) || level < 0 || level > 12 || enabled == NULL)
                         ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("Invalid configuration logging request")));
@@ -1281,7 +1285,7 @@ internal static class NativeGucBridge
                         ankus_guc_report(report, ankus_log_level(level));
                     }
                 }
-                PG_CATCH();
+                ANKUS_PG_CATCH_INNER();
                 {
                     MemoryContextSwitchTo(caller);
                     ErrorData *data = ankus_copy_error_data();
@@ -1292,7 +1296,7 @@ internal static class NativeGucBridge
                     ankus_free_error_data(data);
                     status = 1;
                 }
-                PG_END_TRY();
+                ANKUS_PG_END_TRY_INNER();
             }
             PG_CATCH();
             {
@@ -1506,7 +1510,7 @@ internal static class NativeGucBridge
             volatile bool accepted = false;
             PG_TRY();
             {
-                PG_TRY();
+                ANKUS_PG_TRY_INNER();
                 {
                     ankus_guc_arguments(definition, proposed, NULL, frame);
                     bool transactional = IsTransactionState();
@@ -1547,7 +1551,7 @@ internal static class NativeGucBridge
                         ankus_guc_report(&frame->error, ERROR);
                     }
                 }
-                PG_CATCH();
+                ANKUS_PG_CATCH_INNER();
                 {
                     MemoryContextSwitchTo(caller);
                     if (frame->snapshot_owned)
@@ -1569,7 +1573,7 @@ internal static class NativeGucBridge
 
                     PG_RE_THROW();
                 }
-                PG_END_TRY();
+                ANKUS_PG_END_TRY_INNER();
             }
             PG_FINALLY();
             {
@@ -1625,7 +1629,7 @@ internal static class NativeGucBridge
             AnkusPendingError *volatile pending = ankus_pending_error_save();
             PG_TRY();
             {
-                PG_TRY();
+                ANKUS_PG_TRY_INNER();
                 {
                     work = AllocSetContextCreate(caller, "Ankus configuration assignment", ALLOCSET_SMALL_SIZES);
                     MemoryContextSwitchTo(work);
@@ -1643,7 +1647,7 @@ internal static class NativeGucBridge
                             ankus_log_level(frame->error.report_level - 1));
                     definition->extra = extra;
                 }
-                PG_CATCH();
+                ANKUS_PG_CATCH_INNER();
                 {
                     MemoryContextSwitchTo(caller);
                     ErrorData *data = ankus_copy_error_data();
@@ -1656,7 +1660,7 @@ internal static class NativeGucBridge
                     ankus_pending_error_restore(restored);
                     ThrowErrorData(data);
                 }
-                PG_END_TRY();
+                ANKUS_PG_END_TRY_INNER();
             }
             PG_FINALLY();
             {
@@ -1685,7 +1689,7 @@ internal static class NativeGucBridge
             char *output = NULL;
             PG_TRY();
             {
-                PG_TRY();
+                ANKUS_PG_TRY_INNER();
                 {
                     work = AllocSetContextCreate(caller, "Ankus configuration display", ALLOCSET_SMALL_SIZES);
                     MemoryContextSwitchTo(work);
@@ -1709,7 +1713,7 @@ internal static class NativeGucBridge
                     output = definition->show_buffer = frame->pending_string;
                     frame->pending_string = NULL;
                 }
-                PG_CATCH();
+                ANKUS_PG_CATCH_INNER();
                 {
                     if ((frame != NULL && frame->error.report_level != 0) || !IsTransactionState())
                     {
@@ -1723,7 +1727,7 @@ internal static class NativeGucBridge
 
                     PG_RE_THROW();
                 }
-                PG_END_TRY();
+                ANKUS_PG_END_TRY_INNER();
             }
             PG_FINALLY();
             {
@@ -1912,7 +1916,7 @@ internal static class NativeGucBridge
                     error_context.callback = ankus_guc_worker_restore_error_context;
                     error_context.arg = definition;
                     error_context.previous = error_context_stack;
-                    PG_TRY();
+                    ANKUS_PG_TRY_INNER();
                     {
                         existing->flags |= GUC_ALLOW_IN_PARALLEL;
                         error_context_stack = &error_context;
@@ -1925,12 +1929,12 @@ internal static class NativeGucBridge
                             existing->scontext, existing->source, GUC_ACTION_SET, true, ERROR, true);
         #endif
                     }
-                    PG_FINALLY();
+                    ANKUS_PG_FINALLY_INNER();
                     {
                         error_context_stack = error_context.previous;
                         existing->flags = original_flags;
                     }
-                    PG_END_TRY();
+                    ANKUS_PG_END_TRY_INNER();
                     if (result <= 0)
                         ereport(ERROR, (errcode(ERRCODE_INTERNAL_ERROR),
                             errmsg("Ankus configuration could not be restored in a parallel worker")));

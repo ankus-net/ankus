@@ -586,6 +586,34 @@ internal static class NativeMemoryBridge
             return NULL;
         }
 
+        /* Finds an allocation a request names or just made, which must still be live. */
+        static AnkusMemoryAllocation *
+        ankus_memory_allocation_required(uint64 id)
+        {
+            AnkusMemoryAllocation *allocation = ankus_memory_allocation_by_id(id);
+            if (allocation == NULL)
+            {
+                ereport(ERROR, (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+                    errmsg("the PostgreSQL allocation handle is stale")));
+            }
+
+            return allocation;
+        }
+
+        /* Finds the context that owns a live allocation. */
+        static AnkusMemoryContext *
+        ankus_memory_allocation_owner(const AnkusMemoryAllocation *allocation)
+        {
+            AnkusMemoryContext *owner = ankus_memory_context_by_id(allocation->context_id);
+            if (owner == NULL)
+            {
+                ereport(ERROR, (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+                    errmsg("the PostgreSQL allocation handle is stale")));
+            }
+
+            return owner;
+        }
+
         static void
         ankus_memory_remove_context(AnkusMemoryContext *target)
         {
@@ -1140,6 +1168,173 @@ internal static class NativeMemoryBridge
 
         """ + NativeStringInfoBridge.Source + NativeListBridge.Source + NativeItemPointerMemoryBridge.Source + NativeBindingBridge.Source + NativeNodeBridge.Source + NativeRawCallBridge.Source + NativeSharedMemoryBridge.Source + NativeSpinLockBridge.Source + NativeBackgroundWorkerBridge.Source + NativeReplicationBridge.Source + NativeReplicationOriginBridge.Source + NativeQuoteBridge.Source + NativeErrorContextBridge.Source + NativeProcessExitBridge.Source + NativeChildProcessBridge.Source + NativeRelationWriterBridge.Source + """
 
+        /* Resizes a checked allocation in its owning context; with no-OOM it leaves the result empty on failure. */
+        static void
+        ankus_memory_reallocate(AnkusMemoryRequest *request, AnkusMemoryResult *result)
+        {
+            AnkusMemoryAllocation *allocation = ankus_memory_allocation_required((uint64) request->context);
+            if ((request->flags & ~3) != 0)
+            {
+                ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("invalid allocation resize options")));
+            }
+
+            Size size = (Size) request->length;
+            int options = allocation->flags | (request->flags & 2);
+            int flags = ankus_memory_validate_allocation(size, allocation->alignment, options);
+            MemoryContext owner = ankus_memory_allocation_owner(allocation)->context;
+            ankus_memory_check_chunk_operation(owner, "realloc");
+            void *pointer;
+            if (allocation->alignment > MAXIMUM_ALIGNOF || (flags & MCXT_ALLOC_NO_OOM) != 0)
+            {
+                /* Keep the old chunk intact until replacement succeeds, including
+                 * older native aligned realloc implementations that lose flags. */
+                pointer = ankus_memory_allocate(owner, size, allocation->alignment, options);
+                if (pointer == NULL)
+                {
+                    return;
+                }
+
+                memcpy(pointer, allocation->pointer, Min(size, allocation->size));
+                pfree(allocation->pointer);
+            }
+            else
+            {
+                pointer = (flags & MCXT_ALLOC_HUGE) != 0 ? repalloc_huge(allocation->pointer, size) :
+                    repalloc(allocation->pointer, size);
+            }
+
+            if ((request->flags & 1) != 0 && size > allocation->size)
+            {
+                memset((char *) pointer + allocation->size, 0, size - allocation->size);
+            }
+
+            allocation->pointer = pointer;
+            allocation->size = size;
+            result->context = (intptr_t) allocation->id;
+            result->pointer = (intptr_t) allocation->id;
+            result->length = request->length;
+        }
+
+        /* Registers a caller's live palloc chunk as a checked allocation of the context that owns it. */
+        static void
+        ankus_memory_adopt(AnkusMemoryRequest *request, AnkusMemoryResult *result)
+        {
+            AnkusMemoryContext *entry = ankus_memory_context_from_request(request);
+            void *pointer = (void *) request->pointer;
+            if (pointer == NULL || (request->flags & ~4) != 0)
+            {
+                ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("invalid allocation adoption request")));
+            }
+
+            ankus_memory_validate_allocation((Size) request->length, (Size) request->alignment, request->flags);
+            for (AnkusMemoryAllocation *existing = ankus_memory_allocations; existing != NULL; existing = existing->next)
+            {
+                if (existing->pointer == pointer)
+                {
+                    ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("the PostgreSQL allocation already has a checked owner")));
+                }
+            }
+
+            /* The caller guarantees live palloc provenance and the exact accessible
+             * length. Chunk headers cannot validate arbitrary pointers or lengths. */
+            ankus_memory_check_chunk_operation(entry->context, "GetMemoryChunkContext");
+            if (GetMemoryChunkContext(pointer) != entry->context)
+            {
+                ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("the PostgreSQL allocation belongs to a different memory context")));
+            }
+
+            AnkusMemoryAllocation *allocation = ankus_memory_reserve_allocation();
+            ankus_memory_publish_allocation(allocation, entry, pointer,
+                (Size) request->length, (Size) request->alignment, request->flags);
+            result->context = (intptr_t) entry->id;
+            result->pointer = (intptr_t) allocation->id;
+            result->length = request->length;
+        }
+
+        /* Copies between a managed buffer and a borrowed address whose lifetime a context generation anchors. */
+        static void
+        ankus_memory_access_reference(AnkusMemoryRequest *request, AnkusMemoryResult *result)
+        {
+            AnkusMemoryContext *entry = ankus_memory_context_from_request(request);
+            if (entry->generation == 0 || entry->generation != (uintptr_t) request->other)
+            {
+                ereport(ERROR, (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+                    errmsg("the borrowed PostgreSQL memory reference is stale")));
+            }
+
+            if (request->pointer == 0 || (request->length != 0 && request->data == 0))
+            {
+                ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                    errmsg("the borrowed memory address or managed buffer is null")));
+            }
+
+            /* The unsafe caller proves address accessibility and any lifetime shorter
+             * than this anchor. Stack, interior and resource-owned addresses need no
+             * palloc header, exclusive ownership, or per-reference native registry. */
+            if (request->length != 0)
+            {
+                if (request->operation == ANKUS_MEMORY_READ_REFERENCE)
+                {
+                    memcpy((void *) request->data, (const void *) request->pointer, (Size) request->length);
+                }
+                else
+                {
+                    memcpy((void *) request->pointer, (const void *) request->data, (Size) request->length);
+                }
+            }
+
+            result->context = (intptr_t) entry->id;
+            result->pointer = request->pointer;
+            result->length = request->length;
+        }
+
+        /* Reads, writes or clears a range of a checked allocation. */
+        static void
+        ankus_memory_access_allocation(AnkusMemoryRequest *request, AnkusMemoryResult *result)
+        {
+            AnkusMemoryAllocation *allocation = ankus_memory_allocation_required((uint64) request->context);
+            uint64 offset = (uint64) request->value;
+            if (offset > (uint64) allocation->size || (uint64) request->length >
+                (uint64) allocation->size - offset)
+            {
+                ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION), errmsg("the PostgreSQL allocation range is outside its chunk")));
+            }
+
+            unsigned char *destination = (unsigned char *) allocation->pointer + offset;
+            if (request->operation == ANKUS_MEMORY_READ)
+            {
+                if (request->data == 0 && request->length != 0)
+                {
+                    ereport(ERROR, (errmsg("the managed memory destination is null")));
+                }
+
+                if (request->data != 0)
+                {
+                    memcpy((void *) request->data, destination, (Size) request->length);
+                }
+
+                result->pointer = (intptr_t) allocation->pointer;
+            }
+            else if (request->operation == ANKUS_MEMORY_WRITE)
+            {
+                if (request->data == 0 && request->length != 0)
+                {
+                    ereport(ERROR, (errmsg("the managed memory source is null")));
+                }
+
+                if (request->data != 0)
+                {
+                    memcpy(destination, (const void *) request->data, (Size) request->length);
+                }
+            }
+            else
+            {
+                memset(destination, 0, (Size) request->length);
+            }
+
+            result->length = request->length;
+        }
+
         static void
         ankus_memory_execute(AnkusMemoryApi *api, AnkusMemoryRequest *request, AnkusMemoryResult *result, volatile bool *recovered)
         {
@@ -1290,7 +1485,7 @@ internal static class NativeMemoryBridge
                     allocation_request.flags = 1; /* Ankus zero-initialization option. */
                     allocation_request.alignment = 0;
                     ankus_memory_allocate_request(ankus_memory_context_from_request(request), &allocation_request, result);
-                    AnkusMemoryAllocation *allocation = ankus_memory_allocation_by_id((uint64) result->pointer);
+                    AnkusMemoryAllocation *allocation = ankus_memory_allocation_required((uint64) result->pointer);
                     if (payload + VARHDRSZ_SHORT <= VARATT_SHORT_MAX)
                     {
                         SET_VARSIZE_SHORT(allocation->pointer, payload + VARHDRSZ_SHORT);
@@ -1305,103 +1500,19 @@ internal static class NativeMemoryBridge
                     break;
                 }
                 case ANKUS_MEMORY_REALLOCATE:
-                {
-                    AnkusMemoryAllocation *allocation = ankus_memory_allocation_by_id((uint64) request->context);
-                    if (allocation == NULL)
-                    {
-                        ereport(ERROR, (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
-                            errmsg("the PostgreSQL allocation handle is stale")));
-                    }
-
-                    if ((request->flags & ~3) != 0)
-                    {
-                        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("invalid allocation resize options")));
-                    }
-
-                    Size size = (Size) request->length;
-                    int options = allocation->flags | (request->flags & 2);
-                    int flags = ankus_memory_validate_allocation(size, allocation->alignment, options);
-                    MemoryContext owner = ankus_memory_context_by_id(allocation->context_id)->context;
-                    ankus_memory_check_chunk_operation(owner, "realloc");
-                    void *pointer;
-                    if (allocation->alignment > MAXIMUM_ALIGNOF || (flags & MCXT_ALLOC_NO_OOM) != 0)
-                    {
-                        /* Keep the old chunk intact until replacement succeeds, including
-                         * older native aligned realloc implementations that lose flags. */
-                        pointer = ankus_memory_allocate(owner, size, allocation->alignment, options);
-                        if (pointer == NULL)
-                        {
-                            break;
-                        }
-
-                        memcpy(pointer, allocation->pointer, Min(size, allocation->size));
-                        pfree(allocation->pointer);
-                    }
-                    else
-                    {
-                        pointer = (flags & MCXT_ALLOC_HUGE) != 0 ? repalloc_huge(allocation->pointer, size) :
-                            repalloc(allocation->pointer, size);
-                    }
-
-                    if ((request->flags & 1) != 0 && size > allocation->size)
-                    {
-                        memset((char *) pointer + allocation->size, 0, size - allocation->size);
-                    }
-
-                    allocation->pointer = pointer;
-                    allocation->size = size;
-                    result->context = (intptr_t) allocation->id;
-                    result->pointer = (intptr_t) allocation->id;
-                    result->length = request->length;
+                    ankus_memory_reallocate(request, result);
                     break;
-                }
                 case ANKUS_MEMORY_DETACH:
                 {
-                    AnkusMemoryAllocation *allocation = ankus_memory_allocation_by_id((uint64) request->context);
-                    if (allocation == NULL)
-                    {
-                        ereport(ERROR, (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
-                            errmsg("the PostgreSQL allocation handle is stale")));
-                    }
+                    AnkusMemoryAllocation *allocation = ankus_memory_allocation_required((uint64) request->context);
 
                     result->pointer = (intptr_t) allocation->pointer;
                     ankus_memory_free_allocation(allocation);
                     break;
                 }
                 case ANKUS_MEMORY_ADOPT:
-                {
-                    AnkusMemoryContext *entry = ankus_memory_context_from_request(request);
-                    void *pointer = (void *) request->pointer;
-                    if (pointer == NULL || (request->flags & ~4) != 0)
-                    {
-                        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("invalid allocation adoption request")));
-                    }
-
-                    ankus_memory_validate_allocation((Size) request->length, (Size) request->alignment, request->flags);
-                    for (AnkusMemoryAllocation *existing = ankus_memory_allocations; existing != NULL; existing = existing->next)
-                    {
-                        if (existing->pointer == pointer)
-                        {
-                            ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("the PostgreSQL allocation already has a checked owner")));
-                        }
-                    }
-
-                    /* The caller guarantees live palloc provenance and the exact accessible
-                     * length. Chunk headers cannot validate arbitrary pointers or lengths. */
-                    ankus_memory_check_chunk_operation(entry->context, "GetMemoryChunkContext");
-                    if (GetMemoryChunkContext(pointer) != entry->context)
-                    {
-                        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("the PostgreSQL allocation belongs to a different memory context")));
-                    }
-
-                    AnkusMemoryAllocation *allocation = ankus_memory_reserve_allocation();
-                    ankus_memory_publish_allocation(allocation, entry, pointer,
-                        (Size) request->length, (Size) request->alignment, request->flags);
-                    result->context = (intptr_t) entry->id;
-                    result->pointer = (intptr_t) allocation->id;
-                    result->length = request->length;
+                    ankus_memory_adopt(request, result);
                     break;
-                }
                 case ANKUS_MEMORY_FREE:
                 {
                     AnkusMemoryAllocation *allocation = ankus_memory_allocation_by_id((uint64) request->context);
@@ -1431,101 +1542,16 @@ internal static class NativeMemoryBridge
                 }
                 case ANKUS_MEMORY_READ_REFERENCE:
                 case ANKUS_MEMORY_WRITE_REFERENCE:
-                {
-                    AnkusMemoryContext *entry = ankus_memory_context_from_request(request);
-                    if (entry->generation == 0 || entry->generation != (uintptr_t) request->other)
-                    {
-                        ereport(ERROR, (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
-                            errmsg("the borrowed PostgreSQL memory reference is stale")));
-                    }
-
-                    if (request->pointer == 0 || (request->length != 0 && request->data == 0))
-                    {
-                        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-                            errmsg("the borrowed memory address or managed buffer is null")));
-                    }
-
-                    /* The unsafe caller proves address accessibility and any lifetime shorter
-                     * than this anchor. Stack, interior and resource-owned addresses need no
-                     * palloc header, exclusive ownership, or per-reference native registry. */
-                    if (request->length != 0)
-                    {
-                        if (request->operation == ANKUS_MEMORY_READ_REFERENCE)
-                        {
-                            memcpy((void *) request->data, (const void *) request->pointer, (Size) request->length);
-                        }
-                        else
-                        {
-                            memcpy((void *) request->pointer, (const void *) request->data, (Size) request->length);
-                        }
-                    }
-
-                    result->context = (intptr_t) entry->id;
-                    result->pointer = request->pointer;
-                    result->length = request->length;
+                    ankus_memory_access_reference(request, result);
                     break;
-                }
                 case ANKUS_MEMORY_READ:
                 case ANKUS_MEMORY_WRITE:
                 case ANKUS_MEMORY_CLEAR:
-                {
-                    AnkusMemoryAllocation *allocation = ankus_memory_allocation_by_id((uint64) request->context);
-                    if (allocation == NULL)
-                    {
-                        ereport(ERROR, (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
-                            errmsg("the PostgreSQL allocation handle is stale")));
-                    }
-
-                    uint64 offset = (uint64) request->value;
-                    if (offset > (uint64) allocation->size || (uint64) request->length >
-                        (uint64) allocation->size - offset)
-                    {
-                        ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION), errmsg("the PostgreSQL allocation range is outside its chunk")));
-                    }
-
-                    unsigned char *destination = (unsigned char *) allocation->pointer + offset;
-                    if (request->operation == ANKUS_MEMORY_READ)
-                    {
-                        if (request->data == 0 && request->length != 0)
-                        {
-                            ereport(ERROR, (errmsg("the managed memory destination is null")));
-                        }
-
-                        if (request->data != 0)
-                        {
-                            memcpy((void *) request->data, destination, (Size) request->length);
-                        }
-
-                        result->pointer = (intptr_t) allocation->pointer;
-                    }
-                    else if (request->operation == ANKUS_MEMORY_WRITE)
-                    {
-                        if (request->data == 0 && request->length != 0)
-                        {
-                            ereport(ERROR, (errmsg("the managed memory source is null")));
-                        }
-
-                        if (request->data != 0)
-                        {
-                            memcpy(destination, (const void *) request->data, (Size) request->length);
-                        }
-                    }
-                    else
-                    {
-                        memset(destination, 0, (Size) request->length);
-                    }
-
-                    result->length = request->length;
+                    ankus_memory_access_allocation(request, result);
                     break;
-                }
                 case ANKUS_MEMORY_OWNER:
                 {
-                    AnkusMemoryAllocation *allocation = ankus_memory_allocation_by_id((uint64) request->context);
-                    if (allocation == NULL)
-                    {
-                        ereport(ERROR, (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
-                            errmsg("the PostgreSQL allocation handle is stale")));
-                    }
+                    AnkusMemoryAllocation *allocation = ankus_memory_allocation_required((uint64) request->context);
 
                     /* Allocation and adoption established this owner while it was live.
                      * The registry validates its lifetime without reading a chunk header. */
@@ -1690,6 +1716,7 @@ internal static class NativeMemoryBridge
 
                     break;
                 }
+                /* Operations on a context need it live; a borrowed reference also needs the generation it captured. */
                 case ANKUS_MEMORY_PARENT:
                 case ANKUS_MEMORY_NAME:
                 case ANKUS_MEMORY_RESET:
@@ -1723,6 +1750,7 @@ internal static class NativeMemoryBridge
 
                     break;
                 }
+                /* Operations on an allocation need it, and the context that owns it, live. */
                 case ANKUS_MEMORY_REALLOCATE:
                 case ANKUS_MEMORY_DETACH:
                 case ANKUS_MEMORY_READ:
@@ -1826,7 +1854,7 @@ internal static class NativeMemoryBridge
             {
                 MemoryContext diagnostic = NULL;
                 MemoryContextSwitchTo(caller);
-                PG_TRY();
+                ANKUS_PG_TRY_INNER();
                 {
                     diagnostic = AllocSetContextCreate(TopMemoryContext, "Ankus memory diagnostics", ALLOCSET_SMALL_SIZES);
                     MemoryContextSwitchTo(diagnostic);
@@ -1850,13 +1878,13 @@ internal static class NativeMemoryBridge
                     MemoryContextDelete(diagnostic);
                     status = 1;
                 }
-                PG_CATCH();
+                ANKUS_PG_CATCH_INNER();
                 {
                     MemoryContextSwitchTo(recovery);
                     FlushErrorState();
                     ereport(FATAL, (errmsg("Unable to recover PostgreSQL state after a guarded memory failure")));
                 }
-                PG_END_TRY();
+                ANKUS_PG_END_TRY_INNER();
             }
             PG_END_TRY();
             if (status != 0)

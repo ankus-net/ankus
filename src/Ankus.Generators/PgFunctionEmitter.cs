@@ -180,21 +180,45 @@ internal static class PgFunctionEmitter
         source.AppendLine("        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg(\"Incorrect argument count for generated Ankus function\")));");
         source.AppendLine("    }");
         source.AppendLine();
-        for (int index = 0; index < parameters.Length; index++)
+        string[] required = [.. Enumerable.Range(0, parameters.Length)
+            .Where(index => !parameters[index].Nullable)
+            .Select(static index => index.ToString(CultureInfo.InvariantCulture))];
+        if (required.Length == 1)
         {
-            if (!parameters[index].Nullable)
+            source.AppendLine("    /* SQL NULL in a parameter that cannot hold it returns NULL, as a STRICT function does. */");
+            source.AppendLine($"    if (PG_ARGISNULL({required[0]}))");
+            source.AppendLine("    {");
+            source.AppendLine("        PG_RETURN_NULL();");
+            source.AppendLine("    }");
+            source.AppendLine();
+        }
+        else if (required.Length > 1)
+        {
+            bool every = required.Length == parameters.Length;
+            source.AppendLine("    /* SQL NULL in a parameter that cannot hold it returns NULL, as a STRICT function does. */");
+            if (every)
             {
-                source.AppendLine($"    if (PG_ARGISNULL({index.ToString(CultureInfo.InvariantCulture)}))");
-                source.AppendLine("    {");
-                source.AppendLine("        PG_RETURN_NULL();");
-                source.AppendLine("    }");
-                source.AppendLine();
+                source.AppendLine($"    for (int index = 0; index < {count}; index++)");
             }
+            else
+            {
+                source.AppendLine($"    static const int required[] = {{{string.Join(", ", required)}}};");
+                source.AppendLine("    for (int index = 0; index < (int) lengthof(required); index++)");
+            }
+
+            source.AppendLine("    {");
+            source.AppendLine(every ? "        if (PG_ARGISNULL(index))" : "        if (PG_ARGISNULL(required[index]))");
+            source.AppendLine("        {");
+            source.AppendLine("            PG_RETURN_NULL();");
+            source.AppendLine("        }");
+            source.AppendLine("    }");
+            source.AppendLine();
         }
 
         bool compositeArguments = parameters.Any(static parameter => (parameter.Element ?? parameter).IsComposite ||
             (parameter.Element ?? parameter).CustomType is not null);
         string inputIndent = compositeArguments ? "    " : string.Empty;
+        source.AppendLine("    /* Read each argument into its managed transport. */");
         if (compositeArguments)
         {
             source.AppendLine("    previous_function = ankus_function_oid;");
@@ -295,16 +319,18 @@ internal static class PgFunctionEmitter
             source.AppendLine("    PG_END_TRY();");
         }
 
+        source.AppendLine("    /* Managed code reports every exception as a status, so nothing unwinds through this frame. */");
         source.AppendLine("    previous_function = ankus_function_oid;");
         source.AppendLine("    ankus_function_oid = fcinfo->flinfo->fn_oid;");
         source.AppendLine($"    ANKUS_MANAGED_INVOKE(status, &error, {callback}(arguments, &result, &error, ankus_spi_execute, &memory, fcinfo));");
         source.AppendLine("    ankus_function_oid = previous_function;");
         if (hasBuffers)
         {
-            for (int index = 0; index < parameters.Length; index++)
-            {
-                source.AppendLine($"    ankus_free_input(&owned[{index.ToString(CultureInfo.InvariantCulture)}]);");
-            }
+            source.AppendLine($"    for (int index = 0; index < {count}; index++)");
+            source.AppendLine("    {");
+            source.AppendLine("        ankus_free_input(&owned[index]);");
+            source.AppendLine("    }");
+            source.AppendLine();
         }
 
         source.AppendLine("    if (status != 0)");

@@ -28,7 +28,9 @@ public sealed unsafe class PgErrorContext : IDisposable
     [ThreadStatic]
     private static List<PgErrorContext>? s_active;
 
-    private static int s_observing;
+    private static readonly Lock s_observeLock = new();
+
+    private static volatile bool s_observing;
 
     private readonly int _thread = Environment.CurrentManagedThreadId;
 
@@ -87,11 +89,7 @@ public sealed unsafe class PgErrorContext : IDisposable
     {
         byte[] encoded = Encode(text);
         NativeBorrowScope scope = NativeMemoryContext.BorrowScope;
-        if (Interlocked.Exchange(ref s_observing, 1) == 0)
-        {
-            AppDomain.CurrentDomain.FirstChanceException += static (_, arguments) => Capture(arguments.Exception);
-        }
-
+        ObserveExceptions();
         nint entry;
         fixed (byte* address = encoded)
         {
@@ -127,6 +125,27 @@ public sealed unsafe class PgErrorContext : IDisposable
     /// <param name="exception">The exception.</param>
     /// <returns>The context lines, or null when none were active.</returns>
     internal static string? Captured(Exception exception) => s_thrown.TryGetValue(exception, out string? text) ? text : null;
+
+    /// <summary>
+    /// Starts recording contexts for thrown exceptions. No context becomes active on any thread until the handler is
+    /// subscribed, so the first exception thrown under one is recorded too.
+    /// </summary>
+    private static void ObserveExceptions()
+    {
+        if (s_observing)
+        {
+            return;
+        }
+
+        lock (s_observeLock)
+        {
+            if (!s_observing)
+            {
+                AppDomain.CurrentDomain.FirstChanceException += static (_, arguments) => Capture(arguments.Exception);
+                s_observing = true;
+            }
+        }
+    }
 
     private static void Capture(Exception exception)
     {

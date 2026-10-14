@@ -12,7 +12,7 @@ repository root with `dotnet run --file`.
 | `Ankus.Headers.cs` | Regenerate or check one header manifest directly from an installed PostgreSQL 13–19 server-header tree. |
 | `Ankus.Templates.cs` | Stage the shared extension, worker and optional test-framework assets for the version-matched template package. |
 | `Ankus.BuildTimings.cs` | Read individual binding-task durations and cache outcomes from retained MSBuild binary logs without exposing command arguments. |
-| `Ankus.CodeQl.cs` | Fail the CodeQL workflow for every finding in its SARIF results, which code scanning would otherwise only list. |
+| `Ankus.CodeQl.cs` | Fail the CodeQL workflow for every finding in its SARIF results, which code scanning would otherwise only list, and dismiss the alerts of results that a `codeql[rule]` comment marks. |
 
 `Ankus.Ci.cs` provides these commands:
 
