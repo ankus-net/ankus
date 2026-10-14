@@ -265,7 +265,7 @@ public sealed class WalDecoderExampleTests(TestContext context)
             """{"typ":"INSERT","rel":"public.person","new":{"name":"Clark Kent","age":33}}""",
             $$"""{"typ":"COMMIT","committed":{{committed}},"change_count":2}""",
         ], received);
-        Assert.IsTrue(received.All(static document => JsonDocument.Parse(document).RootElement.ValueKind == JsonValueKind.Object));
+        Assert.IsTrue(received.All(static document => JsonElement.Parse(document).ValueKind == JsonValueKind.Object));
     });
 
     /// <summary>
