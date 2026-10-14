@@ -1,35 +1,54 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <!-- One package per runtime line and identifier: AnkusRuntimeLine names the target framework it serves. -->
+    <AnkusRuntimeLine Condition="'$(AnkusRuntimeLine)' == ''">net10.0</AnkusRuntimeLine>
+    <_AnkusNativeAotLine>$(AnkusRuntimeLine)</_AnkusNativeAotLine>
+  </PropertyGroup>
+
+  <Import Project="../Ankus.Sdk/targets/Ankus.NativeAot.Lines.props" />
+
+  <PropertyGroup>
     <PackageId>Ankus.NativeAot.Runtime</PackageId>
     <PackageId Condition="'$(AnkusRuntimeIdentifier)' != ''">Ankus.NativeAot.Runtime.$(AnkusRuntimeIdentifier)</PackageId>
-    <PackageVersion>10.0.13-ankus.1</PackageVersion>
+    <PackageVersion>$(_AnkusNativeAotVersion)</PackageVersion>
     <Description>Patched .NET Native AOT runtime for Ankus PostgreSQL extensions.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <_AnkusSupportedRuntimeIdentifiers>;linux-x64;osx-arm64;osx-x64;win-x64;</_AnkusSupportedRuntimeIdentifiers>
   </PropertyGroup>
 
   <ItemGroup>
     <None Remove="$(MSBuildThisFileDirectory)../../PACKAGE.md" />
     <_AnkusRuntimePayload Include="$(AnkusRuntimeSdkPath)*" Condition="'$(AnkusRuntimeSdkPath)' != ''" />
     <None Include="@(_AnkusRuntimePayload)" Pack="true" PackagePath="tools/aotsdk/" />
-    <None Include="build/Ankus.NativeAot.Runtime.$(AnkusRuntimeIdentifier).props"
-          Pack="true" PackagePath="build/$(PackageId).props"
-          Condition="'$(AnkusRuntimeIdentifier)' != ''" />
     <None Update="README.md" Pack="true" PackagePath="/" />
     <None Include="$(AnkusRuntimeSourcePath)/LICENSE.TXT;$(AnkusRuntimeSourcePath)/THIRD-PARTY-NOTICES.TXT"
           Pack="true" PackagePath="/" />
   </ItemGroup>
 
   <Target Name="_ValidateAnkusRuntimePackage" BeforeTargets="_GetPackageFiles">
+    <Error Condition="'$(_AnkusNativeAotVersion)' == ''" Text="AnkusRuntimeLine must name a supported Ankus runtime line." />
     <Error Condition="'$(AnkusRuntimeIdentifier)' == ''" Text="AnkusRuntimeIdentifier is required." />
-    <Error Condition="!Exists('build/Ankus.NativeAot.Runtime.$(AnkusRuntimeIdentifier).props')"
+    <Error Condition="!$(_AnkusSupportedRuntimeIdentifiers.Contains(';$(AnkusRuntimeIdentifier);'))"
            Text="AnkusRuntimeIdentifier must name a supported Ankus runtime package." />
     <Error Condition="!Exists('$(AnkusRuntimeSdkPath)System.Private.CoreLib.dll')"
            Text="AnkusRuntimeSdkPath must identify the complete built Native AOT SDK." />
     <Error Condition="!Exists('$(AnkusRuntimeSourcePath)/LICENSE.TXT')"
            Text="AnkusRuntimeSourcePath must identify the matching runtime source checkout." />
+  </Target>
+
+  <!-- The package's build props record its line, version and identifier for the SDK's payload checks. -->
+  <Target Name="_GenerateAnkusRuntimeProps" BeforeTargets="_GetPackageFiles" DependsOnTargets="_ValidateAnkusRuntimePackage">
+    <PropertyGroup>
+      <_AnkusRuntimeProps>$(IntermediateOutputPath)$(PackageId).props</_AnkusRuntimeProps>
+      <_AnkusRuntimePropsText>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)build/Ankus.NativeAot.Runtime.props.template').Replace('@VERSION@', '$(_AnkusNativeAotVersion)').Replace('@COMPILER_VERSION@', '$(_AnkusNativeAotCompilerVersion)').Replace('@RID@', '$(AnkusRuntimeIdentifier)'))</_AnkusRuntimePropsText>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(_AnkusRuntimeProps)" Lines="$(_AnkusRuntimePropsText)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <None Include="$(_AnkusRuntimeProps)" Pack="true" PackagePath="build/$(PackageId).props" />
+    </ItemGroup>
   </Target>
 </Project>

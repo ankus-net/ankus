@@ -1,0 +1,176 @@
+name: .NET versions
+
+on:
+  schedule:
+    - cron: '41 7 * * 3'
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to test, or all
+        type: choice
+        default: all
+        options: [all, linux-x64, osx-arm64, win-x64]
+      package-test-concurrency:
+        description: Package-consumer slots (empty uses each runner setting)
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  ANKUS_RUNNER_PRIVATE_IDENTIFIERS: ${{ secrets.ANKUS_RUNNER_PRIVATE_IDENTIFIERS }}
+  MSBUILDDISABLENODEREUSE: '1'
+  # The SDK's telemetry can deadlock a build against MSBuild's logging; see NativeAotExtensionTests.
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  GIT_CONFIG_COUNT: 1
+  GIT_CONFIG_KEY_0: core.longpaths
+  GIT_CONFIG_VALUE_0: 'true'
+  # The .NET 11 SDK that builds net11.0 extensions; generated consumers keep the .NET 10 SDK through their global.json.
+  ANKUS_DOTNET11_SDK: 11.0.100-rc.2.26504.105
+
+jobs:
+  runtime:
+    if: github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: false
+      matrix:
+        rid: ${{ fromJSON((inputs.platform == '' || inputs.platform == 'all') && '["linux-x64","osx-arm64","win-x64"]' || format('["{0}"]', inputs.platform)) }}
+        line: [net10.0, net11.0]
+    runs-on: [self-hosted, "${{ matrix.rid == 'win-x64' && 'ankus-windows-x64' || matrix.rid == 'osx-arm64' && 'ankus-macos-arm64' || 'ankus-linux-versions-x64' }}"]
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            10.0.x
+            ${{ env.ANKUS_DOTNET11_SDK }}
+
+      - name: Read runtime identity
+        id: runtime
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- metadata ${{ matrix.line }}
+
+      - name: Restore native runtime
+        uses: actions/cache/restore@v6
+        id: runtime-cache
+        with:
+          path: artifacts/${{ steps.runtime.outputs.staging }}/${{ matrix.rid }}
+          key: nativeaot-v3-${{ matrix.rid }}-${{ runner.os != 'Windows' && 'dedicated-' || '' }}${{ steps.runtime.outputs.commit }}
+
+      - uses: actions/checkout@v7
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
+        with:
+          repository: ${{ steps.runtime.outputs.repository }}
+          ref: ${{ steps.runtime.outputs.commit }}
+          path: runtime
+
+      - name: Build native runtime
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
+        run: >-
+          dotnet run --file ./eng/Ankus.Ci.cs -- runtime-build
+          ${{ matrix.rid == 'win-x64' && 'windows' || matrix.rid == 'osx-arm64' && 'osx' || 'linux' }}
+          ${{ matrix.rid == 'osx-arm64' && 'arm64' || 'x64' }}
+          ${{ matrix.rid }}
+          ${{ matrix.line }}
+
+      - name: Save native runtime
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: artifacts/${{ steps.runtime.outputs.staging }}/${{ matrix.rid }}
+          key: ${{ steps.runtime-cache.outputs.cache-primary-key }}
+
+      - name: Pack runtime
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- runtime-pack ${{ matrix.rid }} ${{ matrix.line }}
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.runtime.outputs.staging }}-${{ matrix.rid }}-dotnet-versions
+          path: artifacts/${{ steps.runtime.outputs.staging }}/${{ matrix.rid }}
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Clean generated runner files
+        if: always()
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- runner-cleanup
+
+  test:
+    if: github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main'
+    needs: runtime
+    strategy:
+      fail-fast: false
+      matrix:
+        rid: ${{ fromJSON((inputs.platform == '' || inputs.platform == 'all') && '["linux-x64","osx-arm64","win-x64"]' || format('["{0}"]', inputs.platform)) }}
+    runs-on: [self-hosted, "${{ matrix.rid == 'win-x64' && 'ankus-windows-x64' || matrix.rid == 'osx-arm64' && 'ankus-macos-arm64' || 'ankus-linux-versions-x64' }}"]
+    timeout-minutes: 150
+    env:
+      # Every repository extension, and the tests that compile against them, target net11.0.
+      AnkusExtensionTargetFramework: net11.0
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            10.0.x
+            ${{ env.ANKUS_DOTNET11_SDK }}
+
+      - name: Select the .NET 11 SDK
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- select-sdk ${{ env.ANKUS_DOTNET11_SDK }}
+
+      - name: Select Windows C++ toolchain
+        if: runner.os == 'Windows'
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- windows-toolchain
+
+      # Packaged consumers built from templates still target net10.0, so both lines are present.
+      - uses: actions/download-artifact@v8
+        with:
+          name: nativeaot-${{ matrix.rid }}-dotnet-versions
+          path: artifacts/nativeaot/${{ matrix.rid }}
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: nativeaot-net11.0-${{ matrix.rid }}-dotnet-versions
+          path: artifacts/nativeaot-net11.0/${{ matrix.rid }}
+
+      - name: Restore NuGet packages
+        run: dotnet restore Ankus.slnx -p:Platform="Any CPU"
+
+      - name: Build PostgreSQL tests
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- runtime-test-build ${{ matrix.rid }} ${{ matrix.rid == 'win-x64' && '17' || '18' }}
+
+      - name: Run full PostgreSQL tests
+        env:
+          ANKUS_PACKAGE_TEST_CONCURRENCY: ${{ inputs.package-test-concurrency || (runner.os == 'Windows' && vars.ANKUS_WINDOWS_PACKAGE_TEST_CONCURRENCY) || (runner.os == 'macOS' && vars.ANKUS_MACOS_PACKAGE_TEST_CONCURRENCY) || (runner.os == 'Linux' && vars.ANKUS_LINUX_PACKAGE_TEST_CONCURRENCY) || '' }}
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- runtime-test-run
+
+      - name: Remove private identifiers from reports
+        if: always()
+        id: reports
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- prepare-reports
+
+      - name: Save test results and timings
+        if: always() && steps.reports.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-${{ matrix.rid }}-net11.0
+          path: |
+            artifacts/ci-reports/test-results/*.trx
+            artifacts/ci-reports/test-results/process-timings.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Save failure logs
+        if: (failure() || cancelled()) && steps.reports.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-logs-${{ matrix.rid }}-net11.0
+          path: artifacts/ci-reports/test-logs/**
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Clean generated runner files
+        if: always()
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- runner-cleanup

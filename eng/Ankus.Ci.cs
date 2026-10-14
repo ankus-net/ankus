@@ -14,10 +14,6 @@ using System.Xml.Linq;
 using Ankus.PgConfig;
 
 const string RuntimeRepository = "willibrandon/runtime";
-const string RuntimeBase = "v10.0.13";
-const string RuntimeCommit = "f97c4dea9e1cab1f4afcbd8d9c67eb5f7d88a492";
-const string RuntimeVersion = "10.0.13-ankus.1";
-const string RuntimeCompilerVersion = "10.0.13";
 
 string repositoryRoot = FindRepositoryRoot();
 Directory.SetCurrentDirectory(repositoryRoot);
@@ -33,16 +29,25 @@ try
     {
         case "metadata":
             ValidateRuntimeIdentity(repositoryRoot);
-            WriteRuntimeOutputs();
+            WriteRuntimeOutputs(SelectRuntimeLine(args, 1));
             break;
 
         case "runtime-info":
+        {
             ValidateRuntimeIdentity(repositoryRoot);
+            RuntimeLine line = SelectRuntimeLine(args, 1);
             Console.WriteLine($"repository={RuntimeRepository}");
-            Console.WriteLine($"base={RuntimeBase}");
-            Console.WriteLine($"commit={RuntimeCommit}");
-            Console.WriteLine($"runtime_version={RuntimeVersion}");
-            Console.WriteLine($"compiler_version={RuntimeCompilerVersion}");
+            Console.WriteLine($"base={line.Base}");
+            Console.WriteLine($"commit={line.Commit}");
+            Console.WriteLine($"runtime_version={line.Version}");
+            Console.WriteLine($"compiler_version={line.CompilerVersion}");
+            Console.WriteLine($"staging={line.StagingDirectory}");
+            break;
+        }
+
+        case "select-sdk":
+            RequireArguments(args, 2);
+            SelectSdk(repositoryRoot, args[1]);
             break;
 
         case "release-metadata":
@@ -64,26 +69,33 @@ try
             break;
 
         case "runtime-build":
+        {
             RequireArguments(args, 4);
             ValidateRuntimeIdentity(repositoryRoot);
+            RuntimeLine line = SelectRuntimeLine(args, 4);
             IsolateRuntimeBuildPackages(repositoryRoot);
             InstallRuntimePrerequisites();
-            BuildRuntime(repositoryRoot, args[1], args[2]);
-            StageRuntime(repositoryRoot, args[1], args[2], args[3]);
+            BuildRuntime(repositoryRoot, args[1], args[2], line);
+            StageRuntime(repositoryRoot, args[1], args[2], args[3], line);
             break;
+        }
 
         case "runtime-pack":
+        {
             RequireArguments(args, 2);
             ValidateRuntimeIdentity(repositoryRoot);
+            RuntimeLine line = SelectRuntimeLine(args, 2);
             RemoveStagingFeedPackages();
-            VerifyStagedRuntime(repositoryRoot, args[1]);
+            VerifyStagedRuntime(repositoryRoot, args[1], line);
             PackRuntime(
                 repositoryRoot,
                 args[1],
-                GetStagedRuntimePath(repositoryRoot, args[1]),
-                GetStagedCompilerPath(repositoryRoot, args[1]),
-                GetStagedRuntimeSourcePath(repositoryRoot, args[1]));
+                line,
+                GetStagedRuntimePath(repositoryRoot, args[1], line),
+                GetStagedCompilerPath(repositoryRoot, args[1], line),
+                GetStagedRuntimeSourcePath(repositoryRoot, args[1], line));
             break;
+        }
 
         case "runtime-test":
         case "runtime-test-build":
@@ -195,17 +207,21 @@ try
             break;
 
         case "release-runtime":
+        {
             RequireArguments(args, 4);
             ValidateRuntimeIdentity(repositoryRoot);
+            RuntimeLine line = SelectRuntimeLine(args, 4);
             InstallRuntimePrerequisites();
-            BuildRuntime(repositoryRoot, args[1], args[2]);
+            BuildRuntime(repositoryRoot, args[1], args[2], line);
             PackRuntime(
                 repositoryRoot,
                 args[3],
+                line,
                 GetBuiltRuntimePath(repositoryRoot, args[1], args[2]),
                 GetBuiltCompilerPath(repositoryRoot, args[1], args[2]),
                 Path.Join(repositoryRoot, "runtime"));
             break;
+        }
 
         case "release-verify":
             RequireArguments(args, 2);
@@ -416,52 +432,22 @@ static string TargetSampleProject(string repositoryRoot)
 
 static void ValidateRuntimeIdentity(string repositoryRoot)
 {
-    if (!AutomationPatterns.RuntimeCommit().IsMatch(RuntimeCommit))
+    foreach (RuntimeLine line in RuntimeLine.All)
     {
-        throw new InvalidOperationException("The runtime commit must be a full lowercase Git commit ID.");
-    }
+        if (!AutomationPatterns.RuntimeCommit().IsMatch(line.Commit))
+        {
+            throw new InvalidOperationException($"The {line.TargetFramework} runtime commit must be a full lowercase Git commit ID.");
+        }
 
-    if (!AutomationPatterns.RuntimeVersion().IsMatch(RuntimeVersion))
-    {
-        throw new InvalidOperationException("The runtime package version is invalid.");
-    }
+        if (!AutomationPatterns.RuntimeVersion().IsMatch(line.Version))
+        {
+            throw new InvalidOperationException($"The {line.TargetFramework} runtime package version is invalid.");
+        }
 
-    string[] runtimeFiles =
-    [
-        "src/Ankus.NativeAot.Compiler/Ankus.NativeAot.Compiler.csproj",
-        "src/Ankus.NativeAot.Compiler/build/Ankus.NativeAot.Compiler.linux-x64.props",
-        "src/Ankus.NativeAot.Compiler/build/Ankus.NativeAot.Compiler.osx-arm64.props",
-        "src/Ankus.NativeAot.Compiler/build/Ankus.NativeAot.Compiler.osx-x64.props",
-        "src/Ankus.NativeAot.Compiler/build/Ankus.NativeAot.Compiler.win-x64.props",
-        "src/Ankus.NativeAot.Runtime/Ankus.NativeAot.Runtime.csproj",
-        "src/Ankus.NativeAot.Runtime/build/Ankus.NativeAot.Runtime.linux-x64.props",
-        "src/Ankus.NativeAot.Runtime/build/Ankus.NativeAot.Runtime.osx-arm64.props",
-        "src/Ankus.NativeAot.Runtime/build/Ankus.NativeAot.Runtime.osx-x64.props",
-        "src/Ankus.NativeAot.Runtime/build/Ankus.NativeAot.Runtime.win-x64.props",
-        "src/Ankus.Sdk/targets/Ankus.NativeAot.Lines.props",
-    ];
-
-    foreach (string relativePath in runtimeFiles)
-    {
-        RequireText(repositoryRoot, relativePath, $">{RuntimeVersion}<");
-    }
-
-    string[] compilerFiles =
-    [
-        "src/Ankus.NativeAot.Compiler/build/Ankus.NativeAot.Compiler.linux-x64.props",
-        "src/Ankus.NativeAot.Compiler/build/Ankus.NativeAot.Compiler.osx-arm64.props",
-        "src/Ankus.NativeAot.Compiler/build/Ankus.NativeAot.Compiler.osx-x64.props",
-        "src/Ankus.NativeAot.Compiler/build/Ankus.NativeAot.Compiler.win-x64.props",
-        "src/Ankus.NativeAot.Runtime/build/Ankus.NativeAot.Runtime.linux-x64.props",
-        "src/Ankus.NativeAot.Runtime/build/Ankus.NativeAot.Runtime.osx-arm64.props",
-        "src/Ankus.NativeAot.Runtime/build/Ankus.NativeAot.Runtime.osx-x64.props",
-        "src/Ankus.NativeAot.Runtime/build/Ankus.NativeAot.Runtime.win-x64.props",
-        "src/Ankus.Sdk/targets/Ankus.NativeAot.Lines.props",
-    ];
-
-    foreach (string relativePath in compilerFiles)
-    {
-        RequireText(repositoryRoot, relativePath, $">{RuntimeCompilerVersion}<");
+        // The SDK and the runtime packages read each line's versions from this file.
+        RequireText(repositoryRoot, "src/Ankus.Sdk/targets/Ankus.NativeAot.Lines.props", $"'$(_AnkusNativeAotLine)' == '{line.TargetFramework}'");
+        RequireText(repositoryRoot, "src/Ankus.Sdk/targets/Ankus.NativeAot.Lines.props", $">{line.Version}<");
+        RequireText(repositoryRoot, "src/Ankus.Sdk/targets/Ankus.NativeAot.Lines.props", $">{line.CompilerVersion}<");
     }
 }
 
@@ -489,13 +475,35 @@ static string GetReleaseVersion()
     return tag[1..];
 }
 
-static void WriteRuntimeOutputs()
+static void WriteRuntimeOutputs(RuntimeLine line)
 {
     WriteOutput("repository", RuntimeRepository);
-    WriteOutput("base", RuntimeBase);
-    WriteOutput("commit", RuntimeCommit);
-    WriteOutput("runtime_version", RuntimeVersion);
-    WriteOutput("compiler_version", RuntimeCompilerVersion);
+    WriteOutput("base", line.Base);
+    WriteOutput("commit", line.Commit);
+    WriteOutput("runtime_version", line.Version);
+    WriteOutput("compiler_version", line.CompilerVersion);
+    WriteOutput("staging", line.StagingDirectory);
+}
+
+// An optional argument names the runtime line by its target framework; net10.0 when absent.
+static RuntimeLine SelectRuntimeLine(string[] args, int index)
+    => args.Length > index ? RuntimeLine.Find(args[index]) : RuntimeLine.Default;
+
+// Selects another SDK for this workspace only, such as a .NET 11 preview for an acceptance run. Projects that carry their
+// own global.json keep their selection.
+static void SelectSdk(string repositoryRoot, string version)
+{
+    string path = Path.Join(repositoryRoot, "global.json");
+    System.Text.Json.Nodes.JsonObject root = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(path))?.AsObject()
+        ?? throw new InvalidOperationException("global.json must contain an object.");
+    root["sdk"] = new System.Text.Json.Nodes.JsonObject
+    {
+        ["version"] = version,
+        ["rollForward"] = "disable",
+        ["allowPrerelease"] = version.Contains('-', StringComparison.Ordinal),
+    };
+    File.WriteAllText(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + Environment.NewLine);
+    Console.WriteLine($"Selected .NET SDK {version} for {repositoryRoot}.");
 }
 
 static void WriteOutput(string name, string value)
@@ -558,7 +566,7 @@ static void RemoveStagingFeedPackages()
     Console.WriteLine($"Removed {staging.Count} staging-feed packages from {packages}.");
 }
 
-static void BuildRuntime(string repositoryRoot, string platform, string architecture)
+static void BuildRuntime(string repositoryRoot, string platform, string architecture, RuntimeLine line)
 {
     VerifyPlatform(platform, architecture);
     (string cCompiler, string cppCompiler, IReadOnlyDictionary<string, string?>? environment) = GetRuntimeToolchain();
@@ -591,7 +599,7 @@ static void BuildRuntime(string repositoryRoot, string platform, string architec
         "--configuration", "Release",
         "-p:UseNativeAotForComponents=true",
         $"-p:IlcSdkPath={GetBuiltRuntimePath(repositoryRoot, platform, architecture)}{Path.DirectorySeparatorChar}",
-        $"-p:RuntimeFrameworkVersion={RuntimeCompilerVersion}",
+        $"-p:RuntimeFrameworkVersion={line.CompilerVersion}",
         "/p:ManagePackageVersionsCentrally=false",
     ], runtimeRoot, OperatingSystem.IsWindows(), environment);
 
@@ -775,27 +783,27 @@ static string GetBuiltCompilerPath(string repositoryRoot, string platform, strin
     return Path.Join(repositoryRoot, "runtime", "artifacts", "bin", "coreclr", $"{platform}.{architecture}.Release", "ilc-published");
 }
 
-static string GetStagedRuntimePath(string repositoryRoot, string runtimeIdentifier)
+static string GetStagedRuntimePath(string repositoryRoot, string runtimeIdentifier, RuntimeLine? line = null)
 {
-    return Path.Join(repositoryRoot, "artifacts", "nativeaot", runtimeIdentifier, "aotsdk");
+    return Path.Join(repositoryRoot, "artifacts", (line ?? RuntimeLine.Default).StagingDirectory, runtimeIdentifier, "aotsdk");
 }
 
-static string GetStagedCompilerPath(string repositoryRoot, string runtimeIdentifier)
+static string GetStagedCompilerPath(string repositoryRoot, string runtimeIdentifier, RuntimeLine? line = null)
 {
-    return Path.Join(repositoryRoot, "artifacts", "nativeaot", runtimeIdentifier, "compiler");
+    return Path.Join(repositoryRoot, "artifacts", (line ?? RuntimeLine.Default).StagingDirectory, runtimeIdentifier, "compiler");
 }
 
-static string GetStagedRuntimeSourcePath(string repositoryRoot, string runtimeIdentifier)
+static string GetStagedRuntimeSourcePath(string repositoryRoot, string runtimeIdentifier, RuntimeLine? line = null)
 {
-    return Path.Join(repositoryRoot, "artifacts", "nativeaot", runtimeIdentifier, "source");
+    return Path.Join(repositoryRoot, "artifacts", (line ?? RuntimeLine.Default).StagingDirectory, runtimeIdentifier, "source");
 }
 
-static void StageRuntime(string repositoryRoot, string platform, string architecture, string runtimeIdentifier)
+static void StageRuntime(string repositoryRoot, string platform, string architecture, string runtimeIdentifier, RuntimeLine line)
 {
     string source = GetBuiltRuntimePath(repositoryRoot, platform, architecture);
-    string destination = GetStagedRuntimePath(repositoryRoot, runtimeIdentifier);
+    string destination = GetStagedRuntimePath(repositoryRoot, runtimeIdentifier, line);
     string compilerSource = GetBuiltCompilerPath(repositoryRoot, platform, architecture);
-    string compilerDestination = GetStagedCompilerPath(repositoryRoot, runtimeIdentifier);
+    string compilerDestination = GetStagedCompilerPath(repositoryRoot, runtimeIdentifier, line);
 
     if (!Directory.Exists(source))
     {
@@ -812,7 +820,7 @@ static void StageRuntime(string repositoryRoot, string platform, string architec
     CopyDirectory(compilerSource, compilerDestination);
 
     string runtimeSource = Path.Join(repositoryRoot, "runtime");
-    string stagedSource = GetStagedRuntimeSourcePath(repositoryRoot, runtimeIdentifier);
+    string stagedSource = GetStagedRuntimeSourcePath(repositoryRoot, runtimeIdentifier, line);
     Directory.CreateDirectory(stagedSource);
     string[] metadataFiles = ["LICENSE.TXT", "THIRD-PARTY-NOTICES.TXT"];
 
@@ -829,11 +837,11 @@ static void StageRuntime(string repositoryRoot, string platform, string architec
     }
 }
 
-static void VerifyStagedRuntime(string repositoryRoot, string runtimeIdentifier)
+static void VerifyStagedRuntime(string repositoryRoot, string runtimeIdentifier, RuntimeLine? line = null)
 {
-    string path = GetStagedRuntimePath(repositoryRoot, runtimeIdentifier);
-    string sourcePath = GetStagedRuntimeSourcePath(repositoryRoot, runtimeIdentifier);
-    string compilerPath = GetStagedCompilerPath(repositoryRoot, runtimeIdentifier);
+    string path = GetStagedRuntimePath(repositoryRoot, runtimeIdentifier, line);
+    string sourcePath = GetStagedRuntimeSourcePath(repositoryRoot, runtimeIdentifier, line);
+    string compilerPath = GetStagedCompilerPath(repositoryRoot, runtimeIdentifier, line);
     string compilerExecutable = Path.Join(compilerPath, runtimeIdentifier == "win-x64" ? "ilc.exe" : "ilc");
 
     if (!File.Exists(Path.Join(path, "System.Private.CoreLib.dll"))
@@ -1731,6 +1739,7 @@ static void PackManaged(string repositoryRoot, string packageVersion)
 static void PackRuntime(
     string repositoryRoot,
     string runtimeIdentifier,
+    RuntimeLine line,
     string runtimeSdkPath,
     string compilerToolsPath,
     string runtimeSourcePath)
@@ -1747,7 +1756,7 @@ static void PackRuntime(
         "--output",
         "artifacts/packages",
         "-m:1",
-        $"-p:PackageVersion={RuntimeVersion}",
+        $"-p:AnkusRuntimeLine={line.TargetFramework}",
         $"-p:AnkusRuntimeIdentifier={runtimeIdentifier}",
         $"-p:AnkusRuntimeSdkPath={normalizedSdkPath}",
         $"-p:AnkusRuntimeSourcePath={runtimeSourcePath}",
@@ -1765,7 +1774,7 @@ static void PackRuntime(
         "--output",
         "artifacts/packages",
         "-m:1",
-        $"-p:PackageVersion={RuntimeVersion}",
+        $"-p:AnkusRuntimeLine={line.TargetFramework}",
         $"-p:AnkusCompilerRuntimeIdentifier={runtimeIdentifier}",
         $"-p:AnkusCompilerToolsPath={normalizedCompilerPath}",
         $"-p:AnkusRuntimeSourcePath={runtimeSourcePath}",
@@ -1802,14 +1811,14 @@ static string[] VerifyPackages(string repositoryRoot, string packageVersion)
     string packageDirectory = Path.Join(repositoryRoot, "artifacts", "packages");
     string[] packages =
     [
-        $"Ankus.NativeAot.Runtime.linux-x64.{RuntimeVersion}.nupkg",
-        $"Ankus.NativeAot.Runtime.osx-arm64.{RuntimeVersion}.nupkg",
-        $"Ankus.NativeAot.Runtime.osx-x64.{RuntimeVersion}.nupkg",
-        $"Ankus.NativeAot.Runtime.win-x64.{RuntimeVersion}.nupkg",
-        $"Ankus.NativeAot.Compiler.linux-x64.{RuntimeVersion}.nupkg",
-        $"Ankus.NativeAot.Compiler.osx-arm64.{RuntimeVersion}.nupkg",
-        $"Ankus.NativeAot.Compiler.osx-x64.{RuntimeVersion}.nupkg",
-        $"Ankus.NativeAot.Compiler.win-x64.{RuntimeVersion}.nupkg",
+        $"Ankus.NativeAot.Runtime.linux-x64.{RuntimeLine.Default.Version}.nupkg",
+        $"Ankus.NativeAot.Runtime.osx-arm64.{RuntimeLine.Default.Version}.nupkg",
+        $"Ankus.NativeAot.Runtime.osx-x64.{RuntimeLine.Default.Version}.nupkg",
+        $"Ankus.NativeAot.Runtime.win-x64.{RuntimeLine.Default.Version}.nupkg",
+        $"Ankus.NativeAot.Compiler.linux-x64.{RuntimeLine.Default.Version}.nupkg",
+        $"Ankus.NativeAot.Compiler.osx-arm64.{RuntimeLine.Default.Version}.nupkg",
+        $"Ankus.NativeAot.Compiler.osx-x64.{RuntimeLine.Default.Version}.nupkg",
+        $"Ankus.NativeAot.Compiler.win-x64.{RuntimeLine.Default.Version}.nupkg",
         $"Ankus.Generators.{packageVersion}.nupkg",
         $"Ankus.PgConfig.{packageVersion}.nupkg",
         $"Ankus.Runtime.{packageVersion}.nupkg",
@@ -2050,6 +2059,48 @@ internal sealed class WindowsSuiteSlot(Mutex mutex) : IDisposable
         _disposed = true;
         GC.SuppressFinalize(this);
     }
+}
+
+/// <summary>
+/// Describes a patched runtime line: the extension target framework it serves, the fork commit it builds, and the package
+/// and compiler versions it ships. The SDK reads the same versions from Ankus.NativeAot.Lines.props.
+/// </summary>
+/// <param name="TargetFramework">The extension target framework.</param>
+/// <param name="Base">The upstream release tag the fork commit is based on.</param>
+/// <param name="Commit">The fork commit to build.</param>
+/// <param name="Version">The patched runtime and compiler host package version.</param>
+/// <param name="CompilerVersion">The upstream ILCompiler and framework version.</param>
+internal sealed record RuntimeLine(string TargetFramework, string Base, string Commit, string Version, string CompilerVersion)
+{
+    /// <summary>
+    /// Gets the line for net10.0, which commands use when no line is named.
+    /// </summary>
+    internal static RuntimeLine Default { get; } = new("net10.0", "v10.0.13", "f97c4dea9e1cab1f4afcbd8d9c67eb5f7d88a492",
+        "10.0.13-ankus.1", "10.0.13");
+
+    /// <summary>
+    /// Gets every supported line.
+    /// </summary>
+    internal static IReadOnlyList<RuntimeLine> All { get; } =
+    [
+        Default,
+        new("net11.0", "v11.0.0-rc.2.26504.105", "34f19a015e32712d52e1028bf9f1ee31316c1e9c",
+            "11.0.0-rc.2.26504.105-ankus.1", "11.0.0-rc.2.26504.105"),
+    ];
+
+    /// <summary>
+    /// Gets the artifacts directory this line stages into; net10.0 keeps the original location.
+    /// </summary>
+    internal string StagingDirectory => this == Default ? "nativeaot" : "nativeaot-" + TargetFramework;
+
+    /// <summary>
+    /// Finds the line that serves a target framework.
+    /// </summary>
+    /// <param name="targetFramework">The extension target framework.</param>
+    /// <returns>The runtime line.</returns>
+    internal static RuntimeLine Find(string targetFramework)
+        => All.FirstOrDefault(line => line.TargetFramework == targetFramework)
+            ?? throw new InvalidOperationException($"No Ankus runtime line serves {targetFramework}.");
 }
 
 /// <summary>

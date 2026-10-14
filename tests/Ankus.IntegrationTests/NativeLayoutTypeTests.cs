@@ -337,7 +337,7 @@ public sealed class NativeLayoutTypeTests(TestContext context)
     private async Task ImportNullText(NpgsqlConnection connection)
     {
         await using TextWriter copy = await connection.BeginTextImportAsync("COPY native_null FROM STDIN", context.CancellationToken);
-        await copy.WriteLineAsync("\\N");
+        await copy.WriteLineAsync("\\N".AsMemory(), context.CancellationToken);
     }
 
     /// <summary>

@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <_AnkusNativeAotCompilerToolsPath>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', 'tools', 'ilc'))</_AnkusNativeAotCompilerToolsPath>
+    <_AnkusNativeAotCompilerPayloadVersion>@VERSION@</_AnkusNativeAotCompilerPayloadVersion>
+    <_AnkusNativeAotCompilerPayloadBaseVersion>@COMPILER_VERSION@</_AnkusNativeAotCompilerPayloadBaseVersion>
+    <_AnkusNativeAotCompilerPayloadRid>@RID@</_AnkusNativeAotCompilerPayloadRid>
+  </PropertyGroup>
+</Project>

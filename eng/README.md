@@ -18,12 +18,13 @@ repository root with `dotnet run --file`.
 
 | Command | Purpose |
 | --- | --- |
-| `metadata` | Validate and export the pinned runtime identity. |
-| `runtime-info` | Validate and print the checkout's runtime repository, commit and matching package/compiler versions locally. |
+| `metadata` | Validate and export a runtime line's pinned identity: `net10.0` by default, or the target framework given. |
+| `runtime-info` | Validate and print a runtime line's repository, commit, matching package/compiler versions and staging directory locally. |
+| `select-sdk` | Select another .NET SDK in this checkout's `global.json`, such as a .NET 11 preview for an acceptance run. |
 | `release-metadata` | Validate a release tag and export release metadata. |
 | `quality` | Install PostgreSQL headers, build Ankus and every automation app, and validate generated API and site documentation. |
-| `runtime-build` | Build and stage the runtime and compiler host for the runner's platform. |
-| `runtime-pack` | Pack a staged runtime and compiler host for CI. |
+| `runtime-build` | Build and stage a runtime line's runtime and compiler host for the runner's platform; a trailing target framework selects the line. |
+| `runtime-pack` | Pack a staged runtime line's runtime and compiler host for CI. |
 | `runtime-test` | Use a staged runtime to run the complete unit and PostgreSQL integration test suites. |
 | `runtime-test-build` | Prepare the staged runtime's PostgreSQL toolchain and build all test projects before saving CI caches. |
 | `windows-toolchain` | Select the latest supported Visual Studio installation with C++ x64 tools and export its developer environment to later CI steps. |
@@ -42,6 +43,13 @@ repository root with `dotnet run --file`.
 | `release-runtime` | Build and pack the runtime and compiler host for one platform. |
 | `release-verify` | Check the complete NuGet package set and each manifest's identity, license and source commit. |
 | `publish` | Verify and publish the complete NuGet package set. |
+
+Each supported extension target framework has its own runtime line: a fork
+commit, a patched runtime and compiler host package version, and the upstream
+compiler it pairs with. `net10.0` stages into `artifacts/nativeaot`; other lines
+stage into `artifacts/nativeaot-<framework>`. The `.NET versions` workflow builds
+the `net11.0` line and runs the complete suite with every repository extension
+retargeted through `AnkusExtensionTargetFramework=net11.0`.
 
 Runtime and compiler packages are built on their own operating system and
 architecture, including Intel macOS. Linux/macOS builds also execute the fork's bounded host-shutdown

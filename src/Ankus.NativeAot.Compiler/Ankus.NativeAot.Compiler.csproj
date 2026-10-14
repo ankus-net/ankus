@@ -1,14 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <!-- One package per runtime line and host identifier: AnkusRuntimeLine names the target framework it serves. -->
+    <AnkusRuntimeLine Condition="'$(AnkusRuntimeLine)' == ''">net10.0</AnkusRuntimeLine>
+    <_AnkusNativeAotLine>$(AnkusRuntimeLine)</_AnkusNativeAotLine>
+  </PropertyGroup>
+
+  <Import Project="../Ankus.Sdk/targets/Ankus.NativeAot.Lines.props" />
+
+  <PropertyGroup>
     <PackageId>Ankus.NativeAot.Compiler</PackageId>
     <PackageId Condition="'$(AnkusCompilerRuntimeIdentifier)' != ''">Ankus.NativeAot.Compiler.$(AnkusCompilerRuntimeIdentifier)</PackageId>
-    <PackageVersion>10.0.13-ankus.1</PackageVersion>
+    <PackageVersion>$(_AnkusNativeAotCompilerHostVersion)</PackageVersion>
     <Description>Patched .NET Native AOT compiler host for Ankus PostgreSQL extensions.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <_AnkusSupportedRuntimeIdentifiers>;linux-x64;osx-arm64;osx-x64;win-x64;</_AnkusSupportedRuntimeIdentifiers>
   </PropertyGroup>
 
   <ItemGroup>
@@ -17,9 +26,6 @@
                            Exclude="$(AnkusCompilerToolsPath)*.dbg;$(AnkusCompilerToolsPath)*.dwarf;$(AnkusCompilerToolsPath)*.pdb"
                            Condition="'$(AnkusCompilerToolsPath)' != ''" />
     <None Include="@(_AnkusCompilerPayload)" Pack="true" PackagePath="tools/ilc/" />
-    <None Include="build/Ankus.NativeAot.Compiler.$(AnkusCompilerRuntimeIdentifier).props"
-          Pack="true" PackagePath="build/$(PackageId).props"
-          Condition="'$(AnkusCompilerRuntimeIdentifier)' != ''" />
     <None Update="README.md" Pack="true" PackagePath="/" />
     <None Include="$(AnkusRuntimeSourcePath)/LICENSE.TXT;$(AnkusRuntimeSourcePath)/THIRD-PARTY-NOTICES.TXT"
           Pack="true" PackagePath="/" />
@@ -30,12 +36,25 @@
       <_AnkusCompilerExecutable>$(AnkusCompilerToolsPath)ilc</_AnkusCompilerExecutable>
       <_AnkusCompilerExecutable Condition="'$(AnkusCompilerRuntimeIdentifier)' == 'win-x64'">$(AnkusCompilerToolsPath)ilc.exe</_AnkusCompilerExecutable>
     </PropertyGroup>
+    <Error Condition="'$(_AnkusNativeAotCompilerHostVersion)' == ''" Text="AnkusRuntimeLine must name a supported Ankus runtime line." />
     <Error Condition="'$(AnkusCompilerRuntimeIdentifier)' == ''" Text="AnkusCompilerRuntimeIdentifier is required." />
-    <Error Condition="!Exists('build/Ankus.NativeAot.Compiler.$(AnkusCompilerRuntimeIdentifier).props')"
+    <Error Condition="!$(_AnkusSupportedRuntimeIdentifiers.Contains(';$(AnkusCompilerRuntimeIdentifier);'))"
            Text="AnkusCompilerRuntimeIdentifier must name a supported Ankus compiler host package." />
     <Error Condition="!Exists('$(_AnkusCompilerExecutable)')"
            Text="AnkusCompilerToolsPath must identify the complete built Native AOT compiler host." />
     <Error Condition="!Exists('$(AnkusRuntimeSourcePath)/LICENSE.TXT')"
            Text="AnkusRuntimeSourcePath must identify the matching runtime source checkout." />
+  </Target>
+
+  <!-- The package's build props record its line, version and host identifier for the SDK's payload checks. -->
+  <Target Name="_GenerateAnkusCompilerProps" BeforeTargets="_GetPackageFiles" DependsOnTargets="_ValidateAnkusCompilerPackage">
+    <PropertyGroup>
+      <_AnkusCompilerProps>$(IntermediateOutputPath)$(PackageId).props</_AnkusCompilerProps>
+      <_AnkusCompilerPropsText>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)build/Ankus.NativeAot.Compiler.props.template').Replace('@VERSION@', '$(_AnkusNativeAotCompilerHostVersion)').Replace('@COMPILER_VERSION@', '$(_AnkusNativeAotCompilerVersion)').Replace('@RID@', '$(AnkusCompilerRuntimeIdentifier)'))</_AnkusCompilerPropsText>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(_AnkusCompilerProps)" Lines="$(_AnkusCompilerPropsText)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <None Include="$(_AnkusCompilerProps)" Pack="true" PackagePath="build/$(PackageId).props" />
+    </ItemGroup>
   </Target>
 </Project>
