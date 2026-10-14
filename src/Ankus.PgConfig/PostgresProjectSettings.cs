@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Text.Json;
 
@@ -64,7 +65,8 @@ public sealed class PostgresProjectSettings
         IReadOnlyDictionary<string, string> globalProperties, int? postgresMajor = null,
         CancellationToken cancellationToken = default)
     {
-        SelectionResult result = await EvaluateAsync(projectPath, configuration, postgresMajor, globalProperties, cancellationToken).ConfigureAwait(false);
+        SelectionResult result = await EvaluateAsync(projectPath, configuration, postgresMajor, globalProperties, NewCache(),
+            cancellationToken).ConfigureAwait(false);
         if (result.Conflict)
         {
             throw new InvalidOperationException(ConflictMessage);
@@ -104,7 +106,8 @@ public sealed class PostgresProjectSettings
         IReadOnlyDictionary<string, string> globalProperties, int? postgresMajor = null,
         CancellationToken cancellationToken = default)
     {
-        SelectionResult result = await EvaluateAsync(projectPath, configuration, postgresMajor, globalProperties, cancellationToken).ConfigureAwait(false);
+        SelectionResult result = await EvaluateAsync(projectPath, configuration, postgresMajor, globalProperties, NewCache(),
+            cancellationToken).ConfigureAwait(false);
         if (result.Conflict)
         {
             throw new InvalidOperationException(ConflictMessage);
@@ -143,36 +146,67 @@ public sealed class PostgresProjectSettings
         ArgumentNullException.ThrowIfNull(projectPaths);
         ArgumentException.ThrowIfNullOrWhiteSpace(configuration);
         cancellationToken.ThrowIfCancellationRequested();
-        PostgresProjectSettings? selected = null;
-        foreach (string project in projectPaths)
+
+        // Each evaluation is a separate MSBuild process, so a solution's projects are evaluated side by side, and a
+        // project that several of them reference is evaluated once. Results are still read in solution order, so the
+        // selection and the first reported problem do not depend on which evaluation finishes first.
+        ConcurrentDictionary<string, SelectionResult> evaluated = NewCache();
+        using var remaining = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        using var slots = new SemaphoreSlim(Math.Max(1, Environment.ProcessorCount));
+        Task<SelectionResult>[] evaluations = [.. projectPaths.Select(async project =>
         {
-            SelectionResult result = await EvaluateAsync(project, configuration, postgresMajor, globalProperties, cancellationToken).ConfigureAwait(false);
-            if (result.Conflict)
+            await slots.WaitAsync(remaining.Token).ConfigureAwait(false);
+            try
             {
-                throw new InvalidOperationException(ConflictMessage);
+                return await EvaluateAsync(project, configuration, postgresMajor, globalProperties, evaluated, remaining.Token)
+                    .ConfigureAwait(false);
+            }
+            finally
+            {
+                slots.Release();
+            }
+        })];
+        Task[] pending = evaluations;
+        try
+        {
+            PostgresProjectSettings? selected = null;
+            foreach (Task<SelectionResult> evaluation in evaluations)
+            {
+                SelectionResult result = await evaluation.ConfigureAwait(false);
+                if (result.Conflict)
+                {
+                    throw new InvalidOperationException(ConflictMessage);
+                }
+
+                if (result.Settings is not { } current)
+                {
+                    continue;
+                }
+
+                if (!TryMerge(selected, current, out PostgresProjectSettings? merged))
+                {
+                    throw new InvalidOperationException(ConflictMessage);
+                }
+
+                selected = merged;
             }
 
-            if (result.Settings is not { } current)
-            {
-                continue;
-            }
-
-            if (!TryMerge(selected, current, out PostgresProjectSettings? merged))
-            {
-                throw new InvalidOperationException(ConflictMessage);
-            }
-
-            selected = merged;
+            return selected;
         }
-
-        return selected;
+        finally
+        {
+            // A problem leaves later evaluations running; they stop, and their MSBuild processes exit, before this returns.
+            await remaining.CancelAsync().ConfigureAwait(false);
+            await Task.WhenAll(pending).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+        }
     }
 
     /// <summary>
     /// Validates inputs and queries the evaluated project selection.
     /// </summary>
     private static async Task<SelectionResult> EvaluateAsync(string projectPath, string configuration,
-        int? postgresMajor, IReadOnlyDictionary<string, string> globalProperties, CancellationToken cancellationToken)
+        int? postgresMajor, IReadOnlyDictionary<string, string> globalProperties,
+        ConcurrentDictionary<string, SelectionResult> evaluated, CancellationToken cancellationToken)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(configuration);
@@ -209,8 +243,14 @@ public sealed class PostgresProjectSettings
         }
 
         return await ReadCoreAsync(project, properties, new HashSet<string>(OperatingSystem.IsWindows()
-            ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal), cancellationToken).ConfigureAwait(false);
+            ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal), evaluated, cancellationToken).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Creates the per-selection record of evaluated projects, keyed by path and global properties.
+    /// </summary>
+    private static ConcurrentDictionary<string, SelectionResult> NewCache()
+        => new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
 
     /// <summary>
     /// Evaluates declared references only when the current project does not select PostgreSQL itself.
@@ -218,16 +258,38 @@ public sealed class PostgresProjectSettings
     /// <param name="project">The absolute project path.</param>
     /// <param name="globalProperties">The build properties inherited by this project evaluation.</param>
     /// <param name="visiting">The current reference chain, used to reject cycles.</param>
+    /// <param name="evaluated">Projects already evaluated for this selection, with their global properties.</param>
     /// <param name="cancellationToken">Cancels project evaluation.</param>
     /// <returns>The declared or inherited selection, or null for projects unrelated to PostgreSQL.</returns>
     private static async Task<SelectionResult> ReadCoreAsync(string project, Dictionary<string, string> globalProperties,
-        HashSet<string> visiting, CancellationToken cancellationToken)
+        HashSet<string> visiting, ConcurrentDictionary<string, SelectionResult> evaluated, CancellationToken cancellationToken)
     {
         if (!visiting.Add(project))
         {
             throw new InvalidOperationException("A circular project reference prevents PostgreSQL selection.");
         }
 
+        // The same project evaluates differently under other global properties, so both identify a result.
+        string key = project + "\n" + string.Join("\n", globalProperties.OrderBy(static pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(static pair => pair.Key + "=" + pair.Value));
+        if (evaluated.TryGetValue(key, out SelectionResult? known))
+        {
+            visiting.Remove(project);
+            return known;
+        }
+
+        SelectionResult result = await ReadProjectAsync(project, globalProperties, visiting, evaluated, cancellationToken).ConfigureAwait(false);
+        evaluated.TryAdd(key, result);
+        visiting.Remove(project);
+        return result;
+    }
+
+    /// <summary>
+    /// Queries one project's selection, then its references when it selects nothing itself.
+    /// </summary>
+    private static async Task<SelectionResult> ReadProjectAsync(string project, Dictionary<string, string> globalProperties,
+        HashSet<string> visiting, ConcurrentDictionary<string, SelectionResult> evaluated, CancellationToken cancellationToken)
+    {
         List<string> arguments = ["msbuild", project, "-nologo", "-verbosity:quiet",
             "-getProperty:AnkusPostgresMajor,AnkusPgConfigPath,_AnkusPostgresMajorWasSpecified", "-getItem:ProjectReference"];
         arguments.AddRange(globalProperties.Select(static pair => "-p:" + pair.Key + "=" + EscapeProperty(pair.Value)));
@@ -253,7 +315,6 @@ public sealed class PostgresProjectSettings
 
         if (value.Length != 0 || path is not null)
         {
-            visiting.Remove(project);
             string marker = properties.GetProperty("_AnkusPostgresMajorWasSpecified").GetString() ?? string.Empty;
             bool explicitlySelected = marker.Length == 0
                 ? value.Length != 0
@@ -271,10 +332,9 @@ public sealed class PostgresProjectSettings
             }
 
             SelectionResult child = await ReadCoreAsync(referencePath,
-                ReferenceProperties(reference, globalProperties), visiting, cancellationToken).ConfigureAwait(false);
+                ReferenceProperties(reference, globalProperties), visiting, evaluated, cancellationToken).ConfigureAwait(false);
             if (child.Conflict)
             {
-                visiting.Remove(project);
                 return child;
             }
 
@@ -286,14 +346,12 @@ public sealed class PostgresProjectSettings
 
             if (!TryMerge(inherited, selection, out PostgresProjectSettings? merged))
             {
-                visiting.Remove(project);
                 return new(null, true);
             }
 
             inherited = merged;
         }
 
-        visiting.Remove(project);
         return new(inherited, false);
     }
 

@@ -81,8 +81,10 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                         new XAttribute("BeforeTargets", "CoreCompile"),
                         new XElement("Error", new XAttribute("Condition", "'$(DesignTimeBuild)' == 'true' or '$(SkipCompilerExecution)' == 'true'"),
                             new XAttribute("Text", "Dependencies must produce real assemblies."))),
+                    // MSBuild builds the dependencies in parallel, and on Windows two of them appending to one file can
+                    // collide, so each records its builds in a file of its own.
                     new XElement("Target", new XAttribute("Name", "RecordBuild"), new XAttribute("AfterTargets", "Build"),
-                        new XElement("WriteLinesToFile", new XAttribute("File", Path.Join(directory, "builds.log")),
+                        new XElement("WriteLinesToFile", new XAttribute("File", Path.Join(directory, "builds", name + ".log")),
                             new XAttribute("Lines", "$(MSBuildProjectName)"))))).Save(Path.Join(dependency, name + ".csproj"));
                 await File.WriteAllTextAsync(Path.Join(dependency, "Proof.cs"),
                     "namespace " + name.Replace('.', '_') + " { public static class Proof { public static int Read() => 42; } }",
@@ -135,7 +137,7 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                 Assert.IsFalse(Directory.Exists(Path.Join(directory, name, "bin")), "Restore must leave the dependencies unbuilt.");
             }
 
-            string builds = Path.Join(directory, "builds.log");
+            string builds = Path.Join(directory, "builds");
             for (int load = 0; load < 4; load++)
             {
                 if (load == 2)
@@ -180,7 +182,7 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                 Assert.IsEmpty(compilation.GetDiagnostics(context.CancellationToken).Where(static diagnostic => diagnostic.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning));
                 Assert.IsFalse(File.Exists(Path.Join(directory, "bin", configuration, "net10.0", "Extension.dll")),
                     "The editor must compile dependencies without building the extension itself.");
-                Assert.HasCount(dependencies.Length * (load == 0 ? 1 : load), await File.ReadAllLinesAsync(builds, context.CancellationToken),
+                Assert.AreEqual(dependencies.Length * (load == 0 ? 1 : load), await CountBuildsAsync(builds),
                     $"Load {load} built the dependencies an unexpected number of times.");
             }
 
@@ -192,12 +194,26 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                     "-property:Configuration=" + configuration, "-property:TargetFramework=net10.0", "-property:DesignTimeBuild=true",
                     "-property:BuildProjectReferences=false", "-property:BuildingProject=false"], directory, context.CancellationToken);
             Assert.AreEqual("", visible.Trim());
-            Assert.HasCount(dependencies.Length * 4, await File.ReadAllLinesAsync(builds, context.CancellationToken),
+            Assert.AreEqual(dependencies.Length * 4, await CountBuildsAsync(builds),
                 "The silent load must still have rebuilt the dependencies.");
         }
         finally
         {
             Directory.Delete(directory, recursive: true);
         }
+    }
+
+    /// <summary>
+    /// Counts the dependency builds recorded so far, one line per build in each dependency's log.
+    /// </summary>
+    private async Task<int> CountBuildsAsync(string builds)
+    {
+        int count = 0;
+        foreach (string log in Directory.EnumerateFiles(builds, "*.log"))
+        {
+            count += (await File.ReadAllLinesAsync(log, context.CancellationToken)).Length;
+        }
+
+        return count;
     }
 }
