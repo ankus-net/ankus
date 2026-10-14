@@ -551,7 +551,13 @@ results, so `eng/Ankus.CodeQl.cs` fails the workflow for any finding; fix the co
 rather than suppressing a query. A few findings describe code that must stay as it
 is, such as a catch that returns every exception to PostgreSQL at the native
 boundary. Mark each of those with a `// codeql[rule-id] reason` comment on the line
-before it; the check lists them and does not fail. The `Secret scan` workflow runs
+before it; the check lists them and does not fail, and on `main` the workflow
+dismisses their alerts in code scanning as won't fix, quoting each comment's
+reason; an alert whose result loses its comment reopens. Only two C queries are turned
+off, in `.github/codeql-config.yml`: every `PG_TRY` links a jump buffer on its
+own stack into a global list, which they report as an escaping stack address, and
+a comment cannot mark a macro expansion. Any frame the bridge links the same way
+must unlink itself on every exit, as `PG_TRY` does. The `Secret scan` workflow runs
 [Picket](https://github.com/willibrandon/picket) on every change. Run the same scan
 locally before pushing:
 

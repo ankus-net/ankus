@@ -79,7 +79,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(IncrementalStepRunReason.Modified, ModuleStep(driver, layouts ? "NativeNodeLayoutEmission" : "NativeBindingEmission"));
         Assert.AreEqual(IncrementalStepRunReason.Cached, ModuleStep(driver, layouts ? "NativeBindingEmission" : "NativeNodeLayoutEmission"));
         string native = ManifestValue(second, "Ankus.NativeSource");
-        Assert.Contains(layouts ? "case 7U: *size = 12; *alignment = 4; return;" :
+        Assert.Contains(layouts ? "[7] = {12, 4}," :
             "static const char ankus_binding_identity[] = \"" + new string('F', 64) + "\";", native);
         Assert.AreNotEqual(ManifestValue(first, "Ankus.NativeSource"), native);
         Assert.AreEqual(InstallationBody(first), InstallationBody(second));
@@ -134,7 +134,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.IsEmpty(diagnostics);
         Assert.IsNull(NativeCompilerModel(driver).Binding);
         Assert.Contains("static const char ankus_binding_identity[] = \"\";", ManifestValue(first, "Ankus.NativeSource"));
-        Assert.Contains("case 7U: *size = 8; *alignment = 4; return;", ManifestValue(first, "Ankus.NativeSource"));
+        Assert.Contains("[7] = {8, 4},", ManifestValue(first, "Ankus.NativeSource"));
         if (duplicate)
         {
             Assert.AreEqual("CS0102", Assert.ContainsSingle(first.GetDiagnostics(context.CancellationToken)
@@ -184,7 +184,7 @@ public sealed partial class PgFunctionGeneratorTests
         driver = RunModule(driver, initial.RemoveReferences(second), out Compilation unique);
         Assert.IsNotNull(NativeCompilerModel(driver).Binding);
         Assert.IsNotNull(NativeCompilerModel(driver).Layouts);
-        Assert.Contains("case 7U: *size = 8; *alignment = 4; return;", ManifestValue(unique, "Ankus.NativeSource"));
+        Assert.Contains("[7] = {8, 4},", ManifestValue(unique, "Ankus.NativeSource"));
         Assert.DoesNotContain("this extension has no measured node layout contract", ManifestValue(unique, "Ankus.NativeSource"));
         Assert.AreEqual(42, InvokeSqlReferenceAnswer(unique));
     }

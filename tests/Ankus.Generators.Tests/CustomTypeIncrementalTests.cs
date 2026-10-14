@@ -404,7 +404,7 @@ public sealed partial class PgFunctionGeneratorTests
         {
             "CustomTypeRegistrationEmission" => "<" + model.Managed + ">",
             "CustomTypeSerializerEmission" => "class Codec_" + model.Symbol,
-            "CustomTypeCatalogEmission" => "name = { .data = (unsigned char *) \"" + string.Concat(System.Text.Encoding.UTF8.GetBytes(model.Name).Select(static value => "\\x" + value.ToString("x2", System.Globalization.CultureInfo.InvariantCulture))) + "\"",
+            "CustomTypeCatalogEmission" => "{ { .data = (unsigned char *) \"" + string.Concat(System.Text.Encoding.UTF8.GetBytes(model.Name).Select(static value => "\\x" + value.ToString("x2", System.Globalization.CultureInfo.InvariantCulture))) + "\"",
             _ => "ankus_managed_" + model.Symbol + "_type_",
         };
         return Assert.ContainsSingle(artifacts.Where(output => output.Value is PgTypeEmitter.Emission io

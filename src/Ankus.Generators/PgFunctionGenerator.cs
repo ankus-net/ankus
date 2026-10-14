@@ -620,25 +620,11 @@ public sealed class PgFunctionGenerator : IIncrementalGenerator
             native.AppendLine("static void ankus_ensure_initialized(void);");
         }
 
-        if (hasBackend)
-        {
-            native.AppendLine("static bool ankus_custom_type_supported(Oid type)");
-            native.AppendLine("{");
-            native.AppendLine("    (void) type;");
-        }
-
         CustomTypePipeline.Output[] baseTypes = [.. customTypes.Where(static type => type.Emission is not null)
             .OrderBy(static type => type.Analysis.Display, StringComparer.Ordinal)];
-        foreach (CustomTypePipeline.Output output in baseTypes)
-        {
-            native.Append(output.Emission!.TypeCheck);
-        }
-
         if (hasBackend)
         {
-            native.AppendLine("    return false;");
-            native.AppendLine("}");
-            native.AppendLine();
+            EmitCustomTypeSupport(native, baseTypes);
         }
 
         foreach (CustomTypePipeline.Output output in baseTypes)
@@ -1367,5 +1353,46 @@ public sealed class PgFunctionGenerator : IIncrementalGenerator
         byte[] bytes = hash.ComputeHash(Encoding.UTF8.GetBytes(identity));
         string suffix = string.Concat(bytes.Take(16).Select(static value => value.ToString("x2", CultureInfo.InvariantCulture)));
         return "ankus_managed_" + suffix + "_" + sqlName;
+    }
+
+    /// <summary>
+    /// Emits the predicate that recognizes this extension's own base types, by name and schema, in the backend.
+    /// </summary>
+    private static void EmitCustomTypeSupport(GeneratorSourceBuilder native, CustomTypePipeline.Output[] baseTypes)
+    {
+        if (baseTypes.Length == 0)
+        {
+            native.AppendLine("static bool ankus_custom_type_supported(Oid type)");
+            native.AppendLine("{");
+            native.AppendLine("    (void) type;");
+            native.AppendLine("    return false;");
+            native.AppendLine("}");
+            native.AppendLine();
+            return;
+        }
+
+        native.AppendLine("/* This extension's base types, each as its name and schema; a NULL schema means the extension's own. */");
+        native.AppendLine("static const AnkusValue ankus_custom_types[][2] =");
+        native.AppendLine("{");
+        foreach (CustomTypePipeline.Output output in baseTypes)
+        {
+            native.Append(output.Emission!.TypeCheck);
+        }
+
+        native.AppendLine("};");
+        native.AppendLine();
+        native.AppendLine("static bool ankus_custom_type_supported(Oid type)");
+        native.AppendLine("{");
+        native.AppendLine("    for (int index = 0; index < (int) lengthof(ankus_custom_types); index++)");
+        native.AppendLine("    {");
+        native.AppendLine("        if (ankus_resolve_named_type(&ankus_custom_types[index][0], &ankus_custom_types[index][1], true, TYPTYPE_BASE) == type)");
+        native.AppendLine("        {");
+        native.AppendLine("            return true;");
+        native.AppendLine("        }");
+        native.AppendLine("    }");
+        native.AppendLine();
+        native.AppendLine("    return false;");
+        native.AppendLine("}");
+        native.AppendLine();
     }
 }
