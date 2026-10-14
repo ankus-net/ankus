@@ -277,6 +277,28 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   memory switch cases moved into functions; the 763 memory, allocator, list,
   node and ownership backend tests pass after it, and the PostgreSQL 13
   integration suite passed 5,523 of 5,540 with 17 platform skips.
+- The pinned runtime stopped building once its CI cache was evicted. October's
+  .NET security release reports CVE-2026-70162 and CVE-2026-84008 against
+  `System.Security.Cryptography.Pkcs` 9.0.6, which `NuGet.Packaging` brings to the
+  runtime's installer and Crossgen2 build tasks, and the runtime build treats
+  NuGet's audit warnings as errors. Fork commit `f97c4de` makes those tasks
+  restore the patched 10.0.13; they only run during the build, so the runtime and
+  compiler packages keep version `10.0.13-ankus.1`. The unpatched tree reproduces
+  the failure and the patched one restores both tasks and the ILCompiler publish
+  project. Ankus's own 72 projects have no vulnerable package.
+- `ankus status` and `ankus info` seemed to hang when run from a large solution's
+  directory, such as this repository's root. Without `--pg`, these commands use
+  the PostgreSQL selection of the project or solution in the current directory.
+  Reading it started one `dotnet msbuild` evaluation per project and per
+  reference, one after another, and evaluated shared references again for every
+  project: 46 seconds here on Linux and minutes on a slower machine. Projects are
+  now evaluated side by side, each project and property set once, and results are
+  still read in solution order, so the selection and the first reported problem
+  are unchanged. The same commands take 6 seconds here, and `ankus test` on a
+  solution benefits too. A failure stops the remaining evaluations and waits for
+  their processes. New PgConfig tests cover a shared reference and the order of
+  reported problems; the 52 selection and cluster backend tests pass on Linux x64
+  with PostgreSQL 18.
 - GitHub flagged the C# scan's quality: read from source alone, it resolved only
   81% of calls. Nearly all the misses were MSTest calls in the test projects,
   whose global `using` MSTest's package adds through MSBuild, which a scan of the
@@ -299,7 +321,9 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   GitHub-hosted Windows, whose work directory is on another drive than
   PostgreSQL; such a consumer now reaches the installation through a directory
   junction in the shared work root. The eight selection cases still pass on
-  Linux x64 with PostgreSQL 18.
+  Linux x64 with PostgreSQL 18. A design-time build test's four fake
+  dependencies, which MSBuild builds in parallel, appended to one log, and
+  Windows refused one write; each now keeps its own log.
 - Assertion-enabled PostgreSQL builds on macOS ARM64 stopped in
   `PgRelationWriter`. A writer began one `AFTER`-trigger query when it opened and
   ended it when disposed, so a writer left open at commit left the query on the
