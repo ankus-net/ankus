@@ -15,7 +15,7 @@ using Ankus.PgConfig;
 
 const string RuntimeRepository = "willibrandon/runtime";
 const string RuntimeBase = "v10.0.13";
-const string RuntimeCommit = "b9bc34320018070cedb42841c1ab622032f6a4d0";
+const string RuntimeCommit = "f97c4dea9e1cab1f4afcbd8d9c67eb5f7d88a492";
 const string RuntimeVersion = "10.0.13-ankus.1";
 const string RuntimeCompilerVersion = "10.0.13";
 
