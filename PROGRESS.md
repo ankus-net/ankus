@@ -313,7 +313,13 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   Dependabot update later failed one Windows consumer restore with `NU1900`:
   both Windows runners share one account's NuGet HTTP cache, and NuGet's audit
   found a cached response still open in the other runner's restore. Each
-  dedicated runner now keeps its own HTTP cache.
+  dedicated runner now keeps its own HTTP cache. A macOS CI suite then sat for
+  over an hour on a consumer `dotnet publish` with no CPU use. Its managed stacks
+  showed a deadlock inside the SDK between CLI telemetry and MSBuild's logging:
+  the telemetry setup loaded an assembly whose load event MSBuild logs under its
+  logging lock, while MSBuild, holding that lock, gave the telemetry an event
+  that needed the same load. The workflows and the integration suite now turn
+  CLI telemetry off.
 - `ankus status` and `ankus info` seemed to hang when run from a large solution's
   directory, such as this repository's root. Without `--pg`, these commands use
   the PostgreSQL selection of the project or solution in the current directory.
