@@ -104,11 +104,11 @@ public sealed class BadIdeasExampleTests(TestContext context)
     [TestMethod]
     public Task BadIdeasSampleRestrictsFileWrites() => RunInstalledAsync(async (connection, token) =>
     {
-        string directory = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs", "bad-ideas-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs", "bad-ideas-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
-            string path = Path.Combine(directory, "written.bin");
+            string path = Path.Join(directory, "written.bin");
             await using (var write = new NpgsqlCommand("SELECT write_file($1, $2)", connection))
             {
                 write.Parameters.AddWithValue(path);
@@ -117,7 +117,7 @@ public sealed class BadIdeasExampleTests(TestContext context)
             }
 
             Assert.AreSequenceEqual(new byte[] { 0, 1, 2, 255 }, await File.ReadAllBytesAsync(path, token));
-            await AssertFailureAsync(connection, $"SELECT write_file('{Path.Combine(directory, "missing", "file.bin")}', '\\x00')", "38000", null, token);
+            await AssertFailureAsync(connection, $"SELECT write_file('{Path.Join(directory, "missing", "file.bin")}', '\\x00')", "38000", null, token);
             string role = "bad_ideas_" + Guid.NewGuid().ToString("N");
             await ExecuteAsync(connection, $"CREATE ROLE {role}; SET ROLE {role}", token);
             try

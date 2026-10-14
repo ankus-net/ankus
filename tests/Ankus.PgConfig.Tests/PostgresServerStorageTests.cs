@@ -32,7 +32,7 @@ public sealed class PostgresServerStorageTests(TestContext context)
     [TestMethod]
     public void DeleteAcceptsMissingDirectory()
     {
-        string path = Path.Combine(_root, "missing");
+        string path = Path.Join(_root, "missing");
         PostgresServerStorage.Delete(path);
         Assert.IsFalse(Directory.Exists(path));
     }
@@ -44,7 +44,7 @@ public sealed class PostgresServerStorageTests(TestContext context)
     public void DeleteRemovesOnlyTheTree()
     {
         string path = CreateTree("data");
-        string sibling = Path.Combine(_root, "sibling.txt");
+        string sibling = Path.Join(_root, "sibling.txt");
         File.WriteAllText(sibling, "keep");
         PostgresServerStorage.Delete(path);
         Assert.IsFalse(Directory.Exists(path));
@@ -59,7 +59,7 @@ public sealed class PostgresServerStorageTests(TestContext context)
     public async Task DeleteWaitsForWindowsHandlesToClose()
     {
         string path = CreateTree("held");
-        await using var held = new FileStream(Path.Combine(path, "base", "1", "1259"), FileMode.Open, FileAccess.Read, FileShare.Read);
+        await using var held = new FileStream(Path.Join(path, "base", "1", "1259"), FileMode.Open, FileAccess.Read, FileShare.Read);
         Assert.ThrowsExactly<IOException>(() => Directory.Delete(path, recursive: true));
         Task release = Task.Run(async () =>
         {
@@ -81,12 +81,12 @@ public sealed class PostgresServerStorageTests(TestContext context)
     public void DeleteReportsHandlesHeldBeyondTheLimit()
     {
         string path = CreateTree("stuck");
-        using var held = new FileStream(Path.Combine(path, "base", "1", "1259"), FileMode.Open, FileAccess.Read, FileShare.Read);
+        using var held = new FileStream(Path.Join(path, "base", "1", "1259"), FileMode.Open, FileAccess.Read, FileShare.Read);
         var elapsed = Stopwatch.StartNew();
         Assert.ThrowsExactly<IOException>(() => PostgresServerStorage.Delete(path));
         Assert.IsGreaterThanOrEqualTo(TimeSpan.FromSeconds(10), elapsed.Elapsed);
         Assert.IsLessThan(TimeSpan.FromSeconds(20), elapsed.Elapsed);
-        Assert.IsTrue(File.Exists(Path.Combine(path, "base", "1", "1259")));
+        Assert.IsTrue(File.Exists(Path.Join(path, "base", "1", "1259")));
     }
 
     /// <summary>
@@ -94,10 +94,10 @@ public sealed class PostgresServerStorageTests(TestContext context)
     /// </summary>
     private string CreateTree(string name)
     {
-        string path = Path.Combine(_root, name);
-        Directory.CreateDirectory(Path.Combine(path, "base", "1"));
-        File.WriteAllText(Path.Combine(path, "PG_VERSION"), "17\n");
-        File.WriteAllText(Path.Combine(path, "base", "1", "1259"), "relation");
+        string path = Path.Join(_root, name);
+        Directory.CreateDirectory(Path.Join(path, "base", "1"));
+        File.WriteAllText(Path.Join(path, "PG_VERSION"), "17\n");
+        File.WriteAllText(Path.Join(path, "base", "1", "1259"), "relation");
         return path;
     }
 }

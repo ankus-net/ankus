@@ -43,19 +43,21 @@ public static partial class CStringFunctions
     {
         try
         {
-            yield return value;
-            _ = Spi.ExecuteScalar<int>("SELECT 42");
-            if (fail)
+            using (value)
             {
-                throw new InvalidOperationException("C-string iterator failed.");
-            }
+                yield return value;
+                _ = Spi.ExecuteScalar<int>("SELECT 42");
+                if (fail)
+                {
+                    throw new InvalidOperationException("C-string iterator failed.");
+                }
 
-            yield return null;
-            yield return value;
+                yield return null;
+                yield return value;
+            }
         }
         finally
         {
-            value?.Dispose();
             s_disposedResults++;
         }
     }

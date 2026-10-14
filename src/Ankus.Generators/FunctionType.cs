@@ -369,7 +369,7 @@ internal sealed record FunctionType
                 "timestamptz" => "tstzrange",
                 _ => null,
             };
-            if (sql is null || subtype!.Nullable)
+            if (sql is null || subtype is null || subtype.Nullable)
             {
                 return null;
             }

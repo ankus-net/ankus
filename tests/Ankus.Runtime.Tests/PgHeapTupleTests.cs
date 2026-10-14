@@ -1,5 +1,4 @@
 using System.Buffers.Binary;
-using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Ankus.Runtime.Tests;
@@ -880,12 +879,10 @@ public sealed class PgHeapTupleTests
     /// <summary>
     /// Changes the independent test envelope's tuple discriminator.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary1")]
-    private static extern ref int TupleFlag(ref NativeValue value);
+    private static ref int TupleFlag(ref NativeValue value) => ref value._auxiliary1;
 
     /// <summary>
     /// Reads the independent array element-kind discriminator.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary2")]
-    private static extern ref int ElementKind(ref NativeValue value);
+    private static ref int ElementKind(ref NativeValue value) => ref value._auxiliary2;
 }

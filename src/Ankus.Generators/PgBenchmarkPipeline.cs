@@ -227,7 +227,7 @@ internal static class PgBenchmarkPipeline
             return Reject(s_access, name);
         }
 
-        ParameterSyntax? parameter = syntax?.ParameterList.Parameters.Count == 1 ? syntax.ParameterList.Parameters[0] : null;
+        ParameterSyntax? parameter = syntax is { ParameterList.Parameters: { Count: 1 } parameters } ? parameters[0] : null;
         if (method.Parameters.Length != 1 || method.Parameters[0].Type is not INamedTypeSymbol { Name: "PgBencher", Arity: 0 } bencher ||
             bencher.ContainingNamespace.ToDisplayString() != "Ankus")
         {

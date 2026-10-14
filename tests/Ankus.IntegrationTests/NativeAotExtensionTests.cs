@@ -46,7 +46,7 @@ public sealed class NativeAotExtensionTests(TestContext context)
         string suffix = OperatingSystem.IsWindows() ? ".dll"
             : OperatingSystem.IsMacOS() && installation.Version.Major >= 16 ? ".dylib" : ".so";
         Assert.AreEqual("Ankus.Examples.Hello" + suffix, manifest.Library);
-        Assert.IsTrue(File.Exists(Path.Combine(IntegrationEnvironment.NativeOutputDirectory, manifest.Library)));
+        Assert.IsTrue(File.Exists(Path.Join(IntegrationEnvironment.NativeOutputDirectory, manifest.Library)));
 
         await using NpgsqlConnection connection = await PostgresFixture.Cluster.OpenConnectionAsync(context.CancellationToken);
         await using var command = new NpgsqlCommand("LOAD 'Ankus.Examples.Hello'; SELECT public.add(20, 22)", connection);
@@ -77,7 +77,7 @@ public sealed class NativeAotExtensionTests(TestContext context)
         foreach (string artifact in artifacts)
         {
             Assert.AreEqual(Path.GetFileName(artifact), artifact);
-            Assert.IsTrue(File.Exists(Path.Combine(IntegrationEnvironment.NativeOutputDirectory, artifact)),
+            Assert.IsTrue(File.Exists(Path.Join(IntegrationEnvironment.NativeOutputDirectory, artifact)),
                 $"PostgreSQL must name the existing native fixture file '{artifact}' exactly.");
         }
     }

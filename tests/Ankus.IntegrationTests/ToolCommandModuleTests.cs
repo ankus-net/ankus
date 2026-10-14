@@ -20,8 +20,8 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "Identity.csproj");
-        string output = Path.Combine(directory, "published");
+        string project = Path.Join(directory, "Identity.csproj");
+        string output = Path.Join(directory, "published");
         for (int revision = 1; revision <= 2; revision++)
         {
             string version = "2.3.4-preview." + revision.ToString(CultureInfo.InvariantCulture);
@@ -36,7 +36,7 @@ public sealed partial class ToolCommandTests
                 [assembly: Ankus.PgModule(Name = """{{name}}""", Version = """{{moduleVersion}}""")]
 
                 """";
-            await File.WriteAllTextAsync(Path.Combine(directory, "Functions.cs"), identity + (mode == "module-only" ? "" : """
+            await File.WriteAllTextAsync(Path.Join(directory, "Functions.cs"), identity + (mode == "module-only" ? "" : """
                 public static class Functions
                 {
                     [Ankus.PgFunction] public static int ModuleAnswer() => 42;

@@ -75,7 +75,7 @@ public readonly record struct PgLsn(ulong Value) : IComparable<PgLsn>, IComparab
     /// <returns>The position.</returns>
     /// <exception cref="FormatException">The text is not a position.</exception>
     public static PgLsn Parse(ReadOnlySpan<char> s)
-        => TryParse(s, out PgLsn result) ? result : throw new FormatException("Invalid pg_lsn text: " + s.ToString());
+        => TryParse(s, out PgLsn result) ? result : throw new FormatException($"Invalid pg_lsn text: {s}");
 
     /// <summary>
     /// Parses PostgreSQL's text form, which does not depend on culture.

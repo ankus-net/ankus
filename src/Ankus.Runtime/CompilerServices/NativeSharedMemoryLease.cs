@@ -106,7 +106,7 @@ internal sealed unsafe class NativeSharedMemoryLease(NativeBorrowScope scope, ni
         int depth = checked(_readDepth + 1);
         int borrows = checked(s_borrows + 1);
         _readDepth = depth;
-        s_borrows = borrows;
+        SetThreadBorrows(borrows);
         NativeSharedReadScope frame = default;
         NativeSharedReadScope.Push(&frame, NativeMemoryContext.Provider, _readAddress, _readLength);
         try
@@ -122,7 +122,7 @@ internal sealed unsafe class NativeSharedMemoryLease(NativeBorrowScope scope, ni
             finally
             {
                 _readDepth--;
-                s_borrows--;
+                SetThreadBorrows(s_borrows - 1);
                 if (_readDepth == 0)
                 {
                     _readAddress = 0;
@@ -151,7 +151,7 @@ internal sealed unsafe class NativeSharedMemoryLease(NativeBorrowScope scope, ni
         Validate();
         CheckNoBorrowers();
         Admit(length, mutable: true);
-        s_borrows = checked(s_borrows + 1);
+        SetThreadBorrows(checked(s_borrows + 1));
         _mutating = true;
         NativeSharedReadScope frame = default;
         NativeSharedReadScope.PushMutation(&frame, NativeMemoryContext.Provider, _readAddress, _readLength);
@@ -168,12 +168,18 @@ internal sealed unsafe class NativeSharedMemoryLease(NativeBorrowScope scope, ni
             finally
             {
                 _mutating = false;
-                s_borrows--;
+                SetThreadBorrows(s_borrows - 1);
                 _readAddress = 0;
                 _readLength = 0;
             }
         }
     }
+
+    /// <summary>
+    /// Records how many shared-memory borrows this thread holds. Every lease on the thread shares the count, so it changes
+    /// only here.
+    /// </summary>
+    private static void SetThreadBorrows(int count) => s_borrows = count;
 
     /// <summary>
     /// Validates a nonthrowing native address reply before exposing original storage.

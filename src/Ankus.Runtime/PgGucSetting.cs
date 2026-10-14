@@ -59,7 +59,7 @@ public sealed class PgGucSetting<T>
                 return Unsafe.As<double, T>(ref value);
             }
 
-            return (T)(object?)NativeGuc.ReadString(Name)!;
+            return GenericValue.As<T>(NativeGuc.ReadString(Name));
         }
     }
 

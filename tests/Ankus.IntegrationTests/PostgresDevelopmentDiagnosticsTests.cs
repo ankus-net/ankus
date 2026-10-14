@@ -30,7 +30,7 @@ public sealed class PostgresDevelopmentDiagnosticsTests(TestContext context)
         {
             Assert.IsTrue(await first.StartAsync(options, token));
             string message = "retained café 🐘 " + Guid.NewGuid().ToString("N");
-            await using (NpgsqlConnection connection = await OpenDevelopmentConnectionAsync(options.Port!.Value, token))
+            await using (NpgsqlConnection connection = await OpenDevelopmentConnectionAsync(reservation.Port, token))
             {
                 await using var setup = new NpgsqlCommand("CREATE TABLE retained_diagnostics(value integer); INSERT INTO retained_diagnostics VALUES (42)", connection);
                 await setup.ExecuteNonQueryAsync(token);
@@ -62,7 +62,7 @@ public sealed class PostgresDevelopmentDiagnosticsTests(TestContext context)
             Assert.Contains("database system is shut down", retained);
             Assert.AreEqual(retained, await File.ReadAllTextAsync(first.LogFilePath, token));
             Assert.IsTrue(await stopped.StartAsync(options, token));
-            await using NpgsqlConnection restored = await OpenDevelopmentConnectionAsync(options.Port.Value, token);
+            await using NpgsqlConnection restored = await OpenDevelopmentConnectionAsync(reservation.Port, token);
             await using var query = new NpgsqlCommand("SELECT value FROM retained_diagnostics", restored);
             Assert.AreEqual(42, await query.ExecuteScalarAsync(token));
             Assert.AreEqual(1, stopped.ReadServerLog(token).Split(message, StringSplitOptions.None).Length - 1);
@@ -91,14 +91,14 @@ public sealed class PostgresDevelopmentDiagnosticsTests(TestContext context)
         try
         {
             Assert.IsTrue(await cluster.StartAsync(options, token));
-            await using (NpgsqlConnection connection = await OpenDevelopmentConnectionAsync(options.Port!.Value, token))
+            await using (NpgsqlConnection connection = await OpenDevelopmentConnectionAsync(reservation.Port, token))
             {
                 await using var setup = new NpgsqlCommand("CREATE TABLE retained_failure(value integer); INSERT INTO retained_failure VALUES (42)", connection);
                 await setup.ExecuteNonQueryAsync(token);
             }
 
             Assert.IsTrue(await cluster.StopAsync(token));
-            string auto = Path.Combine(cluster.DataDirectory, "postgresql.auto.conf");
+            string auto = Path.Join(cluster.DataDirectory, "postgresql.auto.conf");
             string original = await File.ReadAllTextAsync(auto, token);
             string missing = "ankus_missing_diagnostic_library_" + Guid.NewGuid().ToString("N");
             string destination = OperatingSystem.IsWindows() ? "log_destination = 'eventlog'\n" : string.Empty;
@@ -109,10 +109,10 @@ public sealed class PostgresDevelopmentDiagnosticsTests(TestContext context)
             Assert.Contains(missing, error.Message);
             Assert.Contains(missing, next.ReadServerLog(token));
             Assert.IsFalse(await next.IsRunningAsync(token));
-            Assert.IsTrue(File.Exists(Path.Combine(cluster.DataDirectory, "PG_VERSION")));
+            Assert.IsTrue(File.Exists(Path.Join(cluster.DataDirectory, "PG_VERSION")));
             await File.WriteAllTextAsync(auto, original, token);
             Assert.IsTrue(await next.StartAsync(options, token));
-            await using NpgsqlConnection recovered = await OpenDevelopmentConnectionAsync(options.Port.Value, token);
+            await using NpgsqlConnection recovered = await OpenDevelopmentConnectionAsync(reservation.Port, token);
             await using var query = new NpgsqlCommand("SELECT value FROM retained_failure", recovered);
             Assert.AreEqual(42, await query.ExecuteScalarAsync(token));
             Assert.Contains(missing, new PostgresDevelopmentCluster(installation, home).ReadServerLog(token));
@@ -142,12 +142,12 @@ public sealed class PostgresDevelopmentDiagnosticsTests(TestContext context)
         {
             var cluster = new PostgresDevelopmentCluster(installation, home);
             Directory.CreateDirectory(cluster.DataDirectory);
-            string ownership = Path.Combine(cluster.DataDirectory, ".ankus-cluster");
-            string version = Path.Combine(cluster.DataDirectory, "PG_VERSION");
+            string ownership = Path.Join(cluster.DataDirectory, ".ankus-cluster");
+            string version = Path.Join(cluster.DataDirectory, "PG_VERSION");
             string major = installation.Version.Major.ToString(System.Globalization.CultureInfo.InvariantCulture);
             await File.WriteAllTextAsync(ownership, installation.Label, context.CancellationToken);
             await File.WriteAllTextAsync(version, major, context.CancellationToken);
-            string marker = Path.Combine(cluster.DataDirectory, ".ankus-log-identity");
+            string marker = Path.Join(cluster.DataDirectory, ".ankus-log-identity");
             await File.WriteAllTextAsync(marker, identity, context.CancellationToken);
             const string Retained = "previous retained diagnostics café 🐘\n";
             await File.WriteAllTextAsync(cluster.LogFilePath, Retained, context.CancellationToken);

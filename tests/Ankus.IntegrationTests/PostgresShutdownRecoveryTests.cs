@@ -27,7 +27,7 @@ public sealed class PostgresShutdownRecoveryTests(TestContext context)
             ShutdownTimeout = TimeSpan.FromMilliseconds(500),
         };
         PostgresTestCluster cluster = await PostgresTestCluster.StartAsync(options, context.CancellationToken);
-        string pid = (await File.ReadAllLinesAsync(Path.Combine(cluster.DataDirectory, "postmaster.pid"), context.CancellationToken))[0];
+        string pid = (await File.ReadAllLinesAsync(Path.Join(cluster.DataDirectory, "postmaster.pid"), context.CancellationToken))[0];
         try
         {
             (await ProcessRunner.RunAsync("kill", ["-STOP", pid], new Dictionary<string, string?>(), context.CancellationToken))

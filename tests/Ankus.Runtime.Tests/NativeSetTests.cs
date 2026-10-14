@@ -123,8 +123,7 @@ public sealed class NativeSetTests
             Assert.AreEqual(1, sequence.EnumeratorCount);
             Assert.AreEqual(0, sequence.MoveNextCount);
             Assert.AreEqual(0, sequence.CurrentReadCount);
-            int value = 42;
-            Assert.IsFalse(NativeSet.MoveNext(handle, out value));
+            Assert.IsFalse(NativeSet.MoveNext(handle, out int value));
             Assert.AreEqual(0, value);
             Assert.IsFalse(NativeSet.MoveNext(handle, out value));
             Assert.AreEqual(2, sequence.MoveNextCount);
@@ -430,9 +429,7 @@ public sealed class NativeSetTests
     /// </summary>
     private static void CollectUnreferencedValues()
     {
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
+        GarbageCollection.Collect();
     }
 
     /// <summary>

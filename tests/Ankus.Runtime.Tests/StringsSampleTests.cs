@@ -114,9 +114,8 @@ public sealed class StringsSampleTests
     public void StringsSampleSplitFormsMatchRustOracle()
     {
         int checkedCases = 0;
-        foreach (string line in File.ReadLines(Path.Combine(AppContext.BaseDirectory, "string-semantics-reference.txt")))
+        foreach (string[] fields in File.ReadLines(Path.Join(AppContext.BaseDirectory, "string-semantics-reference.txt")).Select(static line => line.Split(';')))
         {
-            string[] fields = line.Split(';');
             if (fields[0] != "S")
             {
                 continue;

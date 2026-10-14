@@ -43,7 +43,7 @@ internal static class ExtensionInstaller
         }
 
         string libraryDirectory = StagePath(installation.LibraryDirectory, destinationRoot);
-        string extensionDirectory = StagePath(Path.Combine(installation.SharedDirectory, "extension"), destinationRoot);
+        string extensionDirectory = StagePath(Path.Join(installation.SharedDirectory, "extension"), destinationRoot);
         string scriptBase = installation.SharedDirectory;
         string? prefix = null;
         if (prefixDirectory is not null)
@@ -61,9 +61,9 @@ internal static class ExtensionInstaller
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(destinationRoot);
             string root = Path.GetFullPath(destinationRoot);
-            libraryDirectory = Path.Combine(root, "lib");
-            extensionDirectory = Path.Combine(root, "share", "extension");
-            scriptBase = Path.Combine(root, "share");
+            libraryDirectory = Path.Join(root, "lib");
+            extensionDirectory = Path.Join(root, "share", "extension");
+            scriptBase = Path.Join(root, "share");
         }
         else if (prefix is not null)
         {
@@ -71,7 +71,7 @@ internal static class ExtensionInstaller
             extensionDirectory = prefix;
             if (installation.Version.Major >= 18)
             {
-                string logical = Path.Combine(Path.GetPathRoot(installation.SharedDirectory)!,
+                string logical = Path.Join(Path.GetPathRoot(installation.SharedDirectory)!,
                     Path.GetRelativePath(Path.GetFullPath(destinationRoot!), prefix));
                 scriptBase = Path.GetDirectoryName(logical) ?? Path.GetPathRoot(logical)!;
             }
@@ -100,14 +100,14 @@ internal static class ExtensionInstaller
 
         (string Source, string Destination)[] files =
         [
-            (Path.Combine(source, manifest.Library), Path.Combine(libraryDirectory, manifest.Library)),
-            .. manifest.PluginLibraries.Select(module => (Path.Combine(source, module), Path.Combine(libraryDirectory, module))),
-            (Path.Combine(source, "extension", manifest.Sql), Path.Combine(scriptDirectory, manifest.Sql)),
+            (Path.Join(source, manifest.Library), Path.Join(libraryDirectory, manifest.Library)),
+            .. manifest.PluginLibraries.Select(module => (Path.Join(source, module), Path.Join(libraryDirectory, module))),
+            (Path.Join(source, "extension", manifest.Sql), Path.Join(scriptDirectory, manifest.Sql)),
             .. manifest.UpgradeScripts.Select(script =>
-                (Path.Combine(source, "extension", script), Path.Combine(scriptDirectory, script))),
+                (Path.Join(source, "extension", script), Path.Join(scriptDirectory, script))),
             .. manifest.VersionControlFiles.Select(control =>
-                (Path.Combine(source, "extension", control), Path.Combine(scriptDirectory, control))),
-            (Path.Combine(source, "extension", manifest.Control), Path.Combine(extensionDirectory, manifest.Control)),
+                (Path.Join(source, "extension", control), Path.Join(scriptDirectory, control))),
+            (Path.Join(source, "extension", manifest.Control), Path.Join(extensionDirectory, manifest.Control)),
         ];
         foreach ((string input, _) in files)
         {
@@ -161,7 +161,7 @@ internal static class ExtensionInstaller
         string relative = Path.IsPathFullyQualified(prefixDirectory)
             ? prefixDirectory[Path.GetPathRoot(prefixDirectory)!.Length..] : prefixDirectory;
         string root = Path.GetFullPath(outputRoot);
-        string destination = Path.GetFullPath(Path.Combine(root, relative));
+        string destination = Path.GetFullPath(Path.Join(root, relative));
         string resolved = Path.GetRelativePath(root, destination);
         if (resolved == ".." || resolved.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal) ||
             Path.IsPathRooted(resolved))
@@ -200,7 +200,7 @@ internal static class ExtensionInstaller
             }
             else
             {
-                current = Path.Combine(current, component);
+                current = Path.Join(current, component);
             }
 
             directories.Add(current);
@@ -210,5 +210,5 @@ internal static class ExtensionInstaller
     }
 
     private static string StagePath(string absolutePath, string? root)
-        => root is null ? absolutePath : Path.Combine(Path.GetFullPath(root), absolutePath[Path.GetPathRoot(absolutePath)!.Length..]);
+        => root is null ? absolutePath : Path.Join(Path.GetFullPath(root), absolutePath[Path.GetPathRoot(absolutePath)!.Length..]);
 }

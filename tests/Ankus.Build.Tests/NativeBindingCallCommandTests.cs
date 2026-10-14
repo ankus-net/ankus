@@ -29,12 +29,12 @@ public sealed class NativeBindingCallCommandTests(TestContext context)
     [DataRow("ExecutorRun\nExecutorRun\n")]
     public async Task InvalidCallSelectionsPreserveOutput(string names)
     {
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-call-command-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-call-command-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
-            string list = Path.Combine(directory, "symbols.txt");
-            string source = Path.Combine(directory, "native-calls.c");
+            string list = Path.Join(directory, "symbols.txt");
+            string source = Path.Join(directory, "native-calls.c");
             await File.WriteAllTextAsync(list, names, context.CancellationToken);
             await File.WriteAllTextAsync(source, "existing-call-body", context.CancellationToken);
             await Assert.ThrowsExactlyAsync<FormatException>(() => NativeBindingCallCommand.RunAsync(
@@ -59,11 +59,11 @@ public sealed class NativeBindingCallCommandTests(TestContext context)
     [TestMethod]
     public async Task CallSourcePublicationRequiresSuccessfulUncancelledCompilation()
     {
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-call-publication-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-call-publication-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
-            string final = Path.Combine(directory, "native-calls.c");
+            string final = Path.Join(directory, "native-calls.c");
             await File.WriteAllTextAsync(final, "prior", context.CancellationToken);
             int inspections = 0;
             var expected = new InvalidOperationException("native body rejected");

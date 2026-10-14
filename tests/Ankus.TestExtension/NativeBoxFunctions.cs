@@ -74,8 +74,7 @@ public static unsafe class NativeBoxFunctions
         originalBorrow.Value = 73;
         bool samePointer = (nint)value.DangerousGetPointer() == pointer && (nint)nextBorrow.DangerousGetPointer() == pointer;
         string before = $"{value.Value},{originalBorrow.Value},{nextBorrow.Value}";
-        int consumedOperations = 0;
-        foreach (Action operation in new Action[]
+        int consumedOperations = new Action[]
         {
             () =>
             {
@@ -94,13 +93,7 @@ public static unsafe class NativeBoxFunctions
             {
                 _ = box.DangerousGetPointer();
             },
-        })
-        {
-            if (IsDisposed(operation))
-            {
-                consumedOperations++;
-            }
-        }
+        }.Count(IsDisposed);
 
         bool policy = value.Options == PgAllocationOptions.Huge && value.Alignment == BoxAlignment;
         if (deleteParent)
@@ -330,7 +323,7 @@ public static unsafe class NativeBoxFunctions
         int aliases = 0;
         for (int index = 0; index < 500; index++)
         {
-            PgNativeReference<int> alias = anchor.DangerousBorrow<int>(interior) ?? throw new InvalidOperationException("Missing repeated borrow.");
+            PgNativeReference<int> alias = anchor.DangerousBorrow<int>(interior)!;
             if (alias.Value == 73)
             {
                 aliases++;
@@ -366,7 +359,7 @@ public static unsafe class NativeBoxFunctions
         string fresh = "deleted";
         if (anchor.IsAlive)
         {
-            PgNativeReference<int> current = anchor.DangerousBorrow<int>(interior) ?? throw new InvalidOperationException("Missing new-generation borrow.");
+            PgNativeReference<int> current = anchor.DangerousBorrow<int>(interior)!;
             fresh = current.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
         }
 

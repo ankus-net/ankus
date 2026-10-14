@@ -24,7 +24,7 @@ public sealed partial class ToolCommandTests
         string plugin = Path.GetFileNameWithoutExtension(manifest.Library);
         string module = Alias + Path.GetExtension(manifest.Library);
         Assert.AreSequenceEqual<string>([module], manifest.PluginLibraries);
-        Assert.IsTrue(File.Exists(Path.Combine(output, module)));
+        Assert.IsTrue(File.Exists(Path.Join(output, module)));
 
         await using (PostgresTestCluster cluster = await StartPublishedClusterAsync(output, token,
             additionalConfiguration: ["wal_level = logical", "max_replication_slots = 4"]))
@@ -63,15 +63,15 @@ public sealed partial class ToolCommandTests
         Assert.AreEqual(0, packaged.ExitCode, packaged.StandardOutput + packaged.StandardError);
         foreach (string file in new[] { manifest.Library, module })
         {
-            Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Combine(output, file), token),
-                await File.ReadAllBytesAsync(Path.Combine(PackageLibraryDirectory(package), file), token));
+            Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Join(output, file), token),
+                await File.ReadAllBytesAsync(Path.Join(PackageLibraryDirectory(package), file), token));
         }
 
         string republished = await PublishPackageConsumerInDirectoryAsync(directory, "AliasDecoder", "ankus_alias_decoder", AliasDecoderSource,
             token);
         Assert.IsEmpty(PublishedExtension.Read(republished).PluginLibraries);
-        Assert.IsFalse(File.Exists(Path.Combine(republished, module)));
-        Assert.IsTrue(File.Exists(Path.Combine(republished, manifest.Library)));
+        Assert.IsFalse(File.Exists(Path.Join(republished, module)));
+        Assert.IsTrue(File.Exists(Path.Join(republished, manifest.Library)));
     }
 
     private const string AliasDecoderSource = """

@@ -234,7 +234,7 @@ public sealed class SpiPreparedStatement : IDisposable
     /// <exception cref="InvalidCastException">A column cannot be read as its requested managed type.</exception>
     public (TFirst First, TSecond Second) ExecuteScalars<TFirst, TSecond>(params ReadOnlySpan<SpiParameter> parameters)
     {
-        SpiScalarResult result = RunScalars(parameters, SpiResultMode.Pair, SpiScalarResult.RequiresRaw<TFirst>() | SpiScalarResult.RequiresRaw<TSecond>());
+        SpiScalarResult result = RunScalars(parameters, SpiResultMode.Pair, SpiScalarResult.RequiresRaw<TFirst, TSecond>());
         return result.Read(static values => (values.Get<TFirst>(0), values.Get<TSecond>(1)));
     }
 
@@ -253,7 +253,7 @@ public sealed class SpiPreparedStatement : IDisposable
         params ReadOnlySpan<SpiParameter> parameters)
     {
         SpiScalarResult result = RunScalars(parameters, SpiResultMode.Triple,
-            SpiScalarResult.RequiresRaw<TFirst>() | SpiScalarResult.RequiresRaw<TSecond>() | SpiScalarResult.RequiresRaw<TThird>());
+            SpiScalarResult.RequiresRaw<TFirst, TSecond, TThird>());
         return result.Read(static values => (values.Get<TFirst>(0), values.Get<TSecond>(1), values.Get<TThird>(2)));
     }
 

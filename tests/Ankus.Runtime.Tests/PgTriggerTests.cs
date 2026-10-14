@@ -1,5 +1,4 @@
 using System.Buffers.Binary;
-using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Ankus.Runtime.Tests;
@@ -697,8 +696,7 @@ public sealed class PgTriggerTests
     /// <summary>
     /// Accesses the transport marker to construct independently malformed tuple envelopes.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary1")]
-    private static extern ref int TransportKind(ref NativeValue value);
+    private static ref int TransportKind(ref NativeValue value) => ref value._auxiliary1;
 
     /// <summary>
     /// Releases each owned invocation buffer after tests finish, including values replaced by malformed inputs.

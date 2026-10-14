@@ -25,7 +25,7 @@ public sealed partial class ToolCommandTests
     [DataRow("Ankus.Testing", "PostgresTestCluster.cs")]
     public void LibraryPackagesEmbedTheirSymbols(string package, string source)
     {
-        using ZipArchive archive = ZipFile.OpenRead(Path.Combine(s_root, "feed", package + "." + s_version + ".nupkg"));
+        using ZipArchive archive = ZipFile.OpenRead(Path.Join(s_root, "feed", package + "." + s_version + ".nupkg"));
         Assert.IsEmpty(archive.Entries.Where(static entry => entry.FullName.EndsWith(".pdb", StringComparison.OrdinalIgnoreCase)));
         using var assembly = new MemoryStream();
         using (Stream entry = archive.GetEntry("lib/net10.0/" + package + ".dll")!.Open())
@@ -41,7 +41,7 @@ public sealed partial class ToolCommandTests
         MetadataReader symbols = provider.GetMetadataReader();
         Assert.Contains(name => name.EndsWith("/" + source, StringComparison.Ordinal) || name.EndsWith("\\" + source, StringComparison.Ordinal),
             symbols.Documents.Select(handle => symbols.GetString(symbols.GetDocument(handle).Name)));
-        string repository = Path.Combine(IntegrationEnvironment.RepositoryRoot, ".git");
+        string repository = Path.Join(IntegrationEnvironment.RepositoryRoot, ".git");
         Assert.AreEqual(Directory.Exists(repository) || File.Exists(repository), symbols.CustomDebugInformation
             .Any(handle => symbols.GetGuid(symbols.GetCustomDebugInformation(handle).Kind) == s_sourceLinkKind));
     }

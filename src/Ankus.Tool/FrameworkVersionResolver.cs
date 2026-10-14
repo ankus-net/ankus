@@ -215,13 +215,10 @@ internal sealed class FrameworkVersionResolver(string? target, bool includePrere
         string resolved = Path.GetPathRoot(path)!;
         foreach (string component in path[resolved.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
         {
-            resolved = Path.Combine(resolved, component);
-            if (Directory.Exists(resolved))
+            resolved = Path.Join(resolved, component);
+            if (Directory.Exists(resolved) && Directory.ResolveLinkTarget(resolved, returnFinalTarget: true) is FileSystemInfo target)
             {
-                if (Directory.ResolveLinkTarget(resolved, returnFinalTarget: true) is FileSystemInfo target)
-                {
-                    resolved = ResolveDirectory(target.FullName);
-                }
+                resolved = ResolveDirectory(target.FullName);
             }
         }
 

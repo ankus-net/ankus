@@ -27,10 +27,10 @@ internal sealed class SampleBackendFixture(string sample) : IAsyncDisposable
         {
             _extension ??= await PostgresExtensionTest.StartAsync(new PostgresExtensionTestOptions
             {
-                ProjectPath = Path.Combine(IntegrationEnvironment.RepositoryRoot, "samples", sample, sample + ".csproj"),
+                ProjectPath = Path.Join(IntegrationEnvironment.RepositoryRoot, "samples", sample, sample + ".csproj"),
                 Installation = await IntegrationEnvironment.GetInstallationAsync(cancellationToken),
                 IncludeTests = true,
-                DataDirectoryBase = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-pgdata"),
+                DataDirectoryBase = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-pgdata"),
             }, cancellationToken);
             return _extension;
         }

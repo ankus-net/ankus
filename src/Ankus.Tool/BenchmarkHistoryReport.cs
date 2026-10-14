@@ -161,7 +161,7 @@ internal static class BenchmarkHistoryReport
         }
 
         double reference = baseline.PointEstimate!.Value;
-        return reference == 0 ? "(n/a)" : "(" + BenchmarkConsoleFormat.Percent((run.PointEstimate!.Value - reference) / reference * 100) + ")";
+        return reference is 0 ? "(n/a)" : "(" + BenchmarkConsoleFormat.Percent((run.PointEstimate!.Value - reference) / reference * 100) + ")";
     }
 
     private static string Bar(double value, double maximum)

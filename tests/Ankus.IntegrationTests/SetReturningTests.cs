@@ -493,7 +493,7 @@ public sealed class SetReturningTests(TestContext context)
                 await transaction.SaveAsync("set_resource_failure", token);
                 command.CommandText = "ALTER TYPE datatype.enum_mood RENAME VALUE 'Low' TO 'renamed'";
                 await command.ExecuteNonQueryAsync(token);
-                command.CommandText = $"SELECT value::text FROM set_values.set_owned_resources({openCursor.ToString()}) value";
+                command.CommandText = $"SELECT value::text FROM set_values.set_owned_resources({openCursor}) value";
                 PostgresException error = await Assert.ThrowsExactlyAsync<PostgresException>(() => command.ExecuteScalarAsync(token));
                 Assert.AreEqual("22P02", error.SqlState);
                 await transaction.RollbackAsync("set_resource_failure", token);
@@ -504,7 +504,7 @@ public sealed class SetReturningTests(TestContext context)
             int[] counters = await ReadStatusAsync(command, token);
             Assert.AreEqual(20, counters[12]);
             Assert.IsEmpty(notices.Where(static notice => notice.InvariantSeverity == "WARNING" && notice.MessageText.Contains("iterator disposal", StringComparison.Ordinal)));
-            command.CommandText = $"SELECT value::text FROM set_values.set_owned_resources({openCursor.ToString()}) value";
+            command.CommandText = $"SELECT value::text FROM set_values.set_owned_resources({openCursor}) value";
             Assert.AreEqual("Low", await command.ExecuteScalarAsync(token));
             command.CommandText = resourceCounts;
             Assert.AreSequenceEqual(baseline, Assert.IsInstanceOfType<long[]>(await command.ExecuteScalarAsync(token)));
@@ -827,7 +827,7 @@ public sealed class SetReturningTests(TestContext context)
                 await command.ExecuteNonQueryAsync(token);
             }
 
-            command.CommandText = $"SELECT array_agg(v::text) FROM set_values.{function}({(!nativeFailure).ToString()}) v";
+            command.CommandText = $"SELECT array_agg(v::text) FROM set_values.{function}({!nativeFailure}) v";
             PostgresException error = await Assert.ThrowsExactlyAsync<PostgresException>(() => command.ExecuteScalarAsync(token));
             Assert.AreEqual(nativeFailure ? "22P02" : "38000", error.SqlState);
             await transaction.RollbackAsync("set_row_failure", token);

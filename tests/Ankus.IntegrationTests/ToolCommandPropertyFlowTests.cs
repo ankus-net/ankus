@@ -17,9 +17,9 @@ public sealed partial class ToolCommandTests
         await using PostgresTestInstallation owner = await PostgresTestInstallation.StageAsync(s_installation, CreateDirectory(), token);
         string home = CreateDirectory();
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "PropertyFlow.csproj");
+        string project = Path.Join(directory, "PropertyFlow.csproj");
         XDocument.Load(s_project).Save(project);
-        await File.WriteAllTextAsync(Path.Combine(directory, "Functions.cs"), """
+        await File.WriteAllTextAsync(Path.Join(directory, "Functions.cs"), """
             using Ankus;
             #if !NET10_0 || !PROPERTY_WITNESS || !EXTRA_WITNESS
             #error Framework and forwarded consumer constants must be retained.
@@ -57,7 +57,7 @@ public sealed partial class ToolCommandTests
             #endif
             }
             """, token);
-        string suite = Path.Combine(directory, "pg_regress");
+        string suite = Path.Join(directory, "pg_regress");
         await WriteRegressionCaseAsync(suite, "setup", "CREATE EXTENSION ankus_property_flow;", "", token);
         await WriteRegressionCaseAsync(suite, "native", "SELECT property_value(); SELECT current_database(); SELECT property_header_major();",
             "42\nankus_property_flow_regress\n" + MajorText() + "\n", token);
@@ -87,7 +87,7 @@ public sealed partial class ToolCommandTests
             Assert.AreEqual(0, regress.ExitCode, regress.StandardOutput + regress.StandardError);
             Assert.Contains("Created database ankus_property_flow_regress", regress.StandardOutput);
             Assert.AreEqual("\\set ECHO none\n42\nankus_property_flow_regress\n" + MajorText() + "\n",
-                (await File.ReadAllTextAsync(Path.Combine(suite, "results", "native.out"), token)).ReplaceLineEndings("\n"));
+                (await File.ReadAllTextAsync(Path.Join(suite, "results", "native.out"), token)).ReplaceLineEndings("\n"));
             Assert.IsTrue(await cluster.IsRunningAsync(token));
         }
         finally
@@ -106,7 +106,7 @@ public sealed partial class ToolCommandTests
     public async Task ProjectGlobalPropertyQueriesPreserveLiteralValues(string value)
     {
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "PropertyLiteral.csproj");
+        string project = Path.Join(directory, "PropertyLiteral.csproj");
         await File.WriteAllTextAsync(project, """
             <Project Sdk="Microsoft.NET.Sdk">
               <PropertyGroup>
@@ -121,7 +121,7 @@ public sealed partial class ToolCommandTests
             "--property", "AnkusExtensionName=" + value], context.CancellationToken);
         Assert.AreEqual(0, query.ExitCode, query.StandardError);
         Assert.AreEqual((value.Length == 0 ? "propertyliteral" : value) + Environment.NewLine, query.StandardOutput);
-        Assert.IsFalse(Directory.Exists(Path.Combine(directory, "bin")));
-        Assert.IsFalse(Directory.Exists(Path.Combine(directory, "obj")));
+        Assert.IsFalse(Directory.Exists(Path.Join(directory, "bin")));
+        Assert.IsFalse(Directory.Exists(Path.Join(directory, "obj")));
     }
 }

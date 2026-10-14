@@ -95,7 +95,7 @@ public sealed partial class ToolCommandTests
             {
                 if (!s_caseInstallations.TryDequeue(out _caseInstallation))
                 {
-                    string root = Path.Combine(s_root, "postgres " + Guid.NewGuid().ToString("N"));
+                    string root = Path.Join(s_root, "postgres " + Guid.NewGuid().ToString("N"));
                     _caseInstallation = await PostgresTestInstallation.StageAsync(s_installation, root, token);
                 }
 

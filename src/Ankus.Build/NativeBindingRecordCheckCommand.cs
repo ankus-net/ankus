@@ -47,7 +47,7 @@ internal static class NativeBindingRecordCheckCommand
             arguments.Length >= 5 ? arguments[4] : "", records.Headers.Target.RuntimeIdentifier, arguments.Length >= 6 ? arguments[5] : ""];
         await PublishAsync(output, source, async (file, directory, token) =>
         {
-            string executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "checks.exe" : "checks");
+            string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "checks.exe" : "checks");
             await NativeBindingLayoutCommand.CompileProbeAsync(installation, toolchain, file, executable, directory, token, requireC11: true);
         }, cancellationToken);
         Console.WriteLine($"PG{major}: compiled {records.Graph.Declarations.Count} native declaration contracts and executed their named bitfield checks.");
@@ -65,15 +65,15 @@ internal static class NativeBindingRecordCheckCommand
     {
         cancellationToken.ThrowIfCancellationRequested();
         Directory.CreateDirectory(output);
-        string directory = Path.Combine(output, "record-checks-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(output, "record-checks-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
-            string file = Path.Combine(directory, "checks.c");
+            string file = Path.Join(directory, "checks.c");
             await File.WriteAllTextAsync(file, source, cancellationToken);
             await verify(file, directory, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            File.Move(file, Path.Combine(output, "native-record-checks.c"), overwrite: true);
+            File.Move(file, Path.Join(output, "native-record-checks.c"), overwrite: true);
         }
         finally
         {

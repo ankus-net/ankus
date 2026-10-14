@@ -50,8 +50,8 @@ internal static class NativeBindingLayoutCommand
 
         string output = Path.GetFullPath(arguments[2]);
         Directory.CreateDirectory(output);
-        string source = Path.Combine(output, "native-layout.c");
-        string executable = Path.Combine(output, OperatingSystem.IsWindows() ? "native-layout.exe" : "native-layout");
+        string source = Path.Join(output, "native-layout.c");
+        string executable = Path.Join(output, OperatingSystem.IsWindows() ? "native-layout.exe" : "native-layout");
         await File.WriteAllTextAsync(source, NativeBindingProbe.GenerateSource(catalog, NativeBindingResources.ReadHeaders(major)), cancellationToken);
         string observations = await CompileProbeAsync(installation, arguments, source, executable, output, cancellationToken);
         NativeBindingLayout layout = NativeBindingProbe.Read(catalog, observations);
@@ -61,12 +61,12 @@ internal static class NativeBindingLayoutCommand
             throw new InvalidOperationException($"Native bindings target {layout.RuntimeIdentifier}, but the requested runtime is {expectedRuntime}.");
         }
 
-        await File.WriteAllTextAsync(Path.Combine(output, "native-layout.txt"), observations, cancellationToken);
+        await File.WriteAllTextAsync(Path.Join(output, "native-layout.txt"), observations, cancellationToken);
         string json = JsonSerializer.Serialize(layout, s_jsonOptions) + "\n";
-        await File.WriteAllTextAsync(Path.Combine(output, "native-layout.json"), json, cancellationToken);
-        await File.WriteAllTextAsync(Path.Combine(output, "native-node-availability.json"),
+        await File.WriteAllTextAsync(Path.Join(output, "native-layout.json"), json, cancellationToken);
+        await File.WriteAllTextAsync(Path.Join(output, "native-node-availability.json"),
             JsonSerializer.Serialize(selected.AbsentFields, s_jsonOptions) + "\n", cancellationToken);
-        await File.WriteAllTextAsync(Path.Combine(output, "native-node-declarations.json"),
+        await File.WriteAllTextAsync(Path.Join(output, "native-node-declarations.json"),
             JsonSerializer.Serialize(selected.Declarations, s_jsonOptions) + "\n", cancellationToken);
         Console.WriteLine($"PG{major}: measured {layout.Types.Count} native values and {layout.Types.Values.Sum(static type => type.Fields.Count)} fields.");
         return layout;
@@ -102,8 +102,8 @@ internal static class NativeBindingLayoutCommand
             // I/O definitions are compiled outside backend implementation sections.
             options.AddRange(["/nologo", "/O2", "/MD", "/WX", "/FIpostgres.h", "/Fo" + Path.ChangeExtension(executable, ".obj"), "/Fe" + executable]);
             options.AddRange(["/I" + installation.ServerIncludeDirectory, "/I" + installation.IncludeDirectory,
-                "/I" + Path.Combine(installation.ServerIncludeDirectory, "port", "win32"),
-                "/I" + Path.Combine(installation.ServerIncludeDirectory, "port", "win32_msvc")]);
+                "/I" + Path.Join(installation.ServerIncludeDirectory, "port", "win32"),
+                "/I" + Path.Join(installation.ServerIncludeDirectory, "port", "win32_msvc")]);
             options.AddRange(WindowsToolchain.GetIncludeDirectories(libraries).Select(static path => "/I" + path));
             options.Add(source);
             if (libraries.Length != 0)
@@ -229,7 +229,8 @@ internal static class NativeBindingLayoutCommand
             }
 
             await process.WaitForExitAsync(CancellationToken.None);
-            await Task.WhenAll((Task)output, errors).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            Task[] streams = [output, errors];
+            await Task.WhenAll(streams).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
             throw;
         }
 

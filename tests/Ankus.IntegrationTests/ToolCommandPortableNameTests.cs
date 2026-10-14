@@ -25,13 +25,13 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string cli = Path.Combine(directory, "cli");
-        string template = Path.Combine(directory, "template");
+        string cli = Path.Join(directory, "cli");
+        string template = Path.Join(directory, "template");
         ProcessResult created = await InvokeAsync(["new", name, "--output", cli], token);
         Assert.AreEqual(0, created.ExitCode, created.StandardError);
 
-        string hive = Path.Combine(directory, "template hive");
-        string package = Path.Combine(s_root, "feed", "Ankus.Templates." + s_version + ".nupkg");
+        string hive = Path.Join(directory, "template hive");
+        string package = Path.Join(s_root, "feed", "Ankus.Templates." + s_version + ".nupkg");
         ProcessResult installed = await PackageProcessRunner.RunAsync("dotnet", ["new", "install", package, "--debug:custom-hive", hive],
             s_environment, token, workingDirectory: s_root);
         Assert.AreEqual(0, installed.ExitCode, installed.StandardError);
@@ -42,27 +42,27 @@ public sealed partial class ToolCommandTests
 
         foreach (string output in new[] { cli, template })
         {
-            string extension = Path.Combine(output, "src", name);
-            string source = await File.ReadAllTextAsync(Path.Combine(extension, "Functions.cs"), token);
+            string extension = Path.Join(output, "src", name);
+            string source = await File.ReadAllTextAsync(Path.Join(extension, "Functions.cs"), token);
             Assert.Contains("namespace " + expectedNamespace + ";", source);
-            string checks = await File.ReadAllTextAsync(Path.Combine(extension, "BackendChecks.cs"), token);
+            string checks = await File.ReadAllTextAsync(Path.Join(extension, "BackendChecks.cs"), token);
             Assert.Contains("namespace " + expectedNamespace + ";", checks);
-            XDocument project = XDocument.Load(Path.Combine(extension, name + ".csproj"));
+            XDocument project = XDocument.Load(Path.Join(extension, name + ".csproj"));
             Assert.AreEqual(expectedExtension, project.Descendants("AnkusExtensionName").Single().Value);
             Assert.AreEqual(expectedExtension, project.Descendants("AssemblyName").Single().Value);
-            XDocument solution = XDocument.Load(Path.Combine(output, name + ".slnx"));
+            XDocument solution = XDocument.Load(Path.Join(output, name + ".slnx"));
             Assert.AreSequenceEqual<string>(["src/" + name + "/" + name + ".csproj", "tests/" + name + ".Tests/" + name + ".Tests.csproj"],
                 solution.Descendants("Project").Select(static element => element.Attribute("Path")!.Value.Replace('\\', '/')));
-            string testDirectory = Path.Combine(output, "tests", name + ".Tests");
-            string managed = await File.ReadAllTextAsync(Path.Combine(testDirectory, "ManagedTests.cs"), token);
+            string testDirectory = Path.Join(output, "tests", name + ".Tests");
+            string managed = await File.ReadAllTextAsync(Path.Join(testDirectory, "ManagedTests.cs"), token);
             Assert.Contains("namespace " + expectedNamespace + ".Tests;", managed);
-            XDocument host = XDocument.Load(Path.Combine(testDirectory, name + ".Tests.csproj"));
+            XDocument host = XDocument.Load(Path.Join(testDirectory, name + ".Tests.csproj"));
             Assert.AreEqual("../../src/" + name + "/" + name + ".csproj",
                 host.Descendants("ProjectReference").Single().Attribute("Include")!.Value.Replace('\\', '/'));
-            string regression = Path.Combine(extension, "pg_regress");
-            string setup = await File.ReadAllTextAsync(Path.Combine(regression, "sql", "setup.sql"), token);
+            string regression = Path.Join(extension, "pg_regress");
+            string setup = await File.ReadAllTextAsync(Path.Join(regression, "sql", "setup.sql"), token);
             Assert.Contains("CREATE EXTENSION " + expectedExtension + ";", setup);
-            Assert.AreEqual(setup, await File.ReadAllTextAsync(Path.Combine(regression, "expected", "setup.out"), token));
+            Assert.AreEqual(setup, await File.ReadAllTextAsync(Path.Join(regression, "expected", "setup.out"), token));
         }
 
         Assert.IsEmpty(Directory.GetDirectories(directory, ".ankus-new-*"));

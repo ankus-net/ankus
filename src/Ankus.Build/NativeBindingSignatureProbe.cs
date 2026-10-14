@@ -109,9 +109,8 @@ internal static class NativeBindingSignatureProbe
         }
 
         var observed = new Dictionary<(string Name, string Index), NativeBindingSignatureValue>();
-        foreach (string line in lines.Skip(1))
+        foreach (string[] fields in lines.Skip(1).Select(static line => line.Split('|')))
         {
-            string[] fields = line.Split('|');
             if (fields.Length != 5 || fields[0] != "value" || !functions.TryGetValue(fields[1], out NativeBindingFunction? function) ||
                 !(fields[2] == "result" ? HasResult(function) : int.TryParse(fields[2], NumberStyles.None, CultureInfo.InvariantCulture, out int index) &&
                     fields[2] == index.ToString(CultureInfo.InvariantCulture) && index < function.Parameters.Count) ||

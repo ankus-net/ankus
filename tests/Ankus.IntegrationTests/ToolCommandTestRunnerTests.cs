@@ -38,9 +38,9 @@ public sealed partial class ToolCommandTests
         string[] dataArguments = dataBase is null ? [] : account is null ? ["--pgdata", dataBase] : ["--pgdata", dataBase, "--runas", account];
         try
         {
-            string reports = Path.Combine(output, "reports with spaces");
-            string host = Path.Combine(output, "tests", "TestCommandProbe.Tests", "TestCommandProbe.Tests.csproj");
-            string forwardedOutput = Path.Combine(output, "forwarded outputs with spaces");
+            string reports = Path.Join(output, "reports with spaces");
+            string host = Path.Join(output, "tests", "TestCommandProbe.Tests", "TestCommandProbe.Tests.csproj");
+            string forwardedOutput = Path.Join(output, "forwarded outputs with spaces");
             string[] configuration = selection.StartsWith("forwarded", StringComparison.Ordinal) ? [] : ["-c", "Shipping"];
             string[] installationProperty = [];
             if (selection == "forwarded-relative")
@@ -63,7 +63,7 @@ public sealed partial class ToolCommandTests
                 s_environment, token, workingDirectory: output);
             Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
             Assert.Contains(s_postgresKey + ": dotnet test exited 0.", result.StandardOutput);
-            string report = Path.Combine(reports, s_postgresKey, "selected.trx");
+            string report = Path.Join(reports, s_postgresKey, "selected.trx");
             XDocument trx = XDocument.Load(report);
             XNamespace ns = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010";
             Dictionary<string, string> outcomes = trx.Descendants(ns + "UnitTestResult").ToDictionary(
@@ -72,9 +72,9 @@ public sealed partial class ToolCommandTests
             Assert.AreEqual("Passed", outcomes["ConfigurationAndVersionReachBackend"]);
             Assert.AreEqual("Passed", outcomes["TestCommandProbe.BackendChecks.AdditionInsidePostgres()"]);
             Assert.AreEqual("Passed", outcomes["TestCommandProbe.BackendChecks.ExpectedFailure()"]);
-            string session = await File.ReadAllTextAsync(Path.Combine(TestCommandHostDirectory(output, "Shipping"), "session-path.txt"), token);
+            string session = await File.ReadAllTextAsync(Path.Join(TestCommandHostDirectory(output, "Shipping"), "session-path.txt"), token);
             Assert.IsFalse(Directory.Exists(session), "Command-owned data, sockets and publication must be removed.");
-            string actualData = await File.ReadAllTextAsync(Path.Combine(TestCommandHostDirectory(output, "Shipping"), "data-path.txt"), token);
+            string actualData = await File.ReadAllTextAsync(Path.Join(TestCommandHostDirectory(output, "Shipping"), "data-path.txt"), token);
             Assert.IsFalse(Directory.Exists(actualData));
             if (dataBase is not null)
             {
@@ -82,15 +82,15 @@ public sealed partial class ToolCommandTests
                 Assert.IsEmpty(Directory.GetDirectories(dataBase));
                 if (account is null)
                 {
-                    Assert.AreEqual("preserve custom parent", await File.ReadAllTextAsync(Path.Combine(dataBase, "unrelated.txt"), token));
+                    Assert.AreEqual("preserve custom parent", await File.ReadAllTextAsync(Path.Join(dataBase, "unrelated.txt"), token));
                 }
             }
 
-            Assert.IsNotEmpty(Directory.GetFiles(Path.Combine(output, "src", "TestCommandProbe", "bin", "ankus-test-logs"), "*.log"));
+            Assert.IsNotEmpty(Directory.GetFiles(Path.Join(output, "src", "TestCommandProbe", "bin", "ankus-test-logs"), "*.log"));
             if (selection.StartsWith("forwarded", StringComparison.Ordinal))
             {
-                Assert.IsNotEmpty(Directory.GetFiles(Path.Combine(forwardedOutput, "TestCommandProbe"), "*", SearchOption.AllDirectories));
-                Assert.IsNotEmpty(Directory.GetFiles(Path.Combine(forwardedOutput, "TestCommandProbe.Tests"), "*", SearchOption.AllDirectories));
+                Assert.IsNotEmpty(Directory.GetFiles(Path.Join(forwardedOutput, "TestCommandProbe"), "*", SearchOption.AllDirectories));
+                Assert.IsNotEmpty(Directory.GetFiles(Path.Join(forwardedOutput, "TestCommandProbe.Tests"), "*", SearchOption.AllDirectories));
             }
         }
         finally
@@ -121,7 +121,7 @@ public sealed partial class ToolCommandTests
     public async Task TestCommandRejectsForwardedConfiguration(string partition)
     {
         string root = CreateDirectory();
-        string reports = Path.Combine(root, "reports");
+        string reports = Path.Join(root, "reports");
         string[] forwarded = partition switch
         {
             "conflict" => ["--configuration", "Release"],
@@ -162,7 +162,7 @@ public sealed partial class ToolCommandTests
     public async Task TestCommandRejectsInvalidSelection(string selection)
     {
         string root = CreateDirectory();
-        string reports = Path.Combine(root, "reports");
+        string reports = Path.Join(root, "reports");
         string[] arguments = selection switch
         {
             "empty-all" or "broken-registry" => ["--all"],
@@ -181,7 +181,7 @@ public sealed partial class ToolCommandTests
                 [s_postgresKey] = s_installation.PgConfigPath,
                 ["pg" + DifferentMajor().ToString(CultureInfo.InvariantCulture)] = "missing-pg-config",
             };
-            await File.WriteAllTextAsync(Path.Combine(root, "config.json"), JsonSerializer.Serialize(entries), context.CancellationToken);
+            await File.WriteAllTextAsync(Path.Join(root, "config.json"), JsonSerializer.Serialize(entries), context.CancellationToken);
         }
 
         ProcessResult result = await InvokeAsync(["test", "--home", root, "--results-directory", reports, .. arguments], context.CancellationToken);
@@ -199,7 +199,7 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string output = await CreateTestCommandProjectAsync(token);
-        await File.WriteAllTextAsync(Path.Combine(output, "tests", "TestCommandProbe.Tests", "SelectionGuardTests.cs"), """
+        await File.WriteAllTextAsync(Path.Join(output, "tests", "TestCommandProbe.Tests", "SelectionGuardTests.cs"), """
             using System.Globalization;
             using System.Runtime.CompilerServices;
             using Ankus.PgConfig;
@@ -254,7 +254,7 @@ public sealed partial class ToolCommandTests
                     string? data = Environment.GetEnvironmentVariable("ANKUS_TEST_DATA_DIRECTORY");
                     try
                     {
-                        foreach (string invalid in new[] { "relative-data", Path.Combine(session!, "missing-data"), project })
+                        foreach (string invalid in new[] { "relative-data", Path.Join(session!, "missing-data"), project })
                         {
                             Environment.SetEnvironmentVariable("ANKUS_TEST_DATA_DIRECTORY", invalid);
                             InvalidOperationException error = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => PostgresExtensionTest.StartAsync(options, context.CancellationToken));
@@ -290,19 +290,19 @@ public sealed partial class ToolCommandTests
                         Environment.SetEnvironmentVariable("ANKUS_TEST_REUSE_SCHEMA", reuse);
                     }
 
-                    Assert.IsFalse(Directory.Exists(Path.Combine(Path.GetDirectoryName(project)!, "bin", "ankus-test-logs")));
+                    Assert.IsFalse(Directory.Exists(Path.Join(Path.GetDirectoryName(project)!, "bin", "ankus-test-logs")));
                 }
 
                 private static string ProjectPath([CallerFilePath] string source = "")
-                    => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(source)!, "../../src/TestCommandProbe/TestCommandProbe.csproj"));
+                    => Path.GetFullPath(Path.Join(Path.GetDirectoryName(source)!, "../../src/TestCommandProbe/TestCommandProbe.csproj"));
             }
             """, token);
         ProcessResult result = await PackageProcessRunner.RunAsync(s_tool,
-            ["test", "--home", s_home, "--pg", MajorText(), "--results-directory", Path.Combine(output, "guard reports"), "--",
+            ["test", "--home", s_home, "--pg", MajorText(), "--results-directory", Path.Join(output, "guard reports"), "--",
                 "--filter", "FullyQualifiedName~RejectsConflictingInstallationBeforePublication", "--report-trx", "--report-trx-filename", "guards.trx"],
             s_environment, token, workingDirectory: output);
         Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
-        XDocument report = XDocument.Load(Path.Combine(output, "guard reports", s_postgresKey, "guards.trx"));
+        XDocument report = XDocument.Load(Path.Join(output, "guard reports", s_postgresKey, "guards.trx"));
         XNamespace ns = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010";
         XElement outcome = report.Descendants(ns + "UnitTestResult").Single();
         Assert.AreEqual("RejectsConflictingInstallationBeforePublication", outcome.Attribute("testName")!.Value);
@@ -322,8 +322,8 @@ public sealed partial class ToolCommandTests
         // Both storage partitions run the same host; the second reuses the first's build.
         string host = TestCommandHostDirectory("", "Debug");
         using ReusableProjectLease lease = await AcquireReusableProjectAsync("abandoned cluster", CreateAbandonedClusterProjectAsync,
-            [Path.Combine(host, "abandoned-data.txt"), Path.Combine(host, "abandoned-pid.txt"), Path.Combine(host, "abandoned-session.txt"),
-                Path.Combine(host, "retained logs"), "abandoned reports", "sibling logs"], token);
+            [Path.Join(host, "abandoned-data.txt"), Path.Join(host, "abandoned-pid.txt"), Path.Join(host, "abandoned-session.txt"),
+                Path.Join(host, "retained logs"), "abandoned reports", "sibling logs"], token);
         string output = lease.Directory;
         string? dataBase = customData ? CreateCustomDataBase() : null;
         string[] dataArguments = dataBase is null ? [] : ["--pgdata", dataBase];
@@ -331,10 +331,10 @@ public sealed partial class ToolCommandTests
         {
             Installation = s_installation,
             DataDirectoryBase = dataBase,
-            LogDirectory = Path.Combine(output, "sibling logs"),
+            LogDirectory = Path.Join(output, "sibling logs"),
         }, token);
-        string hostRoot = Path.Combine(output, "tests", "TestCommandProbe.Tests");
-        string reports = Path.Combine(output, "abandoned reports");
+        string hostRoot = Path.Join(output, "tests", "TestCommandProbe.Tests");
+        string reports = Path.Join(output, "abandoned reports");
         ProcessResult result = await PackageProcessRunner.RunAsync(s_tool,
             ["test", "--home", s_home, "--all", .. dataArguments, "--results-directory", reports, "--", "--filter", "FullyQualifiedName~AbandonsCluster"],
             s_environment, token, workingDirectory: output);
@@ -342,18 +342,18 @@ public sealed partial class ToolCommandTests
         Assert.Contains(s_postgresKey + ": dotnet test exited " + result.ExitCode.ToString(CultureInfo.InvariantCulture) + ".", result.StandardOutput,
             result.StandardError);
         string executionDirectory = TestCommandHostDirectory(output, "Debug");
-        string dataDirectory = await File.ReadAllTextAsync(Path.Combine(executionDirectory, "abandoned-data.txt"), token);
-        string session = await File.ReadAllTextAsync(Path.Combine(executionDirectory, "abandoned-session.txt"), token);
+        string dataDirectory = await File.ReadAllTextAsync(Path.Join(executionDirectory, "abandoned-data.txt"), token);
+        string session = await File.ReadAllTextAsync(Path.Join(executionDirectory, "abandoned-session.txt"), token);
         Assert.IsFalse(Directory.Exists(dataDirectory));
         Assert.IsFalse(Directory.Exists(session));
-        int serverId = int.Parse(await File.ReadAllTextAsync(Path.Combine(executionDirectory, "abandoned-pid.txt"), token), CultureInfo.InvariantCulture);
+        int serverId = int.Parse(await File.ReadAllTextAsync(Path.Join(executionDirectory, "abandoned-pid.txt"), token), CultureInfo.InvariantCulture);
         AssertServerExited(serverId);
-        Assert.IsNotEmpty(Directory.GetFiles(Path.Combine(executionDirectory, "retained logs"), "*.log"));
-        Assert.IsTrue(File.Exists(Path.Combine(hostRoot, "AbandonedTests.cs")), "Unrelated author files must remain intact.");
+        Assert.IsNotEmpty(Directory.GetFiles(Path.Join(executionDirectory, "retained logs"), "*.log"));
+        Assert.IsTrue(File.Exists(Path.Join(hostRoot, "AbandonedTests.cs")), "Unrelated author files must remain intact.");
         if (dataBase is not null)
         {
             Assert.StartsWith(dataBase + Path.DirectorySeparatorChar, dataDirectory);
-            Assert.AreEqual("preserve custom parent", await File.ReadAllTextAsync(Path.Combine(dataBase, "unrelated.txt"), token));
+            Assert.AreEqual("preserve custom parent", await File.ReadAllTextAsync(Path.Join(dataBase, "unrelated.txt"), token));
             Assert.AreSequenceEqual<string>([sibling!.DataDirectory], Directory.GetDirectories(dataBase));
             await using NpgsqlConnection connection = await sibling.OpenConnectionAsync(token);
             await using var command = new NpgsqlCommand("CREATE TABLE still_owned (value integer); INSERT INTO still_owned VALUES (42); SELECT value FROM still_owned", connection);
@@ -370,8 +370,8 @@ public sealed partial class ToolCommandTests
     private static async Task<string> CreateAbandonedClusterProjectAsync(string parent, CancellationToken token)
     {
         string output = await CreateTestCommandProjectAsync(parent, token);
-        string hostRoot = Path.Combine(output, "tests", "TestCommandProbe.Tests");
-        await File.WriteAllTextAsync(Path.Combine(hostRoot, "AbandonedTests.cs"), """
+        string hostRoot = Path.Join(output, "tests", "TestCommandProbe.Tests");
+        await File.WriteAllTextAsync(Path.Join(hostRoot, "AbandonedTests.cs"), """
             using Ankus.PgConfig;
             using Ankus.Testing;
             using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -391,7 +391,7 @@ public sealed partial class ToolCommandTests
                         LogDirectory = "retained logs",
                     }, context.CancellationToken);
                     await File.WriteAllTextAsync("abandoned-data.txt", cluster.DataDirectory, context.CancellationToken);
-                    await File.WriteAllTextAsync("abandoned-pid.txt", (await File.ReadAllLinesAsync(Path.Combine(cluster.DataDirectory, "postmaster.pid"), context.CancellationToken))[0], context.CancellationToken);
+                    await File.WriteAllTextAsync("abandoned-pid.txt", (await File.ReadAllLinesAsync(Path.Join(cluster.DataDirectory, "postmaster.pid"), context.CancellationToken))[0], context.CancellationToken);
                     await File.WriteAllTextAsync("abandoned-session.txt", Environment.GetEnvironmentVariable("ANKUS_TEST_SESSION_DIRECTORY")!, context.CancellationToken);
                     // Abrupt termination bypasses the cluster's normal ProcessExit cleanup.
                     System.Diagnostics.Process.GetCurrentProcess().Kill();
@@ -415,7 +415,7 @@ public sealed partial class ToolCommandTests
         // Both storage partitions run the same host; the second reuses the first's build.
         string host = TestCommandHostDirectory("", "Debug");
         using ReusableProjectLease lease = await AcquireReusableProjectAsync("command cancellation", CreateCancellationProjectAsync,
-            [Path.Combine(host, "cancellation-pending.txt"), Path.Combine(host, "cancellation-ready.txt"), Path.Combine(host, "retained logs")],
+            [Path.Join(host, "cancellation-pending.txt"), Path.Join(host, "cancellation-ready.txt"), Path.Join(host, "retained logs")],
             token);
         string output = lease.Directory;
         string? dataBase = customData ? CreateCustomDataBase() : null;
@@ -445,7 +445,7 @@ public sealed partial class ToolCommandTests
         Task<string> standardOutput = process.StandardOutput.ReadToEndAsync(token);
         Task<string> standardError = process.StandardError.ReadToEndAsync(token);
         string executionDirectory = TestCommandHostDirectory(output, "Debug");
-        string ready = Path.Combine(executionDirectory, "cancellation-ready.txt");
+        string ready = Path.Join(executionDirectory, "cancellation-ready.txt");
         try
         {
             using var startup = CancellationTokenSource.CreateLinkedTokenSource(token);
@@ -472,11 +472,11 @@ public sealed partial class ToolCommandTests
             {
                 Assert.StartsWith(dataBase + Path.DirectorySeparatorChar, evidence[2]);
                 Assert.IsEmpty(Directory.GetDirectories(dataBase));
-                Assert.AreEqual("preserve custom parent", await File.ReadAllTextAsync(Path.Combine(dataBase, "unrelated.txt"), token));
+                Assert.AreEqual("preserve custom parent", await File.ReadAllTextAsync(Path.Join(dataBase, "unrelated.txt"), token));
             }
 
             AssertServerExited(int.Parse(evidence[1], CultureInfo.InvariantCulture));
-            Assert.IsNotEmpty(Directory.GetFiles(Path.Combine(executionDirectory, "retained logs"), "*.log"));
+            Assert.IsNotEmpty(Directory.GetFiles(Path.Join(executionDirectory, "retained logs"), "*.log"));
         }
         finally
         {
@@ -530,7 +530,7 @@ public sealed partial class ToolCommandTests
     private static async Task<string> CreateCancellationProjectAsync(string parent, CancellationToken token)
     {
         string output = await CreateTestCommandProjectAsync(parent, token);
-        await File.WriteAllTextAsync(Path.Combine(output, "tests", "TestCommandProbe.Tests", "CancellationTests.cs"), """
+        await File.WriteAllTextAsync(Path.Join(output, "tests", "TestCommandProbe.Tests", "CancellationTests.cs"), """
             using Ankus.PgConfig;
             using Ankus.Testing;
             using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -547,7 +547,7 @@ public sealed partial class ToolCommandTests
                         Installation = installation,
                         LogDirectory = "retained logs",
                     }, context.CancellationToken);
-                    string serverId = (await File.ReadAllLinesAsync(Path.Combine(cluster.DataDirectory, "postmaster.pid"), context.CancellationToken))[0];
+                    string serverId = (await File.ReadAllLinesAsync(Path.Join(cluster.DataDirectory, "postmaster.pid"), context.CancellationToken))[0];
                     await File.WriteAllLinesAsync("cancellation-pending.txt", [Environment.GetEnvironmentVariable("ANKUS_TEST_SESSION_DIRECTORY")!, serverId, cluster.DataDirectory, Environment.GetEnvironmentVariable("ANKUS_TEST_DATA_DIRECTORY")!], context.CancellationToken);
                     File.Move("cancellation-pending.txt", "cancellation-ready.txt");
                     await Task.Delay(Timeout.InfiniteTimeSpan, context.CancellationToken);
@@ -572,19 +572,19 @@ public sealed partial class ToolCommandTests
 
     private string CreateCustomDataBase()
     {
-        string root = Path.Combine(CreateDirectory(), OperatingSystem.IsWindows() ? "data" : "custom data with spaces");
+        string root = Path.Join(CreateDirectory(), OperatingSystem.IsWindows() ? "data" : "custom data with spaces");
         if (!OperatingSystem.IsWindows())
         {
-            root = Path.Combine(root, new string('d', 140));
+            root = Path.Join(root, new string('d', 140));
         }
 
         Directory.CreateDirectory(root);
-        File.WriteAllText(Path.Combine(root, "unrelated.txt"), "preserve custom parent");
+        File.WriteAllText(Path.Join(root, "unrelated.txt"), "preserve custom parent");
         return root;
     }
 
     private static string TestCommandHostDirectory(string project, string configuration)
-        => Path.Combine(project, "tests", "TestCommandProbe.Tests", "bin", configuration, "net10.0");
+        => Path.Join(project, "tests", "TestCommandProbe.Tests", "bin", configuration, "net10.0");
 
     private Task<string> CreateTestCommandProjectAsync(CancellationToken token)
         => CreateTestCommandProjectAsync(CreateDirectory(), token);
@@ -597,9 +597,9 @@ public sealed partial class ToolCommandTests
     /// <returns>The generated solution directory.</returns>
     private static async Task<string> CreateTestCommandProjectAsync(string parent, CancellationToken token)
     {
-        string output = Path.Combine(parent, "test command project");
+        string output = Path.Join(parent, "test command project");
         (await InvokeAsync(["new", "TestCommandProbe", "-o", output], token)).EnsureSuccess(s_tool, ["new"]);
-        string buildFile = Path.Combine(output, "Directory.Build.props");
+        string buildFile = Path.Join(output, "Directory.Build.props");
         XDocument build = XDocument.Load(buildFile);
         build.Root!.Add(new XElement("PropertyGroup", new XAttribute("Condition", "'$(Configuration)' == 'Shipping'"),
             new XElement("DefineConstants", "$(DefineConstants);TEST_CONFIGURATION")));
@@ -610,7 +610,7 @@ public sealed partial class ToolCommandTests
         build.Root.Add(new XElement("ItemGroup", new XElement("AssemblyMetadata", new XAttribute("Include", "SelectedMajor"),
             new XAttribute("Value", "$(AnkusPostgresMajor)"))));
         build.Save(buildFile);
-        await File.WriteAllTextAsync(Path.Combine(output, "src", "TestCommandProbe", "ConfigurationProbe.cs"), """
+        await File.WriteAllTextAsync(Path.Join(output, "src", "TestCommandProbe", "ConfigurationProbe.cs"), """
             using Ankus;
             namespace TestCommandProbe;
             public static class ConfigurationProbe
@@ -630,7 +630,7 @@ public sealed partial class ToolCommandTests
                 }
             }
             """, token);
-        await File.WriteAllTextAsync(Path.Combine(output, "tests", "TestCommandProbe.Tests", "SelectionTests.cs"), """
+        await File.WriteAllTextAsync(Path.Join(output, "tests", "TestCommandProbe.Tests", "SelectionTests.cs"), """
             using System.Globalization;
             using System.Reflection;
             using Microsoft.VisualStudio.TestTools.UnitTesting;

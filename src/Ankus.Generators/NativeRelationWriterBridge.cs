@@ -86,7 +86,7 @@ internal static class NativeRelationWriterBridge
                 ankus_relation_writers != NULL)
                 ereport(ERROR, (errcode(ERRCODE_INVALID_TRANSACTION_STATE),
                     errmsg("a relation writer is still open at commit"),
-                    errhint("Dispose every PgRelationWriter before the transaction commits, so its AFTER triggers run.")));
+                    errhint("Dispose every PgRelationWriter before the transaction commits.")));
         }
 
         static AnkusRelationWriter *
@@ -166,6 +166,8 @@ internal static class NativeRelationWriterBridge
             writer->row = ExecInitExtraTupleSlot(estate, RelationGetDescr(relation), &TTSOpsVirtual);
             writer->search = ExecInitExtraTupleSlot(estate, RelationGetDescr(relation), &TTSOpsVirtual);
             writer->local = table_slot_create(relation, &estate->es_tupleTable);
+            /* Like a statement, the writer opens the table's indexes once and keeps them until it closes. */
+            ExecOpenIndices(writer->info, false);
             /* Rows are found by the replica identity index, or else the primary key, as the built-in subscriber
              * finds them; a table with neither is searched by every column. */
             writer->key = RelationGetReplicaIndex(relation);
@@ -175,7 +177,6 @@ internal static class NativeRelationWriterBridge
         #else
                 writer->key = RelationGetPrimaryKeyIndex(relation);
         #endif
-            AfterTriggerBeginQuery();
             writer->id = ankus_relation_writer_next++;
             writer->reset.func = ankus_relation_writer_reset;
             writer->reset.arg = writer;
@@ -378,13 +379,14 @@ internal static class NativeRelationWriterBridge
         {
             ankus_relation_writer_fill_any(writer, request, request->data, writer->row, NULL, true);
             ankus_relation_writer_check(writer, ACL_INSERT);
-            ExecOpenIndices(writer->info, false);
+            /* As in the apply worker, each change is its own trigger query, so its AFTER triggers fire when it ends. */
+            AfterTriggerBeginQuery();
         #if PG_VERSION_NUM >= 140000
             ExecSimpleRelationInsert(writer->info, writer->estate, writer->row);
         #else
             ExecSimpleRelationInsert(writer->estate, writer->row);
         #endif
-            ExecCloseIndices(writer->info);
+            AfterTriggerEndQuery(writer->estate);
             CommandCounterIncrement();
         }
 
@@ -397,12 +399,12 @@ internal static class NativeRelationWriterBridge
             /* A typed row is complete; a replicated one keeps the found row's values for columns it does not send. */
             if (update && request->other == 0)
                 ankus_relation_writer_fill(writer, (const AnkusValue *) request->pointer, writer->row);
+            AfterTriggerBeginQuery();
         #if PG_VERSION_NUM >= 160000
             EvalPlanQualInit(&plan, writer->estate, NULL, NIL, -1, NIL);
         #else
             EvalPlanQualInit(&plan, writer->estate, NULL, NIL, -1);
         #endif
-            ExecOpenIndices(writer->info, false);
             PG_TRY();
             {
                 found = ankus_relation_writer_lookup(writer);
@@ -428,10 +430,11 @@ internal static class NativeRelationWriterBridge
             }
             PG_FINALLY();
             {
-                ExecCloseIndices(writer->info);
                 EvalPlanQualEnd(&plan);
             }
             PG_END_TRY();
+            /* An error leaves the trigger query open; aborting the transaction or subtransaction closes it. */
+            AfterTriggerEndQuery(writer->estate);
             CommandCounterIncrement();
             return found;
         }
@@ -474,7 +477,7 @@ internal static class NativeRelationWriterBridge
             AnkusRelationWriter *writer = ankus_relation_writer_find(id);
             EState *estate = writer->estate;
             ankus_relation_writer_unlink(writer);
-            AfterTriggerEndQuery(estate);
+            ExecCloseIndices(writer->info);
         #if PG_VERSION_NUM >= 190000
             ExecCloseTrigTargetRelations(estate);
         #elif PG_VERSION_NUM >= 140000

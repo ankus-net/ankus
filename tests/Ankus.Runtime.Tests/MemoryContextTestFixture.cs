@@ -12,13 +12,18 @@ internal sealed unsafe class MemoryContextTestFixture : IDisposable
     [ThreadStatic]
     private static MemoryContextTestFixture? s_current;
 
+    /// <summary>
+    /// Makes <paramref name="current"/> the MemoryContextTestFixture this thread's native callbacks use, or restores the enclosing one.
+    /// </summary>
+    private static void Install(MemoryContextTestFixture? current) => s_current = current;
+
     private readonly MemoryContextTestFixture? _previous = s_current;
     private readonly nint _name = Marshal.StringToCoTaskMemUTF8("context café 🐘");
 
     /// <summary>
     /// Installs this test's thread-local callback state.
     /// </summary>
-    internal MemoryContextTestFixture() => s_current = this;
+    internal MemoryContextTestFixture() => Install(this);
 
     /// <summary>
     /// Gets the requests that reached the native boundary.
@@ -138,7 +143,7 @@ internal sealed unsafe class MemoryContextTestFixture : IDisposable
     public void Dispose()
     {
         Marshal.FreeCoTaskMem(_name);
-        s_current = _previous;
+        Install(_previous);
     }
 
     /// <summary>
@@ -154,6 +159,7 @@ internal sealed unsafe class MemoryContextTestFixture : IDisposable
             *result = fixture.Handler is null ? fixture.Respond(*request) : fixture.Handler(*request);
             return 0;
         }
+        // codeql[cs/catch-of-all-exceptions] This stands in for native code, so every exception goes back as an error instead of unwinding through it.
         catch (Exception exception)
         {
             NativeError.Write(exception, error);
@@ -182,8 +188,7 @@ internal sealed unsafe class MemoryContextTestFixture : IDisposable
     /// <summary>
     /// Accesses diagnostic release callbacks for ownership assertions.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_release")]
-    private static extern ref delegate* unmanaged[Cdecl]<void*, void> ReleaseCallback(ref NativeValue value);
+    private static ref delegate* unmanaged[Cdecl]<void*, void> ReleaseCallback(ref NativeValue value) => ref value._release;
 
     /// <summary>
     /// Owns a distinct native envelope and balances its managed capability binding.

@@ -65,7 +65,7 @@ public static class RuntimeGucFunctions
         });
         s_hookedRatio = PgGucRegistry.DefineReal(Name("ratio"), 0.5, "Run-time real with hooks", minimum: 0, maximum: 1, hooks: new()
         {
-            Check = static (proposed, source) => source == PgGucSource.Session && proposed == 1
+            Check = static (proposed, source) => source == PgGucSource.Session && proposed is 1
                 ? new(new PgGucCheckError(detail: "A session cannot claim the whole ratio."))
                 : new(Math.Round(proposed, 1)),
         });

@@ -1,5 +1,4 @@
 using System.Buffers.Binary;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -481,9 +480,7 @@ public sealed class PgArrayTests
         }
     }
 
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary1")]
-    private static extern ref int ArrayFlag(ref NativeValue value);
+    private static ref int ArrayFlag(ref NativeValue value) => ref value._auxiliary1;
 
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary2")]
-    private static extern ref int ElementKind(ref NativeValue value);
+    private static ref int ElementKind(ref NativeValue value) => ref value._auxiliary2;
 }

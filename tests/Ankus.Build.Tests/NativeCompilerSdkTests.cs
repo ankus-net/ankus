@@ -14,9 +14,9 @@ public sealed partial class NativeBindingNativeTests
         string directory = Directory.CreateTempSubdirectory("ankus-native-sdk-").FullName;
         try
         {
-            string source = Path.Combine(directory, "probe.c");
-            string executable = Path.Combine(directory, "probe");
-            string[] recorded = ["-isysroot", Path.Combine(directory, "absent.sdk"), "-DVALUE=42"];
+            string source = Path.Join(directory, "probe.c");
+            string executable = Path.Join(directory, "probe");
+            string[] recorded = ["-isysroot", Path.Join(directory, "absent.sdk"), "-DVALUE=42"];
             IReadOnlyList<string> selected = await NativeCompilerArguments.CreateAsync(recorded, context.CancellationToken);
             await File.WriteAllTextAsync(source, """
                 #include <stdio.h>

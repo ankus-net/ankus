@@ -15,19 +15,19 @@ public sealed partial class NativeBindingNativeTests
     [DataRow(true)]
     public async Task LinkedLibraryRetainsEmbeddedSchema(bool withGraph)
     {
-        string directory = Path.Combine(Path.GetTempPath(), "ankus schema " + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus schema " + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
             string rid = RuntimeInformation.RuntimeIdentifier;
             string filename = OperatingSystem.IsWindows() ? "schema.dll" : OperatingSystem.IsMacOS() ? "schema.dylib" : "schema.so";
-            string library = Path.Combine(directory, filename);
-            string source = Path.Combine(directory, "schema.c");
+            string library = Path.Join(directory, filename);
+            string source = Path.Join(directory, "schema.c");
             const string Graph = "QU5LVVNHMQABAAAABAAAAG5vZGUDAAAAc3FsCwAAAFNFTEVDVCA0MjsKAAAAAAEAAAAFAAAAcHJvYmUAAAAAAAAAAA==";
             string sql = withGraph ? "SELECT 42;\n" : "CREATE FUNCTION \"café 🐘\"() RETURNS integer AS 'MODULE_PATHNAME', 'ankus_fn_1' LANGUAGE c;\n";
             await File.WriteAllTextAsync(source, NativeSchemaEmitter.Emit("schema_probe", "0.1.0", filename, 18, rid, false, sql,
                 withGraph ? Graph : null, withGraph ? "fixed schema" : null), context.CancellationToken);
-            string exports = Path.Combine(directory, "schema.def");
+            string exports = Path.Join(directory, "schema.def");
             if (OperatingSystem.IsWindows())
             {
                 await File.WriteAllTextAsync(exports, "EXPORTS\n    ankus_schema_manifest DATA\n", context.CancellationToken);
@@ -35,7 +35,7 @@ public sealed partial class NativeBindingNativeTests
 
             string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "cc";
             string[] arguments = OperatingSystem.IsWindows()
-                ? ["/nologo", "/W4", "/WX", "/O2", "/LD", "/MT", "/Fo" + Path.Combine(directory, "schema.obj"), source,
+                ? ["/nologo", "/W4", "/WX", "/O2", "/LD", "/MT", "/Fo" + Path.Join(directory, "schema.obj"), source,
                     "/link", "/WX", "/OPT:REF", "/DEF:" + exports, "/OUT:" + library]
                 : OperatingSystem.IsMacOS()
                     ? ["-Wall", "-Wextra", "-Werror", "-O2", "-dynamiclib", "-Wl,-dead_strip", source, "-o", library]

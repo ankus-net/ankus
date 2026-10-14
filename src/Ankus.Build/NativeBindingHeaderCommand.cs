@@ -38,8 +38,8 @@ internal static class NativeBindingHeaderCommand
 
         string output = Path.GetFullPath(arguments[3]);
         Directory.CreateDirectory(output);
-        string file = Path.Combine(output, "native-header-types.c");
-        string ast = Path.Combine(output, "native-header-types.ast.json");
+        string file = Path.Join(output, "native-header-types.c");
+        string ast = Path.Join(output, "native-header-types.ast.json");
         await File.WriteAllTextAsync(file, source, cancellationToken);
         await InspectAsync(installation, arguments, file, ast, output, cancellationToken);
         await using FileStream stream = File.OpenRead(ast);
@@ -55,14 +55,14 @@ internal static class NativeBindingHeaderCommand
             throw new InvalidOperationException("Native header types do not match the requested runtime ABI.");
         }
 
-        string checks = Path.Combine(output, "native-header-checks.c");
+        string checks = Path.Join(output, "native-header-checks.c");
         string definitions = NativeBindingHeaderHelpers.Definitions(major, symbols.Values);
         string headers = NativeBindingResources.ReadHeaders(major);
         await File.WriteAllTextAsync(checks, NativeBindingHeaderParser.GenerateChecks(headers, symbols), cancellationToken);
-        await InspectAsync(installation, arguments, checks, Path.Combine(output, "native-header-checks.txt"), output, cancellationToken, dumpAst: false);
+        await InspectAsync(installation, arguments, checks, Path.Join(output, "native-header-checks.txt"), output, cancellationToken, dumpAst: false);
         if (definitions.Length != 0)
         {
-            string helpers = Path.Combine(output, "native-header-helpers.c");
+            string helpers = Path.Join(output, "native-header-helpers.c");
             await File.WriteAllTextAsync(helpers, definitions + headers, cancellationToken);
             string[] bodyArguments = [.. arguments.Take(8), .. Enumerable.Repeat("", Math.Max(0, 8 - arguments.Length))];
             if (OperatingSystem.IsWindows())
@@ -71,12 +71,12 @@ internal static class NativeBindingHeaderCommand
                 bodyArguments[7] = "";
             }
 
-            await InspectAsync(installation, bodyArguments, helpers, Path.Combine(output, "native-header-helpers.txt"),
+            await InspectAsync(installation, bodyArguments, helpers, Path.Join(output, "native-header-helpers.txt"),
                 output, cancellationToken, dumpAst: false, inspectBodies: true);
         }
 
         var catalog = new NativeHeaderCatalog(target, symbols);
-        await File.WriteAllTextAsync(Path.Combine(output, "native-header-types.json"), JsonSerializer.Serialize(catalog, s_jsonOptions) + "\n", cancellationToken);
+        await File.WriteAllTextAsync(Path.Join(output, "native-header-types.json"), JsonSerializer.Serialize(catalog, s_jsonOptions) + "\n", cancellationToken);
         Console.WriteLine($"PG{major}: collected {symbols.Count} native header symbol types with Clang {target.ClangMajor} for {target.RuntimeIdentifier}.");
         return catalog;
     }
@@ -122,8 +122,8 @@ internal static class NativeBindingHeaderCommand
             [
                 installation.ServerIncludeDirectory,
                 installation.IncludeDirectory,
-                Path.Combine(installation.ServerIncludeDirectory, "port", "win32"),
-                Path.Combine(installation.ServerIncludeDirectory, "port", "win32_msvc"),
+                Path.Join(installation.ServerIncludeDirectory, "port", "win32"),
+                Path.Join(installation.ServerIncludeDirectory, "port", "win32_msvc"),
             ]);
             string libraries = arguments.Length >= 6 ? arguments[5] : "";
             AddWindowsIncludes(options, compiler, WindowsToolchain.GetIncludeDirectories(libraries));

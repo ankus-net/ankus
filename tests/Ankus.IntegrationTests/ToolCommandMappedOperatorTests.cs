@@ -14,18 +14,18 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "MappedFamilies.csproj");
+        string project = Path.Join(directory, "MappedFamilies.csproj");
         File.Copy(s_project, project);
         string source = "using Ankus;\n[assembly: PgSql(\"manual-type\", " +
             System.Text.Json.JsonSerializer.Serialize(MappedPackageTypeSql("package_key")) +
             ", Relocatable=true)]\n[assembly: PgSqlTypeProvider(\"manual-type\", typeof(OwnedKey))]\n" +
             MappedPackageContract("OwnedKey", "package_key", string.Empty, "[PgOrdering][PgHashing]");
         Assert.DoesNotContain("[PgFunction", source);
-        await File.WriteAllTextAsync(Path.Combine(directory, "Families.cs"), source, token);
-        string output = Path.Combine(directory, "published");
+        await File.WriteAllTextAsync(Path.Join(directory, "Families.cs"), source, token);
+        string output = Path.Join(directory, "published");
         await PublishSqlControlsAsync(project, output, token);
         PublishedExtension manifest = PublishedExtension.Read(output);
-        Assert.Contains("relocatable = true", await File.ReadAllTextAsync(Path.Combine(output, "extension", manifest.Control), token));
+        Assert.Contains("relocatable = true", await File.ReadAllTextAsync(Path.Join(output, "extension", manifest.Control), token));
         await using PostgresTestCluster cluster = await StartPublishedClusterAsync(output, token);
         await using NpgsqlConnection connection = await cluster.OpenConnectionAsync(token);
         await ExecuteSqlPackageAsync(connection, """
@@ -84,7 +84,7 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "ExternalFamilies.csproj");
+        string project = Path.Join(directory, "ExternalFamilies.csproj");
         File.Copy(s_project, project);
         const string options = ", Schema=\"mapped_external\", Origin=PgTypeOrigin.External";
         const string hashSql = """
@@ -99,11 +99,11 @@ public sealed partial class ToolCommandTests
                 "[PgOrdering(GenerateSql=false)][PgHashing(Sql=" + System.Text.Json.JsonSerializer.Serialize(hashSql) + ", SqlRelocatable=true)]");
         Assert.DoesNotContain("[PgFunction", source);
         Assert.DoesNotContain("PgSqlTypeProvider", source);
-        await File.WriteAllTextAsync(Path.Combine(directory, "Families.cs"), source, token);
-        string output = Path.Combine(directory, "published");
+        await File.WriteAllTextAsync(Path.Join(directory, "Families.cs"), source, token);
+        string output = Path.Join(directory, "published");
         await PublishSqlControlsAsync(project, output, token);
         PublishedExtension manifest = PublishedExtension.Read(output);
-        Assert.Contains("relocatable = false", await File.ReadAllTextAsync(Path.Combine(output, "extension", manifest.Control), token));
+        Assert.Contains("relocatable = false", await File.ReadAllTextAsync(Path.Join(output, "extension", manifest.Control), token));
         await using PostgresTestCluster cluster = await StartPublishedClusterAsync(output, token);
         await using NpgsqlConnection connection = await cluster.OpenConnectionAsync(token);
         await ExecuteSqlPackageAsync(connection, "CREATE SCHEMA mapped_external; CREATE SCHEMA mapped_existing; CREATE SCHEMA mapped_move;" +

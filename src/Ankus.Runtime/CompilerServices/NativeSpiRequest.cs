@@ -15,9 +15,9 @@ internal unsafe struct NativeSpiRequest
     /// <returns>Zero for writable, one for read-only or two for transaction-aware selection.</returns>
     internal static byte GetReadMode(bool? readOnly) => readOnly switch
     {
-        false => 0,
-        true => 1,
         null => 2,
+        true => 1,
+        _ => 0,
     };
 
     /// <summary>

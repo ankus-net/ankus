@@ -86,11 +86,11 @@ public sealed partial class PgFunctionGeneratorTests
     [TestMethod]
     public void SqlProvenanceRetainsTrackedSqlFileOrigin()
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "virtual-project");
-        var file = new SqlInput(Path.Combine(project, "sql", "seed.sql"), "SELECT 'café'; -- exact\n");
+        string project = Path.Join(AppContext.BaseDirectory, "virtual-project");
+        var file = new SqlInput(Path.Join(project, "sql", "seed.sql"), "SELECT 'café'; -- exact\n");
         (Compilation compilation, ImmutableArray<Diagnostic> diagnostics) = Generate("""
             [assembly: Ankus.PgSqlFile("seed", "sql/seed.sql")]
-            """, [file], new SqlOptions(project), Path.Combine(project, "Declarations.cs"));
+            """, [file], new SqlOptions(project), Path.Join(project, "Declarations.cs"));
         Assert.IsEmpty(diagnostics);
         Assert.Contains("-- Declarations.cs:1\n-- seed\n-- SQL file: sql/seed.sql\n\nSELECT 'café'; -- exact\n/* </end connected objects> */",
             ManifestValue(compilation, "Ankus.Sql"));

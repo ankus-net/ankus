@@ -13,7 +13,7 @@ public sealed partial class NativeBindingNativeTests
     [DataRow("struct Missing; extern int native_target(struct Missing value);", true, "requires a complete object representation")]
     public async Task NativeCallBodiesRejectUnsupportedContracts(string headers, bool isFunction, string expected)
     {
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-call-shapes-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-call-shapes-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
@@ -35,7 +35,7 @@ public sealed partial class NativeBindingNativeTests
     {
         const string Declarations = "extern int native_first(int value); extern void native_second(void);";
         const string Headers = "#define PG_VERSION_NUM 180006\n" + Declarations;
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-call-checks-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-call-checks-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
@@ -54,12 +54,12 @@ public sealed partial class NativeBindingNativeTests
                 },
             };
             Assert.AreEqual(expected, NativeBindingCallSource.Generate(reordered, Headers));
-            string file = Path.Combine(directory, "checks.c");
+            string file = Path.Join(directory, "checks.c");
             string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang";
             string[] options = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/Zs", file]
                 : ["-std=c11", "-Wall", "-Wextra", "-Werror", "-fsyntax-only", file];
-            string diagnostics = Path.Combine(directory, "checks.txt");
+            string diagnostics = Path.Join(directory, "checks.txt");
             await File.WriteAllTextAsync(file, expected, context.CancellationToken);
             await NativeBindingHeaderCommand.CompileAsync(compiler, options, diagnostics, directory, context.CancellationToken, inspectBodies: true);
             await File.WriteAllTextAsync(file, expected + "\nint broken_body(void) { return missing_body_value; }\n", context.CancellationToken);
@@ -85,13 +85,11 @@ public sealed partial class NativeBindingNativeTests
             InvalidOperationException storage = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
                 NativeBindingHeaderCommand.CompileAsync(compiler, options, diagnostics, directory, context.CancellationToken, inspectBodies: true));
             Assert.Contains("Native call storage changed: ankus_native_call_native_first", storage.Message);
-            foreach (NativeHeaderTarget target in new[]
+            foreach (NativeHeaderRecords changedTarget in (new[]
             {
                 records.Headers.Target with { PostgresVersion = 180005 },
                 records.Headers.Target with { RuntimeIdentifier = OperatingSystem.IsWindows() ? "linux-x64" : "win-x64" },
-            })
-            {
-                NativeHeaderRecords changedTarget = records with
+            }).Select(target => records with
                 {
                     Headers = records.Headers with
                     {
@@ -101,7 +99,8 @@ public sealed partial class NativeBindingNativeTests
                     {
                         Target = target
                     },
-                };
+                }))
+            {
                 await File.WriteAllTextAsync(file, NativeBindingCallSource.Generate(changedTarget, Headers), context.CancellationToken);
                 InvalidOperationException mismatch = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
                     NativeBindingHeaderCommand.CompileAsync(compiler, options, diagnostics, directory, context.CancellationToken, inspectBodies: true));

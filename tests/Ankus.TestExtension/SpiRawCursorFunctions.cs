@@ -39,10 +39,7 @@ public static class SpiRawCursorFunctions
         }
         finally
         {
-            foreach (SpiRawResult batch in batches)
-            {
-                batch.Dispose();
-            }
+            Disposal.DisposeAll(batches);
         }
     }
 

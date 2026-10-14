@@ -1,5 +1,3 @@
-using System.Runtime.ExceptionServices;
-
 namespace Ankus.Runtime.Tests;
 
 /// <summary>
@@ -143,7 +141,7 @@ public sealed class NativeMemoryContextTests
         using var fixture = new MemoryContextTestFixture();
         using MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter();
         PgMemoryContext context = PgMemoryContext.Current;
-        RunWorker(() =>
+        DedicatedThread.Run(() =>
         {
             using var workerFixture = new MemoryContextTestFixture();
             Assert.ThrowsExactly<InvalidOperationException>(() => PgMemoryContext.Current);
@@ -195,31 +193,5 @@ public sealed class NativeMemoryContextTests
         }
 
         Assert.ThrowsExactly<InvalidOperationException>(() => PgMemoryContext.Current);
-    }
-
-    /// <summary>
-    /// Runs thread-affinity assertions and propagates failures to the owning test thread.
-    /// </summary>
-    /// <param name="action">The worker's assertions.</param>
-    private static void RunWorker(Action action)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        thread.Start();
-        thread.Join();
-        if (failure is not null)
-        {
-            ExceptionDispatchInfo.Capture(failure).Throw();
-        }
     }
 }

@@ -13,10 +13,10 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "CSharpOperators.csproj");
+        string project = Path.Join(directory, "CSharpOperators.csproj");
         File.Copy(s_project, project);
-        await File.WriteAllTextAsync(Path.Combine(directory, "Operators.cs"), CSharpOperatorPackageSource, token);
-        string output = Path.Combine(directory, "published");
+        await File.WriteAllTextAsync(Path.Join(directory, "Operators.cs"), CSharpOperatorPackageSource, token);
+        string output = Path.Join(directory, "published");
         await PublishSqlControlsAsync(project, output, token);
         await using PostgresTestCluster cluster = await StartPublishedClusterAsync(output, token);
         await using NpgsqlConnection connection = await cluster.OpenConnectionAsync(token);

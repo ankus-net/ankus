@@ -22,6 +22,7 @@ public static class BadIdeasFunctions
         {
             PgLog.Panic(s);
         }
+        // codeql[cs/catch-of-all-exceptions] The sample shows that catching every exception still cannot discard the report.
         catch (Exception)
         {
             // Like catch_unwind around PANIC!, catching the exception does not discard the report.
@@ -42,6 +43,7 @@ public static class BadIdeasFunctions
         {
             PgLog.Fatal(s);
         }
+        // codeql[cs/catch-of-all-exceptions] The sample shows that catching every exception still cannot discard the report.
         catch (Exception)
         {
             // Like catch_unwind around FATAL!, catching the exception does not discard the report.
@@ -62,7 +64,7 @@ public static class BadIdeasFunctions
         {
             PgLog.Error(s);
         }
-        catch (Exception)
+        catch (PgException)
         {
             // A managed PgException is an ordinary exception; nothing in PostgreSQL needs to be rolled back.
         }

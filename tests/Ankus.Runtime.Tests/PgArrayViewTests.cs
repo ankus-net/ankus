@@ -239,35 +239,21 @@ public sealed partial class PgArrayViewTests
             Assert.ThrowsExactly<InvalidOperationException>(view.Dispose);
         }
 
-        Exception? failure = null;
-        var worker = new Thread(() =>
+        DedicatedThread.Run(() =>
         {
-            try
-            {
-                using var other = new MemoryContextTestFixture();
-                using MemoryContextTestFixture.Scope capability = MemoryContextTestFixture.Enter();
-                Assert.ThrowsExactly<InvalidOperationException>(() => cell.DangerousGetBits());
-                Assert.ThrowsExactly<InvalidOperationException>(() => _ = view[0]);
-                Assert.ThrowsExactly<InvalidOperationException>(() => view.GetEnumerator());
-                Assert.ThrowsExactly<InvalidOperationException>(() => view.DangerousGetSpan<int>());
-                Assert.ThrowsExactly<InvalidOperationException>(() => view.DangerousGetUuidBytes());
-                Assert.ThrowsExactly<InvalidOperationException>(() => iterator.MoveNext());
-                Assert.ThrowsExactly<InvalidOperationException>(() => _ = iterator.Current);
-                Assert.ThrowsExactly<InvalidOperationException>(iterator.Dispose);
-                Assert.ThrowsExactly<InvalidOperationException>(view.Dispose);
-                Assert.IsEmpty(other.Requests);
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
+            using var other = new MemoryContextTestFixture();
+            using MemoryContextTestFixture.Scope capability = MemoryContextTestFixture.Enter();
+            Assert.ThrowsExactly<InvalidOperationException>(() => cell.DangerousGetBits());
+            Assert.ThrowsExactly<InvalidOperationException>(() => _ = view[0]);
+            Assert.ThrowsExactly<InvalidOperationException>(() => view.GetEnumerator());
+            Assert.ThrowsExactly<InvalidOperationException>(() => view.DangerousGetSpan<int>());
+            Assert.ThrowsExactly<InvalidOperationException>(() => view.DangerousGetUuidBytes());
+            Assert.ThrowsExactly<InvalidOperationException>(() => iterator.MoveNext());
+            Assert.ThrowsExactly<InvalidOperationException>(() => _ = iterator.Current);
+            Assert.ThrowsExactly<InvalidOperationException>(iterator.Dispose);
+            Assert.ThrowsExactly<InvalidOperationException>(view.Dispose);
+            Assert.IsEmpty(other.Requests);
         });
-        worker.Start();
-        worker.Join();
-        if (failure is not null)
-        {
-            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
-        }
 
         Assert.IsEmpty(fixture.Requests);
         Assert.AreEqual((nuint)7001, cell.DangerousGetBits());
@@ -276,8 +262,7 @@ public sealed partial class PgArrayViewTests
     /// <summary>
     /// Accesses the generated input type field without widening its production visibility.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary2")]
-    private static extern ref int ArrayType(ref NativeValue value);
+    private static ref int ArrayType(ref NativeValue value) => ref value._auxiliary2;
 
     /// <summary>
     /// Supplies scripted transport observations without implementing native array traversal.
@@ -286,6 +271,11 @@ public sealed partial class PgArrayViewTests
     {
         [ThreadStatic]
         private static ArrayScript? s_current;
+
+        /// <summary>
+        /// Makes <paramref name="current"/> the ArrayScript this thread's native callbacks use, or restores the enclosing one.
+        /// </summary>
+        private static void Install(ArrayScript? current) => s_current = current;
         private readonly ArrayScript? _previousScript = s_current;
         private readonly nint _previous = NativeBackend.Enter((nint)(delegate* unmanaged[Cdecl]<NativeSpiRequest*, NativeSpiResult*, NativeCallError*, int>)&Invoke);
         private int _nextContext = 201;
@@ -296,7 +286,7 @@ public sealed partial class PgArrayViewTests
         /// </summary>
         internal ArrayScript(MemoryContextTestFixture fixture)
         {
-            s_current = this;
+            Install(this);
             fixture.Handler = request =>
             {
                 if (request._operation == NativeMemoryOperation.Callback)
@@ -434,7 +424,7 @@ public sealed partial class PgArrayViewTests
         {
             NativeMemory.Free((void*)SliceStorage);
             NativeBackend.Exit(_previous);
-            s_current = _previousScript;
+            Install(_previousScript);
         }
 
         /// <summary>
@@ -493,6 +483,7 @@ public sealed partial class PgArrayViewTests
 
                 return 0;
             }
+            // codeql[cs/catch-of-all-exceptions] This stands in for native code, so every exception goes back as an error instead of unwinding through it.
             catch (Exception exception)
             {
                 NativeError.Write(exception, error);

@@ -42,8 +42,8 @@ internal static class NativeBindingSignatureCommand
 
         string output = Path.GetFullPath(toolchain[2]);
         Directory.CreateDirectory(output);
-        string source = Path.Combine(output, "native-signatures.c");
-        string executable = Path.Combine(output, OperatingSystem.IsWindows() ? "native-signatures.exe" : "native-signatures");
+        string source = Path.Join(output, "native-signatures.c");
+        string executable = Path.Join(output, OperatingSystem.IsWindows() ? "native-signatures.exe" : "native-signatures");
         await File.WriteAllTextAsync(source, code, cancellationToken);
         string observations = await NativeBindingLayoutCommand.CompileProbeAsync(installation, toolchain, source, executable, output, cancellationToken, requireC11: true);
         NativeBindingSignatures signatures = NativeBindingSignatureProbe.Read(catalog, raw, names, observations);
@@ -53,8 +53,8 @@ internal static class NativeBindingSignatureCommand
             throw new InvalidOperationException("Native signatures do not match the requested runtime ABI.");
         }
 
-        await File.WriteAllTextAsync(Path.Combine(output, "native-signatures.txt"), observations, cancellationToken);
-        await File.WriteAllTextAsync(Path.Combine(output, "native-signatures.json"), JsonSerializer.Serialize(signatures, s_jsonOptions) + "\n", cancellationToken);
+        await File.WriteAllTextAsync(Path.Join(output, "native-signatures.txt"), observations, cancellationToken);
+        await File.WriteAllTextAsync(Path.Join(output, "native-signatures.json"), JsonSerializer.Serialize(signatures, s_jsonOptions) + "\n", cancellationToken);
         Console.WriteLine($"PG{major}: verified {signatures.Functions.Count} native function signatures.");
         return signatures;
     }

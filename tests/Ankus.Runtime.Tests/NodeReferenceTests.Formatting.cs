@@ -10,6 +10,11 @@ public sealed unsafe partial class NodeReferenceTests
     private static int s_outputReleases;
 
     /// <summary>
+    /// Clears the count of output buffers the static native callback released.
+    /// </summary>
+    private static void ResetOutputReleases() => s_outputReleases = 0;
+
+    /// <summary>
     /// Allocation uses measured alignment, zero initialization and only the exact four-byte caller tag.
     /// </summary>
     /// <param name="tag">The exact tag, including values outside the sample cast predicate.</param>
@@ -127,7 +132,7 @@ public sealed unsafe partial class NodeReferenceTests
         PgNodeReference<SampleNode> node = PgNodes.Borrow(allocation.Borrow<SampleNode>(8));
         allocation.Reallocate(24);
         fixture.Requests.Clear();
-        s_outputReleases = 0;
+        ResetOutputReleases();
         Assert.AreEqual("native café 🐘", node.DangerousToNativeString());
         NativeMemoryRequest format = Assert.ContainsSingle(static request => request._operation == NativeMemoryOperation.FormatNode, fixture.Requests);
         Assert.AreEqual(502, format._context);
@@ -178,7 +183,7 @@ public sealed unsafe partial class NodeReferenceTests
         };
         PgNodeReference<SampleNode> node = PgNodes.Borrow(PgMemoryContext.Current.DangerousBorrow<SampleNode>(&value)!);
         fixture.Requests.Clear();
-        s_outputReleases = 0;
+        ResetOutputReleases();
         if (failure == 1)
         {
             Assert.ThrowsExactly<DecoderFallbackException>(node.DangerousToNativeString);
@@ -215,8 +220,7 @@ public sealed unsafe partial class NodeReferenceTests
     /// <summary>
     /// Accesses the real transport release callback to observe allocator-matched cleanup.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_release")]
-    private static extern ref delegate* unmanaged[Cdecl]<void*, void> OutputRelease(ref NativeValue value);
+    private static ref delegate* unmanaged[Cdecl]<void*, void> OutputRelease(ref NativeValue value) => ref value._release;
 
     /// <summary>
     /// Counts released output buffers and uses the transport's original allocator.

@@ -19,6 +19,7 @@ public sealed partial class ToolCommandTests
             additionalConfiguration: ["max_worker_processes = 4", "max_parallel_workers = 0", "max_logical_replication_workers = 0", "autovacuum = off"]);
         string record = "ankus-death-" + Guid.NewGuid().ToString("N");
         var processes = new List<Process>();
+        // codeql[cs/missed-using-statement] The postmaster is found partway through the test and disposed after the cluster recovers.
         Process? postmaster = null;
         bool killed = false;
         try
@@ -64,7 +65,7 @@ public sealed partial class ToolCommandTests
 
                 Assert.Contains(workers[0], processes.Select(static process => process.Id));
                 Assert.Contains(workers[1], processes.Select(static process => process.Id));
-                string[] identity = await File.ReadAllLinesAsync(Path.Combine(cluster.DataDirectory, "postmaster.pid"), token);
+                string[] identity = await File.ReadAllLinesAsync(Path.Join(cluster.DataDirectory, "postmaster.pid"), token);
                 Assert.AreEqual(Path.GetFullPath(cluster.DataDirectory), Path.GetFullPath(identity[1]));
                 int postmasterId = int.Parse(identity[0], CultureInfo.InvariantCulture);
                 Assert.IsGreaterThan(0, postmasterId);
@@ -75,8 +76,8 @@ public sealed partial class ToolCommandTests
                 Assert.AreEqual("postgres", postmaster.ProcessName);
             }
 
-            string latchReady = Path.Combine(cluster.DataDirectory, record + ".latch.ready");
-            string observerReady = Path.Combine(cluster.DataDirectory, record + ".observer.ready");
+            string latchReady = Path.Join(cluster.DataDirectory, record + ".latch.ready");
+            string observerReady = Path.Join(cluster.DataDirectory, record + ".observer.ready");
             Assert.AreEqual(workers[0].ToString(CultureInfo.InvariantCulture), await File.ReadAllTextAsync(latchReady, token));
             Assert.AreEqual(workers[1].ToString(CultureInfo.InvariantCulture), await File.ReadAllTextAsync(observerReady, token));
             postmaster.Kill();
@@ -85,21 +86,18 @@ public sealed partial class ToolCommandTests
             timeout.CancelAfter(TimeSpan.FromSeconds(30));
             await postmaster.WaitForExitAsync(timeout.Token);
             await Task.WhenAll(processes.Select(process => process.WaitForExitAsync(timeout.Token)));
-            Assert.AreEqual("False|False", await File.ReadAllTextAsync(Path.Combine(cluster.DataDirectory, record + ".latch.result"), token));
-            Assert.AreEqual("PostmasterDied|False", await File.ReadAllTextAsync(Path.Combine(cluster.DataDirectory, record + ".observer.result"), token));
+            Assert.AreEqual("False|False", await File.ReadAllTextAsync(Path.Join(cluster.DataDirectory, record + ".latch.result"), token));
+            Assert.AreEqual("PostmasterDied|False", await File.ReadAllTextAsync(Path.Join(cluster.DataDirectory, record + ".observer.result"), token));
         }
         finally
         {
             if (killed)
             {
-                foreach (Process process in processes)
+                foreach (Process process in processes.Where(static process => !process.HasExited))
                 {
-                    if (!process.HasExited)
-                    {
-                        process.Kill();
-                        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                        await process.WaitForExitAsync(timeout.Token);
-                    }
+                    process.Kill();
+                    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                    await process.WaitForExitAsync(timeout.Token);
                 }
 
                 // Recover the owned cluster so PostgreSQL reclaims stale shared memory before normal disposal.
@@ -112,6 +110,7 @@ public sealed partial class ToolCommandTests
                 Assert.AreEqual(42, await PackageGucScalarAsync(recovered, "SELECT 42"));
             }
 
+            // codeql[cs/missed-using-statement] Each worker process is found partway through the test and disposed after the cluster recovers.
             foreach (Process process in processes)
             {
                 process.Dispose();
@@ -127,7 +126,7 @@ public sealed partial class ToolCommandTests
     private static async Task WaitForWorkerClusterRestartAsync(PostgresTestCluster cluster, int previousProcess, CancellationToken token)
     {
         string previous = previousProcess.ToString(CultureInfo.InvariantCulture);
-        string path = Path.Combine(cluster.DataDirectory, "postmaster.pid");
+        string path = Path.Join(cluster.DataDirectory, "postmaster.pid");
         while (true)
         {
             string[] identity;

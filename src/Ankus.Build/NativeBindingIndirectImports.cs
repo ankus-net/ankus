@@ -20,9 +20,8 @@ internal static class NativeBindingIndirectImports
     {
         NativeObjectImports imports = NativeObjectSymbols.Read(image, Prefix);
         var signatures = new List<int>(imports.Symbols.Count);
-        foreach (string symbol in imports.Symbols)
+        foreach (string suffix in imports.Symbols.Select(static symbol => symbol[Prefix.Length..]))
         {
-            string suffix = symbol[Prefix.Length..];
             if (!int.TryParse(suffix, NumberStyles.None, CultureInfo.InvariantCulture, out int signature) ||
                 signature.ToString(CultureInfo.InvariantCulture) != suffix)
             {

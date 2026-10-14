@@ -45,8 +45,8 @@ public sealed partial class PgFunctionGeneratorTests
         const string Invalid = "\"a\\0b\"";
         string source = "[assembly: Ankus." + (file ? "PgSqlFile" : "PgSql") + "(" + (file ? "path" : "sql") + ": " +
             (name ? file ? "\"seed.sql\"" : "\"SELECT 1;\"" : Invalid) + ", name: " + (name ? Invalid : "\"seed\"") + ")]";
-        string project = Path.Combine(AppContext.BaseDirectory, "sql-input-contracts");
-        var input = new SqlInput(Path.Combine(project, "seed.sql"), "SELECT 1;");
+        string project = Path.Join(AppContext.BaseDirectory, "sql-input-contracts");
+        var input = new SqlInput(Path.Join(project, "seed.sql"), "SELECT 1;");
         (Compilation output, ImmutableArray<Diagnostic> errors) = Generate(source, [input], new SqlOptions(project));
         AssertCustomSqlInputError(output, errors, Invalid, name ? "ANKUS356" : file ? "ANKUS363" : "ANKUS360");
     }
@@ -68,7 +68,7 @@ public sealed partial class PgFunctionGeneratorTests
             (contentNamed ? Invalid : "name: \"seed\"") + ", " +
             (contentNamed ? (file ? "path" : "sql") + ": \"SELECT 1;\"" : Invalid) + ")]";
         (Compilation output, ImmutableArray<Diagnostic> errors) = Generate(source,
-            options: new SqlOptions(Path.Combine(AppContext.BaseDirectory, "sql-input-contracts")));
+            options: new SqlOptions(Path.Join(AppContext.BaseDirectory, "sql-input-contracts")));
         AssertCustomSqlInputError(output, errors, Invalid, contentNamed ? "ANKUS356" : file ? "ANKUS363" : "ANKUS360");
     }
 
@@ -87,8 +87,8 @@ public sealed partial class PgFunctionGeneratorTests
     [DataRow("project", "ANKUS366")]
     public void CustomSqlTrackedFailuresIdentifySelectionCause(string kind, string expected)
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "sql-input-contracts");
-        var file = new SqlInput(Path.Combine(project, "seed.sql"), kind switch
+        string project = Path.Join(AppContext.BaseDirectory, "sql-input-contracts");
+        var file = new SqlInput(Path.Join(project, "seed.sql"), kind switch
         {
             "unreadable" => null,
             "zero" => "SELECT '\0';",
@@ -97,7 +97,7 @@ public sealed partial class PgFunctionGeneratorTests
             _ => "SELECT 1;",
         });
         AdditionalText[] inputs = kind == "missing" ? [] : kind == "duplicate"
-            ? [file, new SqlInput(Path.Combine(project, "child", "..", "seed.sql"), "SELECT 2;")] : [file];
+            ? [file, new SqlInput(Path.Join(project, "child", "..", "seed.sql"), "SELECT 2;")] : [file];
         (Compilation output, ImmutableArray<Diagnostic> errors) = Generate("[assembly: Ankus.PgSqlFile(\"seed\", \"seed.sql\")]",
             inputs, kind == "project" ? null : new SqlOptions(project));
         AssertCustomSqlInputError(output, errors, "\"seed.sql\"", expected);
@@ -118,7 +118,7 @@ public sealed partial class PgFunctionGeneratorTests
     public void CustomSqlPathFailuresIdentifyAuthoredValues(string expression, string expected)
     {
         (Compilation output, ImmutableArray<Diagnostic> errors) = Generate("[assembly: Ankus.PgSqlFile(\"seed\", " + expression + ")]",
-            options: new SqlOptions(Path.Combine(AppContext.BaseDirectory, "sql-input-contracts")));
+            options: new SqlOptions(Path.Join(AppContext.BaseDirectory, "sql-input-contracts")));
         AssertCustomSqlInputError(output, errors, expression, expected);
     }
 
@@ -172,10 +172,10 @@ public sealed partial class PgFunctionGeneratorTests
     [DataRow("seed", "seed")]
     public void PathOnlySqlFileTakesTheFileStem(string path, string name)
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "sql-input-contracts");
+        string project = Path.Join(AppContext.BaseDirectory, "sql-input-contracts");
         (Compilation output, ImmutableArray<Diagnostic> errors) = Generate(
             "[assembly: Ankus.PgSqlFile(" + Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(path, quote: true) + ")]",
-            [new SqlInput(Path.Combine(project, path), "SELECT 1;")], new SqlOptions(project));
+            [new SqlInput(Path.Join(project, path), "SELECT 1;")], new SqlOptions(project));
         Assert.IsEmpty(errors);
         Assert.AreEqual("SELECT 1;\n", InstallationBody(output));
         Ankus.PgConfig.ExtensionSchemaGraph graph = Ankus.PgConfig.ExtensionSchemaGraph.Parse(ManifestValue(output, "Ankus.SqlGraph"));
@@ -207,11 +207,11 @@ public sealed partial class PgFunctionGeneratorTests
     [TestMethod]
     public void PathOnlySqlFileIsADependencyTarget()
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "sql-input-contracts");
+        string project = Path.Join(AppContext.BaseDirectory, "sql-input-contracts");
         (Compilation output, ImmutableArray<Diagnostic> errors) = Generate("""
             [assembly: Ankus.PgSql("after", "SELECT 2;", Requires = ["seed"])]
             [assembly: Ankus.PgSqlFile("sql/seed.sql")]
-            """, [new SqlInput(Path.Combine(project, "sql", "seed.sql"), "SELECT 1;")], new SqlOptions(project));
+            """, [new SqlInput(Path.Join(project, "sql", "seed.sql"), "SELECT 1;")], new SqlOptions(project));
         Assert.IsEmpty(errors);
         Assert.AreEqual("SELECT 1;\nSELECT 2;\n", InstallationBody(output));
     }
@@ -230,7 +230,7 @@ public sealed partial class PgFunctionGeneratorTests
     public void PathOnlySqlFileReportsPathBeforeName(string expression, string expected)
     {
         (Compilation output, ImmutableArray<Diagnostic> errors) = Generate("[assembly: Ankus.PgSqlFile(" + expression + ")]",
-            options: new SqlOptions(Path.Combine(AppContext.BaseDirectory, "sql-input-contracts")));
+            options: new SqlOptions(Path.Join(AppContext.BaseDirectory, "sql-input-contracts")));
         AssertCustomSqlInputError(output, errors, expression, expected);
     }
 
@@ -240,11 +240,11 @@ public sealed partial class PgFunctionGeneratorTests
     [TestMethod]
     public void PathOnlySqlFileNameMustBeUnique()
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "sql-input-contracts");
+        string project = Path.Join(AppContext.BaseDirectory, "sql-input-contracts");
         (_, ImmutableArray<Diagnostic> errors) = Generate("""
             [assembly: Ankus.PgSql("seed", "SELECT 2;")]
             [assembly: Ankus.PgSqlFile("seed.sql")]
-            """, [new SqlInput(Path.Combine(project, "seed.sql"), "SELECT 1;")], new SqlOptions(project));
+            """, [new SqlInput(Path.Join(project, "seed.sql"), "SELECT 1;")], new SqlOptions(project));
         Assert.IsTrue(errors.All(static error => error.Id == "ANKUS497"), string.Join("\n", errors));
         Assert.Contains(error => error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan) == "\"seed.sql\"",
             errors);

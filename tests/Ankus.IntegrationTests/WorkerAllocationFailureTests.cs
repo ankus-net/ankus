@@ -33,8 +33,8 @@ public sealed class WorkerAllocationFailureTests(TestContext context)
                 for (int invocation = 0; invocation < 2; invocation++)
                 {
                     string identity = Guid.NewGuid().ToString("N");
-                    string failed = Path.Combine(PostgresFixture.Cluster.DataDirectory, $"ankus-worker-fault-{identity}-failed.ready");
-                    string retry = Path.Combine(PostgresFixture.Cluster.DataDirectory, $"ankus-worker-fault-{identity}-retry.ready");
+                    string failed = Path.Join(PostgresFixture.Cluster.DataDirectory, $"ankus-worker-fault-{identity}-failed.ready");
+                    string retry = Path.Join(PostgresFixture.Cluster.DataDirectory, $"ankus-worker-fault-{identity}-retry.ready");
                     try
                     {
                         await using var command = new NpgsqlCommand("SELECT tests.worker_allocation_fault($1, $2)", connection, transaction);

@@ -58,8 +58,8 @@ public sealed partial class NativeBindingNativeTests
             string checks = NativeBindingRecordChecks.Generate(records, "#define PG_VERSION_NUM 180006\n" + Headers);
             var source = new StringBuilder(NativeBindingHeaderParser.GenerateChecks(Headers, symbols));
             source.AppendLine("int main(void) { return 0; }");
-            string file = Path.Combine(directory, "checks.c");
-            string executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "checks.exe" : "checks");
+            string file = Path.Join(directory, "checks.c");
+            string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "checks.exe" : "checks");
             string compiler = OperatingSystem.IsWindows() ? "cl.exe" : "clang";
             string[] arguments = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/Fe" + executable, "/Fo" + Path.ChangeExtension(executable, ".obj"), file]

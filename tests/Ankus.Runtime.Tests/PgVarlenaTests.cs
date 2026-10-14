@@ -13,6 +13,11 @@ public sealed unsafe class PgVarlenaTests
     private static bool s_failOid;
 
     /// <summary>
+    /// Sets whether the static native callback fails the next type OID lookup.
+    /// </summary>
+    private static void FailOidLookup(bool fail) => s_failOid = fail;
+
+    /// <summary>
     /// Registers isolated layouts whose codec factories must never participate in ownership operations.
     /// </summary>
     static PgVarlenaTests()
@@ -219,12 +224,7 @@ public sealed unsafe class PgVarlenaTests
         using var fixture = new MemoryContextTestFixture();
         using var input = new StorageBlock(4, 1);
         input.SetNumber(42);
-        PgVarlena<Value> value;
-        using (MemoryContextTestFixture.Enter())
-        {
-            value = Borrow(input, writable);
-        }
-
+        using PgVarlena<Value> value = BorrowInCallback();
         fixture.Requests.Clear();
         AssertDisposed(value);
         using (MemoryContextTestFixture.Enter())
@@ -236,6 +236,14 @@ public sealed unsafe class PgVarlenaTests
         value.Dispose();
         Assert.AreEqual(42, input.Number);
         Assert.IsEmpty(fixture.Requests);
+
+        PgVarlena<Value> BorrowInCallback()
+        {
+            using (MemoryContextTestFixture.Enter())
+            {
+                return Borrow(input, writable);
+            }
+        }
     }
 
     /// <summary>
@@ -305,7 +313,7 @@ public sealed unsafe class PgVarlenaTests
         using MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter();
         using var backend = new OidScope();
         using var script = new StorageScript(fixture, (4, 1));
-        var value = new PgVarlena<Value>(new Value(42));
+        using var value = new PgVarlena<Value>(new Value(42));
         PgVarlena<Value> alias = value;
         fixture.Requests.Clear();
         PgDatum result = value.IntoDatum();
@@ -415,7 +423,7 @@ public sealed unsafe class PgVarlenaTests
         using var script = new StorageScript(fixture, (4, 1));
         using var value = new PgVarlena<Value>(new Value(42));
         fixture.Requests.Clear();
-        s_failOid = phase == "oid";
+        FailOidLookup(phase == "oid");
         fixture.Handler = request => (phase == "lifetime" && request._operation == NativeMemoryOperation.CaptureGeneration) ||
             (phase == "detach" && request._operation == NativeMemoryOperation.Detach)
             ? throw new PgException("55006", "Transfer failed.") : script.Respond(request);
@@ -424,7 +432,7 @@ public sealed unsafe class PgVarlenaTests
         Assert.AreEqual(script.Blocks[0].Pointer, (nint)value.DangerousGetPointer());
         Assert.IsEmpty(fixture.Requests.Where(static request => request._operation == NativeMemoryOperation.Free));
         Assert.HasCount(phase == "detach" ? 1 : 0, fixture.Requests.Where(static request => request._operation == NativeMemoryOperation.Detach));
-        s_failOid = false;
+        FailOidLookup(false);
         fixture.Handler = script.Respond;
         PgDatum datum = value.IntoDatum();
         Assert.AreEqual((nuint)script.Blocks[0].Pointer, datum.DangerousGetBits());
@@ -470,7 +478,7 @@ public sealed unsafe class PgVarlenaTests
         using var fixture = new MemoryContextTestFixture();
         using MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter();
         using var script = new StorageScript(fixture, (4, 1));
-        var value = new PgVarlena<Value>(new Value(42));
+        using var value = new PgVarlena<Value>(new Value(42));
         fixture.Handler = request => request._operation == NativeMemoryOperation.Free
             ? throw new PgException("55006", "Release failed.") : script.Respond(request);
         Assert.AreEqual("55006", Assert.ThrowsExactly<PgException>(value.Dispose).SqlState);
@@ -539,28 +547,14 @@ public sealed unsafe class PgVarlenaTests
             NativeMemoryContext.Exit(previous);
         }
 
-        Exception? failure = null;
-        var worker = new Thread(() =>
+        DedicatedThread.Run(() =>
         {
-            try
-            {
-                using var otherFixture = new MemoryContextTestFixture();
-                using MemoryContextTestFixture.Scope otherScope = MemoryContextTestFixture.Enter();
-                AssertUnavailable(value);
-                Assert.ThrowsExactly<InvalidOperationException>(value.Dispose);
-                Assert.IsEmpty(otherFixture.Requests);
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
+            using var otherFixture = new MemoryContextTestFixture();
+            using MemoryContextTestFixture.Scope otherScope = MemoryContextTestFixture.Enter();
+            AssertUnavailable(value);
+            Assert.ThrowsExactly<InvalidOperationException>(value.Dispose);
+            Assert.IsEmpty(otherFixture.Requests);
         });
-        worker.Start();
-        worker.Join();
-        if (failure is not null)
-        {
-            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
-        }
 
         Assert.IsEmpty(fixture.Requests);
         Assert.AreEqual(42, value.Value.Number);
@@ -867,32 +861,27 @@ public sealed unsafe class PgVarlenaTests
     /// <summary>
     /// Accesses the native-only custom type marker for controlled envelope fixtures.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary1")]
-    private static extern ref int Marker(ref NativeValue value);
+    private static ref int Marker(ref NativeValue value) => ref value._auxiliary1;
 
     /// <summary>
     /// Accesses the exact input type OID for controlled envelope fixtures.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary2")]
-    private static extern ref int TypeOid(ref NativeValue value);
+    private static ref int TypeOid(ref NativeValue value) => ref value._auxiliary2;
 
     /// <summary>
     /// Accesses the native detoast writability discriminator.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_temporalInfinity")]
-    private static extern ref int Writability(ref NativeValue value);
+    private static ref int Writability(ref NativeValue value) => ref value._temporalInfinity;
 
     /// <summary>
     /// Accesses the native input payload pointer while its backing test buffer remains live.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_data")]
-    private static extern ref byte* Payload(ref NativeValue value);
+    private static ref byte* Payload(ref NativeValue value) => ref value._data;
 
     /// <summary>
     /// Accesses the native input payload length for framing checks.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_length")]
-    private static extern ref int PayloadLength(ref NativeValue value);
+    private static ref int PayloadLength(ref NativeValue value) => ref value._length;
 
     /// <summary>
     /// Constructs a callback input over a live independent test buffer.
@@ -961,7 +950,7 @@ public sealed unsafe class PgVarlenaTests
         /// <inheritdoc />
         public void Dispose()
         {
-            s_failOid = _previousFailure;
+            FailOidLookup(_previousFailure);
             NativeBackend.Exit(_previous);
         }
     }

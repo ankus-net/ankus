@@ -187,12 +187,9 @@ internal sealed class SqlEntity
     /// <param name="requirements">The source node's explicit prerequisites.</param>
     internal void Inherit(Dictionary<string, Location?> requirements)
     {
-        foreach (KeyValuePair<string, Location?> requirement in requirements)
+        foreach (KeyValuePair<string, Location?> requirement in requirements.Where(requirement => !Names.Contains(requirement.Key) && !Requires.ContainsKey(requirement.Key)))
         {
-            if (!Names.Contains(requirement.Key) && !Requires.ContainsKey(requirement.Key))
-            {
-                Requires.Add(requirement.Key, requirement.Value);
-            }
+            Requires.Add(requirement.Key, requirement.Value);
         }
     }
 }

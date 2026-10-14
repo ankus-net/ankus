@@ -35,11 +35,11 @@ internal static partial class NativeBindingCache
         long maximumBytes = ReadMaximumBytes(Environment.GetEnvironmentVariable("ANKUS_BINDING_CACHE_MAX_BYTES"));
         Directory.CreateDirectory(root);
         // Never remove lock files: deleting an unlocked name races another process opening it.
-        string ownershipPath = Path.Combine(root, key + ".lock");
-        string admissionPath = Path.Combine(root, key + ".admission.lock");
-        string entry = Path.Combine(root, key);
+        string ownershipPath = Path.Join(root, key + ".lock");
+        string admissionPath = Path.Join(root, key + ".admission.lock");
+        string entry = Path.Join(root, key);
         FileStream reader;
-        await using (FileStream admission = await LockAsync(admissionPath, exclusive: false, cancellationToken))
+        await using (await LockAsync(admissionPath, exclusive: false, cancellationToken))
         {
             reader = await LockAsync(ownershipPath, exclusive: false, cancellationToken);
         }
@@ -62,7 +62,7 @@ internal static partial class NativeBindingCache
         FileStream writer;
         // Announce the writer before waiting for existing readers. Re-entering
         // shared validation here could keep stale readers blocking one another forever.
-        await using (FileStream admission = await LockAsync(admissionPath, exclusive: true, cancellationToken))
+        await using (await LockAsync(admissionPath, exclusive: true, cancellationToken))
         {
             writer = await LockAsync(ownershipPath, exclusive: true, cancellationToken);
         }
@@ -83,13 +83,13 @@ internal static partial class NativeBindingCache
     private static async Task<string> PopulateAsync(string root, string key,
         Func<string, CancellationToken, Task<IReadOnlyList<NativeBindingCacheFile>>> produce, CancellationToken cancellationToken)
     {
-        string entry = Path.Combine(root, key);
+        string entry = Path.Join(root, key);
         if (await ValidAsync(entry, key, cancellationToken))
         {
             return entry;
         }
 
-        string stage = Path.Combine(root, key + ".stage-" + Guid.NewGuid().ToString("N"));
+        string stage = Path.Join(root, key + ".stage-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(stage);
         try
         {
@@ -115,7 +115,7 @@ internal static partial class NativeBindingCache
             }
 
             var manifest = new NativeBindingCacheManifest(key, artifacts, dependencies);
-            await File.WriteAllTextAsync(Path.Combine(stage, ManifestName), JsonSerializer.Serialize(manifest), cancellationToken);
+            await File.WriteAllTextAsync(Path.Join(stage, ManifestName), JsonSerializer.Serialize(manifest), cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             if (!await ValidAsync(stage, key, cancellationToken))
             {
@@ -125,7 +125,7 @@ internal static partial class NativeBindingCache
             string? previous = null;
             if (Directory.Exists(entry))
             {
-                previous = Path.Combine(root, key + ".replaced-" + Guid.NewGuid().ToString("N"));
+                previous = Path.Join(root, key + ".replaced-" + Guid.NewGuid().ToString("N"));
                 Directory.Move(entry, previous);
             }
 
@@ -243,7 +243,7 @@ internal static partial class NativeBindingCache
 
     private static async Task<bool> ValidAsync(string directory, string key, CancellationToken cancellationToken)
     {
-        string file = Path.Combine(directory, ManifestName);
+        string file = Path.Join(directory, ManifestName);
         if (!File.Exists(file))
         {
             return false;
@@ -276,7 +276,7 @@ internal static partial class NativeBindingCache
         {
             if (artifact is null || artifact.IsDirectory || string.IsNullOrEmpty(artifact.Path) || artifact.Path != Path.GetFileName(artifact.Path) ||
                 artifact.Path is "." or ".." or ManifestName || !names.Add(artifact.Path) ||
-                !await MatchesAsync(Path.Combine(directory, artifact.Path), artifact.Hash, allowSymbolicLink: false, cancellationToken))
+                !await MatchesAsync(Path.Join(directory, artifact.Path), artifact.Hash, allowSymbolicLink: false, cancellationToken))
             {
                 return false;
             }

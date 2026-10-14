@@ -28,7 +28,7 @@ public sealed partial class ToolCommandTests
     public async Task NewSolutionScaffoldsRunnableRegressionSetup(string projectName, string? extensionName, string expectedName, bool template)
     {
         CancellationToken token = context.CancellationToken;
-        string output = Path.Combine(CreateDirectory(), "regression solution with spaces");
+        string output = Path.Join(CreateDirectory(), "regression solution with spaces");
         string[] arguments = ["new", projectName, "--output", output,
             .. extensionName is null ? Array.Empty<string>() : ["--extension-name", extensionName]];
         if (template)
@@ -40,12 +40,12 @@ public sealed partial class ToolCommandTests
             (await InvokeAsync(arguments, token)).EnsureSuccess(s_tool, arguments);
         }
 
-        string project = Path.Combine(output, "src", projectName, projectName + ".csproj");
-        string suite = Path.Combine(Path.GetDirectoryName(project)!, "pg_regress");
+        string project = Path.Join(output, "src", projectName, projectName + ".csproj");
+        string suite = Path.Join(Path.GetDirectoryName(project)!, "pg_regress");
         string expectedSetup = "-- This setup file runs when the regression database is created or recreated.\n" +
             "-- Create the extension before running the ordinary SQL tests.\nCREATE EXTENSION " + expectedName + ";\n";
-        string setup = Path.Combine(suite, "sql", "setup.sql");
-        string setupOutput = Path.Combine(suite, "expected", "setup.out");
+        string setup = Path.Join(suite, "sql", "setup.sql");
+        string setupOutput = Path.Join(suite, "expected", "setup.out");
         Assert.AreEqual(expectedSetup, (await File.ReadAllTextAsync(setup, token)).ReplaceLineEndings("\n"));
         Assert.AreEqual(expectedSetup, (await File.ReadAllTextAsync(setupOutput, token)).ReplaceLineEndings("\n"));
         Assert.IsLessThanOrEqualTo(File.GetLastWriteTimeUtc(setupOutput), File.GetLastWriteTimeUtc(setup));
@@ -57,7 +57,7 @@ public sealed partial class ToolCommandTests
         string relativeProject = Path.GetRelativePath(output, project);
         SharedOutput build = await GetSharedOutputAsync(ContentKey(output, "ankus", "build", relativeProject),
             shared => BuildSharedExtensionAsync(CopySharedSnapshot(output), relativeProject, shared), token);
-        CopyFiles(build.Directory, Path.Combine(Path.GetDirectoryName(project)!, "bin", "ankus", s_postgresKey,
+        CopyFiles(build.Directory, Path.Join(Path.GetDirectoryName(project)!, "bin", "ankus", s_postgresKey,
             RuntimeInformation.RuntimeIdentifier, "Release"));
 
         await using PostgresTestInstallation owner = await PostgresTestInstallation.StageAsync(s_installation, CreateDirectory(), token);
@@ -90,7 +90,7 @@ public sealed partial class ToolCommandTests
             Assert.AreSequenceEqual(originalSql, await File.ReadAllBytesAsync(setup, token));
             Assert.AreSequenceEqual(originalExpected, await File.ReadAllBytesAsync(setupOutput, token));
             string expectedResult = $"\\set ECHO none{Environment.NewLine}42{Environment.NewLine}";
-            Assert.AreEqual(expectedResult, await File.ReadAllTextAsync(Path.Combine(suite, "results", "addition.out"), token));
+            Assert.AreEqual(expectedResult, await File.ReadAllTextAsync(Path.Join(suite, "results", "addition.out"), token));
         }
         finally
         {
@@ -107,11 +107,11 @@ public sealed partial class ToolCommandTests
     /// <returns>The project's default Release publication and the build result.</returns>
     private static async Task<SharedOutput> BuildSharedExtensionAsync(string solution, string relativeProject, CancellationToken token)
     {
-        string project = Path.Combine(solution, relativeProject);
+        string project = Path.Join(solution, relativeProject);
         string[] arguments = ["build", "--home", s_home, "--pg", MajorText(), "--project", project];
         ProcessResult result = await PackageProcessRunner.RunAsync(s_tool, arguments, s_environment, token, workingDirectory: s_root);
         result.EnsureSuccess(s_tool, arguments);
-        string publication = Path.Combine(Path.GetDirectoryName(project)!, "bin", "ankus", s_postgresKey,
+        string publication = Path.Join(Path.GetDirectoryName(project)!, "bin", "ankus", s_postgresKey,
             RuntimeInformation.RuntimeIdentifier, "Release");
         Assert.AreEqual(s_installation.Version.Major, PublishedExtension.Read(publication).PostgresMajor);
         return new SharedOutput(publication, result);

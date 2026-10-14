@@ -15,10 +15,10 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         PublishedExtension publication = PublishedExtension.Read(s_published);
-        string expected = await File.ReadAllTextAsync(Path.Combine(s_published, "extension", publication.Sql), token);
+        string expected = await File.ReadAllTextAsync(Path.Join(s_published, "extension", publication.Sql), token);
         string directory = CreateDirectory();
-        string library = Path.Combine(directory, "renamed" + Path.GetExtension(publication.Library));
-        File.Copy(Path.Combine(s_published, publication.Library), library);
+        string library = Path.Join(directory, "renamed" + Path.GetExtension(publication.Library));
+        File.Copy(Path.Join(s_published, publication.Library), library);
         Assert.HasCount(1, Directory.GetFiles(directory));
 
         ExtensionSchema schema = ExtensionSchema.Read(library);
@@ -37,17 +37,17 @@ public sealed partial class ToolCommandTests
         Assert.DoesNotContain(IntegrationEnvironment.RepositoryRoot, schema.Sql);
         Assert.DoesNotContain(s_root, schema.Sql);
 
-        await File.WriteAllTextAsync(Path.Combine(directory, PublishedExtension.FileName), "invalid sidecar", token);
-        await File.WriteAllTextAsync(Path.Combine(directory, publication.Sql), "SELECT 'incorrect sidecar';", token);
+        await File.WriteAllTextAsync(Path.Join(directory, PublishedExtension.FileName), "invalid sidecar", token);
+        await File.WriteAllTextAsync(Path.Join(directory, publication.Sql), "SELECT 'incorrect sidecar';", token);
         Assert.AreEqual(expected, ExtensionSchema.Read(library, RuntimeInformation.RuntimeIdentifier).Sql);
         Assert.ThrowsExactly<FormatException>(() => ExtensionSchema.Read(library,
             OperatingSystem.IsWindows() ? "linux-x64" : "win-x64"));
 
-        ProcessResult extracted = await InvokeAsync(["schema", "--from", library, "--home", Path.Combine(directory, "unregistered")], token);
+        ProcessResult extracted = await InvokeAsync(["schema", "--from", library, "--home", Path.Join(directory, "unregistered")], token);
         Assert.AreEqual(0, extracted.ExitCode, extracted.StandardError);
         Assert.AreEqual(expected, extracted.StandardOutput);
         Assert.IsEmpty(extracted.StandardError);
-        string output = Path.Combine(directory, "nested", "工具.sql");
+        string output = Path.Join(directory, "nested", "工具.sql");
         ProcessResult written = await InvokeAsync(["schema", "--from", library, "--runtime", RuntimeInformation.RuntimeIdentifier,
             "--output", output], token);
         Assert.AreEqual(0, written.ExitCode, written.StandardError);
@@ -64,8 +64,8 @@ public sealed partial class ToolCommandTests
         await using PostgresTestCluster cluster = await PostgresTestCluster.StartAsync(new PostgresTestClusterOptions
         {
             Installation = s_installation,
-            DataDirectoryBase = Path.Combine(s_root, "pgdata"),
-            LogDirectory = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
+            DataDirectoryBase = Path.Join(s_root, "pgdata"),
+            LogDirectory = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
         }, token);
         await using NpgsqlConnection connection = await cluster.OpenConnectionAsync(token);
         await using var command = new NpgsqlCommand(extracted.StandardOutput.Replace("'MODULE_PATHNAME'", "'" + EscapeSetting(library) + "'",
@@ -100,7 +100,7 @@ public sealed partial class ToolCommandTests
     [DataRow("--skip-build", null)]
     public async Task SchemaRejectsConflictingArtifactOptions(string option, string? value)
     {
-        string library = Path.Combine(s_published, PublishedExtension.Read(s_published).Library);
+        string library = Path.Join(s_published, PublishedExtension.Read(s_published).Library);
         string[] arguments = value is null
             ? ["schema", "--from", library, option]
             : ["schema", "--from", library, option, value];
@@ -124,9 +124,9 @@ public sealed partial class ToolCommandTests
     public async Task SchemaRejectsInvalidProjectSelection(string option, string value, string diagnostic)
     {
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "Probe.csproj");
+        string project = Path.Join(directory, "Probe.csproj");
         File.Copy(s_project, project);
-        string output = Path.Combine(directory, "schema.sql");
+        string output = Path.Join(directory, "schema.sql");
         ProcessResult result = await InvokeAsync(["schema", "--project", project, "--skip-build", option, value,
             "--output", output], context.CancellationToken);
         Assert.AreEqual(1, result.ExitCode);
@@ -147,15 +147,15 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string library = Path.Combine(directory, "library");
-        File.Copy(Path.Combine(s_published, PublishedExtension.Read(s_published).Library), library);
+        string library = Path.Join(directory, "library");
+        File.Copy(Path.Join(s_published, PublishedExtension.Read(s_published).Library), library);
         if (failure == "malformed")
         {
             await File.WriteAllTextAsync(library, "Not a native library", token);
         }
 
         byte[] original = await File.ReadAllBytesAsync(library, token);
-        string output = failure == "overwrite" ? library : Path.Combine(directory, "existing.sql");
+        string output = failure == "overwrite" ? library : Path.Join(directory, "existing.sql");
         if (failure != "overwrite")
         {
             await File.WriteAllTextAsync(output, "Preserve this SQL", token);
@@ -193,18 +193,18 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "Probe.csproj");
+        string project = Path.Join(directory, "Probe.csproj");
         File.Copy(s_project, project);
-        string published = Path.Combine(directory, "bin", "ankus", s_postgresKey, RuntimeInformation.RuntimeIdentifier, configuration);
+        string published = Path.Join(directory, "bin", "ankus", s_postgresKey, RuntimeInformation.RuntimeIdentifier, configuration);
         Directory.CreateDirectory(published);
         PublishedExtension publication = PublishedExtension.Read(s_published);
-        File.Copy(Path.Combine(s_published, publication.Library), Path.Combine(published, publication.Library));
+        File.Copy(Path.Join(s_published, publication.Library), Path.Join(published, publication.Library));
         publication.Write(published);
         string[] arguments = ["schema", "--project", project, "--pg", MajorText(), "--configuration", configuration,
-            "--skip-build", "--home", Path.Combine(directory, "unregistered")];
+            "--skip-build", "--home", Path.Join(directory, "unregistered")];
         ProcessResult extracted = await InvokeAsync(arguments, token);
         Assert.AreEqual(0, extracted.ExitCode, extracted.StandardError);
-        Assert.AreEqual(ExtensionSchema.Read(Path.Combine(s_published, publication.Library)).Sql, extracted.StandardOutput);
+        Assert.AreEqual(ExtensionSchema.Read(Path.Join(s_published, publication.Library)).Sql, extracted.StandardOutput);
         Assert.IsEmpty(extracted.StandardError);
 
         new PublishedExtension(DifferentMajor(), publication.RuntimeIdentifier, publication.Library, publication.Control, publication.Sql)
@@ -232,9 +232,9 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "Fresh.csproj");
+        string project = Path.Join(directory, "Fresh.csproj");
         File.Copy(s_project, project);
-        string source = Path.Combine(directory, "Fresh.cs");
+        string source = Path.Join(directory, "Fresh.cs");
         await File.WriteAllTextAsync(source, """
             using Ankus;
             public static class Fresh
@@ -247,9 +247,9 @@ public sealed partial class ToolCommandTests
             "--configuration", configuration];
         ProcessResult built = await InvokeAsync(arguments, token);
         Assert.AreEqual(0, built.ExitCode, built.StandardError);
-        string published = Path.Combine(directory, "bin", "ankus", s_postgresKey, RuntimeInformation.RuntimeIdentifier, configuration);
+        string published = Path.Join(directory, "bin", "ankus", s_postgresKey, RuntimeInformation.RuntimeIdentifier, configuration);
         PublishedExtension publication = PublishedExtension.Read(published);
-        string expected = await File.ReadAllTextAsync(Path.Combine(published, "extension", publication.Sql), token);
+        string expected = await File.ReadAllTextAsync(Path.Join(published, "extension", publication.Sql), token);
         Assert.AreEqual(expected, built.StandardOutput);
         Assert.Contains("fresh_schema_value", built.StandardOutput);
         Assert.Contains("Fresh", built.StandardError);
@@ -260,13 +260,13 @@ public sealed partial class ToolCommandTests
         Assert.IsEmpty(existing.StandardError);
 
         await File.WriteAllTextAsync(source, "#error schema_build_failure", token);
-        string output = Path.Combine(directory, "previous.sql");
+        string output = Path.Join(directory, "previous.sql");
         await File.WriteAllTextAsync(output, "Preserve previous output", token);
         ProcessResult failed = await InvokeAsync([.. arguments, "--output", output], token);
         Assert.AreNotEqual(0, failed.ExitCode);
         Assert.IsEmpty(failed.StandardOutput);
         Assert.Contains("schema_build_failure", failed.StandardError);
         Assert.AreEqual("Preserve previous output", await File.ReadAllTextAsync(output, token));
-        Assert.IsFalse(File.Exists(Path.Combine(published, PublishedExtension.FileName)));
+        Assert.IsFalse(File.Exists(Path.Join(published, PublishedExtension.FileName)));
     }
 }

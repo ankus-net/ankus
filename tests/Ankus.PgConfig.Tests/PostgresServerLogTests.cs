@@ -28,8 +28,8 @@ public sealed class PostgresServerLogTests(TestContext context)
     [TestMethod]
     public void ConstructionPreservesIdentityWithoutChanges()
     {
-        string parent = Path.Combine(_root, "missing");
-        string path = Path.Combine(parent, "native.log");
+        string parent = Path.Join(_root, "missing");
+        string path = Path.Join(parent, "native.log");
         Guid identity = Guid.NewGuid();
         var log = new PostgresServerLog(path, identity);
         Assert.AreEqual("Ankus-" + identity.ToString("N"), log.EventSource);
@@ -43,7 +43,7 @@ public sealed class PostgresServerLogTests(TestContext context)
     [TestMethod]
     public void ConstructionNormalizesRelativeTarget()
     {
-        string absolute = Path.Combine(_root, "native.log");
+        string absolute = Path.Join(_root, "native.log");
         string relative = Path.GetRelativePath(Environment.CurrentDirectory, absolute);
         var log = new PostgresServerLog(relative, Guid.NewGuid());
         Assert.AreEqual(OperatingSystem.IsWindows() ? absolute + ".stderr.log" : absolute, log.NativeFilePath);
@@ -81,7 +81,7 @@ public sealed class PostgresServerLogTests(TestContext context)
     public void ConstructionRejectsEmptyIdentity()
     {
         ArgumentException error = Assert.ThrowsExactly<ArgumentException>(() =>
-            new PostgresServerLog(Path.Combine(_root, "native.log"), Guid.Empty));
+            new PostgresServerLog(Path.Join(_root, "native.log"), Guid.Empty));
         Assert.AreEqual("identity", error.ParamName);
         Assert.IsEmpty(Directory.GetFileSystemEntries(_root));
     }
@@ -92,7 +92,7 @@ public sealed class PostgresServerLogTests(TestContext context)
     [TestMethod]
     public void MissingNativeFileRemainsAbsent()
     {
-        string path = Path.Combine(_root, "missing", "native.log");
+        string path = Path.Join(_root, "missing", "native.log");
         Assert.AreEqual(string.Empty, PostgresServerLog.ReadFile(path));
         Assert.IsEmpty(Directory.GetFileSystemEntries(_root));
     }
@@ -128,7 +128,7 @@ public sealed class PostgresServerLogTests(TestContext context)
     [TestMethod]
     public void NativeReadsPreserveLiveWriterAndExactText()
     {
-        string path = Path.Combine(_root, "native.log");
+        string path = Path.Join(_root, "native.log");
         using var writer = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
         const string First = "WARNING: café 🐘\nDETAIL: first\n";
         const string Second = "HINT: later\n";
@@ -147,7 +147,7 @@ public sealed class PostgresServerLogTests(TestContext context)
     [TestMethod]
     public void CanceledCollectionMakesNoChanges()
     {
-        string path = Path.Combine(_root, "missing", "native.log");
+        string path = Path.Join(_root, "missing", "native.log");
         var log = new PostgresServerLog(path, Guid.NewGuid());
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
@@ -163,7 +163,7 @@ public sealed class PostgresServerLogTests(TestContext context)
     [OSCondition(OperatingSystems.Linux | OperatingSystems.OSX)]
     public void UnixCollectionPreservesNativeFileAndEmptyState()
     {
-        string path = Path.Combine(_root, "native.log");
+        string path = Path.Join(_root, "native.log");
         var log = new PostgresServerLog(path, Guid.NewGuid());
         Assert.AreEqual(string.Empty, log.Read(context.CancellationToken));
         Assert.IsEmpty(Directory.GetFileSystemEntries(_root));
@@ -182,7 +182,7 @@ public sealed class PostgresServerLogTests(TestContext context)
     [OSCondition(OperatingSystems.Windows)]
     public void WindowsNativeCollectionSurvivesCollectorRecreation()
     {
-        string path = Path.Combine(_root, "native.log");
+        string path = Path.Join(_root, "native.log");
         Guid identity = Guid.NewGuid();
         var first = new PostgresServerLog(path, identity);
         Assert.AreEqual(string.Empty, first.Read(context.CancellationToken));
@@ -207,7 +207,7 @@ public sealed class PostgresServerLogTests(TestContext context)
     [OSCondition(OperatingSystems.Windows)]
     public void WindowsCollectionRejectsForeignCursorWithoutOverwritingFiles()
     {
-        string path = Path.Combine(_root, "native.log");
+        string path = Path.Join(_root, "native.log");
         Guid identity = Guid.NewGuid();
         string statePath = path + ".events." + identity.ToString("N") + ".json";
         string state = "{\"source\":\"Ankus-" + Guid.NewGuid().ToString("N") + "\",\"cursor\":0,\"created\":0,\"events\":\"other server\"}";
@@ -228,7 +228,7 @@ public sealed class PostgresServerLogTests(TestContext context)
     [OSCondition(OperatingSystems.Windows)]
     public async Task WindowsCollectionCancelsWhileCursorIsLocked()
     {
-        string path = Path.Combine(_root, "native.log");
+        string path = Path.Join(_root, "native.log");
         const string Retained = "previous retained diagnostics\n";
         File.WriteAllText(path, Retained);
         using var held = new FileStream(path + ".events.lock", FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None);
@@ -271,7 +271,7 @@ public sealed class PostgresServerLogTests(TestContext context)
     [DataRow("{\"source\":\"$source\",\"cursor\":0,\"created\":0,\"events\":42}")]
     public void WindowsCollectionRejectsInvalidCursorStructure(string state)
     {
-        string path = Path.Combine(_root, "native.log");
+        string path = Path.Join(_root, "native.log");
         Guid identity = Guid.NewGuid();
         var log = new PostgresServerLog(path, identity);
         string statePath = path + ".events." + identity.ToString("N") + ".json";
@@ -296,7 +296,7 @@ public sealed class PostgresServerLogTests(TestContext context)
     [DataRow("{")]
     public void WindowsCollectionRejectsMalformedCursorJson(string state)
     {
-        string path = Path.Combine(_root, "native.log");
+        string path = Path.Join(_root, "native.log");
         Guid identity = Guid.NewGuid();
         string statePath = path + ".events." + identity.ToString("N") + ".json";
         File.WriteAllText(statePath, state);
@@ -316,7 +316,7 @@ public sealed class PostgresServerLogTests(TestContext context)
     [OSCondition(OperatingSystems.Windows)]
     public void WindowsCollectionTimesOutWhileCursorIsLocked()
     {
-        string path = Path.Combine(_root, "native.log");
+        string path = Path.Join(_root, "native.log");
         const string Retained = "previous retained diagnostics\n";
         File.WriteAllText(path, Retained);
         using var held = new FileStream(path + ".events.lock", FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None);
@@ -336,7 +336,7 @@ public sealed class PostgresServerLogTests(TestContext context)
     [OSCondition(OperatingSystems.Windows)]
     public void WindowsCollectionRejectsInvalidLockTarget()
     {
-        string path = Path.Combine(_root, "native.log");
+        string path = Path.Join(_root, "native.log");
         const string Retained = "previous retained diagnostics\n";
         File.WriteAllText(path, Retained);
         Directory.CreateDirectory(path + ".events.lock");
@@ -353,7 +353,7 @@ public sealed class PostgresServerLogTests(TestContext context)
     [OSCondition(OperatingSystems.Windows)]
     public void WindowsCollectionReclaimsFailedSnapshotStaging()
     {
-        string path = Path.Combine(_root, "native.log");
+        string path = Path.Join(_root, "native.log");
         Guid identity = Guid.NewGuid();
         var log = new PostgresServerLog(path, identity);
         const string Native = "WARNING: retained café 🐘\n";
@@ -377,7 +377,7 @@ public sealed class PostgresServerLogTests(TestContext context)
     [OSCondition(OperatingSystems.Windows)]
     public void WindowsCollectionPreservesTextWhenSavedRecordNoLongerExists()
     {
-        string path = Path.Combine(_root, "native.log");
+        string path = Path.Join(_root, "native.log");
         Guid identity = Guid.NewGuid();
         var log = new PostgresServerLog(path, identity);
         string statePath = path + ".events." + identity.ToString("N") + ".json";

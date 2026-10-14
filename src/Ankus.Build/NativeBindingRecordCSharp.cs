@@ -194,11 +194,13 @@ internal static partial class NativeBindingRecordCSharp
             var aliases = new Dictionary<int, string>();
             foreach (NativeRecordType type in graph.Types.Where(static type => type.Kind == "alias"))
             {
-                if (Canonical(type.Canonical).Declaration is int declaration &&
-                    (!aliases.TryGetValue(declaration, out string? previous) || string.CompareOrdinal(type.Name, previous) < 0))
+                if (!(Canonical(type.Canonical).Declaration is int declaration &&
+                    (!aliases.TryGetValue(declaration, out string? previous) || string.CompareOrdinal(type.Name, previous) < 0)))
                 {
-                    aliases[declaration] = type.Name;
+                    continue;
                 }
+
+                aliases[declaration] = type.Name;
             }
 
             for (int index = 0; index < graph.Declarations.Count; index++)
@@ -531,10 +533,11 @@ internal static partial class NativeBindingRecordCSharp
             }
             else if (type.Kind == "pointer")
             {
-                int? signature = NativeBindingIndirectModel.FunctionType(graph, type.Element!.Value);
+                int element = type.Element!.Value;
+                int? signature = NativeBindingIndirectModel.FunctionType(graph, element);
                 string code = signature is int function
                     ? "@" + _functionPointers[function]
-                    : PointerTarget(type.Element.Value) + "*";
+                    : PointerTarget(element) + "*";
                 value = new(code, size, null, Pointer: signature is null);
             }
             else if (type.Kind == "array")

@@ -28,8 +28,8 @@ public sealed class PostgresTargetInfoTests(TestContext context)
     [TestMethod]
     public async Task InstallationReadsTargetBuildValues()
     {
-        string root = WriteTarget(Path.Combine(_directory, "target"));
-        PostgresInstallation installation = await PostgresInstallation.CreateAsync(Path.Combine(root, PostgresTargetInfo.ManifestFileName),
+        string root = WriteTarget(Path.Join(_directory, "target"));
+        PostgresInstallation installation = await PostgresInstallation.CreateAsync(Path.Join(root, PostgresTargetInfo.ManifestFileName),
             context.CancellationToken);
         PostgresTargetInfo target = installation.TargetInfo!;
         Assert.IsNotNull(target);
@@ -39,8 +39,8 @@ public sealed class PostgresTargetInfoTests(TestContext context)
         Assert.AreEqual(Rooted("opt", "pg", "lib"), installation.LibraryDirectory);
         Assert.AreEqual(Rooted("opt", "pg", "share"), installation.SharedDirectory);
         Assert.AreEqual(target.MapPath(Rooted("opt", "pg", "include", "server")), installation.ServerIncludeDirectory);
-        Assert.AreEqual(Path.Combine(root, "files", ArchivePath("opt", "pg", "include", "server")), installation.ServerIncludeDirectory);
-        Assert.AreEqual(Header, await File.ReadAllTextAsync(Path.Combine(installation.ServerIncludeDirectory, "postgres.h"), context.CancellationToken));
+        Assert.AreEqual(Path.Join(root, "files", ArchivePath("opt", "pg", "include", "server")), installation.ServerIncludeDirectory);
+        Assert.AreEqual(Header, await File.ReadAllTextAsync(Path.Join(installation.ServerIncludeDirectory, "postgres.h"), context.CancellationToken));
         Assert.AreSequenceEqual(
         [
             "-I" + target.MapPath(Rooted("opt", "deps", "include")),
@@ -51,7 +51,7 @@ public sealed class PostgresTargetInfoTests(TestContext context)
         ], installation.PreprocessorArguments);
         Assert.ThrowsExactly<InvalidOperationException>(() => installation.PsqlPath);
         await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => installation.GetRegressionDriverPathAsync(context.CancellationToken));
-        Assert.AreEqual(Path.Combine(root, "bindings", "native-binding.identity"), target.GetBindingPath("native-binding.identity"));
+        Assert.AreEqual(Path.Join(root, "bindings", "native-binding.identity"), target.GetBindingPath("native-binding.identity"));
         Assert.ThrowsExactly<ArgumentException>(() => target.GetBindingPath("../native-binding.identity"));
         Assert.AreEqual("ankus-target.pg18.osx-x64.zip", PostgresTargetInfo.GetArchiveFileName(18, "osx-x64"));
     }
@@ -62,10 +62,10 @@ public sealed class PostgresTargetInfoTests(TestContext context)
     [TestMethod]
     public async Task VerifyRejectsChangedAndMissingFiles()
     {
-        string root = WriteTarget(Path.Combine(_directory, "target"));
+        string root = WriteTarget(Path.Join(_directory, "target"));
         PostgresTargetInfo target = PostgresTargetInfo.Open(root);
         await target.VerifyAsync(context.CancellationToken);
-        string header = Path.Combine(target.MapPath(Rooted("opt", "pg", "include", "server")), "postgres.h");
+        string header = Path.Join(target.MapPath(Rooted("opt", "pg", "include", "server")), "postgres.h");
         await File.WriteAllTextAsync(header, Header + "#define CHANGED 1\n", context.CancellationToken);
         InvalidDataException changed = await Assert.ThrowsExactlyAsync<InvalidDataException>(() => target.VerifyAsync(context.CancellationToken));
         Assert.Contains("does not match its manifest", changed.Message);
@@ -87,7 +87,7 @@ public sealed class PostgresTargetInfoTests(TestContext context)
     [DataRow("files/C:/postgres.h")]
     public void OpenRejectsUnsafeFileNames(string name)
     {
-        string root = WriteTarget(Path.Combine(_directory, "target"));
+        string root = WriteTarget(Path.Join(_directory, "target"));
         RewriteManifest(root, manifest => manifest["files"]!.AsObject()[name] = new string('0', 64));
         Assert.ThrowsExactly<InvalidDataException>(() => PostgresTargetInfo.Open(root));
     }
@@ -98,15 +98,15 @@ public sealed class PostgresTargetInfoTests(TestContext context)
     [TestMethod]
     public void OpenRejectsInconsistentValuesAndFormats()
     {
-        string root = WriteTarget(Path.Combine(_directory, "runtime"));
-        File.WriteAllText(Path.Combine(root, "runtime-identifier"), "linux-arm64\n");
+        string root = WriteTarget(Path.Join(_directory, "runtime"));
+        File.WriteAllText(Path.Join(root, "runtime-identifier"), "linux-arm64\n");
         Assert.ThrowsExactly<InvalidDataException>(() => PostgresTargetInfo.Open(root));
 
-        root = WriteTarget(Path.Combine(_directory, "major"));
-        File.WriteAllText(Path.Combine(root, "postgres-major"), "17\n");
+        root = WriteTarget(Path.Join(_directory, "major"));
+        File.WriteAllText(Path.Join(root, "postgres-major"), "17\n");
         Assert.ThrowsExactly<InvalidDataException>(() => PostgresTargetInfo.Open(root));
 
-        root = WriteTarget(Path.Combine(_directory, "format"));
+        root = WriteTarget(Path.Join(_directory, "format"));
         RewriteManifest(root, manifest => manifest["format"] = 2);
         InvalidDataException format = Assert.ThrowsExactly<InvalidDataException>(() => PostgresTargetInfo.Open(root));
         Assert.Contains("format 2 is not supported", format.Message);
@@ -118,17 +118,17 @@ public sealed class PostgresTargetInfoTests(TestContext context)
     [TestMethod]
     public async Task ExtractReusesTheArchiveDirectory()
     {
-        string root = WriteTarget(Path.Combine(_directory, "target"));
-        string archive = Path.Combine(_directory, "target.zip");
+        string root = WriteTarget(Path.Join(_directory, "target"));
+        string archive = Path.Join(_directory, "target.zip");
         ZipFile.CreateFromDirectory(root, archive);
-        string cache = Path.Combine(_directory, "cache");
+        string cache = Path.Join(_directory, "cache");
         PostgresTargetInfo first = await PostgresTargetInfo.ExtractAsync(archive, cache, context.CancellationToken);
-        string expected = Path.Combine(cache, Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(archive))));
+        string expected = Path.Join(cache, Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(archive))));
         Assert.AreEqual(expected, first.RootDirectory);
-        File.WriteAllText(Path.Combine(expected, "unrelated"), "kept");
+        File.WriteAllText(Path.Join(expected, "unrelated"), "kept");
         PostgresTargetInfo second = await PostgresTargetInfo.ExtractAsync(archive, cache, context.CancellationToken);
         Assert.AreEqual(expected, second.RootDirectory);
-        Assert.IsTrue(File.Exists(Path.Combine(expected, "unrelated")));
+        Assert.IsTrue(File.Exists(Path.Join(expected, "unrelated")));
         Assert.HasCount(1, Directory.GetDirectories(cache));
     }
 
@@ -137,10 +137,10 @@ public sealed class PostgresTargetInfoTests(TestContext context)
     /// </summary>
     private static string WriteTarget(string root)
     {
-        string header = Path.Combine(root, "files", ArchivePath("opt", "pg", "include", "server"), "postgres.h");
+        string header = Path.Join(root, "files", ArchivePath("opt", "pg", "include", "server"), "postgres.h");
         Directory.CreateDirectory(Path.GetDirectoryName(header)!);
         File.WriteAllText(header, Header);
-        string binding = Path.Combine(root, "bindings", "native-binding.identity");
+        string binding = Path.Join(root, "bindings", "native-binding.identity");
         Directory.CreateDirectory(Path.GetDirectoryName(binding)!);
         File.WriteAllText(binding, "identity\n");
         var files = new JsonObject
@@ -169,15 +169,15 @@ public sealed class PostgresTargetInfoTests(TestContext context)
             },
             ["files"] = files,
         };
-        File.WriteAllText(Path.Combine(root, PostgresTargetInfo.ManifestFileName), manifest.ToJsonString());
-        File.WriteAllText(Path.Combine(root, "postgres-major"), "18\n");
-        File.WriteAllText(Path.Combine(root, "runtime-identifier"), "linux-x64\n");
+        File.WriteAllText(Path.Join(root, PostgresTargetInfo.ManifestFileName), manifest.ToJsonString());
+        File.WriteAllText(Path.Join(root, "postgres-major"), "18\n");
+        File.WriteAllText(Path.Join(root, "runtime-identifier"), "linux-x64\n");
         return root;
     }
 
     private static void RewriteManifest(string root, Action<JsonObject> change)
     {
-        string path = Path.Combine(root, PostgresTargetInfo.ManifestFileName);
+        string path = Path.Join(root, PostgresTargetInfo.ManifestFileName);
         JsonObject manifest = JsonNode.Parse(File.ReadAllText(path))!.AsObject();
         change(manifest);
         File.WriteAllText(path, manifest.ToJsonString());
@@ -187,13 +187,13 @@ public sealed class PostgresTargetInfoTests(TestContext context)
     /// Builds an absolute path on this platform, on drive C for Windows.
     /// </summary>
     private static string Rooted(params string[] segments)
-        => Path.Combine([OperatingSystem.IsWindows() ? @"C:\" : "/", .. segments]);
+        => Path.Join([OperatingSystem.IsWindows() ? @"C:\" : "/", .. segments]);
 
     /// <summary>
     /// Gives the location of an absolute path beneath the files directory.
     /// </summary>
     private static string ArchivePath(params string[] segments)
-        => Path.Combine([.. OperatingSystem.IsWindows() ? ["C"] : Array.Empty<string>(), .. segments]);
+        => Path.Join([.. OperatingSystem.IsWindows() ? ["C"] : Array.Empty<string>(), .. segments]);
 
     private static string Hash(string text) => Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
 }

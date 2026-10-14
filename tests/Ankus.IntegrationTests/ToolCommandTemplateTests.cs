@@ -32,26 +32,26 @@ public sealed partial class ToolCommandTests
     public async Task InstalledTemplateRunsManagedAndBackendTests(string template, string name, string extensionName, string managedNamespace, bool worker)
     {
         CancellationToken token = context.CancellationToken;
-        string output = Path.Combine(CreateDirectory(), "template solution with spaces");
+        string output = Path.Join(CreateDirectory(), "template solution with spaces");
         await CreateTemplateAsync(template, name, output, token);
-        using JsonDocument global = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(output, "global.json"), token));
+        using JsonDocument global = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Join(output, "global.json"), token));
         Assert.AreEqual(s_version, global.RootElement.GetProperty("msbuild-sdks").GetProperty("Ankus.Sdk").GetString());
         Assert.AreEqual("Microsoft.Testing.Platform", global.RootElement.GetProperty("test").GetProperty("runner").GetString());
-        using JsonDocument tools = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(output, ".config", "dotnet-tools.json"), token));
+        using JsonDocument tools = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Join(output, ".config", "dotnet-tools.json"), token));
         Assert.AreEqual(s_version, tools.RootElement.GetProperty("tools").GetProperty("ankus.tool").GetProperty("version").GetString());
         JsonElement commands = tools.RootElement.GetProperty("tools").GetProperty("ankus.tool").GetProperty("commands");
         Assert.AreEqual(1, commands.GetArrayLength());
         Assert.AreEqual("ankus", commands[0].GetString());
-        XDocument packages = XDocument.Load(Path.Combine(output, "Directory.Packages.props"));
+        XDocument packages = XDocument.Load(Path.Join(output, "Directory.Packages.props"));
         Assert.AreEqual(s_version, packages.Descendants("PackageVersion")
             .Single(element => (string?)element.Attribute("Include") == "Ankus.Testing").Attribute("Version")!.Value);
-        string project = Path.Combine(output, "src", name, name + ".csproj");
+        string project = Path.Join(output, "src", name, name + ".csproj");
         Assert.AreEqual(extensionName, XDocument.Load(project).Descendants("AnkusExtensionName").Single().Value);
-        XDocument properties = XDocument.Load(Path.Combine(output, "Directory.Build.props"));
+        XDocument properties = XDocument.Load(Path.Join(output, "Directory.Build.props"));
         Assert.IsEmpty(properties.Descendants("TreatWarningsAsErrors"));
         Assert.IsEmpty(properties.Descendants("EnforceCodeStyleInBuild"));
-        Assert.IsFalse(File.Exists(Path.Combine(output, ".editorconfig")));
-        Assert.IsTrue(File.Exists(Path.Combine(output, ".gitignore")));
+        Assert.IsFalse(File.Exists(Path.Join(output, ".editorconfig")));
+        Assert.IsTrue(File.Exists(Path.Join(output, ".gitignore")));
         await AssertTemplateRegressionIgnoreAsync(output, name, token);
 
         Dictionary<string, string?> environment = CreateConsumerEnvironment();
@@ -79,9 +79,9 @@ public sealed partial class ToolCommandTests
         }
 
         string projectDirectory = Path.GetDirectoryName(project)!;
-        Assert.IsFalse(Directory.Exists(Path.Combine(projectDirectory, "bin", "ankus-test-pgdata")));
-        Assert.IsEmpty(Directory.GetDirectories(Path.Combine(projectDirectory, "bin", "ankus-test-publish")));
-        Assert.IsNotEmpty(Directory.GetFiles(Path.Combine(projectDirectory, "bin", "ankus-test-logs"), "*.log"));
+        Assert.IsFalse(Directory.Exists(Path.Join(projectDirectory, "bin", "ankus-test-pgdata")));
+        Assert.IsEmpty(Directory.GetDirectories(Path.Join(projectDirectory, "bin", "ankus-test-publish")));
+        Assert.IsNotEmpty(Directory.GetFiles(Path.Join(projectDirectory, "bin", "ankus-test-logs"), "*.log"));
     }
 
     /// <summary>
@@ -98,7 +98,7 @@ public sealed partial class ToolCommandTests
         string[] generated = [root + "results/setup.out", root + "regression.diffs", root + "regression.out"];
         foreach (string path in generated)
         {
-            string file = Path.Combine(directory, path.Replace('/', Path.DirectorySeparatorChar));
+            string file = Path.Join(directory, path.Replace('/', Path.DirectorySeparatorChar));
             Directory.CreateDirectory(Path.GetDirectoryName(file)!);
             await File.WriteAllTextAsync(file, "generated regression output", token);
         }
@@ -111,7 +111,7 @@ public sealed partial class ToolCommandTests
         string[] authored = [root + "sql/setup.sql", root + "expected/setup.out"];
         foreach (string path in authored)
         {
-            Assert.IsTrue(File.Exists(Path.Combine(directory, path.Replace('/', Path.DirectorySeparatorChar))));
+            Assert.IsTrue(File.Exists(Path.Join(directory, path.Replace('/', Path.DirectorySeparatorChar))));
         }
 
         ProcessResult visible = await PackageProcessRunner.RunAsync("git", ["check-ignore", "--", .. authored],
@@ -132,9 +132,9 @@ public sealed partial class ToolCommandTests
         string[] names = ["FirstWorker", "SecondWorker"];
         foreach (string name in names)
         {
-            string output = Path.Combine(CreateDirectory(), "worker solution");
+            string output = Path.Join(CreateDirectory(), "worker solution");
             await CreateTemplateAsync("ankus-worker", name, output, token);
-            string source = await File.ReadAllTextAsync(Path.Combine(output, "src", name, "Workers.cs"), token);
+            string source = await File.ReadAllTextAsync(Path.Join(output, "src", name, "Workers.cs"), token);
             MatchCollection matches = TemplateSharedNames().Matches(source);
             Assert.HasCount(2, matches);
             Assert.AreEqual(matches[0].Groups["prefix"].Value, matches[1].Groups["prefix"].Value);
@@ -155,7 +155,7 @@ public sealed partial class ToolCommandTests
     [TestMethod]
     public void TemplatePackageHasLicenseAndCompleteDiscoveryContent()
     {
-        using ZipArchive package = ZipFile.OpenRead(Path.Combine(s_root, "feed", "Ankus.Templates." + s_version + ".nupkg"));
+        using ZipArchive package = ZipFile.OpenRead(Path.Join(s_root, "feed", "Ankus.Templates." + s_version + ".nupkg"));
         using Stream metadata = package.GetEntry("Ankus.Templates.nuspec")!.Open();
         XDocument document = XDocument.Load(metadata);
         XNamespace ns = document.Root!.Name.Namespace;
@@ -181,19 +181,19 @@ public sealed partial class ToolCommandTests
     public async Task TemplateExtensionNameOverridesTheProjectName()
     {
         CancellationToken token = context.CancellationToken;
-        string output = Path.Combine(CreateDirectory(), "Named");
+        string output = Path.Join(CreateDirectory(), "Named");
         await CreateTemplateAsync("ankus", "Named", output, token, "--extension-name", "Sales-Reports");
-        string source = Path.Combine(output, "src", "Named");
+        string source = Path.Join(output, "src", "Named");
         Assert.Contains("<AnkusExtensionName>sales_reports</AnkusExtensionName>",
-            await File.ReadAllTextAsync(Path.Combine(source, "Named.csproj"), token));
+            await File.ReadAllTextAsync(Path.Join(source, "Named.csproj"), token));
         Assert.Contains("CREATE EXTENSION sales_reports;",
-            await File.ReadAllTextAsync(Path.Combine(source, "pg_regress", "sql", "setup.sql"), token));
+            await File.ReadAllTextAsync(Path.Join(source, "pg_regress", "sql", "setup.sql"), token));
     }
 
     private async Task CreateTemplateAsync(string template, string name, string output, CancellationToken token, params string[] arguments)
     {
-        string hive = Path.Combine(CreateDirectory(), "isolated template hive");
-        string package = Path.Combine(s_root, "feed", "Ankus.Templates." + s_version + ".nupkg");
+        string hive = Path.Join(CreateDirectory(), "isolated template hive");
+        string package = Path.Join(s_root, "feed", "Ankus.Templates." + s_version + ".nupkg");
         ProcessResult installed = await PackageProcessRunner.RunAsync("dotnet", ["new", "install", package, "--debug:custom-hive", hive],
             s_environment, token, workingDirectory: s_root);
         installed.EnsureSuccess("dotnet", ["new", "install"]);

@@ -175,7 +175,7 @@ public sealed class ExtensionControlCommandTests(TestContext context)
         foreach (string major in new[] { "12", "20" })
         {
             await Assert.ThrowsExactlyAsync<ArgumentOutOfRangeException>(() =>
-                ExtensionControlCommand.RunAsync(["missing", Path.Combine(_root, "output"), major, "probe", "1", "Probe.so", ""]));
+                ExtensionControlCommand.RunAsync(["missing", Path.Join(_root, "output"), major, "probe", "1", "Probe.so", ""]));
         }
 
         Assert.IsEmpty(Directory.GetFileSystemEntries(_root));
@@ -202,15 +202,15 @@ public sealed class ExtensionControlCommandTests(TestContext context)
             [CSharpSyntaxTree.ParseText(source, cancellationToken: context.CancellationToken)],
             platformAssemblies.Split(Path.PathSeparator).Select(static path => MetadataReference.CreateFromFile(path)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-        string assembly = Path.Combine(_root, "Query.dll");
+        string assembly = Path.Join(_root, "Query.dll");
         using (FileStream stream = File.Create(assembly))
         {
             EmitResult emitted = compilation.Emit(stream, cancellationToken: context.CancellationToken);
             Assert.IsTrue(emitted.Success, string.Join(Environment.NewLine, emitted.Diagnostics));
         }
 
-        string authored = Path.Combine(_root, "author.control");
+        string authored = Path.Join(_root, "author.control");
         File.WriteAllText(authored, "comment='author'");
-        return [assembly, Path.Combine(_root, "output", "query.control"), "18", "query_probe", "1.2", "Query.so", authored];
+        return [assembly, Path.Join(_root, "output", "query.control"), "18", "query_probe", "1.2", "Query.so", authored];
     }
 }

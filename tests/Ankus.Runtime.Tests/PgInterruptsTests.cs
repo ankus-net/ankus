@@ -1,5 +1,3 @@
-using System.Runtime.ExceptionServices;
-
 namespace Ankus.Runtime.Tests;
 
 /// <summary>
@@ -74,24 +72,25 @@ public sealed class PgInterruptsTests
     {
         using var fixture = new MemoryContextTestFixture();
         using MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter();
-        int pending = 0;
-        int failures = 0;
+        // The runtime reads these flags through the capability, as it reads the backend's own.
+        int* pending = stackalloc int[] { 0 };
+        int* failures = stackalloc int[] { 0 };
         NativeMemoryApi* api = (NativeMemoryApi*)scope.Address;
-        api->_interruptPending = &pending;
-        api->_failedFrames = &failures;
+        api->_interruptPending = pending;
+        api->_failedFrames = failures;
 
         PgInterrupts.Check();
         Assert.IsEmpty(fixture.Requests);
-        pending = 1;
+        *pending = 1;
         PgInterrupts.Check();
         Assert.HasCount(1, fixture.Requests);
-        pending = 0;
+        *pending = 0;
         PgInterrupts.Check();
         Assert.HasCount(1, fixture.Requests);
-        failures = 1;
+        *failures = 1;
         PgInterrupts.Check();
         Assert.HasCount(2, fixture.Requests);
-        failures = 0;
+        *failures = 0;
         PgInterrupts.Check();
         Assert.HasCount(2, fixture.Requests);
     }
@@ -172,24 +171,7 @@ public sealed class PgInterruptsTests
     {
         using var fixture = new MemoryContextTestFixture();
         using MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter();
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                Assert.ThrowsExactly<InvalidOperationException>(PgInterrupts.Check);
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        thread.Start();
-        thread.Join();
-        if (failure is not null)
-        {
-            ExceptionDispatchInfo.Capture(failure).Throw();
-        }
+        DedicatedThread.Run(() => Assert.ThrowsExactly<InvalidOperationException>(PgInterrupts.Check));
 
         Assert.IsEmpty(fixture.Requests);
     }

@@ -161,8 +161,10 @@ public sealed class NumericTests(TestContext context)
                 command.Parameters.AddWithValue(precision);
                 command.Parameters.AddWithValue(scale);
                 int major = PostgresFixture.Cluster.Installation.Version.Major;
-                if ((major < 15 && operation == "rescale" && (scale < 0 || scale > precision)) ||
-                    (major < 14 && left == "Infinity"))
+                // PostgreSQL 15 allows a scale outside 0 through the precision, and PostgreSQL 14 added numeric infinity.
+                bool rescaleRejected = major < 15 && operation == "rescale" && (scale < 0 || scale > precision);
+                bool infinityRejected = major < 14 && left == "Infinity";
+                if (rescaleRejected || infinityRejected)
                 {
                     command.CommandText = "SELECT datatype.numeric_apply($1, $2::numeric, $3::numeric, $4, $5)";
                     await AssertMatchingFailureAsync(command, transaction, $"SELECT {expectedSql}", operation == "rescale" ? "22023" : "22P02", 3, token);

@@ -178,11 +178,11 @@ try
 
     Directory.CreateDirectory(output);
     publication.Write(output);
-    string extensionDirectory = Path.Combine(output, "extension");
+    string extensionDirectory = Path.Join(output, "extension");
     Directory.CreateDirectory(extensionDirectory);
     foreach ((string name, string content) in package)
     {
-        WriteIfDifferent(Path.Combine(extensionDirectory, name), content);
+        WriteIfDifferent(Path.Join(extensionDirectory, name), content);
     }
 
     if (publication.ScriptDirectory is not null)
@@ -190,13 +190,13 @@ try
         _ = publication.GetScriptDirectory(output, installation.SharedDirectory);
     }
 
-    string source = Path.Combine(output, "bridge.c");
-    string nativeObject = Path.Combine(output, OperatingSystem.IsWindows() ? "bridge.obj" : "bridge.o");
+    string source = Path.Join(output, "bridge.c");
+    string nativeObject = Path.Join(output, OperatingSystem.IsWindows() ? "bridge.obj" : "bridge.o");
     WriteIfDifferent(source, manifest.NativeSource + NativeSchemaEmitter.Emit(args[5], args[6], args[7], major,
         args[8], relocatable, schema.Sql, schema.Graph, defaultSchema));
-    WriteIfDifferent(Path.Combine(output, "schema.sql"), schema.Sql);
-    schema.Write(Path.Combine(output, "schema.generated.json"));
-    WriteIfDifferent(Path.Combine(output, "exports.txt"), manifest.Exports + NativeSchemaEmitter.Symbol +
+    WriteIfDifferent(Path.Join(output, "schema.sql"), schema.Sql);
+    schema.Write(Path.Join(output, "schema.generated.json"));
+    WriteIfDifferent(Path.Join(output, "exports.txt"), manifest.Exports + NativeSchemaEmitter.Symbol +
         (OperatingSystem.IsWindows() ? ",DATA\n" : "\n"));
 
     var libraries = new List<string> { nativeObject };
@@ -204,20 +204,20 @@ try
     string compiler;
     if (OperatingSystem.IsWindows())
     {
-        compiler = Path.Combine(Path.GetDirectoryName(args[3]) ?? string.Empty, "cl.exe");
+        compiler = Path.Join(Path.GetDirectoryName(args[3]) ?? string.Empty, "cl.exe");
         // PostgreSQL 19's headers require C11, which MSVC's default C mode predates.
         compilerArguments.AddRange(["/nologo", "/std:c11", "/c", "/O2", "/MT", "/WX", "/utf-8", $"/Fo{nativeObject}"]);
         compilerArguments.Add($"/I{installation.ServerIncludeDirectory}");
         compilerArguments.Add($"/I{installation.IncludeDirectory}");
-        compilerArguments.Add($"/I{Path.Combine(installation.ServerIncludeDirectory, "port", "win32")}");
-        compilerArguments.Add($"/I{Path.Combine(installation.ServerIncludeDirectory, "port", "win32_msvc")}");
+        compilerArguments.Add($"/I{Path.Join(installation.ServerIncludeDirectory, "port", "win32")}");
+        compilerArguments.Add($"/I{Path.Join(installation.ServerIncludeDirectory, "port", "win32_msvc")}");
         foreach (string directory in WindowsToolchain.GetIncludeDirectories(args[4]))
         {
             compilerArguments.Add($"/I{directory}");
         }
 
         string libraryDirectory = installation.TargetInfo?.MapPath(installation.LibraryDirectory) ?? installation.LibraryDirectory;
-        libraries.Add(Path.Combine(libraryDirectory, "postgres.lib"));
+        libraries.Add(Path.Join(libraryDirectory, "postgres.lib"));
     }
     else
     {
@@ -234,7 +234,7 @@ try
     }
 
     compilerArguments.Add(source);
-    WriteIfDifferent(Path.Combine(output, "libraries.txt"), string.Join(Environment.NewLine, libraries));
+    WriteIfDifferent(Path.Join(output, "libraries.txt"), string.Join(Environment.NewLine, libraries));
     // Compile against the installed headers each publish; no stale ABI objects survive an installation change.
     await RunCompilerAsync(compiler, compilerArguments);
     Console.WriteLine($"Ankus: generated PostgreSQL {major} native boundaries and SQL.");

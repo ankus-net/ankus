@@ -64,7 +64,7 @@ public sealed partial class NativeBindingNativeTests
                 private static int NativeAlignment<T>() where T : unmanaged, IPgNativeType => T.NativeAlignment;
             }
             """;
-        string directory = Path.Combine(Path.GetTempPath(), "ankus-managed-record-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus-managed-record-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
@@ -140,7 +140,7 @@ public sealed partial class NativeBindingNativeTests
                 }
             }
             """;
-        string directory = Path.Combine(Path.GetTempPath(), "ankus-managed-bitfield-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus-managed-bitfield-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
@@ -206,7 +206,7 @@ public sealed partial class NativeBindingNativeTests
                 }
             }
             """;
-        string directory = Path.Combine(Path.GetTempPath(), "ankus-managed-anonymous-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus-managed-anonymous-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
@@ -272,7 +272,7 @@ public sealed partial class NativeBindingNativeTests
                 private static int Alignment<T>() where T : unmanaged, IPgNativeType => T.NativeAlignment;
             }
             """;
-        string directory = Path.Combine(Path.GetTempPath(), "ankus-managed-extended-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus-managed-extended-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
@@ -344,7 +344,7 @@ public sealed partial class NativeBindingNativeTests
                 }
             }
             """;
-        string directory = Path.Combine(Path.GetTempPath(), "ankus-managed-incomplete-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus-managed-incomplete-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
@@ -418,7 +418,7 @@ public sealed partial class NativeBindingNativeTests
                 }
             }
             """;
-        string directory = Path.Combine(Path.GetTempPath(), "ankus-managed-names-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus-managed-names-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
@@ -492,7 +492,7 @@ public sealed partial class NativeBindingNativeTests
                 }
             }
             """;
-        string directory = Path.Combine(Path.GetTempPath(), "ankus-managed-wide-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus-managed-wide-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
@@ -509,8 +509,8 @@ public sealed partial class NativeBindingNativeTests
 
     private async Task<long[]> RunRecordWitnessAsync(string source, string directory)
     {
-        string file = Path.Combine(directory, "witness.c");
-        string executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "witness.exe" : "witness");
+        string file = Path.Join(directory, "witness.c");
+        string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "witness.exe" : "witness");
         await File.WriteAllTextAsync(file, source, context.CancellationToken);
         string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "cc";
         string[] arguments = OperatingSystem.IsWindows()
@@ -580,7 +580,7 @@ public sealed partial class NativeBindingNativeTests
                 }
             }
             """;
-        string directory = Path.Combine(Path.GetTempPath(), "ankus-managed-huge-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus-managed-huge-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {

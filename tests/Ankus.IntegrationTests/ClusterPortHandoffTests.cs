@@ -74,14 +74,15 @@ public sealed class ClusterPortHandoffTests(TestContext context)
         PostgresTestClusterOptions options = AtPort(defaults, selected.Port);
         selected.Dispose();
         var attempts = new List<PostgresTestCluster>();
-        TcpListener? competitor = null;
+        var competitors = new List<TcpListener>();
         try
         {
             InvalidOperationException error = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
                 PostgresTestCluster.StartAsync(options, (attempt, _) =>
                 {
                     attempts.Add(attempt);
-                    competitor = new TcpListener(IPAddress.Loopback, attempt.Port);
+                    var competitor = new TcpListener(IPAddress.Loopback, attempt.Port);
+                    competitors.Add(competitor);
                     competitor.Start();
                 }, context.CancellationToken));
             PostgresTestCluster failed = Assert.ContainsSingle(attempts);
@@ -89,7 +90,7 @@ public sealed class ClusterPortHandoffTests(TestContext context)
             Assert.Contains("could not create any TCP/IP sockets", error.Message);
             Assert.IsFalse(Directory.Exists(failed.DataDirectory));
             Assert.IsFalse(Directory.Exists(failed.SocketDirectory));
-            Assert.IsNotNull(competitor);
+            Assert.ContainsSingle(competitors);
             Assert.ThrowsExactly<SocketException>(() =>
             {
                 using PortReservation unexpected = PortReservation.Create(selected.Port);
@@ -97,7 +98,10 @@ public sealed class ClusterPortHandoffTests(TestContext context)
         }
         finally
         {
-            competitor?.Stop();
+            foreach (TcpListener competitor in competitors)
+            {
+                competitor.Stop();
+            }
         }
 
         await using PostgresTestCluster recovered = await PostgresTestCluster.StartAsync(options, context.CancellationToken);
@@ -121,7 +125,7 @@ public sealed class ClusterPortHandoffTests(TestContext context)
         PostgresTestClusterOptions options = AtPort(defaults, port);
         await Assert.ThrowsExactlyAsync<ArgumentOutOfRangeException>(() => PostgresTestCluster.StartAsync(options, context.CancellationToken));
         await Assert.ThrowsExactlyAsync<ArgumentOutOfRangeException>(() => PostgresExtensionTest.StartAsync(
-            Path.Combine(options.DataDirectoryBase, "missing.csproj"), sharedPreload: false, port, cancellationToken: context.CancellationToken));
+            Path.Join(options.DataDirectoryBase, "missing.csproj"), sharedPreload: false, port, cancellationToken: context.CancellationToken));
         Assert.IsFalse(Directory.Exists(options.DataDirectoryBase));
     }
 
@@ -236,7 +240,7 @@ public sealed class ClusterPortHandoffTests(TestContext context)
                     }
                     else
                     {
-                        File.AppendAllText(Path.Combine(attempt.DataDirectory, "postgresql.auto.conf"), "ankus_invalid_configuration = 'invalid'\n");
+                        File.AppendAllText(Path.Join(attempt.DataDirectory, "postgresql.auto.conf"), "ankus_invalid_configuration = 'invalid'\n");
                     }
                 }, context.CancellationToken));
 
@@ -286,7 +290,7 @@ public sealed class ClusterPortHandoffTests(TestContext context)
             Installation = defaults.Installation,
             Port = port,
             SharedDirectory = defaults.SharedDirectory,
-            DataDirectoryBase = Path.Combine(defaults.DataDirectoryBase, "fixed-" + Guid.NewGuid().ToString("N")),
+            DataDirectoryBase = Path.Join(defaults.DataDirectoryBase, "fixed-" + Guid.NewGuid().ToString("N")),
             LogDirectory = defaults.LogDirectory,
             DatabaseName = defaults.DatabaseName,
             UserName = defaults.UserName,

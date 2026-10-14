@@ -213,9 +213,8 @@ public sealed class PgEnumTests
         SignedState[] required = [SignedState.Highest, SignedState.Zero, SignedState.Lowest];
         SignedState?[] nullable = [SignedState.Highest, SignedState.Zero, SignedState.Lowest];
         object[] sources = [required, nullable, new PgArray<SignedState>(required), new PgArray<SignedState?>(nullable)];
-        foreach (object source in sources)
+        foreach (SpiRow row in sources.Select(static source => new SpiRow([source], [new("value", 0)])))
         {
-            var row = new SpiRow([source], [new("value", 0)]);
             Assert.AreSequenceEqual(required, row.Get<SignedState[]>(0));
             Assert.AreSequenceEqual(nullable, row.Get<SignedState?[]>(0));
             PgArray<SignedState> requiredArray = row.Get<PgArray<SignedState>>(0);
@@ -239,9 +238,8 @@ public sealed class PgEnumTests
     public void EmptyArraysRetainEnumIdentityAndNormalizeTheirShape()
     {
         object[] sources = [Array.Empty<SignedState>(), Array.Empty<SignedState?>(), new PgArray<SignedState>([]), new PgArray<SignedState?>([], [2, 0], [-4, 3])];
-        foreach (object source in sources)
+        foreach (SpiRow row in sources.Select(static source => new SpiRow([source], [new("value", 0)])))
         {
-            var row = new SpiRow([source], [new("value", 0)]);
             Assert.IsEmpty(row.Get<SignedState[]>(0));
             Assert.IsEmpty(row.Get<SignedState?[]>(0));
             PgArray<SignedState> required = row.Get<PgArray<SignedState>>(0);
@@ -314,9 +312,8 @@ public sealed class PgEnumTests
         SignedState[] required = [SignedState.Ready];
         SignedState?[] nullable = [SignedState.Ready];
         object[] sources = [required, nullable, new PgArray<SignedState>(required), new PgArray<SignedState?>(nullable)];
-        foreach (object source in sources)
+        foreach (SpiRow row in sources.Select(static source => new SpiRow([source], [new("value", 0)])))
         {
-            var row = new SpiRow([source], [new("value", 0)]);
             Assert.ThrowsExactly<InvalidCastException>(() => row.Get<OtherState[]>(0));
             Assert.ThrowsExactly<InvalidCastException>(() => row.Get<OtherState?[]>(0));
             Assert.ThrowsExactly<InvalidCastException>(() => row.Get<PgArray<OtherState>>(0));

@@ -111,7 +111,7 @@ public sealed partial class NativeBindingNativeTests
     public async Task ManagedCallIdentityPreservesNativeSymbols(string mutation)
     {
         const string Headers = "extern int first(int value); extern int second(int value);";
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-call-identity-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-call-identity-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
@@ -155,7 +155,7 @@ public sealed partial class NativeBindingNativeTests
     public async Task ManagedCallIdentityIgnoresDictionaryOrder()
     {
         const string Headers = "extern int first(int value); extern long second(long value); extern int current;";
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-call-order-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-call-order-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
@@ -213,7 +213,7 @@ public sealed partial class NativeBindingNativeTests
                 }
             }
             """;
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-managed-call-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-managed-call-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {

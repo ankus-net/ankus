@@ -26,8 +26,8 @@ public sealed class SdkWindowsEnvironmentTests(TestContext context)
         string directory = Directory.CreateTempSubdirectory("ankus-sdk-environment-").FullName;
         try
         {
-            string sdk = Path.Combine(AppContext.BaseDirectory, "Sdk");
-            string project = Path.Combine(directory, "Toolchain.proj");
+            string sdk = Path.Join(AppContext.BaseDirectory, "Sdk");
+            string project = Path.Join(directory, "Toolchain.proj");
             new XDocument(new XElement("Project",
                 new XElement("PropertyGroup",
                     new XElement("_targetOS", targetOs),
@@ -35,8 +35,8 @@ public sealed class SdkWindowsEnvironmentTests(TestContext context)
                     new XElement("LIB", "compiler;sdk"),
                     new XElement("CppLinker", "link.exe")),
                 new XElement("ItemGroup", new XElement("AdditionalNativeLibraryDirectories", new XAttribute("Include", "consumer"))),
-                new XElement("Import", new XAttribute("Project", Path.Combine(sdk, "Ankus.Bindings.targets"))),
-                new XElement("Import", new XAttribute("Project", Path.Combine(sdk, "Ankus.Native.targets"))),
+                new XElement("Import", new XAttribute("Project", Path.Join(sdk, "Ankus.Bindings.targets"))),
+                new XElement("Import", new XAttribute("Project", Path.Join(sdk, "Ankus.Native.targets"))),
                 new XElement("Target", new XAttribute("Name", "ResolveFrameworkReferences")),
                 new XElement("Target", new XAttribute("Name", "SetupOSSpecificProps")))).Save(project);
             string output = await NativeBindingLayoutCommand.RunProcessAsync("dotnet",

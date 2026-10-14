@@ -164,26 +164,18 @@ public static unsafe partial class NativeRawCallFunctions
     [PgFunction]
     public static string RawCallWorker(long body)
     {
-        Exception? failure = null;
-        var worker = new Thread(() =>
+        try
         {
-            try
-            {
-                Parse((nint)body, "42");
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        worker.Start();
-        worker.Join();
-        if (failure is not InvalidOperationException || !failure.Message.Contains("active backend callback", StringComparison.Ordinal))
+            // A long-running task gets a thread of its own, which has no backend callback.
+            Task.Factory.StartNew(() => Parse((nint)body, "42"), CancellationToken.None, TaskCreationOptions.LongRunning,
+                TaskScheduler.Default).GetAwaiter().GetResult();
+        }
+        catch (InvalidOperationException rejected) when (rejected.Message.Contains("active backend callback", StringComparison.Ordinal))
         {
-            throw new InvalidOperationException("The worker did not reject its missing native capability.", failure);
+            return $"True|{Parse((nint)body, "42")}";
         }
 
-        return $"True|{Parse((nint)body, "42")}";
+        throw new InvalidOperationException("The worker did not reject its missing native capability.");
     }
 
     /// <summary>

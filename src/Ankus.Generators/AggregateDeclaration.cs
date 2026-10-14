@@ -403,11 +403,10 @@ internal sealed class AggregateDeclaration(INamedTypeSymbol type, AttributeData 
             }
         }
 
-        bool serialize = aggregate.Helpers.TryGetValue("Serialize", out AggregateHelper? serializer);
-        bool deserialize = aggregate.Helpers.TryGetValue("Deserialize", out AggregateHelper? deserializer);
-        if (serialize != deserialize || serialize && (!state.IsInternal || serializer!.Types.Length != 1 ||
-            !serializer.Types[0].Matches(state) || serializer.Result.Sql != "bytea" ||
-            deserializer!.Types.Length != 1 || deserializer.Types[0].Sql != "bytea" || !deserializer.Result.Matches(state)))
+        _ = aggregate.Helpers.TryGetValue("Serialize", out AggregateHelper? serializer);
+        _ = aggregate.Helpers.TryGetValue("Deserialize", out AggregateHelper? deserializer);
+        if ((serializer is not null || deserializer is not null) &&
+            (serializer is null || deserializer is null || !Serializes(serializer, deserializer, state)))
         {
             return Invalid(AggregateDiagnostics.Serialization, (serializer ?? deserializer)?.Method.Locations.FirstOrDefault());
         }
@@ -494,6 +493,13 @@ internal sealed class AggregateDeclaration(INamedTypeSymbol type, AttributeData 
             return null;
         }
     }
+
+    /// <summary>
+    /// Checks that serialization turns an internal state into bytea and deserialization turns it back.
+    /// </summary>
+    private static bool Serializes(AggregateHelper serializer, AggregateHelper deserializer, AggregateType state)
+        => state.IsInternal && serializer.Types.Length == 1 && serializer.Types[0].Matches(state) && serializer.Result.Sql == "bytea" &&
+            deserializer.Types.Length == 1 && deserializer.Types[0].Sql == "bytea" && deserializer.Result.Matches(state);
 
     private static bool ValidOperator(string value)
         => value.Length is > 0 and <= 63 && value.All(static character => "+-*/<>=~!@#%^&|`?".Contains(character)) &&

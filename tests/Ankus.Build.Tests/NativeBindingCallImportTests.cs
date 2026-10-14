@@ -162,7 +162,7 @@ public sealed partial class NativeBindingNativeTests
 
     private async Task<string> RunImportedBodiesAsync(string source, string main, byte[] image, string directory, bool nativeCompiler = true)
     {
-        string stem = Path.Combine(directory, "selected-" + Guid.NewGuid().ToString("N"));
+        string stem = Path.Join(directory, "selected-" + Guid.NewGuid().ToString("N"));
         string file = stem + ".c";
         string consumer = stem + ".consumer.obj";
         string executable = stem + (OperatingSystem.IsWindows() ? ".exe" : string.Empty);

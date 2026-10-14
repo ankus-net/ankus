@@ -39,11 +39,11 @@ internal static class NativeBindingCollectionCommand
         {
             string includes = NativeBindingResources.ReadHeaders(major);
             string headers = NativeBindingHeaderTarget.GenerateSource(includes, major);
-            string file = Path.Combine(directory, "native-node-types.c");
+            string file = Path.Join(directory, "native-node-types.c");
             await File.WriteAllTextAsync(file, headers, cancellationToken);
             string[] frontend = ["", arguments[0], arguments[1], directory, compiler,
                 arguments.Length >= 5 ? arguments[4] : "", arguments.Length >= 6 ? arguments[5] : "", arguments.Length >= 7 ? arguments[6] : ""];
-            string observations = Path.Combine(directory, "native-node-target.json");
+            string observations = Path.Join(directory, "native-node-target.json");
             await NativeBindingHeaderCommand.InspectAsync(installation, frontend, file, observations, directory, cancellationToken);
             NativeBindingAvailability availability;
             NativeBindingCatalog selected;
@@ -75,8 +75,8 @@ internal static class NativeBindingCollectionCommand
 
             string library = arguments.Length == 9 && arguments[8].Length != 0 ? Path.GetFullPath(arguments[8])
                 : await NativeBindingRecordCommand.FindLibraryAsync(NativeBindingRecordCommand.FindCompiler(compiler), target.ClangMajor, cancellationToken);
-            string ast = Path.Combine(directory, "native-node-types.ast");
-            await NativeBindingHeaderCommand.InspectAsync(installation, frontend, file, Path.Combine(directory, "native-node-compile.txt"),
+            string ast = Path.Join(directory, "native-node-types.ast");
+            await NativeBindingHeaderCommand.InspectAsync(installation, frontend, file, Path.Join(directory, "native-node-compile.txt"),
                 directory, cancellationToken, dumpAst: false, serializedAst: ast);
             var request = new NativeRecordRequest(ast, library, target, requests.ToDictionary(static value => value.Name, StringComparer.Ordinal));
             NativeRecordGraph graph = await NativeBindingRecordWorker.InspectAsync(request, directory, cancellationToken);
@@ -101,7 +101,7 @@ internal static class NativeBindingCollectionCommand
         string definitions = NativeBindingHeaderHelpers.Definitions(records.Headers.Target.PostgresVersion / 10000, records.Headers.Symbols.Values);
         if (definitions.Length != 0)
         {
-            string helperSource = Path.Combine(directory, "native-helper-checks.c");
+            string helperSource = Path.Join(directory, "native-helper-checks.c");
             await File.WriteAllTextAsync(helperSource, definitions + headers, cancellationToken);
             string compiler = arguments.Length >= 4 && arguments[3].Length != 0 ? arguments[3]
                 : OperatingSystem.IsWindows() ? "cl.exe" : "cc";
@@ -112,14 +112,14 @@ internal static class NativeBindingCollectionCommand
                 frontend[7] = "";
             }
 
-            await NativeBindingHeaderCommand.InspectAsync(installation, frontend, helperSource, Path.Combine(directory, "native-helper-checks.txt"),
+            await NativeBindingHeaderCommand.InspectAsync(installation, frontend, helperSource, Path.Join(directory, "native-helper-checks.txt"),
                 directory, cancellationToken, dumpAst: false, inspectBodies: true);
         }
 
         string checks = NativeBindingRecordChecks.Generate(records, headers) + NativeBindingRecordChecks.ExecutableEntryPoint;
-        string verification = Path.Combine(directory, "native-record-checks.c");
+        string verification = Path.Join(directory, "native-record-checks.c");
         await File.WriteAllTextAsync(verification, checks, cancellationToken);
-        string executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "checks.exe" : "checks");
+        string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "checks.exe" : "checks");
         await NativeBindingLayoutCommand.CompileProbeAsync(installation, arguments.Length > 7 ? arguments[..7] : arguments,
             verification, executable, directory, cancellationToken, requireC11: true);
     }

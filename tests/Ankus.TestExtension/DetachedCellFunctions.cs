@@ -241,7 +241,7 @@ public static class DetachedCellFunctions
     private static string Describe(MappedU24? number, MappedComplex? pair, MappedWords? words, MappedMacAddress? address,
         MappedMoney? amount, MappedText? label, MappedU24? missing)
         => string.Join("|",
-            number?.Value.ToString(CultureInfo.InvariantCulture) ?? "null",
+            number is { } present ? present.Value.ToString(CultureInfo.InvariantCulture) : "null",
             pair is { } complex ? string.Create(CultureInfo.InvariantCulture, $"{complex.Real:R},{complex.Imaginary:R}") : "null",
             words?.Text ?? "null",
             address?.Text ?? "null",
@@ -250,7 +250,7 @@ public static class DetachedCellFunctions
             missing is null ? "null" : "present");
 
     private static string Numbers(MappedU24?[] values)
-        => string.Join(',', values.Select(static value => value?.Value.ToString(CultureInfo.InvariantCulture) ?? "NULL"));
+        => string.Join(',', values.Select(static value => value is { } present ? present.Value.ToString(CultureInfo.InvariantCulture) : "NULL"));
 
     private static string Error(Func<object?> read)
     {
@@ -259,7 +259,7 @@ public static class DetachedCellFunctions
             read();
             return "none";
         }
-        catch (Exception error)
+        catch (Exception error) when (error is NotSupportedException or InvalidCastException or InvalidOperationException)
         {
             return error.GetType().Name;
         }

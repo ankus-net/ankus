@@ -52,8 +52,8 @@ internal static class NativeBindingHeaderCatalogWorker
     {
         cancellationToken.ThrowIfCancellationRequested();
         Validate(request);
-        string input = Path.Combine(directory, "native-catalog-request.json");
-        string output = Path.Combine(directory, "native-catalog.json");
+        string input = Path.Join(directory, "native-catalog-request.json");
+        string output = Path.Join(directory, "native-catalog.json");
         await File.WriteAllTextAsync(input, JsonSerializer.Serialize(request, NativeBindingRecordWorker.JsonOptions), cancellationToken);
         await NativeBindingRecordWorker.RunProcessAsync("binding-catalog-worker", "Native catalog worker", input, output, directory,
             cancellationToken);

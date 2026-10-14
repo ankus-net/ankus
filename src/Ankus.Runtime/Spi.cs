@@ -245,7 +245,7 @@ public static partial class Spi
         string commandText, params ReadOnlySpan<SpiParameter> parameters)
     {
         SpiScalarResult result = SpiScalarResult.Run(commandText, parameters, SpiResultMode.Pair,
-            SpiScalarResult.RequiresRaw<TFirst>() | SpiScalarResult.RequiresRaw<TSecond>());
+            SpiScalarResult.RequiresRaw<TFirst, TSecond>());
         return result.Read(static values => (values.Get<TFirst>(0), values.Get<TSecond>(1)));
     }
 
@@ -265,7 +265,7 @@ public static partial class Spi
         string commandText, params ReadOnlySpan<SpiParameter> parameters)
     {
         SpiScalarResult result = SpiScalarResult.Run(commandText, parameters, SpiResultMode.Triple,
-            SpiScalarResult.RequiresRaw<TFirst>() | SpiScalarResult.RequiresRaw<TSecond>() | SpiScalarResult.RequiresRaw<TThird>());
+            SpiScalarResult.RequiresRaw<TFirst, TSecond, TThird>());
         return result.Read(static values => (values.Get<TFirst>(0), values.Get<TSecond>(1), values.Get<TThird>(2)));
     }
 }

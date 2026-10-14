@@ -28,8 +28,8 @@ public sealed partial class ToolCommandTests
         definition.Save(project);
         new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
             new XElement("PropertyGroup", new XElement("TargetFramework", "net10.0")))).Save(
-                Path.Combine(directory, "Unrelated.csproj"));
-        await File.WriteAllTextAsync(Path.Combine(directory, "Directory.Build.rsp"), "-property:ExtensionFlavor=active\n", token);
+                Path.Join(directory, "Unrelated.csproj"));
+        await File.WriteAllTextAsync(Path.Join(directory, "Directory.Build.rsp"), "-property:ExtensionFlavor=active\n", token);
 
         ProcessResult selected = await InvokeAsync(["get", "extname", "--project", directory], token);
         Assert.AreEqual(0, selected.ExitCode, selected.StandardError);
@@ -57,7 +57,7 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string extensionDirectory = Directory.CreateDirectory(Path.Combine(directory, "extension")).FullName;
+        string extensionDirectory = Directory.CreateDirectory(Path.Join(directory, "extension")).FullName;
         string project = await CreateControlProjectAsync(extensionDirectory, token, "ankus_resolution_probe");
         XDocument definition = XDocument.Load(project);
         if (sdk != "attribute")
@@ -70,7 +70,7 @@ public sealed partial class ToolCommandTests
             else
             {
                 new XDocument(new XElement("Project", new XElement("Import", new XAttribute("Project", "Sdk.props"),
-                    new XAttribute("Sdk", "Ankus.Sdk"), new XAttribute("Version", s_version)))).Save(Path.Combine(extensionDirectory, "Extension.props"));
+                    new XAttribute("Sdk", "Ankus.Sdk"), new XAttribute("Version", s_version)))).Save(Path.Join(extensionDirectory, "Extension.props"));
                 definition.Root.AddFirst(new XElement("Import", new XAttribute("Project", "Extension.props")));
                 definition.Root.Add(new XElement("Import", new XAttribute("Project", "Sdk.targets"),
                     new XAttribute("Sdk", "Ankus.Sdk"), new XAttribute("Version", s_version)));
@@ -80,15 +80,15 @@ public sealed partial class ToolCommandTests
         definition.Root!.Add(new XElement("PropertyGroup", new XAttribute("Condition", "'$(ExtensionFlavor)' == 'active' and '$(Configuration)' == 'Shipping'"),
             new XElement("AnkusExtensionName", "ankus_resolution_selected")));
         definition.Save(project);
-        await File.WriteAllTextAsync(Path.Combine(extensionDirectory, "Functions.cs"), "invalid C# source", token);
-        string helper = Path.Combine(directory, "Helper.csproj");
+        await File.WriteAllTextAsync(Path.Join(extensionDirectory, "Functions.cs"), "invalid C# source", token);
+        string helper = Path.Join(directory, "Helper.csproj");
         new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
             new XElement("PropertyGroup", new XElement("TargetFramework", "net10.0"),
                 new XElement("AnkusExtensionName", "not_an_extension")),
             new XElement("Import", new XAttribute("Project", "Sdk.props"), new XAttribute("Sdk", "Ankus.Sdk"),
                 new XAttribute("Version", s_version), new XAttribute("Condition", "'$(ExtensionFlavor)' == 'inactive'")))).Save(helper);
         string solution = await WriteResolutionSolutionAsync(directory, format, [project, helper], token);
-        string home = Path.Combine(directory, "unregistered");
+        string home = Path.Join(directory, "unregistered");
         foreach (string selection in new[] { solution, directory })
         {
             ProcessResult result = await InvokeAsync(["get", "extname", "--project", selection, "--home", home,
@@ -113,12 +113,12 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string extensionDirectory = Directory.CreateDirectory(Path.Combine(directory, "extension")).FullName;
-        string project = Path.Combine(extensionDirectory, "WorkspaceProbe.csproj");
+        string extensionDirectory = Directory.CreateDirectory(Path.Join(directory, "extension")).FullName;
+        string project = Path.Join(extensionDirectory, "WorkspaceProbe.csproj");
         XDocument definition = XDocument.Load(s_project);
         definition.Root!.Add(new XElement("PropertyGroup", new XElement("AnkusExtensionName", "ankus_workspace_probe")));
         definition.Save(project);
-        await File.WriteAllTextAsync(Path.Combine(extensionDirectory, "Functions.cs"), """
+        await File.WriteAllTextAsync(Path.Join(extensionDirectory, "Functions.cs"), """
             #if !WORKSPACE_SETTING
             #error The solution's Directory.Build.props did not reach the extension build.
             #endif
@@ -129,27 +129,27 @@ public sealed partial class ToolCommandTests
                 public static int WorkspaceValue() => 7;
             }
             """, token);
-        await File.WriteAllTextAsync(Path.Combine(directory, "Directory.Build.props"), """
+        await File.WriteAllTextAsync(Path.Join(directory, "Directory.Build.props"), """
             <Project>
               <PropertyGroup>
                 <DefineConstants>$(DefineConstants);WORKSPACE_SETTING</DefineConstants>
               </PropertyGroup>
             </Project>
             """, token);
-        string helperDirectory = Directory.CreateDirectory(Path.Combine(directory, "helper")).FullName;
-        string helper = Path.Combine(helperDirectory, "Helper.csproj");
+        string helperDirectory = Directory.CreateDirectory(Path.Join(directory, "helper")).FullName;
+        string helper = Path.Join(helperDirectory, "Helper.csproj");
         new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
             new XElement("PropertyGroup", new XElement("TargetFramework", "net10.0")))).Save(helper);
-        await File.WriteAllTextAsync(Path.Combine(helperDirectory, "Helper.cs"), "public static class Helper { }", token);
+        await File.WriteAllTextAsync(Path.Join(helperDirectory, "Helper.cs"), "public static class Helper { }", token);
         _ = await WriteResolutionSolutionAsync(directory, "slnx", [project, helper], token);
         string stage = CreateDirectory();
         ProcessResult result = await PackageProcessRunner.RunAsync(s_tool,
             ["install", "--home", s_home, "--pg", MajorText(), "--destdir", stage], s_environment, token, workingDirectory: directory);
         Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
-        string extension = Path.Combine(StagedPath(stage, s_installation.SharedDirectory), "extension");
-        Assert.IsTrue(File.Exists(Path.Combine(extension, "ankus_workspace_probe.control")));
-        Assert.Contains("workspace_value", await File.ReadAllTextAsync(Path.Combine(extension, "ankus_workspace_probe--0.1.0.sql"), token));
-        Assert.IsFalse(Directory.Exists(Path.Combine(helperDirectory, "bin")));
+        string extension = Path.Join(StagedPath(stage, s_installation.SharedDirectory), "extension");
+        Assert.IsTrue(File.Exists(Path.Join(extension, "ankus_workspace_probe.control")));
+        Assert.Contains("workspace_value", await File.ReadAllTextAsync(Path.Join(extension, "ankus_workspace_probe--0.1.0.sql"), token));
+        Assert.IsFalse(Directory.Exists(Path.Join(helperDirectory, "bin")));
     }
 
     /// <summary>
@@ -164,12 +164,12 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
         string project = await CreateControlProjectAsync(
-            Directory.CreateDirectory(Path.Combine(directory, "extension")).FullName, token, "ankus_resolution_selected");
-        string broken = Path.Combine(directory, "Broken.csproj");
+            Directory.CreateDirectory(Path.Join(directory, "extension")).FullName, token, "ankus_resolution_selected");
+        string broken = Path.Join(directory, "Broken.csproj");
         new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
             new XElement("Import", new XAttribute("Project", "missing.props")))).Save(broken);
         string solution = await WriteResolutionSolutionAsync(directory, format, [project, broken], token);
-        string home = Path.Combine(directory, "unregistered");
+        string home = Path.Join(directory, "unregistered");
 
         ProcessResult result = await InvokeAsync(
             ["get", "extname", "--project", solution, "--home", home], token);
@@ -199,10 +199,10 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string first = await CreateControlProjectAsync(Directory.CreateDirectory(Path.Combine(directory, "first")).FullName, token);
-        string second = await CreateControlProjectAsync(Directory.CreateDirectory(Path.Combine(directory, "second")).FullName, token);
+        string first = await CreateControlProjectAsync(Directory.CreateDirectory(Path.Join(directory, "first")).FullName, token);
+        string second = await CreateControlProjectAsync(Directory.CreateDirectory(Path.Join(directory, "second")).FullName, token);
         string solution = await WriteResolutionSolutionAsync(directory, "slnx", [first, second], token);
-        string home = Path.Combine(directory, "unused home");
+        string home = Path.Join(directory, "unused home");
         string[] identity = command == "get" ? ["extname"] : [];
         ProcessResult result = await InvokeAsync([command, .. identity,
             "--project", solution, "--home", home, "--pg", MajorText(), "--pg-config", s_installation.PgConfigPath], token);
@@ -225,7 +225,7 @@ public sealed partial class ToolCommandTests
     /// <returns>The solution path.</returns>
     private static async Task<string> WriteResolutionSolutionAsync(string directory, string format, string[] projects, CancellationToken token)
     {
-        string path = Path.Combine(directory, "Resolution." + format);
+        string path = Path.Join(directory, "Resolution." + format);
         string[] relative = [.. projects.Select(project => Path.GetRelativePath(directory, project).Replace(Path.DirectorySeparatorChar, '\\'))];
         if (format == "slnx")
         {

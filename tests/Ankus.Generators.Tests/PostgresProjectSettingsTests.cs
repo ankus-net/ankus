@@ -19,7 +19,7 @@ public sealed class PostgresProjectSettingsTests(TestContext context)
         try
         {
             string project = await WriteProjectAsync(directory, "<Import Project=\"selection.props\" />");
-            await File.WriteAllTextAsync(Path.Combine(directory, "selection.props"), """
+            await File.WriteAllTextAsync(Path.Join(directory, "selection.props"), """
                 <Project>
                   <PropertyGroup>
                     <AnkusPostgresMajor>17</AnkusPostgresMajor>
@@ -34,10 +34,10 @@ public sealed class PostgresProjectSettingsTests(TestContext context)
 
             Assert.AreEqual(17, debug.PostgresMajor);
             Assert.IsTrue(debug.HasExplicitPostgresMajor);
-            Assert.AreEqual(Path.Combine(directory, "postgres", "17", "pg_config"), debug.PgConfigPath);
+            Assert.AreEqual(Path.Join(directory, "postgres", "17", "pg_config"), debug.PgConfigPath);
             Assert.AreEqual(19, shipping.PostgresMajor);
             Assert.IsTrue(shipping.HasExplicitPostgresMajor);
-            Assert.AreEqual(Path.Combine(directory, "postgres", "19", "pg_config"), shipping.PgConfigPath);
+            Assert.AreEqual(Path.Join(directory, "postgres", "19", "pg_config"), shipping.PgConfigPath);
         }
         finally
         {
@@ -64,7 +64,7 @@ public sealed class PostgresProjectSettingsTests(TestContext context)
 
             Assert.AreEqual(17, selection.PostgresMajor);
             Assert.IsTrue(selection.HasExplicitPostgresMajor);
-            Assert.AreEqual(Path.Combine(directory, "postgres", "17", "pg_config"), selection.PgConfigPath);
+            Assert.AreEqual(Path.Join(directory, "postgres", "17", "pg_config"), selection.PgConfigPath);
         }
         finally
         {
@@ -123,7 +123,7 @@ public sealed class PostgresProjectSettingsTests(TestContext context)
 
             Assert.AreEqual(18, selection.PostgresMajor);
             Assert.AreEqual(explicitlySelected, selection.HasExplicitPostgresMajor);
-            Assert.AreEqual(Path.Combine(directory, "postgres", "pg_config"), selection.PgConfigPath);
+            Assert.AreEqual(Path.Join(directory, "postgres", "pg_config"), selection.PgConfigPath);
         }
         finally
         {
@@ -164,7 +164,7 @@ public sealed class PostgresProjectSettingsTests(TestContext context)
             Assert.IsNotNull(selection);
             Assert.AreEqual(17, selection.PostgresMajor);
             Assert.IsTrue(selection.HasExplicitPostgresMajor);
-            Assert.AreEqual(Path.Combine(directory, "postgres", "pg_config"), selection.PgConfigPath);
+            Assert.AreEqual(Path.Join(directory, "postgres", "pg_config"), selection.PgConfigPath);
         }
         finally
         {
@@ -269,7 +269,7 @@ public sealed class PostgresProjectSettingsTests(TestContext context)
             string project = await WriteProjectAsync(directory, "");
             await Assert.ThrowsExactlyAsync<ArgumentException>(() => PostgresProjectSettings.ReadAsync(" ", "Debug", cancellationToken: context.CancellationToken));
             await Assert.ThrowsExactlyAsync<ArgumentException>(() => PostgresProjectSettings.ReadAsync(project, " ", cancellationToken: context.CancellationToken));
-            await Assert.ThrowsExactlyAsync<FileNotFoundException>(() => PostgresProjectSettings.ReadAsync(Path.Combine(directory, "missing.csproj"), "Debug", cancellationToken: context.CancellationToken));
+            await Assert.ThrowsExactlyAsync<FileNotFoundException>(() => PostgresProjectSettings.ReadAsync(Path.Join(directory, "missing.csproj"), "Debug", cancellationToken: context.CancellationToken));
             await Assert.ThrowsExactlyAsync<ArgumentOutOfRangeException>(() => PostgresProjectSettings.ReadAsync(project, "Debug", 12, context.CancellationToken));
             await Assert.ThrowsExactlyAsync<ArgumentOutOfRangeException>(() => PostgresProjectSettings.ReadAsync(project, "Debug", 20, context.CancellationToken));
         }
@@ -316,7 +316,7 @@ public sealed class PostgresProjectSettingsTests(TestContext context)
         string directory = Directory.CreateTempSubdirectory("ankus-selection-").FullName;
         try
         {
-            string extensionDirectory = Directory.CreateDirectory(Path.Combine(directory, "extension")).FullName;
+            string extensionDirectory = Directory.CreateDirectory(Path.Join(directory, "extension")).FullName;
             string extension = await WriteProjectAsync(extensionDirectory, """
                 <PropertyGroup>
                   <AnkusPostgresMajor>13</AnkusPostgresMajor>
@@ -332,7 +332,7 @@ public sealed class PostgresProjectSettingsTests(TestContext context)
             PostgresProjectSettings selection = await PostgresProjectSettings.ReadAsync(project, "Shipping", cancellationToken: context.CancellationToken);
 
             Assert.AreEqual(expected, selection.PostgresMajor);
-            Assert.AreEqual(Path.Combine(extensionDirectory, "postgres", expected.ToString(System.Globalization.CultureInfo.InvariantCulture), "pg_config"), selection.PgConfigPath);
+            Assert.AreEqual(Path.Join(extensionDirectory, "postgres", expected.ToString(System.Globalization.CultureInfo.InvariantCulture), "pg_config"), selection.PgConfigPath);
         }
         finally
         {
@@ -434,7 +434,7 @@ public sealed class PostgresProjectSettingsTests(TestContext context)
             {
                 Assert.IsNotNull(selection);
                 Assert.AreEqual(17, selection.PostgresMajor);
-                Assert.AreEqual(Path.Combine(directory, "postgres", "pg_config"), selection.PgConfigPath);
+                Assert.AreEqual(Path.Join(directory, "postgres", "pg_config"), selection.PgConfigPath);
             }
         }
         finally
@@ -465,9 +465,9 @@ public sealed class PostgresProjectSettingsTests(TestContext context)
             await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
                 PostgresProjectSettings.TryReadAsync(project, "Debug", cancellationToken: context.CancellationToken));
             await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
-                PostgresProjectSettings.TryReadAsync([Path.Combine(directory, "First.csproj"), project], "Debug", cancellationToken: context.CancellationToken));
+                PostgresProjectSettings.TryReadAsync([Path.Join(directory, "First.csproj"), project], "Debug", cancellationToken: context.CancellationToken));
             await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
-                PostgresProjectSettings.TryReadAsync([project, Path.Combine(directory, "First.csproj")], "Debug", cancellationToken: context.CancellationToken));
+                PostgresProjectSettings.TryReadAsync([project, Path.Join(directory, "First.csproj")], "Debug", cancellationToken: context.CancellationToken));
             await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => PostgresProjectSettings.ReadAsync(project, "Debug", cancellationToken: context.CancellationToken));
         }
         finally
@@ -639,7 +639,7 @@ public sealed class PostgresProjectSettingsTests(TestContext context)
     /// <returns>The project path.</returns>
     private async Task<string> WriteProjectAsync(string directory, string content, string fileName = "Selection.csproj")
     {
-        string path = Path.Combine(directory, fileName);
+        string path = Path.Join(directory, fileName);
         await File.WriteAllTextAsync(path, $"""
             <Project DefaultTargets="UnexpectedBuild">
               <PropertyGroup>

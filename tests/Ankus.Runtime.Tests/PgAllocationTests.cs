@@ -188,7 +188,7 @@ public sealed class PgAllocationTests
     {
         using var fixture = new MemoryContextTestFixture();
         using MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter();
-        PgAllocation allocation = PgMemoryContext.Current.Allocate(8);
+        using PgAllocation allocation = PgMemoryContext.Current.Allocate(8);
         int frees = 0;
         fixture.Handler = request =>
         {
@@ -218,7 +218,7 @@ public sealed class PgAllocationTests
     {
         using var fixture = new MemoryContextTestFixture();
         using MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter();
-        PgAllocation allocation = PgMemoryContext.Current.Allocate(8);
+        using PgAllocation allocation = PgMemoryContext.Current.Allocate(8);
         allocation.Dispose();
         fixture.Requests.Clear();
         allocation.Dispose();

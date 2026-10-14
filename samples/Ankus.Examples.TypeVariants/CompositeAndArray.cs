@@ -31,12 +31,9 @@ public static class CompositeAndArrayFunctions
     public static long SumPairA(Pair?[] arr)
     {
         long total = 0;
-        foreach (Pair? p in arr)
+        foreach (Pair p in arr.OfType<Pair>())
         {
-            if (p is not null)
-            {
-                total += p.A;
-            }
+            total += p.A;
         }
 
         return total;

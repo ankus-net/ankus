@@ -55,10 +55,10 @@ public static unsafe partial class NativeFieldCallbackFunctions
                 {
                     PgTransaction.RunInSubtransaction(() => _ = callback.Invoke(scan));
                 }
-                catch (Exception error)
+                catch (PgException error)
                 {
                     s_caught = Spi.ExecuteScalar<int>("SELECT 6 * 7") == 42;
-                    return $"{error.GetType().Name}|{(error as PgException)?.SqlState}|{error.Message}";
+                    return $"{error.GetType().Name}|{error.SqlState}|{error.Message}";
                 }
             }
 

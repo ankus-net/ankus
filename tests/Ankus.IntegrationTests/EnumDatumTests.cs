@@ -346,7 +346,7 @@ public sealed class EnumDatumTests(TestContext context)
     public async Task EnumLatin1LabelsUseServerEncoding()
     {
         CancellationToken token = context.CancellationToken;
-        string control = await File.ReadAllTextAsync(Path.Combine(IntegrationEnvironment.NativeOutputDirectory, "extension", "ankus_test.control"), token);
+        string control = await File.ReadAllTextAsync(Path.Join(IntegrationEnvironment.NativeOutputDirectory, "extension", "ankus_test.control"), token);
         Assert.Contains("encoding = 'UTF8'", control);
         string database = "enum_latin1_" + Guid.NewGuid().ToString("N");
         await using NpgsqlConnection administrator = await PostgresFixture.Cluster.OpenConnectionAsync(token);

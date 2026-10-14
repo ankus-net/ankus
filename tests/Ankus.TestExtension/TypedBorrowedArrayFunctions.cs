@@ -26,7 +26,7 @@ public static partial class BorrowedArrayFunctions
                 BitConverter.DoubleToUInt64Bits(cell.Value).ToString("X16", CultureInfo.InvariantCulture)),
             5 => TypedSnapshot<Guid?>(value, static cell => cell?.ToString("D")),
             6 => TypedSnapshot<EnumMood?>(value, static cell => cell?.ToString()),
-            7 => TypedSnapshot<ArrayValue?>(value, static cell => cell?.Value.ToString(CultureInfo.InvariantCulture)),
+            7 => TypedSnapshot<ArrayValue?>(value, static cell => cell is { } present ? present.Value.ToString(CultureInfo.InvariantCulture) : null),
             8 => TypedSnapshot<PgNumeric?>(value, static cell => cell?.ToString()),
             9 => TypedSnapshot<PgHeapTuple?>(value, static cell => cell?.Get<string>(0)),
             10 => TypedSnapshot<PgTextView?>(value, static cell =>
@@ -43,8 +43,8 @@ public static partial class BorrowedArrayFunctions
                     return cell is null ? null : Convert.ToHexString([.. cell]);
                 }
             }),
-            12 => TypedSnapshot<MappedPositive?>(value, static cell => cell?.Value.ToString(CultureInfo.InvariantCulture)),
-            13 => TypedSnapshot<WriteMappedInt?>(value, static cell => cell?.Value.ToString(CultureInfo.InvariantCulture)),
+            12 => TypedSnapshot<MappedPositive?>(value, static cell => cell is { } present ? present.Value.ToString(CultureInfo.InvariantCulture) : null),
+            13 => TypedSnapshot<WriteMappedInt?>(value, static cell => cell is { } present ? present.Value.ToString(CultureInfo.InvariantCulture) : null),
             14 => TypedSnapshot<DateOnly?>(value, static cell => cell?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
             15 => TypedSnapshot<PgVarlena<NativeLayoutTypeFunctions.Packet>?>(value, static cell =>
             {

@@ -195,9 +195,7 @@ public sealed unsafe class ContextValueTests
         using MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter();
         (WeakReference<PgContextValue<int>> value, WeakReference<PgNativeReference<int>> borrow) = CreateUnreferenced(PgMemoryContext.Current);
         fixture.Requests.Clear();
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
+        GarbageCollection.Collect();
         Assert.IsFalse(IsAlive(value));
         Assert.IsFalse(IsAlive(borrow));
         Assert.IsEmpty(fixture.Requests);

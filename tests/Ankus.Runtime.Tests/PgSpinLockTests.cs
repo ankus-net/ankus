@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 
 namespace Ankus.Runtime.Tests;
@@ -165,26 +164,12 @@ public sealed class PgSpinLockTests
             Assert.ThrowsExactly<InvalidOperationException>(guard.Dispose);
         }
 
-        Exception? failure = null;
-        var thread = new Thread(() =>
+        DedicatedThread.Run(() =>
         {
-            try
-            {
-                Assert.ThrowsExactly<InvalidOperationException>(() => storage.Lock());
-                Assert.ThrowsExactly<InvalidOperationException>(() => guard.Value);
-                Assert.ThrowsExactly<InvalidOperationException>(guard.Dispose);
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
+            Assert.ThrowsExactly<InvalidOperationException>(() => storage.Lock());
+            Assert.ThrowsExactly<InvalidOperationException>(() => guard.Value);
+            Assert.ThrowsExactly<InvalidOperationException>(guard.Dispose);
         });
-        thread.Start();
-        thread.Join();
-        if (failure is not null)
-        {
-            ExceptionDispatchInfo.Capture(failure).Throw();
-        }
 
         Assert.HasCount(requests, fixture.Memory.Requests);
         Assert.AreEqual(73, guard.Value);

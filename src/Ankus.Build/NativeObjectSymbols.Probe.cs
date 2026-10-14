@@ -78,6 +78,17 @@ internal static partial class NativeObjectSymbols
                 }
             }
 
+            return RemovableUnwindTables(names, targets, sources, removed, header);
+        }
+
+        /// <summary>
+        /// Finds each unwind table that only describes removed header code: a .pdata table whose relocations reach only
+        /// that code or its unwind data, and then each .xdata table that only removed tables use.
+        /// </summary>
+        /// <returns>The header offsets of the tables to remove.</returns>
+        private static List<int> RemovableUnwindTables(string[] names, HashSet<int>[] targets, HashSet<int>[] sources,
+            HashSet<int> removed, int header)
+        {
             var offsets = new List<int>();
             for (int index = 0; index < names.Length; index++)
             {

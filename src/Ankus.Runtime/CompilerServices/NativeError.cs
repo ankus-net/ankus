@@ -62,6 +62,7 @@ public static class NativeError
                 WriteField(error, NativeDiagnosticField.Context, PgErrorContext.Captured(exception));
             }
         }
+        // codeql[cs/catch-of-all-exceptions] Reporting must not fail while it reports another error, so the main diagnostic is kept.
         catch
         {
             // The primary diagnostic is already available if secondary formatting fails.
@@ -91,6 +92,7 @@ public static class NativeError
             Encoding.UTF8.GetEncoder().Convert(message.AsSpan(), buffer[..^1], flush: true, out _, out int written, out _);
             buffer[written] = 0;
         }
+        // codeql[cs/catch-of-all-exceptions] Formatting must not fail while it reports another error, so a fixed message is used instead.
         catch
         {
             ReadOnlySpan<byte> fallback = "Managed extension function failed."u8;

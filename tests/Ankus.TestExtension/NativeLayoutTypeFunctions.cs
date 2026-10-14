@@ -81,9 +81,19 @@ public static class NativeLayoutTypeFunctions
         internal static int s_created;
 
         /// <summary>
+        /// Counts a codec creation for the counters SQL reads.
+        /// </summary>
+        private static void CountCreation() => Interlocked.Increment(ref s_created);
+
+        /// <summary>
         /// Counts text parses.
         /// </summary>
         internal static int s_parsed;
+
+        /// <summary>
+        /// Counts a parse for the counters SQL reads.
+        /// </summary>
+        private static void CountParse() => Interlocked.Increment(ref s_parsed);
 
         /// <summary>
         /// Counts text formats.
@@ -91,14 +101,19 @@ public static class NativeLayoutTypeFunctions
         internal static int s_formatted;
 
         /// <summary>
+        /// Counts a format for the counters SQL reads.
+        /// </summary>
+        private static void CountFormat() => Interlocked.Increment(ref s_formatted);
+
+        /// <summary>
         /// Records the first text operation.
         /// </summary>
-        public PacketText() => s_created++;
+        public PacketText() => CountCreation();
 
         /// <inheritdoc />
         public override Packet Parse(string text)
         {
-            s_parsed++;
+            CountParse();
             return text switch
             {
                 "!pg" => throw new PgException("P7921", "native parser failed"),
@@ -111,7 +126,7 @@ public static class NativeLayoutTypeFunctions
         /// <inheritdoc />
         public override string Format(Packet value)
         {
-            s_formatted++;
+            CountFormat();
             return value.Leaf.Number switch
             {
                 -999 => null!,
@@ -145,11 +160,16 @@ public static class NativeLayoutTypeFunctions
         internal static int s_attempts;
 
         /// <summary>
+        /// Counts an attempt for the counters SQL reads.
+        /// </summary>
+        private static void CountAttempt() => Interlocked.Increment(ref s_attempts);
+
+        /// <summary>
         /// Reports an ordinary managed factory failure.
         /// </summary>
         public FaultText()
         {
-            s_attempts++;
+            CountAttempt();
             throw new InvalidOperationException("native text factory failed");
         }
 

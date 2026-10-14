@@ -56,8 +56,8 @@ internal static class NativeBindingRecordWorker
     {
         cancellationToken.ThrowIfCancellationRequested();
         ValidateRequest(request);
-        string input = Path.Combine(directory, "native-record-request.json");
-        string output = Path.Combine(directory, "native-record-observations.json");
+        string input = Path.Join(directory, "native-record-request.json");
+        string output = Path.Join(directory, "native-record-observations.json");
         await File.WriteAllTextAsync(input, JsonSerializer.Serialize(request, JsonOptions), cancellationToken);
         await RunProcessAsync("binding-records-worker", "Native record worker", input, output, directory, cancellationToken);
         await using FileStream result = File.OpenRead(output);

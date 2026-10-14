@@ -62,7 +62,7 @@ public sealed unsafe class PgListTests
         Assert.ThrowsExactly<NotSupportedException>(() => new PgList<Guid>());
         Assert.ThrowsExactly<NotSupportedException>(() => PgList.Create<long>());
         using var xid = new PgList<PgTransactionId>();
-        Assert.IsEmpty(xid.ToArray());
+        Assert.IsEmpty(xid);
     }
 
     /// <summary>
@@ -290,7 +290,7 @@ public sealed unsafe class PgListTests
         fixture.Handler = request => stale && request._operation == NativeMemoryOperation.List && !Is(request, NativeListOperation.Dispose)
             ? throw new PgException("55000", "reclaimed", "owned detail", "owned hint") : Respond(fixture, request);
         using PgList<int> list = PgList.Create<int>();
-        using (MemoryContextTestFixture.Scope foreign = MemoryContextTestFixture.Enter(99))
+        using (MemoryContextTestFixture.Enter(99))
         {
             int requests = fixture.Requests.Count;
             Assert.ThrowsExactly<InvalidOperationException>(() => _ = list.Count);

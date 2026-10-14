@@ -83,7 +83,7 @@ internal static class RustFormat
                 '\r' => text.Append("\\r"),
                 '\t' => text.Append("\\t"),
                 '\0' => text.Append("\\0"),
-                _ when IsPrintable(rune) => text.Append(rune.ToString()),
+                _ when IsPrintable(rune) => text.Append(rune),
                 _ => text.Append("\\u{").Append(rune.Value.ToString("x", CultureInfo.InvariantCulture)).Append('}'),
             };
         }

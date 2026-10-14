@@ -42,18 +42,18 @@ public sealed partial class NativeBindingNativeTests
             new("hidden", "hidden", false),
             new("unknown_result", "unknown_result", true), new("later", "later", false),
         ];
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-storage-native-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-storage-native-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
-            string file = Path.Combine(directory, "storage.c");
+            string file = Path.Join(directory, "storage.c");
             string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang";
             string[] frontend = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/Zs", "-Xclang", "-ast-dump=json", file]
                 : ["-std=c11", "-Wall", "-Wextra", "-Werror", "-fsyntax-only", "-Xclang", "-ast-dump=json", file];
             await File.WriteAllTextAsync(file, NativeBindingHeaderParser.GenerateSource(
                 NativeBindingHeaderTarget.GenerateSource(Headers, 18), requests), context.CancellationToken);
-            string ast = Path.Combine(directory, "storage.ast.json");
+            string ast = Path.Join(directory, "storage.ast.json");
             await NativeBindingHeaderCommand.CompileAsync(compiler, frontend, ast, directory, context.CancellationToken);
             using JsonDocument document = JsonDocument.Parse(await File.ReadAllTextAsync(ast, context.CancellationToken));
             NativeHeaderTarget target = NativeBindingHeaderTarget.Read(document.RootElement, 18);

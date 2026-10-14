@@ -16,7 +16,7 @@ public static partial class BorrowedArrayFunctions
         => kind switch
         {
             0 => ReadTypedResult<int?>(sql, mode, static cell => cell?.ToString(CultureInfo.InvariantCulture)),
-            1 => ReadTypedResult<ArrayValue?>(sql, mode, static cell => cell?.Value.ToString(CultureInfo.InvariantCulture)),
+            1 => ReadTypedResult<ArrayValue?>(sql, mode, static cell => cell is { } present ? present.Value.ToString(CultureInfo.InvariantCulture) : null),
             2 => ReadTypedResult<EnumMood?>(sql, mode, static cell => cell?.ToString()),
             3 => ReadTypedResult<PgTextView?>(sql, mode, static cell =>
             {
@@ -32,12 +32,12 @@ public static partial class BorrowedArrayFunctions
                     return cell?.Value.Leaf.Number.ToString(CultureInfo.InvariantCulture);
                 }
             }),
-            5 => ReadTypedResult<MappedPositive?>(sql, mode, static cell => cell?.Value.ToString(CultureInfo.InvariantCulture)),
-            6 => ReadTypedResult<WriteMappedInt?>(sql, mode, static cell => cell?.Value.ToString(CultureInfo.InvariantCulture)),
+            5 => ReadTypedResult<MappedPositive?>(sql, mode, static cell => cell is { } present ? present.Value.ToString(CultureInfo.InvariantCulture) : null),
+            6 => ReadTypedResult<WriteMappedInt?>(sql, mode, static cell => cell is { } present ? present.Value.ToString(CultureInfo.InvariantCulture) : null),
             7 => ReadTypedResult<ArrayText?>(sql, mode, static cell => cell?.Value),
             8 => ReadTypedResult<NativeLayoutTypeFunctions.Packet?>(sql, mode, static cell =>
                 cell?.Leaf.Number.ToString(CultureInfo.InvariantCulture)),
-            9 => ReadTypedResult<CustomTypeFunctions.Number?>(sql, mode, static cell => cell?.Value.ToString(CultureInfo.InvariantCulture)),
+            9 => ReadTypedResult<CustomTypeFunctions.Number?>(sql, mode, static cell => cell is { } present ? present.Value.ToString(CultureInfo.InvariantCulture) : null),
             10 => ReadTypedResult<CustomTypeFunctions.Message?>(sql, mode, static cell => cell?.Value),
             11 => ReadTypedResult<PgByteaView?>(sql, mode, static cell =>
             {
@@ -128,7 +128,7 @@ public static partial class BorrowedArrayFunctions
     {
         using PgArrayView<ReadMappedInt?> view = Spi.ExecuteScalar<PgArrayView<ReadMappedInt?>>("SELECT ARRAY[7,NULL,11]");
         int?[] received = Spi.ExecuteScalar<int?[]>("SELECT $1", SpiParameter.Create(view));
-        return [.. view.Select(static cell => cell?.Value), .. received];
+        return [.. view.Select(static cell => cell is { } present ? present.Value : (int?)null), .. received];
     }
 
     /// <summary>

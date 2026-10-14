@@ -52,9 +52,10 @@ would: `INSERT`, `UPDATE` or `DELETE`, and `SELECT` for `Find`. Like the built-i
 subscriber, the writer does not apply row-level security policies, so it refuses
 a table whose policies apply to the user with `0A000`.
 
-Dispose the writer before the transaction commits. `AFTER` triggers run when it
-is disposed, so a transaction that commits with a writer still open fails with
-`25000` and rolls back. A writer works in any transaction, including one that
+A change's `AFTER` triggers fire when the change completes, as they do for the
+built-in subscriber. Dispose the writer before the transaction commits; a
+transaction that commits with a writer still open fails with `25000` and rolls
+back. A writer works in any transaction, including one that
 [`PgBackgroundWorker.RunTransaction`](/background-workers/) starts.
 
 ## Rows in replication's form

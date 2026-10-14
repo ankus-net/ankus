@@ -161,12 +161,9 @@ internal static class NativeBindingHeaderHelpers
     {
         HashSet<string> selected = [.. symbols.Where(static symbol => symbol.IsFunction).Select(static symbol => symbol.NativeName)];
         var source = new StringBuilder();
-        foreach (NativeBindingHeaderHelper helper in Read(major))
+        foreach (NativeBindingHeaderHelper helper in Read(major).Where(helper => helper.Source is not null && selected.Contains(helper.NativeName)))
         {
-            if (helper.Source is not null && selected.Contains(helper.NativeName))
-            {
-                source.Append("#define ANKUS_DEFINE_HEADER_").Append(helper.Name).AppendLine();
-            }
+            source.Append("#define ANKUS_DEFINE_HEADER_").Append(helper.Name).AppendLine();
         }
 
         return source.ToString();

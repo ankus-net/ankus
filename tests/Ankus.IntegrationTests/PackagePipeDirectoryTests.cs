@@ -30,7 +30,7 @@ public sealed class PackagePipeDirectoryTests(TestContext context)
     {
         string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         string root = IntegrationEnvironment.PhysicalDirectory(Directory.CreateDirectory(
-            Path.Combine(profile, ".apt-" + Guid.NewGuid().ToString("N")[..12])));
+            Path.Join(profile, ".apt-" + Guid.NewGuid().ToString("N")[..12])));
         string temporary = root;
         string? selected = null;
         try
@@ -42,7 +42,7 @@ public sealed class PackagePipeDirectoryTests(TestContext context)
                 string component = unicode
                     ? new string('é', componentBytes / 2) + new string('a', componentBytes % 2)
                     : new string('a', componentBytes);
-                temporary = Directory.CreateDirectory(Path.Combine(root, component)).FullName;
+                temporary = Directory.CreateDirectory(Path.Join(root, component)).FullName;
                 Assert.AreEqual(directoryBytes, Encoding.UTF8.GetByteCount(temporary));
             }
 
@@ -50,7 +50,7 @@ public sealed class PackagePipeDirectoryTests(TestContext context)
             Assert.AreEqual(reusesTemporary, selected == temporary);
             foreach (string prefix in new[] { string.Empty, "MONITORTOHOST_" })
             {
-                string pipe = Path.Combine(selected, prefix + Guid.NewGuid().ToString("N"));
+                string pipe = Path.Join(selected, prefix + Guid.NewGuid().ToString("N"));
                 using var server = new NamedPipeServerStream(pipe, PipeDirection.InOut, 1,
                     PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
                 using var client = new NamedPipeClientStream(".", pipe, PipeDirection.InOut, PipeOptions.Asynchronous);

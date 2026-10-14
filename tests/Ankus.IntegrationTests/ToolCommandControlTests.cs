@@ -16,7 +16,7 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
         string project = await CreateControlProjectAsync(directory, token);
-        string authored = Path.Combine(directory, "author settings.control");
+        string authored = Path.Join(directory, "author settings.control");
         string output = CreateDirectory();
         string settings = """
             comment = 'it''s # exact\nsecond line'
@@ -32,25 +32,25 @@ public sealed partial class ToolCommandTests
 
         await File.WriteAllTextAsync(authored, settings, token);
         PublishedExtension manifest = await PublishControlProbeAsync(project, output, token);
-        Assert.IsFalse(ExtensionSchema.Read(Path.Combine(output, manifest.Library)).Relocatable);
-        string controlPath = Path.Combine(output, "extension", manifest.Control);
+        Assert.IsFalse(ExtensionSchema.Read(Path.Join(output, manifest.Library)).Relocatable);
+        string controlPath = Path.Join(output, "extension", manifest.Control);
         string package = CreateDirectory();
         ProcessResult packaged = await InvokeAsync(["package", "--home", s_home, "--pg", MajorText(), "--from", output, "--output", package], token);
         Assert.AreEqual(0, packaged.ExitCode, packaged.StandardOutput + packaged.StandardError);
         Assert.AreSequenceEqual(await File.ReadAllBytesAsync(controlPath, token),
-            await File.ReadAllBytesAsync(Path.Combine(PackageSharedDirectory(package), "extension", manifest.Control), token));
+            await File.ReadAllBytesAsync(Path.Join(PackageSharedDirectory(package), "extension", manifest.Control), token));
         string staged = CreateDirectory();
         ProcessResult installed = await InvokeAsync(["install", "--home", s_home, "--pg", MajorText(), "--from", output, "--destdir", staged], token);
         Assert.AreEqual(0, installed.ExitCode, installed.StandardOutput + installed.StandardError);
         Assert.AreSequenceEqual(await File.ReadAllBytesAsync(controlPath, token),
-            await File.ReadAllBytesAsync(Path.Combine(StagedPath(staged, s_installation.SharedDirectory), "extension", manifest.Control), token));
+            await File.ReadAllBytesAsync(Path.Join(StagedPath(staged, s_installation.SharedDirectory), "extension", manifest.Control), token));
 
         await using PostgresTestCluster cluster = await StartPublishedClusterAsync(output, token);
         string extensionDirectory = _caseInstallation is null
-            ? Path.Combine(output, "extension") : Path.Combine(_caseInstallation.Installation.SharedDirectory, "extension");
-        await File.WriteAllTextAsync(Path.Combine(extensionDirectory, "Control Dependency.control"),
+            ? Path.Join(output, "extension") : Path.Join(_caseInstallation.Installation.SharedDirectory, "extension");
+        await File.WriteAllTextAsync(Path.Join(extensionDirectory, "Control Dependency.control"),
             "default_version='1'\nrelocatable=true\n", token);
-        await File.WriteAllTextAsync(Path.Combine(extensionDirectory, "Control Dependency--1.sql"),
+        await File.WriteAllTextAsync(Path.Join(extensionDirectory, "Control Dependency--1.sql"),
             "CREATE TABLE control_dependency_marker (value integer);", token);
         await using NpgsqlConnection connection = await cluster.OpenConnectionAsync(token);
         int backend = connection.ProcessID;
@@ -124,43 +124,43 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
         string project = await CreateControlProjectAsync(directory, token);
-        string authored = Path.Combine(directory, "author settings.control");
-        string output = Path.Combine(directory, "bin", "ankus", s_postgresKey,
+        string authored = Path.Join(directory, "author settings.control");
+        string output = Path.Join(directory, "bin", "ankus", s_postgresKey,
             System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier, "Release");
         await File.WriteAllTextAsync(authored, "comment='first'", token);
         PublishedExtension manifest = await PublishControlProbeAsync(project, output, token);
-        Assert.IsTrue(ExtensionSchema.Read(Path.Combine(output, manifest.Library)).Relocatable);
+        Assert.IsTrue(ExtensionSchema.Read(Path.Join(output, manifest.Library)).Relocatable);
         await File.WriteAllTextAsync(authored, "comment='changed'\nrelocatable=false", token);
         await PublishControlProbeAsync(project, output, token);
-        Assert.AreEqual("changed", ExtensionControlFile.Read(Path.Combine(output, "extension", manifest.Control))["comment"]);
-        Assert.IsFalse(ExtensionSchema.Read(Path.Combine(output, manifest.Library)).Relocatable);
+        Assert.AreEqual("changed", ExtensionControlFile.Read(Path.Join(output, "extension", manifest.Control))["comment"]);
+        Assert.IsFalse(ExtensionSchema.Read(Path.Join(output, manifest.Library)).Relocatable);
         string package = CreateDirectory();
-        string marker = Path.Combine(package, "retain.txt");
+        string marker = Path.Join(package, "retain.txt");
         await File.WriteAllTextAsync(marker, "previous package", token);
         await File.WriteAllTextAsync(authored, "default_version='conflicting'", token);
         ProcessResult failed = await InvokeAsync(["package", "--home", s_home, "--pg", MajorText(), "--project", project,
             "--output", package], token);
         Assert.AreNotEqual(0, failed.ExitCode);
         Assert.Contains("default_version", failed.StandardOutput + failed.StandardError);
-        Assert.IsFalse(File.Exists(Path.Combine(output, PublishedExtension.FileName)));
+        Assert.IsFalse(File.Exists(Path.Join(output, PublishedExtension.FileName)));
         Assert.AreEqual(marker, Assert.ContainsSingle(Directory.GetFiles(package, "*", SearchOption.AllDirectories)));
         Assert.AreEqual("previous package", await File.ReadAllTextAsync(marker, token));
         await File.WriteAllTextAsync(authored, "comment='recovered'", token);
         await PublishControlProbeAsync(project, output, token);
-        Assert.AreEqual("recovered", ExtensionControlFile.Read(Path.Combine(output, "extension", manifest.Control))["comment"]);
-        Assert.IsTrue(ExtensionSchema.Read(Path.Combine(output, manifest.Library)).Relocatable);
+        Assert.AreEqual("recovered", ExtensionControlFile.Read(Path.Join(output, "extension", manifest.Control))["comment"]);
+        Assert.IsTrue(ExtensionSchema.Read(Path.Join(output, manifest.Library)).Relocatable);
     }
 
     private static async Task<string> CreateControlProjectAsync(string directory, CancellationToken token,
         string extensionName = "ankus_control_probe")
     {
-        string project = Path.Combine(directory, "ControlProbe.csproj");
+        string project = Path.Join(directory, "ControlProbe.csproj");
         XDocument definition = XDocument.Load(s_project);
         definition.Root!.Add(new XElement("PropertyGroup",
             new XElement("AnkusExtensionName", extensionName),
             new XElement("AnkusExtensionControlFile", "author settings.control")));
         definition.Save(project);
-        await File.WriteAllTextAsync(Path.Combine(directory, "Functions.cs"), """
+        await File.WriteAllTextAsync(Path.Join(directory, "Functions.cs"), """
             using Ankus;
             public static class Functions
             {
@@ -182,8 +182,8 @@ public sealed partial class ToolCommandTests
     {
         if (_caseInstallation is not null)
         {
-            File.Copy(Path.Combine(output, "extension", manifest.Control),
-                Path.Combine(_caseInstallation.Installation.SharedDirectory, "extension", manifest.Control), overwrite: true);
+            File.Copy(Path.Join(output, "extension", manifest.Control),
+                Path.Join(_caseInstallation.Installation.SharedDirectory, "extension", manifest.Control), overwrite: true);
         }
     }
 }

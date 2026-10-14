@@ -8,7 +8,7 @@ namespace Ankus.Build.Tests;
 public sealed class NativeBindingHeaderManifestTests(TestContext context)
 {
     private readonly string _root = Directory.CreateDirectory(
-        Path.Combine(context.TestRunDirectory ?? throw new InvalidOperationException("The test run directory is unavailable."),
+        Path.Join(context.TestRunDirectory ?? throw new InvalidOperationException("The test run directory is unavailable."),
             $"header-manifest-{Guid.NewGuid():N}")).FullName;
 
     /// <summary>
@@ -94,7 +94,7 @@ public sealed class NativeBindingHeaderManifestTests(TestContext context)
     [TestMethod]
     public void MissingServerHeaderDirectoryFailsExplicitly()
     {
-        string missing = Path.Combine(_root, "missing");
+        string missing = Path.Join(_root, "missing");
         DirectoryNotFoundException failure = Assert.ThrowsExactly<DirectoryNotFoundException>(() =>
             NativeBindingHeaderManifest.Generate(missing));
         Assert.Contains(Path.GetFullPath(missing), failure.Message, StringComparison.Ordinal);
@@ -102,7 +102,7 @@ public sealed class NativeBindingHeaderManifestTests(TestContext context)
 
     private void Add(string relativePath)
     {
-        string path = Path.Combine(_root, relativePath.Replace('/', Path.DirectorySeparatorChar));
+        string path = Path.Join(_root, relativePath.Replace('/', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         File.WriteAllText(path, string.Empty);
     }

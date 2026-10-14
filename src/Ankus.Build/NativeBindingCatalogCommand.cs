@@ -25,19 +25,19 @@ internal static class NativeBindingCatalogCommand
         {
             string source = await ReadSourceAsync(arguments[0], Revision, $"pgrx-pg-sys/src/include/pg{major}.rs");
             NativeBindingCatalog catalog = NativeBindingParser.Parse(source, major);
-            string path = Path.Combine(arguments[1], $"pg{major}.json");
+            string path = Path.Join(arguments[1], $"pg{major}.json");
             string content = JsonSerializer.Serialize(catalog, options) + "\n";
             await WriteAsync(path, content, arguments.Length == 3);
             NativeBindingRawCatalog raw = NativeBindingRawParser.Parse(source, major) with
             {
                 SourceRevision = Revision
             };
-            await WriteAsync(Path.Combine(arguments[1], $"pg{major}.raw.json"),
+            await WriteAsync(Path.Join(arguments[1], $"pg{major}.raw.json"),
                 JsonSerializer.Serialize(raw, options) + "\n", arguments.Length == 3);
             if (arguments.Length == 3)
             {
                 string headers = await ReadSourceAsync(arguments[0], Revision, $"pgrx-pg-sys/include/pg{major}.h");
-                await WriteAsync(Path.Combine(arguments[1], $"pg{major}.h"), headers, check: true);
+                await WriteAsync(Path.Join(arguments[1], $"pg{major}.h"), headers, check: true);
             }
 
             NativeBindingType[] nodes = [.. catalog.Types.Values.Where(static type => type.IsNode)];
@@ -46,7 +46,7 @@ internal static class NativeBindingCatalogCommand
         }
 
         string license = await ReadSourceAsync(arguments[0], Revision, "LICENSE");
-        await WriteAsync(Path.Combine(arguments[1], "LICENSE.pgrx"), license, arguments.Length == 3);
+        await WriteAsync(Path.Join(arguments[1], "LICENSE.pgrx"), license, arguments.Length == 3);
     }
 
     private static async Task WriteAsync(string path, string content, bool check)

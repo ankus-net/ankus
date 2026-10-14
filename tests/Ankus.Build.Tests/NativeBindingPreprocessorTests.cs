@@ -28,10 +28,10 @@ public sealed partial class NativeBindingNativeTests
         string directory = Directory.CreateTempSubdirectory("ankus-preprocessing-").FullName;
         try
         {
-            string earlier = Directory.CreateDirectory(Path.Combine(directory, "earlier")).FullName;
-            string later = Directory.CreateDirectory(Path.Combine(directory, "later")).FullName;
-            string relocated = Directory.CreateDirectory(Path.Combine(directory, "relocated")).FullName;
-            string file = Path.Combine(later, "binding-input.h");
+            string earlier = Directory.CreateDirectory(Path.Join(directory, "earlier")).FullName;
+            string later = Directory.CreateDirectory(Path.Join(directory, "later")).FullName;
+            string relocated = Directory.CreateDirectory(Path.Join(directory, "relocated")).FullName;
+            string file = Path.Join(later, "binding-input.h");
             const string Header = "#define WIDTH 3\n#define UNUSED 37\ntypedef struct Entry { int cells[WIDTH]; } Entry;\n";
             const string Source = "#include <binding-input.h>\n#ifdef EXTRA\nextern Entry additional;\n#endif\n";
             string[] options = OperatingSystem.IsWindows() ? ["/nologo", "/WX", "/I" + earlier, "/I" + later]
@@ -43,7 +43,7 @@ public sealed partial class NativeBindingNativeTests
             Assert.AreEqual(original, await ObserveAsync(relocated, options));
             if (!OperatingSystem.IsWindows())
             {
-                string alias = Path.Combine(directory, "linked staging");
+                string alias = Path.Join(directory, "linked staging");
                 Directory.CreateSymbolicLink(alias, relocated);
                 Assert.AreEqual(original, await ObserveAsync(alias, options));
             }
@@ -58,7 +58,7 @@ public sealed partial class NativeBindingNativeTests
             Assert.AreNotEqual(original.Hash, macro.Hash);
             Assert.AreNotEqual(resized.Hash, macro.Hash);
 
-            string shadow = Path.Combine(earlier, "binding-input.h");
+            string shadow = Path.Join(earlier, "binding-input.h");
             await File.WriteAllTextAsync(shadow, Header, context.CancellationToken);
             Assert.AreEqual(original, await ObserveAsync(directory, options));
             await File.WriteAllTextAsync(shadow, Header.Replace("WIDTH 3", "WIDTH 9", StringComparison.Ordinal), context.CancellationToken);
@@ -89,7 +89,7 @@ public sealed partial class NativeBindingNativeTests
         string directory = Directory.CreateTempSubdirectory("ankus-preprocessing-options-").FullName;
         try
         {
-            string file = Path.Combine(directory, "semantic.cfg");
+            string file = Path.Join(directory, "semantic.cfg");
             string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang";
             string prefix = OperatingSystem.IsWindows() ? "/clang:" : "";
             string[] options = ["--config=" + file];

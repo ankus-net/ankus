@@ -20,9 +20,8 @@ internal static class NativeBindingCallbackImports
     {
         NativeObjectImports imports = NativeObjectSymbols.Read(image, Prefix);
         var callbacks = new List<NativeBindingCallbackImport>(imports.Symbols.Count);
-        foreach (string symbol in imports.Symbols)
+        foreach (string suffix in imports.Symbols.Select(static symbol => symbol[Prefix.Length..]))
         {
-            string suffix = symbol[Prefix.Length..];
             int separator = suffix.IndexOf('_');
             if (separator <= 0 || !int.TryParse(suffix.AsSpan(0, separator), NumberStyles.None, CultureInfo.InvariantCulture, out int signature) ||
                 signature.ToString(CultureInfo.InvariantCulture) != suffix[..separator] || !ValidIdentity(suffix[(separator + 1)..]))

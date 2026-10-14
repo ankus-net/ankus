@@ -223,6 +223,16 @@ internal sealed record NativeHeaderAdjusted(NativeHeaderType Written, NativeHead
 internal sealed record NativeHeaderFunction(NativeHeaderType Result, IReadOnlyList<NativeHeaderType> Parameters,
     bool IsVariadic, bool HasPrototype, bool DoesNotReturn, int CallingConvention = 1) : NativeHeaderType
 {
+    /// <summary>
+    /// Checks a C11 function type: an unprototyped one has no parameter list, and a variadic one has a named parameter.
+    /// </summary>
+    /// <param name="hasPrototype">Whether the type declares its parameters.</param>
+    /// <param name="parameters">The number of named parameters.</param>
+    /// <param name="variadic">Whether the type ends with an ellipsis.</param>
+    /// <returns>Whether C11 allows the type.</returns>
+    internal static bool IsValidPrototype(bool hasPrototype, int parameters, bool variadic)
+        => hasPrototype ? !variadic || parameters != 0 : parameters == 0 && !variadic;
+
     internal override string Format(string declarator, NativeHeaderQualifiers qualifiers)
     {
         if (qualifiers != NativeHeaderQualifiers.None)
@@ -230,7 +240,7 @@ internal sealed record NativeHeaderFunction(NativeHeaderType Result, IReadOnlyLi
             throw new InvalidOperationException("A C function type cannot be qualified.");
         }
 
-        if ((!HasPrototype && (Parameters.Count != 0 || IsVariadic)) || (IsVariadic && Parameters.Count == 0))
+        if (!IsValidPrototype(HasPrototype, Parameters.Count, IsVariadic))
         {
             throw new InvalidOperationException("Invalid C11 function prototype.");
         }

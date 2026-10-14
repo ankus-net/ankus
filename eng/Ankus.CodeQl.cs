@@ -18,6 +18,7 @@ if (files.Length == 0)
 }
 
 List<string> findings = [];
+List<string> suppressed = [];
 foreach (string file in files)
 {
     using JsonDocument document = JsonDocument.Parse(File.ReadAllBytes(file));
@@ -37,7 +38,8 @@ foreach (string file in files)
         foreach (JsonElement result in results.EnumerateArray())
         {
             string message = result.TryGetProperty("message", out JsonElement body) ? Text(body, "text", "") : "";
-            findings.Add($"{Location(result)}: {Text(result, "level", "warning")} {Text(result, "ruleId", "unknown rule")}: {message}");
+            string finding = $"{Location(result)}: {Text(result, "level", "warning")} {Text(result, "ruleId", "unknown rule")}: {message}";
+            (Suppressed(result) ? suppressed : findings).Add(finding);
         }
     }
 }
@@ -47,8 +49,20 @@ foreach (string finding in findings.Order(StringComparer.Ordinal))
     Console.Error.WriteLine(finding);
 }
 
-Console.WriteLine($"CodeQL reported {findings.Count} finding(s) in {files.Length} result file(s).");
+// A `// codeql[rule] reason` comment marks a finding the code must keep, such as a catch that reports every exception at
+// the native boundary. These are listed so each one stays visible, and do not fail the check.
+foreach (string finding in suppressed.Order(StringComparer.Ordinal))
+{
+    Console.WriteLine("Suppressed in source: " + finding);
+}
+
+Console.WriteLine($"CodeQL reported {findings.Count} finding(s) and {suppressed.Count} suppressed in source in {files.Length} result file(s).");
 return findings.Count == 0 ? 0 : 1;
+
+static bool Suppressed(JsonElement result)
+    => result.TryGetProperty("suppressions", out JsonElement suppressions) && suppressions.ValueKind == JsonValueKind.Array &&
+        suppressions.EnumerateArray().Any(static suppression => !suppression.TryGetProperty("status", out JsonElement status) ||
+            status.GetString() is not "rejected");
 
 static string Text(JsonElement element, string name, string fallback)
     => element.TryGetProperty(name, out JsonElement value) && value.ValueKind == JsonValueKind.String ? value.GetString() ?? fallback : fallback;

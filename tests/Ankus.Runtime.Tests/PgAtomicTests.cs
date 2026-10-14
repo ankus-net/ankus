@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -306,32 +305,13 @@ public sealed unsafe class PgAtomicTests
     {
         using var fixture = new AtomicFixture();
         PgAtomic<long> storage = fixture.Start(0L);
-        var failures = new ConcurrentQueue<Exception>();
-        Thread[] workers = [.. Enumerable.Range(0, 4).Select(_ => new Thread(() =>
+        DedicatedThread.RunConcurrently(4, TimeSpan.FromSeconds(10), () =>
         {
-            try
+            for (int index = 0; index < 2000; index++)
             {
-                for (int index = 0; index < 2000; index++)
-                {
-                    storage.Increment();
-                }
+                storage.Increment();
             }
-            catch (Exception exception)
-            {
-                failures.Enqueue(exception);
-            }
-        }))];
-        foreach (Thread thread in workers)
-        {
-            thread.Start();
-        }
-
-        foreach (Thread thread in workers)
-        {
-            thread.Join();
-        }
-
-        Assert.IsEmpty(failures);
+        });
         Assert.AreEqual(8000L, storage.Value);
         Assert.HasCount(1, fixture.Memory.Requests);
         Assert.AreEqual(0, fixture.Access->_readers);

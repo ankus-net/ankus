@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -236,33 +235,13 @@ public sealed unsafe partial class PgSharedTests
     {
         using var fixture = new SharedFixture();
         PgShared<Aggregate> storage = fixture.Start(new Aggregate(73, 11));
-        ConcurrentQueue<Exception> failures = new();
-        Thread[] threads = new Thread[4];
-        for (int index = 0; index < threads.Length; index++)
+        DedicatedThread.RunConcurrently(4, TimeSpan.FromSeconds(10), () =>
         {
-            threads[index] = new Thread(() =>
+            for (int iteration = 0; iteration < 2000; iteration++)
             {
-                try
-                {
-                    for (int iteration = 0; iteration < 2000; iteration++)
-                    {
-                        storage.Read(static (in value) => value._count.Increment());
-                    }
-                }
-                catch (Exception exception)
-                {
-                    failures.Enqueue(exception);
-                }
-            });
-            threads[index].Start();
-        }
-
-        foreach (Thread thread in threads)
-        {
-            Assert.IsTrue(thread.Join(TimeSpan.FromSeconds(10)));
-        }
-
-        Assert.IsEmpty(failures);
+                storage.Read(static (in value) => value._count.Increment());
+            }
+        });
         Assert.AreEqual((8073L, 11), storage.Read(static (in value) => (value._count.Value, value.Tag)));
         Assert.HasCount(1, fixture.Memory.Requests);
         Assert.AreEqual(0, fixture.Access->_readers);

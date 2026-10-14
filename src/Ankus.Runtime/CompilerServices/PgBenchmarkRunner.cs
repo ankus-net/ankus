@@ -215,6 +215,7 @@ public static class PgBenchmarkRunner
             });
             return WriteResult(definition, samples, estimates, comparison, samplingMode, null);
         }
+        // codeql[cs/catch-of-all-exceptions] A failed benchmark is reported in its result, so the remaining benchmarks still run.
         catch (Exception exception)
         {
             return WriteResult(definition, [], [], null, null, exception.Message);
@@ -411,7 +412,7 @@ public static class PgBenchmarkRunner
         PgBenchmarkConfiguration configuration,
         PgBenchmarkSamplingMode samplingMode)
     {
-        if (samples.Any(static sample => sample.ElapsedNanoseconds == 0))
+        if (samples.Any(static sample => sample.ElapsedNanoseconds is 0))
         {
             throw new InvalidOperationException(
                 "At least one benchmark measurement took zero time per iteration. " +
@@ -666,7 +667,7 @@ public static class PgBenchmarkRunner
         double previousMean = Mean(previous);
         double denominator = Math.Sqrt(
             Variance(current, currentMean) / current.Length + Variance(previous, previousMean) / previous.Length);
-        return denominator == 0 ? double.NaN : (currentMean - previousMean) / denominator;
+        return denominator is 0 ? double.NaN : (currentMean - previousMean) / denominator;
     }
 
     private static double Mean(ReadOnlySpan<double> values)
@@ -741,7 +742,7 @@ public static class PgBenchmarkRunner
 
     private static double Relative(double current, double previous)
     {
-        if (previous == 0)
+        if (previous is 0)
         {
             throw new InvalidOperationException("The benchmark baseline contains a zero-duration sample distribution.");
         }

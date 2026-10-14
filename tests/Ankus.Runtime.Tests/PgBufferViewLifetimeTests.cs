@@ -106,36 +106,22 @@ public sealed partial class PgBufferViewTests
             Assert.ThrowsExactly<InvalidOperationException>(cstring.Dispose);
         }
 
-        Exception? failure = null;
-        var worker = new Thread(() =>
+        DedicatedThread.Run(() =>
         {
-            try
-            {
-                using var other = new MemoryContextTestFixture();
-                using MemoryContextTestFixture.Scope capability = MemoryContextTestFixture.Enter();
-                Assert.ThrowsExactly<InvalidOperationException>(() => _ = binary[0]);
-                Assert.ThrowsExactly<InvalidOperationException>(() => text.ToString());
-                Assert.ThrowsExactly<InvalidOperationException>(() => escaped.DangerousGetBits());
-                Assert.ThrowsExactly<InvalidOperationException>(() => cursor.MoveNext());
-                Assert.ThrowsExactly<InvalidOperationException>(() => _ = cursor.Current);
-                Assert.ThrowsExactly<InvalidOperationException>(binary.Dispose);
-                Assert.ThrowsExactly<InvalidOperationException>(text.Dispose);
-                Assert.ThrowsExactly<InvalidOperationException>(() => cstring.ToUtf8String());
-                Assert.ThrowsExactly<InvalidOperationException>(() => cstring.DangerousGetNullTerminatedSpan().ToArray());
-                Assert.ThrowsExactly<InvalidOperationException>(cstring.Dispose);
-                Assert.IsEmpty(other.Requests);
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
+            using var other = new MemoryContextTestFixture();
+            using MemoryContextTestFixture.Scope capability = MemoryContextTestFixture.Enter();
+            Assert.ThrowsExactly<InvalidOperationException>(() => _ = binary[0]);
+            Assert.ThrowsExactly<InvalidOperationException>(() => text.ToString());
+            Assert.ThrowsExactly<InvalidOperationException>(() => escaped.DangerousGetBits());
+            Assert.ThrowsExactly<InvalidOperationException>(() => cursor.MoveNext());
+            Assert.ThrowsExactly<InvalidOperationException>(() => _ = cursor.Current);
+            Assert.ThrowsExactly<InvalidOperationException>(binary.Dispose);
+            Assert.ThrowsExactly<InvalidOperationException>(text.Dispose);
+            Assert.ThrowsExactly<InvalidOperationException>(() => cstring.ToUtf8String());
+            Assert.ThrowsExactly<InvalidOperationException>(() => cstring.DangerousGetNullTerminatedSpan().ToArray());
+            Assert.ThrowsExactly<InvalidOperationException>(cstring.Dispose);
+            Assert.IsEmpty(other.Requests);
         });
-        worker.Start();
-        worker.Join();
-        if (failure is not null)
-        {
-            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
-        }
 
         Assert.IsEmpty(fixture.Requests);
         Assert.IsEmpty(script.Deleted);

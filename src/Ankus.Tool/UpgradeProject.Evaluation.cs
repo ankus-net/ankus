@@ -28,7 +28,7 @@ internal sealed partial class UpgradeProject
             .Select(value => Path.GetFullPath(value, DirectoryPath))];
         AddEvaluatedFile(project, documents);
         // Include the default outer evaluation as well as each declared inner build.
-        foreach ((string? configuration, string? framework) in new[] { ((string?)null, (string?)null) }
+        foreach ((string? configuration, string? framework) in new (string?, string?)[] { (null, null) }
             .Concat((configurations.Length == 0 ? new string?[] { null } : configurations)
                 .SelectMany(configuration => (frameworks.Length == 0 ? new string?[] { null } : frameworks)
                     .Select(framework => (configuration, framework)))).Distinct())

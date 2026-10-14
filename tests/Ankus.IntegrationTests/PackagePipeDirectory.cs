@@ -21,7 +21,7 @@ internal static class PackagePipeDirectory
         }
 
         string parent = IntegrationEnvironment.PhysicalDirectory(new DirectoryInfo(fallbackDirectory));
-        string directory = Path.Combine(parent, ".ap-" + Guid.NewGuid().ToString("N")[..12]);
+        string directory = Path.Join(parent, ".ap-" + Guid.NewGuid().ToString("N")[..12]);
         if (!Fits(directory))
         {
             throw new PathTooLongException("The test socket directory exceeds the Unix pathname limit. Set TESTINGPLATFORM_PIPE_DIRECTORY to a shorter existing directory.");
@@ -37,5 +37,5 @@ internal static class PackagePipeDirectory
     private static bool Fits(string directory)
         // MTP's monitoring controller prefixes its GUID; reserve the complete 46-byte name.
         // macOS permits 103 UTF-8 pathname bytes, excluding the terminating null byte.
-        => Encoding.UTF8.GetByteCount(Path.Combine(directory, "MONITORTOHOST_" + new string('p', 32))) <= 103;
+        => Encoding.UTF8.GetByteCount(Path.Join(directory, "MONITORTOHOST_" + new string('p', 32))) <= 103;
 }

@@ -78,7 +78,7 @@ internal sealed partial class PostgresDistributionClient(HttpClient client, Func
         try
         {
             Uri uri = GetArchiveUri(version, windowsBinaries);
-            string archive = Path.Combine(scratch, "archive");
+            string archive = Path.Join(scratch, "archive");
             for (int attempt = 1; ; attempt++)
             {
                 try
@@ -101,7 +101,7 @@ internal sealed partial class PostgresDistributionClient(HttpClient client, Func
                 await VerifyChecksumAsync(uri, archive, cancellationToken).ConfigureAwait(false);
             }
 
-            string extracted = Path.Combine(scratch, "extracted");
+            string extracted = Path.Join(scratch, "extracted");
             Directory.CreateDirectory(extracted);
             try
             {
@@ -285,7 +285,7 @@ internal sealed partial class PostgresDistributionClient(HttpClient client, Func
             throw new InvalidDataException($"Invalid PostgreSQL archive path: {name}");
         }
 
-        return Path.Combine([destination, .. parts.Skip(1)]);
+        return Path.Join([destination, .. parts.Skip(1)]);
     }
 
     private static async Task CopyBoundedAsync(Stream input, Stream output, long limit, CancellationToken cancellationToken)
