@@ -39,10 +39,10 @@ only the first gate.
 | CLI skills/docs, #2385 / `c21c79e8` | Reconcile updated command options, defaults, examples and limitations with the CLI inventory and public guides. Keep maintainer commands in contributor documentation and personal validation details private. Do not import upstream shell scripts or Rust agent instructions into user workflows. |
 | Release metadata, #2386 / `fc91c63e` | Keep the reference revision consistent across catalogs, OIDs, notices and parity documentation. Ankus's initial package/tool/template version remains 0.1.0; it does not inherit pgrx's package version. Audit dependency and fixture changes for relevant .NET equivalents. |
 
-Evidence on runtime 10.0.12-ankus.5: the complete suites, which include every
+Evidence on runtime 10.0.13-ankus.1: the complete suites, which include every
 source and backend case named above, pass on Linux x64 for PostgreSQL 13–19 beta,
-macOS ARM64 for 13–19 beta (19 with assertions enabled), Windows x64 for 13–19 beta
-and macOS x64 for 13–18 and 19 beta.
+macOS ARM64 for 13–19 beta (assertions enabled), Windows x64 for 13–19 beta and
+macOS x64 for 13–18 and 19 beta. The same cases passed earlier on 10.0.12-ankus.5.
 
 Work order: fix confirmed correctness and safety defects first; verify and finish
 the complete header/input refresh and its maintenance command; reconcile CLI,

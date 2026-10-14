@@ -1557,12 +1557,12 @@ Earlier entries in this log are in the
 ## Remaining work order
 
 Primary CI, the Linux, macOS ARM64 and Windows x64 version matrices, including
-PostgreSQL 19 beta, and Intel macOS on 13–18 and 19 beta all pass on runtime **ankus.5**. The
+PostgreSQL 19 beta, and Intel macOS on 13–18 and 19 beta all pass on runtime **10.0.13-ankus.1**. The
 declaration audit against pgrx 0.19.3 has no open option, and the third code
 review's findings are fixed or kept by documented design.
 
 1. Resolve discovered correctness and CI failures before accepting affected work, including the intermittent macOS PostgreSQL 19 `AllocSetCheck` fault and the one macOS generator test-host crash if either recurs.
-2. Keep the pgrx 0.19.3 [release-delta gates](docs/contributing/evidence/parity-requirements.md#pgrx-0193-release-delta-and-refresh-gates) satisfied: each has implementation and complete-suite evidence on runtime ankus.5, which must be refreshed on the serviced runtime.
+2. Keep the pgrx 0.19.3 [release-delta gates](docs/contributing/evidence/parity-requirements.md#pgrx-0193-release-delta-and-refresh-gates) satisfied: each has implementation and complete-suite evidence on runtime 10.0.13-ankus.1, which must be refreshed on each later serviced runtime.
 3. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
 4. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees.
 5. Keep samples and guides current with API changes, and recheck changed guides before release. Test discovery for MSTest, xUnit and NUnit consumers and samples for all 37 pgrx examples are complete.
