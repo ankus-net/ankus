@@ -135,6 +135,7 @@ public sealed class PgSpinLockTests
         Assert.AreEqual(outerAddress, Assert.ContainsSingle(fixture.Held));
         Assert.AreEqual(11, outer.Value);
         Assert.ThrowsExactly<ObjectDisposedException>(() => expired.Value);
+        // codeql[cs/dispose-not-called-on-throw] The test disposes this at the step it checks; the fake native layer holds nothing an earlier failure could leak.
         expired.Dispose();
         outer.Dispose();
         Assert.AreSequenceEqual([thirdAddress, secondAddress, outerAddress], fixture.Released);

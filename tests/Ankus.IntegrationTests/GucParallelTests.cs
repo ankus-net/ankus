@@ -219,7 +219,7 @@ public sealed partial class GucParallelTests(TestContext context)
     /// </summary>
     /// <param name="text">A default null or explicit Unicode string.</param>
     [TestMethod]
-    [DataRow((string?)null)]
+    [DataRow(default(string))]
     [DataRow("preloaded café 🐘")]
     public async Task NativePreloadWorkersRestoreValuesWithoutManagedPostmasterState(string? text)
     {

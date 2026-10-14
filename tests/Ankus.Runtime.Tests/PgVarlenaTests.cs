@@ -270,6 +270,7 @@ public sealed unsafe class PgVarlenaTests
         fixture.Handler = request => request._operation == NativeMemoryOperation.Read
             ? throw new PgException("55000", "Source context reset.") : script.Respond(request);
         AssertDisposed(value);
+        // codeql[cs/dispose-not-called-on-throw] The test disposes this at the step it checks; the fake native layer holds nothing an earlier failure could leak.
         value.Dispose();
     }
 

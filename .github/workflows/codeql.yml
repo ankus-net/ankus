@@ -33,7 +33,8 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      # These languages are read from source, so the scan does not need the patched runtime or PostgreSQL.
+      # These languages are read from source, so the scan does not need the patched runtime or PostgreSQL. Each test
+      # project states the global using that MSTest adds through MSBuild, so the C# scan resolves the test framework.
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:

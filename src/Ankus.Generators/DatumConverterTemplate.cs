@@ -16,7 +16,7 @@ internal static class DatumConverterTemplate
     internal static INamedTypeSymbol? Close(INamedTypeSymbol template, INamedTypeSymbol target, out DiagnosticDescriptor? error)
     {
         INamedTypeSymbol definition = template.OriginalDefinition;
-        INamedTypeSymbol[] containers = [.. Containers(definition).Reverse()];
+        INamedTypeSymbol[] containers = [.. TypeNesting.SelfAndContainers(definition).Reverse()];
         ITypeParameterSymbol[] parameters = [.. containers.SelectMany(static type => type.TypeParameters)];
         var variables = new HashSet<ITypeParameterSymbol>(parameters, SymbolEqualityComparer.Default);
         List<Dictionary<ITypeParameterSymbol, ITypeSymbol>> assignments = [new(SymbolEqualityComparer.Default)];
@@ -170,15 +170,4 @@ internal static class DatumConverterTemplate
     private static bool Same(Dictionary<ITypeParameterSymbol, ITypeSymbol> first, Dictionary<ITypeParameterSymbol, ITypeSymbol> second)
         => first.Count == second.Count && first.All(item => second.TryGetValue(item.Key, out ITypeSymbol? value) &&
             SymbolEqualityComparer.IncludeNullability.Equals(item.Value, value));
-
-    /// <summary>
-    /// Enumerates the template and each of its containing definitions.
-    /// </summary>
-    private static IEnumerable<INamedTypeSymbol> Containers(INamedTypeSymbol type)
-    {
-        for (INamedTypeSymbol? current = type; current is not null; current = current.ContainingType)
-        {
-            yield return current;
-        }
-    }
 }

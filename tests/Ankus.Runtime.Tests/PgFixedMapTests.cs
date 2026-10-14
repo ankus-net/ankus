@@ -235,7 +235,7 @@ public sealed class PgFixedMapTests
         comparer.ThrowEquality = false;
         Assert.AreEqual(1, count);
         Assert.AreEqual(11, map[1]);
-        Assert.IsFalse(map.ContainsKey(2));
+        Assert.IsFalse(map.TryGetValue(2, out _));
         map.Add(2, 22);
         Assert.IsTrue(map.Remove(1, out int value));
         Assert.AreEqual(11, value);

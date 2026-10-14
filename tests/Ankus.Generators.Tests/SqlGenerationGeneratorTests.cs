@@ -123,7 +123,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.HasCount(2, exports);
         Assert.HasCount(2, exports.Distinct(StringComparer.Ordinal));
         INamedTypeSymbol dispatchers = first.GetTypeByMetadataName("Ankus.Generated.ExtensionDispatchers")!;
-        (string Type, string Argument)[] contracts = [("integer", "(int)arguments[0].Integral"), ("bigint", "(long)arguments[0].Integral")];
+        (string Type, string Argument)[] contracts = [("integer", "(int)arguments[0].Integral"), ("bigint", "(arguments[0].Integral)")];
         foreach ((string type, string argument) in contracts)
         {
             IMethodSymbol callback = Assert.ContainsSingle(dispatchers.GetMembers().OfType<IMethodSymbol>().Where(method =>
