@@ -95,6 +95,7 @@ try
             ConfigureHeaderFrontend(repositoryRoot);
             ConfigureMacOsSdk();
             ConfigureBindingCache(repositoryRoot);
+            ConfigureNuGetHttpCache();
             BuildTests(repositoryRoot);
             if (OperatingSystem.IsLinux())
             {
@@ -1159,6 +1160,23 @@ static void ConfigureBindingCache(string repositoryRoot)
 
     Directory.CreateDirectory(directory);
     WriteEnvironment("AnkusBindingCacheDirectory", Path.GetFullPath(directory));
+}
+
+// Runners on one host run as the same account and would share its NuGet HTTP cache. NuGet's audit can then find a
+// cached response still open in another runner's restore, and the build treats that as an error. Each dedicated
+// runner keeps its own HTTP cache, which survives between its jobs.
+static void ConfigureNuGetHttpCache()
+{
+    if (Environment.GetEnvironmentVariable("RUNNER_ENVIRONMENT") != "self-hosted" ||
+        !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("NUGET_HTTP_CACHE_PATH")))
+    {
+        return;
+    }
+
+    string directory = Path.Join(Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE")
+        ?? throw new InvalidOperationException("RUNNER_TOOL_CACHE is required for the dedicated runner."), "nuget-http-cache");
+    Directory.CreateDirectory(directory);
+    WriteEnvironment("NUGET_HTTP_CACHE_PATH", Path.GetFullPath(directory));
 }
 
 static void CleanRunnerWorkspace(string repositoryRoot)
