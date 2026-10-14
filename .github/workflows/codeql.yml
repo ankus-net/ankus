@@ -112,7 +112,7 @@ jobs:
 
       - name: Save runtime
         if: steps.runtime-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: artifacts/nativeaot/linux-x64
           key: ${{ steps.runtime-cache.outputs.cache-primary-key }}
