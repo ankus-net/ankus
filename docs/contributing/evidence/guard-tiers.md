@@ -289,6 +289,19 @@ managed cost is mostly allocation (the context, the row and its cells) and
 `Set`'s type lookups, which consult registries that generated code can still
 extend.
 
+`Set` now skips those lookups for built-in types (see the custom scans below).
+A fresh profile with that change put 123 of 200 samples in the trigger and none
+in `Set`. Reading the context took 34, mostly decoding the text cell and
+allocating the row; converting the returned row took 13; the sample's own code
+took 15; and most of the rest was PostgreSQL's trigger machinery and the
+wrapper's memory context, which it creates and deletes on every call. Keeping
+that context with the call site and resetting it after each row, as aggregates
+do, made no measurable difference: best of eight alternated runs of 2,000,000
+rows took 2,465 ms before and 2,456 ms after, because PostgreSQL recycles freed
+contexts. Triggers therefore keep a context per call. In alternated runs of
+500,000 rows on the same day, the trimming trigger's overhead was about 0.75 µs
+per row against 0.46 µs for PL/pgSQL, medians of six rounds on a shared host.
+
 ### Composite arguments and results
 
 Calling the `ankus_composites` sample's `scritch_dog`, which reads a `dog`
