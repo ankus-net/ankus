@@ -544,10 +544,10 @@ tests check keyword namespaces, path handling, and preservation of existing file
 ## Security checks
 
 The `CodeQL` workflow scans the C#, documentation-site TypeScript and workflow
-sources with the `security-and-quality` suite on every change. C# is traced
-through a build of the solution and the `eng` apps, so the scan resolves calls
-into the code that source generators add; results inside those generated files
-are left out, as .NET analyzers leave them out by default. On `main`, a
+sources with the `security-and-quality` suite on every change. C# is read from
+source, so anything MSBuild adds behind the scenes stays invisible to it; each
+test project therefore states MSTest's global `using` in a source file. On
+`main`, a
 dedicated Linux runner also traces the C that the integration tests compile: the
 emitted native bridge and the fixtures composed from it. Code scanning only lists
 results, so `eng/Ankus.CodeQl.cs` fails the workflow for any finding; fix the code

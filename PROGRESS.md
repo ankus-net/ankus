@@ -277,21 +277,19 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   memory switch cases moved into functions; the 763 memory, allocator, list,
   node and ownership backend tests pass after it, and the PostgreSQL 13
   integration suite passed 5,523 of 5,540 with 17 platform skips.
-- CodeQL now traces the C# build instead of reading the sources alone. Without
-  the generators' output, only 81% of calls resolved and GitHub flagged the
-  scan's quality; the traced build of the solution and the `eng` apps resolves
-  99.98% of calls and types every expression. Results inside generated files are
-  left out before upload, as .NET analyzers leave them out by default: Ankus's
-  own entry points must catch every exception before it reaches PostgreSQL, and
-  the MSTest, regex and JSON generators are not ours to change. The better
-  resolution found 36 results in hand-written code. They are fixed, except a
-  build tool's top-level catch, the one `mallinfo2` call and five runtime tests
-  that dispose at the step they check, which carry comments. The generator no
-  longer emits identity casts, and one shared walk over a type's containers
-  replaces three copies and the loops CodeQL misread as leaving a type null.
-  The C analysis on `main` closed 8,146 alerts, the 89 marked C# results are
-  dismissed with their reasons, and code scanning has no open alert. A local
-  traced scan reports no C# result.
+- GitHub flagged the C# scan's quality: read from source alone, it resolved only
+  81% of calls. Nearly all the misses were MSTest calls in the test projects,
+  whose global `using` MSTest's package adds through MSBuild, which a scan of the
+  sources cannot see. Each test project now states it in a source file, and the
+  scan resolves 97% of calls with no build, so it stays as fast as before. A
+  traced build resolved 99.98% but took over 40 minutes on a hosted runner. Its
+  run found 36 results in hand-written code, now fixed, except a build tool's
+  top-level catch, the one `mallinfo2` call and five runtime tests that dispose
+  at the step they check, which carry comments. The generator no longer emits
+  identity casts, and one shared walk over a type's containers replaces three
+  copies and the loops CodeQL misread as leaving a type null. The C analysis on
+  `main` closed 8,146 alerts, the 89 marked C# results are dismissed with their
+  reasons, and code scanning has no open alert.
 - Two tests depended on their host. The first exception thrown under a
   `PgErrorContext` could go unrecorded when another thread pushed the first
   context at the same moment, because the push marked the exception handler as

@@ -50,10 +50,6 @@ try
             WriteOutput("version", GetReleaseVersion());
             break;
 
-        case "solution-build":
-            BuildSolution(repositoryRoot);
-            break;
-
         case "quality":
             BuildSolution(repositoryRoot);
             Run(GetDotNetHost(), ["run", "--project", "src/Ankus.DocGenerator", "--configuration", "Release", "--no-build", "--", "--check"]);
