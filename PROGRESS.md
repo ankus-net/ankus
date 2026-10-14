@@ -277,6 +277,15 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   memory switch cases moved into functions; the 763 memory, allocator, list,
   node and ownership backend tests pass after it, and the PostgreSQL 13
   integration suite passed 5,523 of 5,540 with 17 platform skips.
+- The pinned runtime stopped building once its CI cache was evicted. October's
+  .NET security release reports CVE-2026-70162 and CVE-2026-84008 against
+  `System.Security.Cryptography.Pkcs` 9.0.6, which `NuGet.Packaging` brings to the
+  runtime's installer and Crossgen2 build tasks, and the runtime build treats
+  NuGet's audit warnings as errors. Fork commit `f97c4de` makes those tasks
+  restore the patched 10.0.13; they only run during the build, so the runtime and
+  compiler packages keep version `10.0.13-ankus.1`. The unpatched tree reproduces
+  the failure and the patched one restores both tasks and the ILCompiler publish
+  project. Ankus's own 72 projects have no vulnerable package.
 - `ankus status` and `ankus info` seemed to hang when run from a large solution's
   directory, such as this repository's root. Without `--pg`, these commands use
   the PostgreSQL selection of the project or solution in the current directory.
