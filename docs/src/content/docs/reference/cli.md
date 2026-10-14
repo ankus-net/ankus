@@ -422,7 +422,10 @@ data. Like `pg_ctl`, it waits 60 seconds for the shutdown checkpoint unless
 `PGCTLTIMEOUT` sets another limit. Repeating `start` or `stop` is harmless. `status` reports `running` or
 `stopped`; it does not create a missing cluster. All three commands accept
 `--all` to select every registered major, or `--pg-config` with `--pg` to select
-an installation explicitly.
+an installation explicitly. Without either, they use the current project's
+selection, as `info` does. In a solution's directory that means evaluating every
+project in the solution, which takes a few seconds for a large one; `--pg`
+skips the evaluation.
 
 Each major has its own cluster and TCP port: the saved development base plus
 the major version, or `28800` plus the major when no base is saved.
