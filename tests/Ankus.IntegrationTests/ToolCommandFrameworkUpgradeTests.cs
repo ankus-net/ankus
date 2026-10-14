@@ -12,6 +12,8 @@ namespace Ankus.IntegrationTests;
 
 public sealed partial class ToolCommandTests
 {
+    private static readonly string[] s_frameworkReferencePacks = ["microsoft.netcore.app.ref", "microsoft.aspnetcore.app.ref"];
+
     /// <summary>
     /// Upgrades a generated solution's SDK and central references, then restores and executes its published native extension.
     /// </summary>
@@ -509,6 +511,7 @@ public sealed partial class ToolCommandTests
         string root = CreateDirectory();
         await CreateUpgradeFeedAsync(root, "Ankus.Testing", token);
         await CreateUpgradeFeedAsync(root, "Unrelated", token);
+        AddFrameworkReferencePacks(Path.Join(root, "feed"));
         string central = Path.Join(root, "Directory.Packages.props");
         await File.WriteAllTextAsync(central, "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup><PackageVersion Include='Ankus.Testing;Unrelated' Version='0.1.0'/></ItemGroup></Project>", token);
         string project = Path.Join(root, "Probe.csproj");
@@ -988,6 +991,27 @@ public sealed partial class ToolCommandTests
         var configuration = new XDocument(new XElement("configuration", new XElement("packageSources", new XElement("clear"),
             new XElement("add", new XAttribute("key", "owned"), new XAttribute("value", feed)))));
         await File.WriteAllTextAsync(Path.Join(root, "NuGet.Config"), configuration.ToString(), token);
+    }
+
+    /// <summary>
+    /// Adds the cached .NET 10 framework reference packs to an owned feed. SDK 10 bundles them, but a later SDK building
+    /// net10.0 downloads them, so an offline restore of a net10.0 probe needs them in its feed.
+    /// </summary>
+    /// <param name="feed">The owned package feed.</param>
+    private static void AddFrameworkReferencePacks(string feed)
+    {
+        string cache = Environment.GetEnvironmentVariable("NUGET_PACKAGES") is { Length: > 0 } configured
+            ? configured
+            : Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
+        string[] packs = [.. s_frameworkReferencePacks
+            .Select(package => Path.Join(cache, package))
+            .Where(Directory.Exists)
+            .SelectMany(static directory => Directory.EnumerateDirectories(directory, "10.*"))
+            .SelectMany(static version => Directory.EnumerateFiles(version, "*.nupkg"))];
+        foreach (string pack in packs)
+        {
+            File.Copy(pack, Path.Join(feed, Path.GetFileName(pack)), overwrite: true);
+        }
     }
 
     private static Dictionary<string, byte[]> SnapshotUpgradeFiles(string root)

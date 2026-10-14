@@ -145,6 +145,9 @@ selected by `ankus test`), `BuildProperties`, `SharedPreload` and `Port`.
 When invoked through `ankus test`, forwarded MSBuild properties become the
 default so the managed test build and nested fixture publish use the same values.
 The fixture uses the selected installation's headers and server together.
+Its publish uses the .NET SDK that the extension project's directory selects
+through `global.json`, as `dotnet publish` there would, even when another SDK
+runs the tests.
 
 For ordinary `dotnet test`, set `DataDirectoryBase` to put cluster data beneath
 a chosen directory. The fixture creates and removes its own unique child;

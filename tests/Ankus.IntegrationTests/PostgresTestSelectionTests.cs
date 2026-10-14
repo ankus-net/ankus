@@ -187,7 +187,8 @@ public sealed partial class ToolCommandTests
         {
             (await RunDotnetAsync(["new", "sln", "--format", "sln", "--name", "Selection", "--output", output], token))
                 .EnsureSuccess("dotnet", ["new", "sln"]);
-            (await RunDotnetAsync(["sln", selection[1], "add", extension, project], token))
+            // Add both explicitly. SDK 11 rejects the extension again when it follows the test project's reference.
+            (await RunDotnetAsync(["sln", selection[1], "add", extension, project, "--include-references", "false"], token))
                 .EnsureSuccess("dotnet", ["sln", "add"]);
         }
 

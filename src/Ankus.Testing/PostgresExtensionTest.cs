@@ -13,6 +13,16 @@ namespace Ankus.Testing;
 /// </summary>
 public sealed class PostgresExtensionTest : IAsyncDisposable
 {
+    /// <summary>
+    /// Lets the publication select its SDK from the extension's directory, as a command-line publish there would. The
+    /// SDK that ran the tests passes its MSBuild locations to the test host, and another SDK must not load them.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, string?> s_publishEnvironment = new Dictionary<string, string?>(StringComparer.Ordinal)
+    {
+        ["MSBuildSDKsPath"] = null,
+        ["MSBuildExtensionsPath"] = null,
+    };
+
     private readonly string _publishDirectory;
     private readonly string _dataDirectoryBase;
     private readonly PostgresServerAccount _account;
@@ -64,6 +74,7 @@ public sealed class PostgresExtensionTest : IAsyncDisposable
     /// relocatable copy of the selected installation.
     /// Custom SQL directories are remapped into owned test storage without changing the authored control file.
     /// Server logs and build logs remain in the project's bin/ankus-test-logs directory for seven days after their last write.
+    /// The publication uses the SDK that the extension's directory selects, even when another SDK runs the tests.
     /// </remarks>
     public static Task<PostgresExtensionTest> StartAsync(string projectPath,
         PostgresInstallation? installation = null, CancellationToken cancellationToken = default)
@@ -259,7 +270,7 @@ public sealed class PostgresExtensionTest : IAsyncDisposable
                     ["publish", projectPath, .. PropertyArguments(properties), "--artifacts-path", buildArtifacts,
                         "-o", buildOutput,
                         "-bl:" + Path.Join(logs, invocation + ".binlog")],
-                    new Dictionary<string, string?>(), cancellationToken, workingDirectory: root).ConfigureAwait(false);
+                    s_publishEnvironment, cancellationToken, workingDirectory: root).ConfigureAwait(false);
                 CopyDirectory(buildOutput, output);
             }
 

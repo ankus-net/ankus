@@ -135,6 +135,7 @@ PostgreSQL 18 and later use a per-cluster extension search path. Earlier version
 relocatable copy of the selected installation.
 Custom SQL directories are remapped into owned test storage without changing the authored control file.
 Server logs and build logs remain in the project's bin/ankus-test-logs directory for seven days after their last write.
+The publication uses the SDK that the extension's directory selects, even when another SDK runs the tests.
 
 <a id="member-96deb75b043968f2"></a>
 
