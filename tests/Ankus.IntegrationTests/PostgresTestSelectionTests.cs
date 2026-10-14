@@ -10,6 +10,8 @@ public sealed partial class ToolCommandTests
 {
     private static readonly SelectionProjectPool s_selectionProjects = new();
 
+    private static readonly SemaphoreSlim s_installationLinkGate = new(1, 1);
+
     /// <summary>
     /// Plain dotnet test preserves project defaults and build overrides through publication and actual server execution.
     /// </summary>
@@ -32,21 +34,23 @@ public sealed partial class ToolCommandTests
             ? Path.Join(output, "src", "TestCommandProbe", "TestCommandProbe.csproj")
             : Path.Join(output, "Directory.Build.props");
         string extensionDirectory = Path.Join(output, "src", "TestCommandProbe");
+        string reachable = selection is "extension-relative" or "project-relative" or "import-relative"
+            ? await RelativelyReachablePgConfigAsync(output, token)
+            : s_installation.PgConfigPath;
         string pgConfig = selection switch
         {
-            "extension-relative" or "project-relative" => Path.GetRelativePath(extensionDirectory, s_installation.PgConfigPath),
-            "import-relative" => "$(MSBuildThisFileDirectory)" + Path.GetRelativePath(output, s_installation.PgConfigPath),
+            "extension-relative" or "project-relative" => Path.GetRelativePath(extensionDirectory, reachable),
+            "import-relative" => "$(MSBuildThisFileDirectory)" + Path.GetRelativePath(output, reachable),
             "build-path" => "missing-pg-config",
             _ => s_installation.PgConfigPath,
         };
         if (selection is "extension-relative" or "project-relative")
         {
             Assert.IsFalse(Path.IsPathRooted(pgConfig), "The consumer must exercise a genuinely relative installation path.");
-            Assert.AreEqual(s_installation.PgConfigPath, Path.GetFullPath(pgConfig, extensionDirectory));
+            Assert.AreEqual(reachable, Path.GetFullPath(pgConfig, extensionDirectory));
             if (selection == "project-relative")
             {
-                Assert.AreEqual(s_installation.PgConfigPath, Path.GetFullPath(pgConfig,
-                    Path.Join(output, "tests", "TestCommandProbe.Tests")));
+                Assert.AreEqual(reachable, Path.GetFullPath(pgConfig, Path.Join(output, "tests", "TestCommandProbe.Tests")));
             }
         }
 
@@ -502,6 +506,45 @@ public sealed partial class ToolCommandTests
         }
 
         return selectedPgConfig;
+    }
+
+    /// <summary>
+    /// Gets the selected pg_config at a path that a consumer in <paramref name="directory"/> can name relative to
+    /// itself. A relative path cannot cross Windows volumes, as on hosted runners whose work directory is on another
+    /// drive than PostgreSQL, so such a consumer reaches the installation through a directory junction in the shared
+    /// work root.
+    /// </summary>
+    /// <param name="directory">The consumer directory.</param>
+    /// <param name="token">Cancels creating the junction.</param>
+    /// <returns>The installation's pg_config, through the junction when one is needed.</returns>
+    private static async Task<string> RelativelyReachablePgConfigAsync(string directory, CancellationToken token)
+    {
+        string pgConfig = s_installation.PgConfigPath;
+        if (string.Equals(Path.GetPathRoot(directory), Path.GetPathRoot(pgConfig), StringComparison.OrdinalIgnoreCase))
+        {
+            return pgConfig;
+        }
+
+        string bin = Path.GetDirectoryName(pgConfig)!;
+        string link = Path.Join(s_root, "postgresql");
+        await s_installationLinkGate.WaitAsync(token);
+        try
+        {
+            if (!Directory.Exists(link))
+            {
+                // Unlike a symbolic link, a junction needs no extra privilege. Deleting the work root removes the
+                // junction itself and leaves the installation alone.
+                ProcessResult result = await PackageProcessRunner.RunAsync("cmd",
+                    ["/c", "mklink", "/J", link, Path.GetDirectoryName(bin)!], s_environment, token);
+                Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
+            }
+        }
+        finally
+        {
+            s_installationLinkGate.Release();
+        }
+
+        return Path.Join(link, Path.GetFileName(bin), Path.GetFileName(pgConfig));
     }
 
     /// <summary>
