@@ -388,6 +388,22 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   On the stable SDK, CI 38633861172 on 0903e5d passed on Linux x64, macOS ARM64
   and Windows x64; the macOS job's first attempt lost nuget.org during restore
   (NU1900) and passed when rerun.
+- The runtime fork now has a .NET 11 line. Its 31 changes over 10.0.13 were
+  applied to `v11.0.0-rc.2.26504.105` as one change (fork commit `34f19a015e3`,
+  branch `ankus/runtime-11.0-rc2`) and adapted where .NET 11 moved the code:
+  the collector is split into separately compiled files, so the fork state is
+  shared through its internal header; the thread pool's semaphore and worker
+  requests were rewritten, so worker retirement and post-fork recovery follow
+  the new design; and EventPipe sessions now publish before they enable. Native
+  AOT also links one workstation collector build into both runtime flavors, so
+  that build could not tell a server collector existed and the first server
+  probe saw a single heap; each collector now exports its own entry points and
+  the runtime, compiled per flavor, picks the one that owns the heap. .NET 11
+  removed the debug header and auto-trace that two changes touched. Built with
+  Clang 19 for Linux x64, the runtime passes every fork probe: 10 retained
+  service and descendant cases, workstation and server active-GC with fixed and
+  dynamic heaps, all eight diagnostics suites, host shutdown, signal masks and
+  host signals.
 - GitHub flagged the C# scan's quality: read from source alone, it resolved only
   81% of calls. Nearly all the misses were MSTest calls in the test projects,
   whose global `using` MSTest's package adds through MSBuild, which a scan of the
@@ -1628,7 +1644,8 @@ review's findings are fixed or kept by documented design.
 4. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees. The latest trigger profile is in the [guard-tier evidence](docs/contributing/evidence/guard-tiers.md#row-triggers). `Set` no longer consults the registries for built-in types, so the remaining managed cost is mostly the detached row's allocations.
 5. Keep samples and guides current with API changes, and recheck changed guides before release. Test discovery for MSTest, xUnit and NUnit consumers and samples for all 37 pgrx examples are complete.
 6. Keep the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) current as a pglogical port exercises it; every planned capability is done.
-7. Before publishing 0.1.0, repeat the release rehearsal on the commit to be released. The native binding catalogs and the public API surface were audited on 2026-10-14. The .NET 10.0.13 servicing update is done and rehearsal 38600378664 passes on it. If .NET 11 reaches GA first, complete its acceptance for that release; preview validation does not block the initial .NET 10 release.
+7. Support .NET 11 as an extension target (required, in progress). The runtime fork's changes over 10.0.13 are ported onto .NET 11 RC2 as fork commit `34f19a015e3` on branch `ankus/runtime-11.0-rc2`, and every fork probe passes on Linux x64; rebase onto GA when it ships. Remaining: build and probe the other RIDs, `net11.0` runtime and compiler selection in `Ankus.Sdk`, packages, CI, and the complete suite on every platform and PostgreSQL major.
+8. Before publishing 0.1.0, repeat the release rehearsal on the commit to be released. The native binding catalogs and the public API surface were audited on 2026-10-14. The .NET 10.0.13 servicing update is done and rehearsal 38600378664 passes on it.
 
 Continue independent work while CI runs. Before every commit and push, check and
 record previous run outcomes, including live runs, and resolve reported failures.
