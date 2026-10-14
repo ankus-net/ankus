@@ -108,7 +108,8 @@ internal sealed class ApplyWorker(string name, string provider, string publicati
 
     /// <summary>
     /// Drops a slot on the provider if it exists. PostgreSQL 13 does not report a remote error's SQLSTATE, so the slot
-    /// is looked up rather than its drop error recognized.
+    /// is looked up rather than its drop error recognized. A stopped worker's sender on the provider can still hold the
+    /// slot for a moment, so the drop waits for it to let go.
     /// </summary>
     /// <param name="connection">The provider connection, inside a local transaction.</param>
     /// <param name="slot">The slot's name.</param>
@@ -116,7 +117,7 @@ internal sealed class ApplyWorker(string name, string provider, string publicati
     {
         if (connection.Query($"SELECT count(*) FROM pg_catalog.pg_replication_slots WHERE slot_name = {Spi.QuoteLiteral(slot)}", 1)[0][0] != "0")
         {
-            connection.Execute("DROP_REPLICATION_SLOT " + Spi.QuoteIdentifier(slot));
+            connection.Execute("DROP_REPLICATION_SLOT " + Spi.QuoteIdentifier(slot) + " WAIT");
         }
     }
 
