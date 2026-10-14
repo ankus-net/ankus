@@ -38,6 +38,64 @@ internal static class SpiType
             return view.GetOid();
         }
 
+        uint builtin = GetBuiltinOid(type);
+        if (builtin != 0)
+        {
+            return builtin;
+        }
+
+        if (PgDatumRegistry.Find(type) is { } datum)
+        {
+            return datum.GetOid();
+        }
+
+        if (PgDatumRegistry.FindArray(type) is { } datumArray)
+        {
+            return datumArray.GetOid();
+        }
+
+        CustomTypeMapping? custom = PgTypeRegistry.Find(type);
+        if (custom is not null)
+        {
+            return custom.GetOid();
+        }
+
+        custom = PgTypeRegistry.FindArray(type);
+        if (custom is not null)
+        {
+            return custom.GetArrayOid();
+        }
+
+        EnumMapping? enumeration = PgEnumRegistry.Find(type);
+        if (enumeration is not null)
+        {
+            return enumeration.GetOid();
+        }
+
+        enumeration = PgEnumRegistry.FindArray(type);
+        if (enumeration is not null)
+        {
+            return enumeration.GetArrayOid();
+        }
+
+        uint rangeOid = SpiRange.GetOid(type);
+        if (rangeOid != 0)
+        {
+            return rangeOid;
+        }
+
+        uint arrayOid = SpiArray.GetOid(type);
+        return arrayOid != 0 ? arrayOid : throw new NotSupportedException($"SPI parameters of managed type '{type}' do not have a registered PostgreSQL conversion.");
+    }
+
+    /// <summary>
+    /// Resolves a managed type that PostgreSQL conversion supports directly, whose OID never depends on generated
+    /// mappings. Generated mappings cannot claim these types, so a caller can trust the result without consulting them.
+    /// </summary>
+    /// <param name="type">The declared managed type.</param>
+    /// <returns>The PostgreSQL OID, or zero when the type is not built in.</returns>
+    internal static uint GetBuiltinOid(Type type)
+    {
         if (type == typeof(PgInternal))
         {
             return 2281;
@@ -219,48 +277,26 @@ internal static class SpiType
             return 1186;
         }
 
-        if (PgDatumRegistry.Find(type) is { } datum)
+        return 0;
+    }
+
+    /// <summary>
+    /// Rejects a generated mapping for a type that already has a built-in conversion, or whose array does, such as
+    /// <see cref="byte"/> for <c>bytea</c>. As Rust's coherence rules keep pgrx from converting a type two ways,
+    /// SPI parameters and tuple cells must agree on one OID.
+    /// </summary>
+    /// <typeparam name="T">The managed type to map.</typeparam>
+    internal static void RejectBuiltinMapping<T>()
+    {
+        if (GetBuiltinOid(typeof(T)) != 0)
         {
-            return datum.GetOid();
+            throw new InvalidOperationException($"Type '{typeof(T)}' already has a built-in PostgreSQL conversion.");
         }
 
-        if (PgDatumRegistry.FindArray(type) is { } datumArray)
+        if (GetBuiltinOid(typeof(T[])) != 0)
         {
-            return datumArray.GetOid();
+            throw new InvalidOperationException($"Type '{typeof(T)}' cannot be mapped because '{typeof(T[])}' already has a built-in PostgreSQL conversion.");
         }
-
-        CustomTypeMapping? custom = PgTypeRegistry.Find(type);
-        if (custom is not null)
-        {
-            return custom.GetOid();
-        }
-
-        custom = PgTypeRegistry.FindArray(type);
-        if (custom is not null)
-        {
-            return custom.GetArrayOid();
-        }
-
-        EnumMapping? enumeration = PgEnumRegistry.Find(type);
-        if (enumeration is not null)
-        {
-            return enumeration.GetOid();
-        }
-
-        enumeration = PgEnumRegistry.FindArray(type);
-        if (enumeration is not null)
-        {
-            return enumeration.GetArrayOid();
-        }
-
-        uint rangeOid = SpiRange.GetOid(type);
-        if (rangeOid != 0)
-        {
-            return rangeOid;
-        }
-
-        uint arrayOid = SpiArray.GetOid(type);
-        return arrayOid != 0 ? arrayOid : throw new NotSupportedException($"SPI parameters of managed type '{type}' do not have a registered PostgreSQL conversion.");
     }
 
     /// <summary>

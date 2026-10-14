@@ -107,6 +107,7 @@ public static class PgTypeRegistry
             ArgumentException.ThrowIfNullOrEmpty(schema);
         }
 
+        SpiType.RejectBuiltinMapping<T>();
         var mapping = new CustomTypeMapping<T, TOptional>(name, schema, createCodec);
         if (!s_scalars.TryAdd(typeof(T), mapping))
         {

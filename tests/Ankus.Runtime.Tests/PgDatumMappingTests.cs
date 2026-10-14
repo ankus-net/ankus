@@ -57,6 +57,34 @@ public sealed unsafe class PgDatumMappingTests
     }
 
     /// <summary>
+    /// A generated mapping cannot claim a type with a built-in conversion, or one whose array has one, so SPI
+    /// parameters and tuple cells always agree on its OID.
+    /// </summary>
+    [TestMethod]
+    public void RegistrationRejectsBuiltinTypes()
+    {
+        Assert.ThrowsExactly<InvalidOperationException>(() => PgDatumRegistry.RegisterReference<string>("text_copy", "fixed",
+            PgTypeOrigin.External, typeof(object), static () => throw new NotSupportedException("Factory must not run."), true, false));
+        Assert.ThrowsExactly<InvalidOperationException>(() => PgDatumRegistry.RegisterValue<int>("int_copy", "fixed",
+            PgTypeOrigin.External, typeof(object), static () => throw new NotSupportedException("Factory must not run."), true, false));
+        InvalidOperationException array = Assert.ThrowsExactly<InvalidOperationException>(() => PgDatumRegistry.RegisterValue<byte>(
+            "byte_copy", "fixed", PgTypeOrigin.External, typeof(object), static () => throw new NotSupportedException("Factory must not run."),
+            true, false));
+        Assert.Contains("System.Byte[]", array.Message);
+        Assert.ThrowsExactly<InvalidOperationException>(() => PgTypeRegistry.RegisterReference<string>("text_copy", null,
+            static () => throw new NotSupportedException("Factory must not run.")));
+        Assert.ThrowsExactly<InvalidOperationException>(() => PgTypeRegistry.RegisterValue<Guid>("uuid_copy", null,
+            static () => throw new NotSupportedException("Factory must not run.")));
+        Assert.IsNull(PgDatumRegistry.Find(typeof(string)));
+        Assert.IsNull(PgDatumRegistry.Find(typeof(int?)));
+        Assert.IsNull(PgDatumRegistry.FindArray(typeof(byte[])));
+        Assert.IsNull(PgTypeRegistry.Find(typeof(string)));
+        Assert.IsNull(PgTypeRegistry.Find(typeof(Guid?)));
+        Assert.AreEqual(25U, SpiType.GetOid<string>());
+        Assert.AreEqual(17U, SpiType.GetOid<byte[]>());
+    }
+
+    /// <summary>
     /// Both adapters share one converter, preserve independent literal values and observe changed catalog identities.
     /// </summary>
     [TestMethod]

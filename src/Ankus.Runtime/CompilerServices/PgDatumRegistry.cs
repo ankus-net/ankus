@@ -128,6 +128,7 @@ public static class PgDatumRegistry
             throw new ArgumentException("A datum mapping requires a reader or writer.", nameof(canRead));
         }
 
+        SpiType.RejectBuiltinMapping<T>();
         if (PgTypeRegistry.Find(typeof(T)) is not null || PgEnumRegistry.Find(typeof(T)) is not null)
         {
             throw new InvalidOperationException($"Type '{typeof(T)}' already has a generated PostgreSQL mapping.");

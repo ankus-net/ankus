@@ -345,13 +345,27 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   and an extension project's `bin/ankus-test-logs` grows the same way. pgrx keeps
   server output in memory for its failure report, so it has nothing to clean.
   The first cluster a test process starts in a log directory now removes the
-  server logs, Windows event sidecars and publish binary logs that the fixtures
+  server logs, the files their collector keeps beside them (on Windows, PostgreSQL's
+  stderr and the event sidecars) and the publish binary logs that the fixtures
   named, once they are seven days past their last write, and leaves every other
   file. The integration suite expires its own `artifacts/test-logs` the same
   way, and the package pack logs it writes into `artifacts` now keep one fixed
   name per package. Tests cover the recognized names, a prune beside foreign and
   recent files, and a real cluster start; with the cluster tests they pass on
   Linux x64 with PostgreSQL 18 (35 of 35).
+- `PgHeapTuple.Set`, which triggers and custom scans call for every row, now
+  skips the generated-mapping registries for built-in types such as `string` and
+  `long`. It looked up the type's datum mapping and arrays first because a
+  generated mapping could claim a built-in type, and then SPI parameters and tuple
+  cells would have converted it differently. The datum and custom type registries
+  now reject a type with a built-in conversion, or one whose array has one (`byte`
+  for `bytea`), as Rust's coherence rules do for pgrx, so `Set` caches each
+  built-in type's OID. Two new in-backend benchmarks went from 63.8 to 26.9 ns
+  for a text cell and from 73.0 to 28.3 ns for an `int` cell, and the
+  `NumberScan` sample's rows from 189 to 157 ns; details are in the
+  [guard-tier evidence](docs/contributing/evidence/guard-tiers.md#managed-custom-scans).
+  Runtime (2,490) and generator (5,033) tests pass, as do the 365 trigger,
+  custom scan, composite and tuple backend tests on Linux x64 with PostgreSQL 18.
 - GitHub flagged the C# scan's quality: read from source alone, it resolved only
   81% of calls. Nearly all the misses were MSTest calls in the test projects,
   whose global `using` MSTest's package adds through MSBuild, which a scan of the
@@ -1589,7 +1603,7 @@ review's findings are fixed or kept by documented design.
 1. Resolve discovered correctness and CI failures before accepting affected work, including the intermittent macOS PostgreSQL 19 `AllocSetCheck` fault if it recurs. The macOS ARM64 test-host crashes are a suspected macOS bug, not yet reported: on 2026-10-14 the build-tool tests' host died after 698 of 1,346 tests, and its crash report shows `fork()`, called by .NET's `Process.Start`, aborting in libmalloc's xzone allocator (`_malloc_fork_parent`: unlock of an `os_unfair_lock` the thread does not own) while two other threads waited on xzone's fork lock to allocate. macOS 26 uses xzone for every ARM64 process, with no setting to turn it off outside Apple, and Intel Macs never use it. Rerun a job that ends this way and record it. If it happens once more, a maintainer files the report with Apple and .NET.
 2. Keep the pgrx 0.19.3 [release-delta gates](docs/contributing/evidence/parity-requirements.md#pgrx-0193-release-delta-and-refresh-gates) satisfied: each has implementation and complete-suite evidence on runtime 10.0.13-ankus.1, which must be refreshed on each later serviced runtime.
 3. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
-4. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees. The latest trigger profile is in the [guard-tier evidence](docs/contributing/evidence/guard-tiers.md#row-triggers): the remaining managed cost is mostly the detached row's allocations and `Set`'s registry lookups.
+4. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees. The latest trigger profile is in the [guard-tier evidence](docs/contributing/evidence/guard-tiers.md#row-triggers). `Set` no longer consults the registries for built-in types, so the remaining managed cost is mostly the detached row's allocations.
 5. Keep samples and guides current with API changes, and recheck changed guides before release. Test discovery for MSTest, xUnit and NUnit consumers and samples for all 37 pgrx examples are complete.
 6. Keep the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) current as a pglogical port exercises it; every planned capability is done.
 7. Before publishing 0.1.0, repeat the release rehearsal on the commit to be released. The native binding catalogs and the public API surface were audited on 2026-10-14. The .NET 10.0.13 servicing update is done and rehearsal 38600378664 passes on it. If .NET 11 reaches GA first, complete its acceptance for that release; preview validation does not block the initial .NET 10 release.

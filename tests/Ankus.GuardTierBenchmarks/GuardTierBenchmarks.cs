@@ -60,4 +60,28 @@ public static class GuardTierBenchmarks
     [PgBenchmark]
     public static void LogFilteredDebug(PgBencher bencher)
         => bencher.Iterate(static () => PgLog.Write(PgLogLevel.Debug5, "guard tier benchmark"));
+
+    /// <summary>
+    /// Replacing a text cell of a detached row, as a trigger or custom scan does for every row.
+    /// </summary>
+    /// <param name="bencher">The PostgreSQL benchmark timing boundary.</param>
+    [PgBenchmark]
+    public static void TupleSetText(PgBencher bencher)
+    {
+        PgHeapTuple row = PgTupleDescriptor.Load("pg_settings").CreateTuple();
+        int ordinal = row.Descriptor.GetOrdinal("setting");
+        bencher.Iterate(() => row.Set(ordinal, "work_mem"));
+    }
+
+    /// <summary>
+    /// Replacing an integer cell of a detached row.
+    /// </summary>
+    /// <param name="bencher">The PostgreSQL benchmark timing boundary.</param>
+    [PgBenchmark]
+    public static void TupleSetInt(PgBencher bencher)
+    {
+        PgHeapTuple row = PgTupleDescriptor.Load("pg_settings").CreateTuple();
+        int ordinal = row.Descriptor.GetOrdinal("sourceline");
+        bencher.Iterate(() => row.Set(ordinal, 42));
+    }
 }

@@ -150,6 +150,13 @@ public sealed class PgHeapTuple
     /// <param name="value">The replacement cell.</param>
     public void Set<T>(int ordinal, T value)
     {
+        // A built-in type's OID is fixed and no generated mapping can claim it, so the registries need no lookup.
+        if (BuiltinCell<T>.Oid != 0)
+        {
+            SetCore(ordinal, BuiltinCell<T>.Oid, value);
+            return;
+        }
+
         PgTupleAttributeInfo attribute = Descriptor.Attributes[ValidateOrdinal(ordinal)];
         ValidateAvailable(ordinal);
         if (attribute.IsDropped)
@@ -346,6 +353,19 @@ public sealed class PgHeapTuple
     }
 
     private void MarkReplaced(int ordinal) => (_replaced ??= new bool[_values.Length])[ordinal] = true;
+
+    /// <summary>
+    /// Caches the OID of a built-in cell type, or zero for a type that needs the registries or takes its OID from the
+    /// value, as a row does from its descriptor.
+    /// </summary>
+    /// <typeparam name="T">The replacement's managed type.</typeparam>
+    private static class BuiltinCell<T>
+    {
+        /// <summary>
+        /// Gets the fixed OID, or zero.
+        /// </summary>
+        internal static uint Oid { get; } = typeof(T) == typeof(PgHeapTuple) ? 0 : SpiType.GetBuiltinOid(typeof(T));
+    }
 
     /// <summary>
     /// Checks that a live attribute can hold a replacement of the given type before any conversion runs.

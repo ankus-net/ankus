@@ -192,6 +192,19 @@ skipped. `PgTupleDescriptor.CreateTuple` built an empty array, then validated
 and copied it; it now creates the empty tuple directly. The rest is spread across
 the checks in `PgHeapTuple.Set` and the conversion of each cell.
 
+`PgHeapTuple.Set` looked up the replacement's type in the generated datum
+mappings and their arrays, three dictionary lookups, before resolving a built-in
+type such as `string` or `long` through a chain of type comparisons. A generated
+mapping could even claim a built-in type, so that SPI parameters and tuple cells
+would convert it differently. Registration now rejects a type with a built-in
+conversion, or one whose array has one, as Rust's coherence rules do for pgrx,
+and `Set` caches a built-in type's OID per type and skips the lookups. The
+`TupleSetText` and `TupleSetInt` benchmarks went from 63.8 ns to 26.9 ns and
+from 73.0 ns to 28.3 ns per call on the 18.6 release build. With the two builds
+of the sample alternated, best of six rounds, `count(*)` over the `value bigint`
+table went from 189 ns to 157 ns per row and over the `value bigint, label text`
+table from 204 ns to 171 ns, while `generate_series` held at 73 ns.
+
 Reading a scalar setting property was a backend call: it encoded the name,
 searched the declarations, and created and deleted a memory context for the
 value. Reading the sample's integer setting on every row added about 350 ns. A
