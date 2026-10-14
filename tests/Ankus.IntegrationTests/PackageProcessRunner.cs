@@ -145,11 +145,12 @@ internal static class PackageProcessRunner
             return false;
         }
 
-        if ((command is "bench" or "regress" or "run" && EnabledOption(arguments, "--no-build")) ||
-            (command == "bench" && EnabledOption(arguments, "--report")) ||
-            (command == "regress" && EnabledOption(arguments, "--dry-run")) ||
-            (command == "schema" && EnabledOption(arguments, "--skip-build")) ||
-            (command is "get" or "install" or "package" or "schema" && HasOption(arguments, "--from")))
+        bool skipsBuild = command is "bench" or "regress" or "run" && EnabledOption(arguments, "--no-build") ||
+            command == "schema" && EnabledOption(arguments, "--skip-build");
+        bool onlyReports = command == "bench" && EnabledOption(arguments, "--report") ||
+            command == "regress" && EnabledOption(arguments, "--dry-run");
+        bool usesPackage = command is "get" or "install" or "package" or "schema" && HasOption(arguments, "--from");
+        if (skipsBuild || onlyReports || usesPackage)
         {
             return false;
         }
@@ -189,13 +190,10 @@ internal static class PackageProcessRunner
             {
                 enabled = index + 1 >= arguments.Count || !bool.TryParse(arguments[index + 1], out bool value) || value;
             }
-            else if (argument.StartsWith(name + "=", StringComparison.Ordinal) ||
-                argument.StartsWith(name + ":", StringComparison.Ordinal))
+            else if ((argument.StartsWith(name + "=", StringComparison.Ordinal) || argument.StartsWith(name + ":", StringComparison.Ordinal)) &&
+                !bool.TryParse(argument[(name.Length + 1)..], out enabled))
             {
-                if (!bool.TryParse(argument[(name.Length + 1)..], out enabled))
-                {
-                    return false;
-                }
+                return false;
             }
         }
 

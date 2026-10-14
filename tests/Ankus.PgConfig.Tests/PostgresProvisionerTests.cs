@@ -16,7 +16,7 @@ public sealed class PostgresProvisionerTests(TestContext context)
     [DataRow(true)]
     public async Task InvalidRequestsDoNotCreateFilesOrContactUpstream(bool empty)
     {
-        string home = Path.Combine(Path.GetTempPath(), "ankus-provision-test-" + Guid.NewGuid().ToString("N"));
+        string home = Path.Join(Path.GetTempPath(), "ankus-provision-test-" + Guid.NewGuid().ToString("N"));
         using var handler = new UnexpectedRequestHandler();
         using var client = new HttpClient(handler);
         var provisioner = new PostgresProvisioner(client, home);

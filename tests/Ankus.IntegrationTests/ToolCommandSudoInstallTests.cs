@@ -31,9 +31,9 @@ public sealed partial class ToolCommandTests
             environment, token, workingDirectory: s_root);
 
         Assert.AreEqual(0, result.ExitCode, result.StandardError);
-        string library = Path.Combine(installation.LibraryDirectory, manifest.Library);
-        string script = Path.Combine(installation.SharedDirectory, "extension", manifest.Sql);
-        string control = Path.Combine(installation.SharedDirectory, "extension", manifest.Control);
+        string library = Path.Join(installation.LibraryDirectory, manifest.Library);
+        string script = Path.Join(installation.SharedDirectory, "extension", manifest.Sql);
+        string control = Path.Join(installation.SharedDirectory, "extension", manifest.Control);
         Assert.AreEqual($"Installed {library}\nInstalled {script}\nInstalled {control}\n", result.StandardOutput.ReplaceLineEndings("\n"));
         string staging = SudoStagingDirectory(result);
         Assert.AreEqual(s_temporaryRoot, Path.GetDirectoryName(staging));
@@ -52,15 +52,15 @@ public sealed partial class ToolCommandTests
             Assert.AreSequenceEqual(["mv", "-f", "--", copy[3], destination], commands[index + 1]);
         }
 
-        Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Combine(s_published, manifest.Library), token),
+        Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Join(s_published, manifest.Library), token),
             await File.ReadAllBytesAsync(library, token));
         Assert.IsEmpty(Directory.GetFiles(installation.LibraryDirectory, "*.tmp"));
-        Assert.IsEmpty(Directory.GetFiles(Path.Combine(installation.SharedDirectory, "extension"), "*.tmp"));
+        Assert.IsEmpty(Directory.GetFiles(Path.Join(installation.SharedDirectory, "extension"), "*.tmp"));
         await using PostgresTestCluster cluster = await PostgresTestCluster.StartAsync(new PostgresTestClusterOptions
         {
             Installation = installation,
-            DataDirectoryBase = Path.Combine(s_root, "pgdata"),
-            LogDirectory = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
+            DataDirectoryBase = Path.Join(s_root, "pgdata"),
+            LogDirectory = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
         }, token);
         await using NpgsqlConnection connection = await cluster.OpenConnectionAsync(token);
         await using var command = new NpgsqlCommand("CREATE EXTENSION ankus_tool_probe; SELECT public.add(40, 2)", connection);
@@ -88,8 +88,8 @@ public sealed partial class ToolCommandTests
         Assert.Contains("Ankus: sudo command failed with exit code 7.", result.StandardError);
         Assert.IsFalse(Directory.Exists(SudoStagingDirectory(result)));
         string libraries = StagedPath(stage, s_installation.LibraryDirectory);
-        string extension = Path.Combine(StagedPath(stage, s_installation.SharedDirectory), "extension");
-        string control = Path.Combine(extension, manifest.Control);
+        string extension = Path.Join(StagedPath(stage, s_installation.SharedDirectory), "extension");
+        string control = Path.Join(extension, manifest.Control);
         string[][] commands = await ReadSudoCommandsAsync(log, token);
         Assert.HasCount(9, commands);
         Assert.AreSequenceEqual(["mkdir", "-p", "--", libraries], commands[0]);
@@ -97,11 +97,11 @@ public sealed partial class ToolCommandTests
         Assert.AreEqual("cp", commands[6][0]);
         Assert.AreSequenceEqual(["mv", "-f", "--", commands[6][3], control], commands[7]);
         Assert.AreSequenceEqual(["rm", "-f", "--", commands[6][3]], commands[8]);
-        Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Combine(s_published, manifest.Library), token),
-            await File.ReadAllBytesAsync(Path.Combine(libraries, manifest.Library), token));
-        Assert.AreEqual(await File.ReadAllTextAsync(Path.Combine(s_published, "extension", manifest.Sql), token),
-            await File.ReadAllTextAsync(Path.Combine(extension, manifest.Sql), token));
-        Assert.AreSequenceEqual([Path.Combine(extension, manifest.Sql)], Directory.GetFiles(extension));
+        Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Join(s_published, manifest.Library), token),
+            await File.ReadAllBytesAsync(Path.Join(libraries, manifest.Library), token));
+        Assert.AreEqual(await File.ReadAllTextAsync(Path.Join(s_published, "extension", manifest.Sql), token),
+            await File.ReadAllTextAsync(Path.Join(extension, manifest.Sql), token));
+        Assert.AreSequenceEqual([Path.Join(extension, manifest.Sql)], Directory.GetFiles(extension));
     }
 
     /// <summary>
@@ -109,7 +109,8 @@ public sealed partial class ToolCommandTests
     /// </summary>
     [TestMethod]
     [OSCondition(OperatingSystems.Linux | OperatingSystems.OSX)]
-    [UnsupportedOSPlatform("windows")]
+    [SupportedOSPlatform("linux")]
+    [SupportedOSPlatform("macos")]
     public async Task UnwritableInstallationSuggestsSudo()
     {
         string stage = CreateDirectory();
@@ -180,8 +181,8 @@ public sealed partial class ToolCommandTests
     private (Dictionary<string, string?> Environment, string Log) CreateSudoEnvironment(bool failControlRename)
     {
         string directory = CreateDirectory();
-        string log = Path.Combine(directory, "commands.log");
-        string sudo = Path.Combine(directory, "sudo");
+        string log = Path.Join(directory, "commands.log");
+        string sudo = Path.Join(directory, "sudo");
         File.WriteAllText(sudo, string.Create(CultureInfo.InvariantCulture, $"""
             #!/bin/sh
             printf '%s\037' "$@" >> '{log.Replace("'", "'\\''", StringComparison.Ordinal)}'

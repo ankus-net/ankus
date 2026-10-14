@@ -49,7 +49,7 @@ internal static partial class NativeBindingRecordChecks
                         pointer = "(" + pointer + ")";
                     }
 
-                    return Declare(type.Element.Value, pointer, depth: depth + 1);
+                    return Declare(type.Element!.Value, pointer, depth: depth + 1);
                 case "array":
                     return Declare(type.Element!.Value, name + "[" + (type.Count is long count ? Number(count) : "") + "]", modifiers, depth + 1);
                 case "function":

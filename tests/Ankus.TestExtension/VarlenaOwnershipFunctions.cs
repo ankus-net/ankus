@@ -269,8 +269,7 @@ public static class VarlenaOwnershipFunctions
         finally
         {
             s_outer = null;
-            s_inner?.Dispose();
-            s_inner = null;
+            Disposal.Release(ref s_inner);
         }
     }
 
@@ -375,12 +374,9 @@ public static class VarlenaOwnershipFunctions
             PgAggregateContext context, PgAggregateState<List<PgVarlena<Packet>?>>? state, PgVarlena<Packet>? value)
         {
             state ??= new([]);
-            foreach (PgVarlena<Packet>? previous in state.Value)
+            foreach (PgVarlena<Packet> previous in state.Value.OfType<PgVarlena<Packet>>())
             {
-                if (previous is not null)
-                {
-                    _ = previous.Value;
-                }
+                _ = previous.Value;
             }
 
             if (value?.IsBorrowed == true)
@@ -450,17 +446,11 @@ public static class VarlenaOwnershipFunctions
             PgAggregateContext context, PgAggregateState<List<PgVarlena<Packet>?[]?>>? state, PgVarlena<Packet>?[]? value)
         {
             state ??= new([]);
-            foreach (PgVarlena<Packet>?[]? previous in state.Value)
+            foreach (PgVarlena<Packet>?[] previous in state.Value.OfType<PgVarlena<Packet>?[]>())
             {
-                if (previous is not null)
+                foreach (PgVarlena<Packet> item in previous.OfType<PgVarlena<Packet>>())
                 {
-                    foreach (PgVarlena<Packet>? item in previous)
-                    {
-                        if (item is not null)
-                        {
-                            _ = item.Value;
-                        }
-                    }
+                    _ = item.Value;
                 }
             }
 

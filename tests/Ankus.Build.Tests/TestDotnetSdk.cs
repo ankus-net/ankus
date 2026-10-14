@@ -19,14 +19,14 @@ internal static class TestDotnetSdk
     /// <param name="directory">The temporary consumer project's directory.</param>
     /// <param name="cancellationToken">The test's cancellation token.</param>
     internal static Task ConfigureAsync(string directory, CancellationToken cancellationToken)
-        => File.WriteAllTextAsync(Path.Combine(directory, "global.json"), JsonSerializer.Serialize(new
+        => File.WriteAllTextAsync(Path.Join(directory, "global.json"), JsonSerializer.Serialize(new
         {
             sdk = new
             {
                 version = Version,
                 rollForward = "disable",
                 allowPrerelease = true,
-                paths = new[] { Path.GetFullPath(Path.Combine(ReadMetadata("AnkusTestSdkDirectory"), "..", "..")) },
+                paths = new[] { Path.GetFullPath(Path.Join(ReadMetadata("AnkusTestSdkDirectory"), "..", "..")) },
             },
         }), cancellationToken);
 

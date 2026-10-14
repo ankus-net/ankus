@@ -177,7 +177,8 @@ internal static class NativeBindingSignatureValidation
 
             void Tag(string name, string kind, bool? complete)
             {
-                NativeRecordDeclaration declaration = graph.Declarations[type.Declaration!.Value];
+                int tagged = type.Declaration!.Value;
+                NativeRecordDeclaration declaration = graph.Declarations[tagged];
                 if (name != declaration.Name || kind != declaration.Kind || complete is bool known && known != declaration.IsComplete)
                 {
                     throw Invalid(path, "tag identity or completeness");
@@ -190,12 +191,12 @@ internal static class NativeBindingSignatureValidation
 
                 foreach (string alias in aliases)
                 {
-                    if (_anonymousAliases.TryGetValue(alias, out int previous) && previous != type.Declaration.Value)
+                    if (_anonymousAliases.TryGetValue(alias, out int previous) && previous != tagged)
                     {
                         throw Invalid(path, "anonymous typedef identity");
                     }
 
-                    _anonymousAliases[alias] = type.Declaration.Value;
+                    _anonymousAliases[alias] = tagged;
                 }
             }
         }

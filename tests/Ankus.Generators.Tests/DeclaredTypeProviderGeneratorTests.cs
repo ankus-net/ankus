@@ -205,8 +205,8 @@ public sealed partial class PgFunctionGeneratorTests
     [TestMethod]
     public void DeclaredTypeProviderFilesAndMetadataInvalidateIncrementalOutput()
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "provider-project");
-        var original = new SqlInput(Path.Combine(project, "types.sql"), "SELECT 'original';");
+        string project = Path.Join(AppContext.BaseDirectory, "provider-project");
+        var original = new SqlInput(Path.Join(project, "types.sql"), "SELECT 'original';");
         var replacement = new SqlInput(original.Path, "SELECT 'changed';");
         const string template = """
             [assembly: Ankus.PgSqlFile("types", "types.sql", Relocatable = true)]
@@ -263,8 +263,8 @@ public sealed partial class PgFunctionGeneratorTests
     [TestMethod]
     public void DeclaredTypeProviderOrderingIsDeterministicAcrossInlineAndFileInputs()
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "provider-order-project");
-        var file = new SqlInput(Path.Combine(project, "types.sql"), "SELECT 'provider';");
+        string project = Path.Join(AppContext.BaseDirectory, "provider-order-project");
+        var file = new SqlInput(Path.Join(project, "types.sql"), "SELECT 'provider';");
         const string claim = "[assembly: Ankus.PgSqlTypeProvider(\"types\", \"item\")]";
         const string after = "[assembly: Ankus.PgSql(\"after\", \"SELECT 'after';\", Requires = [\"consumer\"], Relocatable = true)]";
         const string consumer = """
@@ -415,8 +415,8 @@ public sealed partial class PgFunctionGeneratorTests
     [TestMethod]
     public void DeclaredTypeProvidersRejectDuplicateInlineAndFileClaims()
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "provider-duplicate-project");
-        var file = new SqlInput(Path.Combine(project, "types.sql"), "SELECT 'file';");
+        string project = Path.Join(AppContext.BaseDirectory, "provider-duplicate-project");
+        var file = new SqlInput(Path.Join(project, "types.sql"), "SELECT 'file';");
         (Compilation compilation, ImmutableArray<Diagnostic> diagnostics) = Generate("""
             [assembly: Ankus.PgSql("inline", "SELECT 'inline';")]
             [assembly: Ankus.PgSqlFile("file", "types.sql")]

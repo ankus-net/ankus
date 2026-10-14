@@ -90,7 +90,8 @@ public static class PgAssert
             throw new ArgumentOutOfRangeException(nameof(delta), delta, "The tolerance must be zero or positive.");
         }
 
-        if (!(double.IsNaN(expected) && double.IsNaN(actual)) && !(expected == actual) && !(Math.Abs(expected - actual) <= delta))
+        double difference = Math.Abs(expected - actual);
+        if (!expected.Equals(actual) && (double.IsNaN(difference) || difference > delta))
         {
             Fail("AreEqual", $"Expected: {PgPropertyRunner.Describe(expected)} within {PgPropertyRunner.Describe(delta)}. " +
                 $"Actual: {PgPropertyRunner.Describe(actual)}.", message);
@@ -336,6 +337,7 @@ public static class PgAssert
             // Class 57, operator intervention, includes query cancellation; it ends the test rather than satisfying it.
             throw;
         }
+        // codeql[cs/catch-of-all-exceptions] An assertion observes whatever the code under test throws.
         catch (Exception error)
         {
             return error;

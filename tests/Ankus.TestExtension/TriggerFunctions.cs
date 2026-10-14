@@ -292,7 +292,7 @@ public static class TriggerFunctions
     {
         PgTriggerContext context = s_context ?? throw new InvalidOperationException("No retained trigger context.");
         Spi.Query("SELECT repeat('overwrite',100000)");
-        GC.Collect();
+        GarbageCollection.Collect();
         return context.Name + "|" + context.TableSchema + "." + context.TableName + "|" +
             string.Join(',', context.Arguments) + "|" + RowText(context.Old) + "|" + RowText(context.New);
     }
@@ -383,40 +383,54 @@ public static class TriggerFunctions
             case "plan_cursor":
             case "escape":
             case "detach":
-                SpiCursor cursor;
-                if (mode == "plan_cursor")
-                {
-                    using SpiPreparedStatement plan = Spi.Prepare(sql);
-                    cursor = plan.OpenCursor();
-                }
-                else
-                {
-                    cursor = Spi.OpenCursor(sql);
-                }
-
-                string result = ResultText(cursor.Fetch(1));
-                Spi.Query("SELECT repeat('churn',10000)");
-                string remainder = mode is "escape" or "detach" ? "" : ResultText(cursor.Fetch(100));
-                if (remainder.Length != 0)
-                {
-                    result = result.Length == 0 ? remainder : result + "|" + remainder;
-                }
-
-                if (mode is "escape" or "detach")
-                {
-                    s_transitionCursor?.Dispose();
-                    s_transitionCursor = cursor;
-                    s_transitionCursorName = mode == "detach" ? cursor.Detach() : cursor.Name;
-                }
-                else
-                {
-                    cursor.Dispose();
-                }
-
-                return result;
+                SpiCursor cursor = mode == "plan_cursor" ? OpenPlannedCursor(sql) : Spi.OpenCursor(sql);
+                return mode is "escape" or "detach" ? RetainCursor(cursor, detach: mode == "detach") : ReadCursor(cursor);
             default:
                 return ResultText(Spi.Query(sql));
         }
+    }
+
+    private static SpiCursor OpenPlannedCursor(string sql)
+    {
+        using SpiPreparedStatement plan = Spi.Prepare(sql);
+        return plan.OpenCursor();
+    }
+
+    /// <summary>
+    /// Reads the first row and the rest after unrelated SPI work, then closes the cursor.
+    /// </summary>
+    private static string ReadCursor(SpiCursor cursor)
+    {
+        using (cursor)
+        {
+            string first = ResultText(cursor.Fetch(1));
+            Spi.Query("SELECT repeat('churn',10000)");
+            string remainder = ResultText(cursor.Fetch(100));
+            return remainder.Length == 0 ? first : first.Length == 0 ? remainder : first + "|" + remainder;
+        }
+    }
+
+    /// <summary>
+    /// Reads the first row and keeps the cursor open after the trigger returns, replacing any cursor kept before.
+    /// </summary>
+    private static string RetainCursor(SpiCursor cursor, bool detach)
+    {
+        string first;
+        try
+        {
+            first = ResultText(cursor.Fetch(1));
+            Spi.Query("SELECT repeat('churn',10000)");
+            s_transitionCursor?.Dispose();
+        }
+        catch
+        {
+            cursor.Dispose();
+            throw;
+        }
+
+        s_transitionCursor = cursor;
+        s_transitionCursorName = detach ? cursor.Detach() : cursor.Name;
+        return first;
     }
 
     private static void WriteView(PgTriggerContext context)

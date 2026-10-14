@@ -97,19 +97,19 @@ internal sealed class ExtensionTestCommandSession(PostgresInstallation installat
         string? parent = dataDirectoryBase is null ? null
             : runAs is null ? Directory.CreateDirectory(Path.GetFullPath(dataDirectoryBase)).FullName
             : Path.GetFullPath(dataDirectoryBase);
-        string session = Directory.CreateDirectory(Path.Combine(OperatingSystem.IsWindows() ? Path.GetTempPath() : "/tmp",
+        string session = Directory.CreateDirectory(Path.Join(OperatingSystem.IsWindows() ? Path.GetTempPath() : "/tmp",
             "ak-test-" + invocation)).FullName;
         try
         {
             if (runAs is null)
             {
-                string data = Directory.CreateDirectory(parent is null ? Path.Combine(session, "pgdata") :
-                    Path.Combine(parent, "ak-test-pgdata-" + invocation)).FullName;
+                string data = Directory.CreateDirectory(parent is null ? Path.Join(session, "pgdata") :
+                    Path.Join(parent, "ak-test-pgdata-" + invocation)).FullName;
                 return (session, data);
             }
 
             // The account must create its own data root; the session directory belongs to the current account.
-            string owned = Path.Combine(parent ?? "/tmp", "ak-test-pgdata-" + invocation);
+            string owned = Path.Join(parent ?? "/tmp", "ak-test-pgdata-" + invocation);
             int code = RunAsAsync(runAs, ["mkdir", "-p", "--", owned], CancellationToken.None).GetAwaiter().GetResult();
             if (code != 0)
             {

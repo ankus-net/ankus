@@ -92,15 +92,15 @@ internal static partial class NativeBindingHeaderCatalogCommand
     internal static async Task<NativeHeaderCatalogs> BuildAsync(string compiler, IReadOnlyList<string> options, string headers, int major,
         string includeRoot, string library, string directory, CancellationToken cancellationToken)
     {
-        string source = Path.Combine(directory, "catalog.c");
-        string ast = Path.Combine(directory, "catalog.ast");
+        string source = Path.Join(directory, "catalog.c");
+        string ast = Path.Join(directory, "catalog.ast");
         await File.WriteAllTextAsync(source, headers, cancellationToken);
         await NativeBindingHeaderCommand.CompileAsync(compiler,
             // The frontend includes PostgreSQL as system headers, whose comments Clang otherwise drops; pgrx's bindgen
             // includes them as ordinary headers and keeps their documentation.
             [.. options, "-Xclang", "-fretain-comments-from-system-headers", "-Xclang", "-detailed-preprocessing-record",
                 "-Xclang", "-emit-pch", "-Xclang", "-o", "-Xclang", ast, source],
-            Path.Combine(directory, "catalog.txt"), directory, cancellationToken);
+            Path.Join(directory, "catalog.txt"), directory, cancellationToken);
         return await NativeBindingHeaderCatalogWorker.InspectAsync(
             new NativeCatalogRequest(ast, Path.GetFullPath(library), major, Path.GetFullPath(includeRoot)), directory, cancellationToken);
     }

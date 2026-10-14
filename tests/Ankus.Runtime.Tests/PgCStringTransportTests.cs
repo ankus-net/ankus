@@ -1,5 +1,4 @@
 using System.Buffers.Binary;
-using System.Runtime.CompilerServices;
 
 namespace Ankus.Runtime.Tests;
 
@@ -127,12 +126,10 @@ public sealed class PgCStringTransportTests
     /// <summary>
     /// Sets deliberately invalid transport lengths without weakening production visibility.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_length")]
-    private static extern ref int Length(ref NativeValue value);
+    private static ref int Length(ref NativeValue value) => ref value._length;
 
     /// <summary>
     /// Marks the independently authored native envelope as an array.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary1")]
-    private static extern ref int ArrayFlag(ref NativeValue value);
+    private static ref int ArrayFlag(ref NativeValue value) => ref value._auxiliary1;
 }

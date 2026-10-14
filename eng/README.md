@@ -28,6 +28,7 @@ repository root with `dotnet run --file`.
 | `runtime-test-build` | Prepare the staged runtime's PostgreSQL toolchain and build all test projects before saving CI caches. |
 | `windows-toolchain` | Select the latest supported Visual Studio installation with C++ x64 tools and export its developer environment to later CI steps. |
 | `runtime-test-run` | Run every already-built test module using the PostgreSQL and compiler environment prepared by `runtime-test-build`. |
+| `native-analysis-run` | Run the integration fixture setup and one worker test, which compile the generated native bridge and every composed native fixture, so CodeQL can trace them. |
 | `header-frontend-setup` | Select LLVM 20 or later and install LLVM 20 on Linux when no supported compiler is present. |
 | `target-export` | Export a runner's PostgreSQL target information for the Hello sample's toolchain, as `ankus target export` does. |
 | `target-build` | Build the Hello sample for another runtime from exported target information, with Clang and libclang unavailable, and check the library's architecture. |

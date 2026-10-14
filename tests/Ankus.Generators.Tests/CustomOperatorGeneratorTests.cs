@@ -218,11 +218,10 @@ public sealed partial class PgFunctionGeneratorTests
         int after = Array.IndexOf(statements, "SELECT 'after';");
         Assert.IsGreaterThanOrEqualTo(0, before);
         Assert.IsGreaterThan(before, after);
-        foreach (string statement in statements.Where(static sql => sql.StartsWith("CREATE OPERATOR", StringComparison.Ordinal) ||
+        foreach (int position in statements.Where(static sql => sql.StartsWith("CREATE OPERATOR", StringComparison.Ordinal) ||
             sql.StartsWith("CREATE FUNCTION \"value_", StringComparison.Ordinal) && !sql.StartsWith("CREATE FUNCTION \"value_in\"", StringComparison.Ordinal) &&
-            !sql.StartsWith("CREATE FUNCTION \"value_out\"", StringComparison.Ordinal)))
+            !sql.StartsWith("CREATE FUNCTION \"value_out\"", StringComparison.Ordinal)).Select(statement => Array.IndexOf(statements, statement)))
         {
-            int position = Array.IndexOf(statements, statement);
             Assert.IsGreaterThan(before, position);
             Assert.IsLessThan(after, position);
         }
@@ -278,9 +277,8 @@ public sealed partial class PgFunctionGeneratorTests
         string[] helpers = [.. OperatorCastStatements(first).Where(static sql => sql.StartsWith("CREATE FUNCTION", StringComparison.Ordinal) && sql.Contains(".\"ankus_", StringComparison.Ordinal))];
         Assert.IsNotEmpty(helpers);
         var names = new List<string>();
-        foreach (string helper in helpers)
+        foreach (string identifier in helpers.Select(static helper => helper.Split('"')[3]))
         {
-            string identifier = helper.Split('"')[3];
             names.Add(identifier);
             Assert.IsLessThanOrEqualTo(63, System.Text.Encoding.UTF8.GetByteCount(identifier));
         }

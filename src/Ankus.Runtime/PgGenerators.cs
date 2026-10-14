@@ -248,9 +248,9 @@ public static class PgGenerators
     /// Reinterprets the low bits of a choice as a floating-point value.
     /// </summary>
     private static T FromBits<T>(ulong bits) where T : IBinaryFloatingPointIeee754<T>
-        => typeof(T) == typeof(double) ? (T)(object)BitConverter.UInt64BitsToDouble(bits)
-            : typeof(T) == typeof(float) ? (T)(object)BitConverter.UInt32BitsToSingle((uint)bits)
-            : (T)(object)BitConverter.UInt16BitsToHalf((ushort)bits);
+        => typeof(T) == typeof(double) ? GenericValue.As<T>(BitConverter.UInt64BitsToDouble(bits))
+            : typeof(T) == typeof(float) ? GenericValue.As<T>(BitConverter.UInt32BitsToSingle((uint)bits))
+            : GenericValue.As<T>(BitConverter.UInt16BitsToHalf((ushort)bits));
 
     /// <summary>
     /// Draws a Unicode scalar value other than NUL, from ASCII letters and digits half the time.

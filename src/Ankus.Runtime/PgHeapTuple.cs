@@ -109,7 +109,7 @@ public sealed class PgHeapTuple
             PgTupleAttributeInfo attribute = Descriptor.Attributes[ordinal];
             return attribute.IsDropped
                 ? throw new InvalidOperationException("A dropped tuple attribute has no PostgreSQL type to read.")
-                : (T)(object)SpiRow.ReadRaw(cell, attribute.TypeOid);
+                : GenericValue.As<T>(SpiRow.ReadRaw(cell, attribute.TypeOid));
         }
 
         // As for rows, a scalar cell of the requested type needs no mapping.

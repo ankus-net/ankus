@@ -15,20 +15,20 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "DisabledSql.csproj");
+        string project = Path.Join(directory, "DisabledSql.csproj");
         File.Copy(s_project, project);
-        await File.WriteAllTextAsync(Path.Combine(directory, "Functions.cs"), SqlPackageSource("GenerateSql = false"), token);
-        string output = Path.Combine(directory, "published");
+        await File.WriteAllTextAsync(Path.Join(directory, "Functions.cs"), SqlPackageSource("GenerateSql = false"), token);
+        string output = Path.Join(directory, "published");
         await PublishSqlControlsAsync(project, output, token);
         PublishedExtension manifest = PublishedExtension.Read(output);
         string[] exports = await ReadSqlControlExportsAsync(directory, token);
         string native = Assert.ContainsSingle(exports.Where(static value => value.StartsWith("ankus_fn_", StringComparison.Ordinal)));
         Assert.Contains("pg_finfo_" + native, exports);
-        string sql = await File.ReadAllTextAsync(Path.Combine(output, "extension", manifest.Sql), token);
+        string sql = await File.ReadAllTextAsync(Path.Join(output, "extension", manifest.Sql), token);
         Assert.DoesNotContain("CREATE FUNCTION", sql);
         Assert.DoesNotContain("CREATE OPERATOR", sql);
         Assert.DoesNotContain("CREATE CAST", sql);
-        Assert.Contains("relocatable = true", await File.ReadAllTextAsync(Path.Combine(output, "extension", manifest.Control), token));
+        Assert.Contains("relocatable = true", await File.ReadAllTextAsync(Path.Join(output, "extension", manifest.Control), token));
 
         await using PostgresTestCluster cluster = await StartPublishedClusterAsync(output, token);
         await using NpgsqlConnection connection = await cluster.OpenConnectionAsync(token);
@@ -79,17 +79,17 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "ReplacementSql.csproj");
+        string project = Path.Join(directory, "ReplacementSql.csproj");
         File.Copy(s_project, project);
-        string source = Path.Combine(directory, "Functions.cs");
-        string output = Path.Combine(directory, "published");
+        string source = Path.Join(directory, "Functions.cs");
+        string output = Path.Join(directory, "published");
         string failing = ReplacementPackageSql.Replace("VALUES (2)", "VALUES (1)", StringComparison.Ordinal) +
             "\nSELECT replacement_value(-17);\n";
         await File.WriteAllTextAsync(source, SqlPackageSource("SqlRelocatable = true, Sql = " +
             System.Text.Json.JsonSerializer.Serialize(failing)), token);
         await PublishSqlControlsAsync(project, output, token);
         PublishedExtension failedManifest = PublishedExtension.Read(output);
-        string failedSql = await File.ReadAllTextAsync(Path.Combine(output, "extension", failedManifest.Sql), token);
+        string failedSql = await File.ReadAllTextAsync(Path.Join(output, "extension", failedManifest.Sql), token);
         Assert.Contains("VALUES (1)", failedSql);
         Assert.Contains("SELECT replacement_value(-17);", failedSql);
         string[] originalExports = await ReadSqlControlExportsAsync(directory, token);
@@ -119,7 +119,7 @@ public sealed partial class ToolCommandTests
             System.Text.Json.JsonSerializer.Serialize(ReplacementPackageSql)), token);
         await PublishSqlControlsAsync(project, output, token);
         PublishedExtension manifest = PublishedExtension.Read(output);
-        string correctedSql = await File.ReadAllTextAsync(Path.Combine(output, "extension", manifest.Sql), token);
+        string correctedSql = await File.ReadAllTextAsync(Path.Join(output, "extension", manifest.Sql), token);
         Assert.AreNotEqual(failedSql, correctedSql);
         Assert.Contains("VALUES (2)", correctedSql);
         Assert.DoesNotContain("VALUES (1)", correctedSql);
@@ -129,7 +129,7 @@ public sealed partial class ToolCommandTests
         Assert.AreSequenceEqual(originalExports, await ReadSqlControlExportsAsync(directory, token));
         string native = Assert.ContainsSingle(originalExports.Where(static value => value.StartsWith("ankus_fn_", StringComparison.Ordinal)));
         Assert.Contains("AS 'MODULE_PATHNAME', '" + native + "'", correctedSql);
-        Assert.Contains("relocatable = true", await File.ReadAllTextAsync(Path.Combine(output, "extension", manifest.Control), token));
+        Assert.Contains("relocatable = true", await File.ReadAllTextAsync(Path.Join(output, "extension", manifest.Control), token));
 
         await using PostgresTestCluster correctedCluster = await StartPublishedClusterAsync(output, token);
         await using NpgsqlConnection corrected = await correctedCluster.OpenConnectionAsync(token);
@@ -178,7 +178,7 @@ public sealed partial class ToolCommandTests
     {
         ProcessResult result = await RunDotnetAsync(["publish", project, "-c", "Release", "-r", RuntimeInformation.RuntimeIdentifier,
             "-o", output, "-p:AnkusPostgresMajor=" + MajorText(), "-p:AnkusPgConfigPath=" + s_installation.PgConfigPath,
-            "-bl:" + Path.Combine(Path.GetDirectoryName(project)!, "sql-controls-{}.binlog")], token);
+            "-bl:" + Path.Join(Path.GetDirectoryName(project)!, "sql-controls-{}.binlog")], token);
         result.EnsureSuccess("dotnet", ["publish"]);
         Assert.DoesNotContain("LNK4197", result.StandardOutput + result.StandardError);
     }
@@ -188,7 +188,7 @@ public sealed partial class ToolCommandTests
     /// </summary>
     private static async Task<string[]> ReadSqlControlExportsAsync(string directory, CancellationToken token)
     {
-        string path = Assert.ContainsSingle(Directory.GetFiles(Path.Combine(directory, "obj"), "exports.txt", SearchOption.AllDirectories));
+        string path = Assert.ContainsSingle(Directory.GetFiles(Path.Join(directory, "obj"), "exports.txt", SearchOption.AllDirectories));
         string[] exports = [.. (await File.ReadAllLinesAsync(path, token)).Where(static line => !string.IsNullOrWhiteSpace(line))];
         Assert.AreEqual(OperatingSystem.IsWindows() ? "ankus_schema_manifest,DATA" : "ankus_schema_manifest",
             Assert.ContainsSingle(exports.Where(static line => line.StartsWith("ankus_schema_manifest", StringComparison.Ordinal))));

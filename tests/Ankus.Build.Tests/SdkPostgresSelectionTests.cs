@@ -77,11 +77,11 @@ public sealed class SdkPostgresSelectionTests(TestContext context)
         try
         {
             (string sdk, string root) = await CreateWorkspaceAsync(directory, token);
-            string path = Path.Combine(root, "Extension.csproj");
+            string path = Path.Join(root, "Extension.csproj");
             new XDocument(new XElement("Project",
-                new XElement("Import", new XAttribute("Project", Path.Combine(sdk, "Sdk", "Sdk.props"))),
+                new XElement("Import", new XAttribute("Project", Path.Join(sdk, "Sdk", "Sdk.props"))),
                 new XElement("PropertyGroup", new XElement("TargetFramework", "net10.0"), new XElement("AnkusPostgresMajor", "17")),
-                new XElement("Import", new XAttribute("Project", Path.Combine(sdk, "Sdk", "Sdk.targets"))))).Save(path);
+                new XElement("Import", new XAttribute("Project", Path.Join(sdk, "Sdk", "Sdk.targets"))))).Save(path);
             List<string> arguments = ["msbuild", path, "-nologo", "-nodeReuse:false", "-target:_AddAnkusPostgresDefineConstants",
                 "-getProperty:DefineConstants"];
             if (includeTests.Length != 0)
@@ -114,23 +114,23 @@ public sealed class SdkPostgresSelectionTests(TestContext context)
     /// <returns>The copied SDK directory and the extension project's directory.</returns>
     private static async Task<(string Sdk, string Root)> CreateWorkspaceAsync(string directory, CancellationToken token)
     {
-        string source = Path.Combine(AppContext.BaseDirectory, "AnkusSdk");
-        string sdk = Path.Combine(directory, "sdk");
+        string source = Path.Join(AppContext.BaseDirectory, "AnkusSdk");
+        string sdk = Path.Join(directory, "sdk");
         foreach (string file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
         {
-            string target = Path.Combine(sdk, Path.GetRelativePath(source, file));
+            string target = Path.Join(sdk, Path.GetRelativePath(source, file));
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             File.Copy(file, target);
         }
 
         // Packing supplies this file; the selection does not depend on the package version.
-        await File.WriteAllTextAsync(Path.Combine(sdk, "Sdk", "Ankus.Version.props"),
+        await File.WriteAllTextAsync(Path.Join(sdk, "Sdk", "Ankus.Version.props"),
             "<Project><PropertyGroup><AnkusVersion>0.0.0-test</AnkusVersion></PropertyGroup></Project>", token);
-        string root = Directory.CreateDirectory(Path.Combine(directory, "extension")).FullName;
+        string root = Directory.CreateDirectory(Path.Join(directory, "extension")).FullName;
         string? version = Assert.ContainsSingle(typeof(SdkPostgresSelectionTests).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
             .Where(static metadata => metadata.Key == "AnkusTestSdkVersion")).Value;
         Assert.IsNotNull(version);
-        await File.WriteAllTextAsync(Path.Combine(root, "global.json"),
+        await File.WriteAllTextAsync(Path.Join(root, "global.json"),
             JsonSerializer.Serialize(new { sdk = new { version, rollForward = "disable", allowPrerelease = false } }), token);
         return (sdk, root);
     }
@@ -161,22 +161,22 @@ public sealed class SdkPostgresSelectionTests(TestContext context)
             new XDocument(new XElement("Project",
                 new XElement("PropertyGroup", new XElement("AnkusPostgresMajor", string.Empty), new XElement("AnkusPgConfigPath", string.Empty)),
                 new XElement("PropertyGroup", props.Length == 0 ? null : new XElement("AnkusPostgresMajor", props))))
-                .Save(Path.Combine(root, "Directory.Build.props"));
-            await File.WriteAllTextAsync(Path.Combine(root, "Directory.Build.targets"),
+                .Save(Path.Join(root, "Directory.Build.props"));
+            await File.WriteAllTextAsync(Path.Join(root, "Directory.Build.targets"),
                 "<Project><PropertyGroup>" + targets + "</PropertyGroup></Project>", token);
-            string tools = Directory.CreateDirectory(Path.Combine(directory, "postgres", "bin")).FullName;
+            string tools = Directory.CreateDirectory(Path.Join(directory, "postgres", "bin")).FullName;
             string? executable = pgConfig ? await WritePgConfigAsync(tools, token) : null;
             var authored = new XElement("PropertyGroup",
                 project.Length == 0 ? null : new XElement("AnkusPostgresMajor", project),
                 executable is null ? null : new XElement("AnkusPgConfigPath", executable));
             var framework = new XElement("PropertyGroup", new XElement("TargetFramework", "net10.0"));
-            string path = Path.Combine(root, "Extension.csproj");
+            string path = Path.Join(root, "Extension.csproj");
             (development
                 ? new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"), framework,
-                    new XElement("Import", new XAttribute("Project", Path.Combine(sdk, "Ankus.Sdk.targets"))), authored))
+                    new XElement("Import", new XAttribute("Project", Path.Join(sdk, "Ankus.Sdk.targets"))), authored))
                 : new XDocument(new XElement("Project",
-                    new XElement("Import", new XAttribute("Project", Path.Combine(sdk, "Sdk", "Sdk.props"))), framework, authored,
-                    new XElement("Import", new XAttribute("Project", Path.Combine(sdk, "Sdk", "Sdk.targets")))))).Save(path);
+                    new XElement("Import", new XAttribute("Project", Path.Join(sdk, "Sdk", "Sdk.props"))), framework, authored,
+                    new XElement("Import", new XAttribute("Project", Path.Join(sdk, "Sdk", "Sdk.targets")))))).Save(path);
 
             List<string> arguments = ["msbuild", path, "-nologo", "-nodeReuse:false", "-target:_AddAnkusPostgresDefineConstants",
                 "-getProperty:AnkusPostgresMajor,_AnkusPostgresMajorWasSpecified,DefineConstants"];
@@ -192,7 +192,7 @@ public sealed class SdkPostgresSelectionTests(TestContext context)
             Assert.AreEqual(specified, bool.Parse(properties.GetProperty("_AnkusPostgresMajorWasSpecified").GetString()!));
             Assert.AreSequenceEqual<string>(["ANKUS_PG" + expected], [.. properties.GetProperty("DefineConstants").GetString()!
                 .Split(';', StringSplitOptions.RemoveEmptyEntries).Where(static symbol => symbol.StartsWith("ANKUS_PG", StringComparison.Ordinal))]);
-            Assert.AreEqual(pgConfig && !specified, File.Exists(Path.Combine(tools, "invoked")));
+            Assert.AreEqual(pgConfig && !specified, File.Exists(Path.Join(tools, "invoked")));
 
             PostgresProjectSettings settings = await PostgresProjectSettings.ReadAsync(path, "Debug",
                 global.Length == 0 ? null : int.Parse(global, CultureInfo.InvariantCulture), token);
@@ -216,12 +216,12 @@ public sealed class SdkPostgresSelectionTests(TestContext context)
     {
         if (OperatingSystem.IsWindows())
         {
-            string command = Path.Combine(directory, "pg_config.cmd");
+            string command = Path.Join(directory, "pg_config.cmd");
             await File.WriteAllTextAsync(command, "@echo off\r\ntype nul > \"%~dp0invoked\"\r\necho PostgreSQL 15.7\r\n", cancellationToken);
             return command;
         }
 
-        string executable = Path.Combine(directory, "pg_config");
+        string executable = Path.Join(directory, "pg_config");
         await File.WriteAllTextAsync(executable, "#!/bin/sh\n: > \"$(dirname \"$0\")/invoked\"\necho 'PostgreSQL 15.7'\n", cancellationToken);
         File.SetUnixFileMode(executable, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         return executable;

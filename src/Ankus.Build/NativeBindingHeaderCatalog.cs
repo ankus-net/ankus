@@ -156,9 +156,14 @@ internal sealed class NativeBindingHeaderCatalog
 
         foreach (AstEnum value in _ast.Enums.Values)
         {
-            if (value.Constants.Count != 0 || !_enumsByName.ContainsKey(NameOf(value.Id)))
+            string name = NameOf(value.Id);
+            if (value.Constants.Count != 0)
             {
-                _enumsByName[NameOf(value.Id)] = value.Id;
+                _enumsByName[name] = value.Id;
+            }
+            else
+            {
+                _enumsByName.TryAdd(name, value.Id);
             }
         }
     }
@@ -191,46 +196,31 @@ internal sealed class NativeBindingHeaderCatalog
     /// </summary>
     private void Allowlist()
     {
-        foreach (AstRecord record in _ast.Records.Values)
+        foreach (AstRecord record in _ast.Records.Values.Where(record => _ast.FileScope.Contains(record.Id) && Allowed(record.File, NameOf(record.Id))))
         {
-            if (_ast.FileScope.Contains(record.Id) && Allowed(record.File, NameOf(record.Id)))
-            {
-                Include(_recordsByName[NameOf(record.Id)]);
-            }
+            Include(_recordsByName[NameOf(record.Id)]);
         }
 
-        foreach (AstEnum value in _ast.Enums.Values)
+        // Bindgen also allowlists an anonymous enum when one of its constants is an allowlisted item.
+        foreach (AstEnum value in _ast.Enums.Values.Where(value => Allowed(value.File, NameOf(value.Id)) ||
+                Anonymous(value.Id) && value.Constants.Any(static constant => AllowlistedItem(constant.Name))))
         {
-            // Bindgen also allowlists an anonymous enum when one of its constants is an allowlisted item.
-            if (Allowed(value.File, NameOf(value.Id)) ||
-                Anonymous(value.Id) && value.Constants.Any(static constant => AllowlistedItem(constant.Name)))
-            {
-                Include(value.Id);
-            }
+            Include(value.Id);
         }
 
-        foreach (AstTypedef typedef in _typedefs.Values)
+        foreach (AstTypedef typedef in _typedefs.Values.Where(typedef => Allowed(typedef.File, typedef.Name)))
         {
-            if (Allowed(typedef.File, typedef.Name))
-            {
-                Include("typedef:" + typedef.Name);
-            }
+            Include("typedef:" + typedef.Name);
         }
 
-        foreach (AstFunction function in _ast.Functions)
+        foreach (AstFunction function in _ast.Functions.Where(function => Allowed(function.File, function.Name) && !NativeBindingHeaderRules.IsBlocklistedFunction(function.Name, _major)))
         {
-            if (Allowed(function.File, function.Name) && !NativeBindingHeaderRules.IsBlocklistedFunction(function.Name, _major))
-            {
-                Reference(function.Type);
-            }
+            Reference(function.Type);
         }
 
-        foreach (AstVariable variable in _ast.Variables)
+        foreach (AstVariable variable in _ast.Variables.Where(variable => Allowed(variable.File, variable.Name)))
         {
-            if (Allowed(variable.File, variable.Name))
-            {
-                Reference(variable.Type);
-            }
+            Reference(variable.Type);
         }
 
         while (_pending.TryDequeue(out string? id))
@@ -447,11 +437,13 @@ internal sealed class NativeBindingHeaderCatalog
 
         foreach (AstVariable variable in _ast.Variables)
         {
-            if (variable.Value is AstValue value && Allowed(variable.File, variable.Name) &&
-                !NativeBindingHeaderRules.IsBlocklistedVariable(variable.Name) && !constants.ContainsKey(variable.Name))
+            if (!(variable.Value is AstValue value && Allowed(variable.File, variable.Name) &&
+                !NativeBindingHeaderRules.IsBlocklistedVariable(variable.Name) && !constants.ContainsKey(variable.Name)))
             {
-                constants.Add(variable.Name, VariableConstant(variable, value));
+                continue;
             }
+
+            constants.Add(variable.Name, VariableConstant(variable, value));
         }
 
         return constants;

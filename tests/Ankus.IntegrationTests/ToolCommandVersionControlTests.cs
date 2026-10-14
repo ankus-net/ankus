@@ -15,33 +15,33 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
         string project = await CreateControlProjectAsync(directory, token, "ankus_version_control_probe");
-        await File.WriteAllTextAsync(Path.Combine(directory, "author settings.control"),
+        await File.WriteAllTextAsync(Path.Join(directory, "author settings.control"),
             "requires=missing_primary_dependency\ntrusted=false\ncomment=primary", token);
-        string scripts = Path.Combine(directory, "sql");
+        string scripts = Path.Join(directory, "sql");
         Directory.CreateDirectory(scripts);
-        await File.WriteAllTextAsync(Path.Combine(scripts, "ankus_version_control_probe--0.1.0.control"),
+        await File.WriteAllTextAsync(Path.Join(scripts, "ankus_version_control_probe--0.1.0.control"),
             "requires=''\ntrusted=true\nschema='Version Schema'\ncomment='base comment'", token);
-        await File.WriteAllTextAsync(Path.Combine(scripts, "ankus_version_control_probe--release.control"),
+        await File.WriteAllTextAsync(Path.Join(scripts, "ankus_version_control_probe--release.control"),
             "requires=version_dependency\ntrusted=false\nrelocatable=true", token);
-        await File.WriteAllTextAsync(Path.Combine(scripts, "ankus_version_control_probe--final.control"),
+        await File.WriteAllTextAsync(Path.Join(scripts, "ankus_version_control_probe--final.control"),
             "requires=''\ntrusted=true\nrelocatable=false", token);
         const string ReleaseUpgrade = "ankus_version_control_probe--0.1.0--release.sql";
-        await File.WriteAllTextAsync(Path.Combine(scripts, ReleaseUpgrade),
+        await File.WriteAllTextAsync(Path.Join(scripts, ReleaseUpgrade),
             "ALTER TABLE version_rows ADD COLUMN marker text; UPDATE version_rows SET marker='release'; SELECT 1/0;\n", token);
-        await File.WriteAllTextAsync(Path.Combine(scripts, "ankus_version_control_probe--release--final.sql"),
+        await File.WriteAllTextAsync(Path.Join(scripts, "ankus_version_control_probe--release--final.sql"),
             "UPDATE version_rows SET marker='final';", token);
         string output = CreateDirectory();
         PublishedExtension manifest = await PublishControlProbeAsync(project, output, token);
         Assert.AreSequenceEqual<string>(["ankus_version_control_probe--0.1.0.control", "ankus_version_control_probe--final.control",
             "ankus_version_control_probe--release.control"], manifest.VersionControlFiles);
-        Assert.IsFalse(ExtensionSchema.Read(Path.Combine(output, manifest.Library)).Relocatable);
-        Assert.AreEqual("missing_primary_dependency", ExtensionControlFile.Read(Path.Combine(output, "extension", manifest.Control))["requires"]);
+        Assert.IsFalse(ExtensionSchema.Read(Path.Join(output, manifest.Library)).Relocatable);
+        Assert.AreEqual("missing_primary_dependency", ExtensionControlFile.Read(Path.Join(output, "extension", manifest.Control))["requires"]);
         await using PostgresTestCluster cluster = await StartPublishedClusterAsync(output, token);
         string extensionDirectory = _caseInstallation is null
-            ? Path.Combine(output, "extension") : Path.Combine(_caseInstallation.Installation.SharedDirectory, "extension");
-        await File.WriteAllTextAsync(Path.Combine(extensionDirectory, "version_dependency.control"),
+            ? Path.Join(output, "extension") : Path.Join(_caseInstallation.Installation.SharedDirectory, "extension");
+        await File.WriteAllTextAsync(Path.Join(extensionDirectory, "version_dependency.control"),
             "default_version='1'\nrelocatable=true\n", token);
-        await File.WriteAllTextAsync(Path.Combine(extensionDirectory, "version_dependency--1.sql"),
+        await File.WriteAllTextAsync(Path.Join(extensionDirectory, "version_dependency--1.sql"),
             "CREATE TABLE dependency_marker (value integer);", token);
         await using NpgsqlConnection connection = await cluster.OpenConnectionAsync(token);
         int backend = connection.ProcessID;
@@ -81,7 +81,7 @@ public sealed partial class ToolCommandTests
         Assert.IsFalse(await SqlPackageScalarAsync<bool>(connection,
             "SELECT EXISTS(SELECT FROM pg_attribute WHERE attrelid='\"Version Schema\".version_rows'::regclass AND attname='marker' AND NOT attisdropped)"));
         Assert.AreEqual(0L, await VersionDependencyCountAsync(connection));
-        string upgrade = Path.Combine(extensionDirectory, ReleaseUpgrade);
+        string upgrade = Path.Join(extensionDirectory, ReleaseUpgrade);
         string repaired = (await File.ReadAllTextAsync(upgrade, token)).Replace("SELECT 1/0;", "", StringComparison.Ordinal);
         await File.WriteAllTextAsync(upgrade, repaired, token);
         await ExecuteSqlPackageAsync(connection, "ALTER EXTENSION ankus_version_control_probe UPDATE TO 'release'");
@@ -113,33 +113,33 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
         string project = await CreateControlProjectAsync(directory, token, "ankus_version_control_probe");
-        await File.WriteAllTextAsync(Path.Combine(directory, "author settings.control"), "relocatable=false", token);
-        string scripts = Path.Combine(directory, "sql");
+        await File.WriteAllTextAsync(Path.Join(directory, "author settings.control"), "relocatable=false", token);
+        string scripts = Path.Join(directory, "sql");
         Directory.CreateDirectory(scripts);
         const string Name = "ankus_version_control_probe--0.1.0.control";
-        string authored = Path.Combine(scripts, Name);
+        string authored = Path.Join(scripts, Name);
         await File.WriteAllTextAsync(authored, "relocatable=true", token);
         string output = CreateDirectory();
         PublishedExtension manifest = await PublishControlProbeAsync(project, output, token);
-        Assert.IsTrue(ExtensionSchema.Read(Path.Combine(output, manifest.Library)).Relocatable);
-        Assert.AreEqual("false", ExtensionControlFile.Read(Path.Combine(output, "extension", manifest.Control))["relocatable"]);
+        Assert.IsTrue(ExtensionSchema.Read(Path.Join(output, manifest.Library)).Relocatable);
+        Assert.AreEqual("false", ExtensionControlFile.Read(Path.Join(output, "extension", manifest.Control))["relocatable"]);
         await File.WriteAllTextAsync(authored, "schema='version schema'", token);
         await PublishControlProbeAsync(project, output, token);
-        Assert.IsFalse(ExtensionSchema.Read(Path.Combine(output, manifest.Library)).Relocatable);
-        Assert.AreEqual("false", ExtensionControlFile.Read(Path.Combine(output, "extension", Name))["relocatable"]);
+        Assert.IsFalse(ExtensionSchema.Read(Path.Join(output, manifest.Library)).Relocatable);
+        Assert.AreEqual("false", ExtensionControlFile.Read(Path.Join(output, "extension", Name))["relocatable"]);
         await File.WriteAllTextAsync(authored, "default_version='0.1.0'", token);
         ProcessResult failed = await InvokeAsync(["publish", "--home", s_home, "--pg", MajorText(), "--project", project, "--output", output], token);
         Assert.AreNotEqual(0, failed.ExitCode);
         Assert.Contains("secondary extension control file", failed.StandardOutput + failed.StandardError);
-        Assert.IsFalse(File.Exists(Path.Combine(output, PublishedExtension.FileName)));
+        Assert.IsFalse(File.Exists(Path.Join(output, PublishedExtension.FileName)));
         File.Delete(authored);
-        string unlisted = Path.Combine(output, "extension", "unlisted.control");
+        string unlisted = Path.Join(output, "extension", "unlisted.control");
         await File.WriteAllTextAsync(unlisted, "preserved", token);
         PublishedExtension repaired = await PublishControlProbeAsync(project, output, token);
         Assert.IsEmpty(repaired.VersionControlFiles);
-        Assert.IsFalse(File.Exists(Path.Combine(output, "extension", Name)));
+        Assert.IsFalse(File.Exists(Path.Join(output, "extension", Name)));
         Assert.AreEqual("preserved", await File.ReadAllTextAsync(unlisted, token));
-        Assert.IsFalse(ExtensionSchema.Read(Path.Combine(output, repaired.Library)).Relocatable);
+        Assert.IsFalse(ExtensionSchema.Read(Path.Join(output, repaired.Library)).Relocatable);
     }
 
     private Task<long> VersionDependencyCountAsync(NpgsqlConnection connection)

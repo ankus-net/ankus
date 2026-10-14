@@ -91,12 +91,9 @@ internal static class ExactAttributeStrings
                 }
             }
 
-            foreach (KeyValuePair<string, TypedConstant> value in attribute.NamedArguments)
+            foreach (KeyValuePair<string, TypedConstant> value in attribute.NamedArguments.Where(static value => value.Value.Type?.SpecialType == SpecialType.System_String))
             {
-                if (value.Value.Type?.SpecialType == SpecialType.System_String)
-                {
-                    properties.Add(value.Key, value.Value.Value as string);
-                }
+                properties.Add(value.Key, value.Value.Value as string);
             }
 
             strings = new(arguments, properties);
@@ -214,9 +211,8 @@ internal static class ExactAttributeStrings
 
             if (owner is IFieldSymbol)
             {
-                foreach (FieldDefinitionHandle fieldHandle in definition.GetFields())
+                foreach (FieldDefinition field in definition.GetFields().Select(fieldHandle => reader.GetFieldDefinition(fieldHandle)))
                 {
-                    FieldDefinition field = reader.GetFieldDefinition(fieldHandle);
                     if (reader.StringComparer.Equals(field.Name, owner.MetadataName))
                     {
                         attributes = field.GetCustomAttributes();
@@ -486,15 +482,17 @@ internal static class ExactAttributeStrings
         }
 
         TypeReference type = reader.GetTypeReference((TypeReferenceHandle)owner);
-        string identity = reader.GetString(type.Name);
+        var names = new List<string> { reader.GetString(type.Name) };
         while (type.ResolutionScope.Kind == HandleKind.TypeReference)
         {
             type = reader.GetTypeReference((TypeReferenceHandle)type.ResolutionScope);
-            identity = reader.GetString(type.Name) + "+" + identity;
+            names.Add(reader.GetString(type.Name));
         }
 
+        // Nested type names run from the outermost type inward, as metadata names write them.
+        names.Reverse();
         string space = reader.GetString(type.Namespace);
-        identity = (space.Length == 0 ? string.Empty : space + ".") + identity;
+        string identity = (space.Length == 0 ? string.Empty : space + ".") + string.Join("+", names);
         if (identity != MetadataTypeName.Create(expected))
         {
             return false;

@@ -37,7 +37,7 @@ public sealed class OutputPluginAliasCommandTests(TestContext context)
     public async Task NoAliasesClearsTheModuleList()
     {
         string[] arguments = Prepare([]);
-        string list = Path.Combine(arguments[0], "plugin-libraries.txt");
+        string list = Path.Join(arguments[0], "plugin-libraries.txt");
         File.WriteAllText(list, "stale.so\n");
         await OutputPluginAliasCommand.RunAsync(arguments, context.CancellationToken);
         Assert.AreEqual("", File.ReadAllText(list));
@@ -62,7 +62,7 @@ public sealed class OutputPluginAliasCommandTests(TestContext context)
         ArgumentException error = await Assert.ThrowsExactlyAsync<ArgumentException>(() =>
             OutputPluginAliasCommand.RunAsync(arguments, context.CancellationToken));
         Assert.AreEqual("arguments", error.ParamName);
-        Assert.IsFalse(File.Exists(Path.Combine(arguments[0], "plugin-libraries.txt")));
+        Assert.IsFalse(File.Exists(Path.Join(arguments[0], "plugin-libraries.txt")));
     }
 
     /// <summary>
@@ -74,18 +74,18 @@ public sealed class OutputPluginAliasCommandTests(TestContext context)
         string[] arguments = Prepare(["probe_output"]);
         arguments[2] = "bad\"name.so";
         await Assert.ThrowsExactlyAsync<ArgumentException>(() => OutputPluginAliasCommand.RunAsync(arguments, context.CancellationToken));
-        Assert.IsFalse(File.Exists(Path.Combine(arguments[0], "plugin-libraries.txt")));
+        Assert.IsFalse(File.Exists(Path.Join(arguments[0], "plugin-libraries.txt")));
         await Assert.ThrowsExactlyAsync<ArgumentException>(() => OutputPluginAliasCommand.RunAsync(arguments[..8], context.CancellationToken));
     }
 
     private string[] Prepare(string[] aliases)
     {
-        string artifacts = Path.Combine(_root, "artifacts");
-        string output = Path.Combine(_root, "publication");
+        string artifacts = Path.Join(_root, "artifacts");
+        string output = Path.Join(_root, "publication");
         Directory.CreateDirectory(artifacts);
         Directory.CreateDirectory(output);
-        string list = Path.Combine(artifacts, "plugin-aliases.txt");
+        string list = Path.Join(artifacts, "plugin-aliases.txt");
         File.WriteAllLines(list, aliases);
-        return [artifacts, output, "Probe.so", "18", Path.Combine(_root, "missing pg_config"), Path.Combine(_root, "missing compiler"), "", "", list];
+        return [artifacts, output, "Probe.so", "18", Path.Join(_root, "missing pg_config"), Path.Join(_root, "missing compiler"), "", "", list];
     }
 }

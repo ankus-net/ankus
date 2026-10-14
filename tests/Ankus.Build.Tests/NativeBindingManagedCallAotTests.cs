@@ -79,16 +79,16 @@ public sealed partial class NativeBindingNativeTests
             int signature = NativeBindingIndirectModel.Describe(records.Graph).Single(static call => call.Name == "Arithmetic").FunctionType;
             byte[] imported = await CompileNativeObjectAsync(Imports.Replace("__SIGNATURE__", signature.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal));
             string native = NativeBindingCallImports.Generate(records, "#define PG_VERSION_NUM 180006\n" + Headers, imported);
-            string file = Path.Combine(directory, "calls.c");
-            string nativeObject = Path.Combine(directory, OperatingSystem.IsWindows() ? "calls.obj" : "calls.o");
+            string file = Path.Join(directory, "calls.c");
+            string nativeObject = Path.Join(directory, OperatingSystem.IsWindows() ? "calls.obj" : "calls.o");
             await File.WriteAllTextAsync(file, native, context.CancellationToken);
             string compiler = OperatingSystem.IsWindows() ? "cl.exe" : "clang";
             string[] arguments = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/O2", "/c", "/Fo" + nativeObject, file]
                 : ["-std=c11", "-Wall", "-Wextra", "-Werror", "-O2", "-fPIC", "-c", file, "-o", nativeObject];
             await RunAsync(compiler, arguments, directory);
-            await File.WriteAllTextAsync(Path.Combine(directory, "Bindings.cs"), binding.Source, context.CancellationToken);
-            await File.WriteAllTextAsync(Path.Combine(directory, "Program.cs"),
+            await File.WriteAllTextAsync(Path.Join(directory, "Bindings.cs"), binding.Source, context.CancellationToken);
+            await File.WriteAllTextAsync(Path.Join(directory, "Program.cs"),
                 NativeBindingManagedCallHarness.Source.Replace("__EXPECTED_IDENTITY__", binding.AbiIdentity, StringComparison.Ordinal) + "\n" + Main,
                 context.CancellationToken);
             var project = new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
@@ -101,16 +101,16 @@ public sealed partial class NativeBindingNativeTests
                         new XElement("HintPath", typeof(System.Formats.Cbor.CborReader).Assembly.Location)),
                     new XElement("DirectPInvoke", new XAttribute("Include", "Ankus.NativeBodies")),
                     new XElement("NativeLibrary", new XAttribute("Include", nativeObject))));
-            string projectFile = Path.Combine(directory, "Calls.csproj");
+            string projectFile = Path.Join(directory, "Calls.csproj");
             await File.WriteAllTextAsync(projectFile, project.ToString(), context.CancellationToken);
             await TestDotnetSdk.ConfigureAsync(directory, context.CancellationToken);
             Assert.AreEqual(TestDotnetSdk.Version, (await RunAsync("dotnet", ["--version"], directory)).Trim());
-            string output = Path.Combine(directory, "published");
+            string output = Path.Join(directory, "published");
             await RunAsync("dotnet", ["publish", projectFile, "-c", "Release", "-o", output], directory);
-            string executable = Path.Combine(output, OperatingSystem.IsWindows() ? "Calls.exe" : "Calls");
+            string executable = Path.Join(output, OperatingSystem.IsWindows() ? "Calls.exe" : "Calls");
             Assert.AreEqual("1,1222,7,201,222,-41,959,42,9,9\n", (await RunAsync(executable, [], directory)).ReplaceLineEndings("\n"));
             string objectName = OperatingSystem.IsWindows() ? "Calls.obj" : "Calls.o";
-            string compiled = Assert.ContainsSingle(Directory.EnumerateFiles(Path.Combine(directory, "obj"), objectName, SearchOption.AllDirectories));
+            string compiled = Assert.ContainsSingle(Directory.EnumerateFiles(Path.Join(directory, "obj"), objectName, SearchOption.AllDirectories));
             byte[] image = await File.ReadAllBytesAsync(compiled, context.CancellationToken);
             NativeObjectImports actual = NativeObjectSymbols.Read(image, NativeBindingCallImports.Prefix);
             Assert.AreSequenceEqual<string>(["ankus_native_body_checksum", "ankus_native_body_consume", "ankus_native_body_get_callback"], actual.Symbols);

@@ -25,7 +25,7 @@ public sealed partial class PostgresDevelopmentCluster
 
         // PostgreSQL writes the active TCP port on line four, independently of later configuration edits.
         // Its status updates may keep a writable handle open while clients read that stable field.
-        using var status = new FileStream(Path.Combine(DataDirectory, "postmaster.pid"), FileMode.Open, FileAccess.Read,
+        using var status = new FileStream(Path.Join(DataDirectory, "postmaster.pid"), FileMode.Open, FileAccess.Read,
             FileShare.ReadWrite | FileShare.Delete, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
         using var reader = new StreamReader(status);
         string? portText = null;

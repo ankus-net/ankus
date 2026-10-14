@@ -15,14 +15,14 @@ public sealed partial class ToolCommandTests
     public async Task NewSolutionUsesConsumerWarningDefaults(bool backgroundWorker)
     {
         CancellationToken token = context.CancellationToken;
-        string output = Path.Combine(CreateDirectory(), "consumer warning solution");
+        string output = Path.Join(CreateDirectory(), "consumer warning solution");
         string[] creation = ["new", "WarningDefaults", "--output", output,
             .. backgroundWorker ? ["--background-worker"] : Array.Empty<string>()];
         (await InvokeAsync(creation, token)).EnsureSuccess(s_tool, creation);
-        XDocument properties = XDocument.Load(Path.Combine(output, "Directory.Build.props"));
+        XDocument properties = XDocument.Load(Path.Join(output, "Directory.Build.props"));
         Assert.IsEmpty(properties.Descendants("TreatWarningsAsErrors"));
-        string project = Path.Combine(output, "src", "WarningDefaults", "WarningDefaults.csproj");
-        string probe = Path.Combine(Path.GetDirectoryName(project)!, "WarningProbe.cs");
+        string project = Path.Join(output, "src", "WarningDefaults", "WarningDefaults.csproj");
+        string probe = Path.Join(Path.GetDirectoryName(project)!, "WarningProbe.cs");
         const string Warning = "#warning Consumer warnings remain visible.\n";
         await File.WriteAllTextAsync(probe, Warning, token);
         Dictionary<string, string?> environment = new(s_environment)

@@ -108,7 +108,7 @@ public static class AggregateFunctions
         /// <param name="value">The value to add.</param>
         /// <returns>The new running sum.</returns>
         public static CustomTypeFunctions.Number? Transition(PgAggregateContext context, CustomTypeFunctions.Number? state, int value)
-            => new CustomTypeFunctions.Number(checked((state?.Value ?? 0) + value));
+            => new CustomTypeFunctions.Number(checked((state is { } current ? current.Value : 0) + value));
 
         /// <summary>
         /// Reads the sum, or zero when no row was aggregated.
@@ -118,7 +118,7 @@ public static class AggregateFunctions
         /// <param name="arguments">No direct arguments.</param>
         /// <returns>The sum.</returns>
         public static int Final(PgAggregateContext context, CustomTypeFunctions.Number? state, ValueTuple arguments)
-            => checked((int)(state?.Value ?? 0));
+            => checked((int)(state is { } current ? current.Value : 0));
     }
 
     /// <summary>
@@ -483,9 +483,9 @@ public static class AggregateFunctions
                 _ = Ankus.Postgres.NativeMethods.GetCustomScanMethods((sbyte*)name, false);
             }
         }
-        catch (Exception exception)
+        catch (PgException native)
         {
-            s_trace.Add(exception is PgException native ? native.SqlState : exception.Message);
+            s_trace.Add(native.SqlState);
         }
     }
 

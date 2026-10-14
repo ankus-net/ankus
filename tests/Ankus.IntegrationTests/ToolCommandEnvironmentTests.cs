@@ -48,14 +48,14 @@ public sealed partial class ToolCommandTests
     public async Task EnvironmentHomeControlsRegistryLookup(bool relative)
     {
         string directory = CreateDirectory();
-        string home = Path.Combine(directory, "environment home");
+        string home = Path.Join(directory, "environment home");
         Directory.CreateDirectory(home);
         string original = new JsonObject
         {
             [s_postgresKey] = s_installation.PgConfigPath,
             ["basePort"] = 65517,
         }.ToJsonString();
-        string configuration = Path.Combine(home, "config.json");
+        string configuration = Path.Join(home, "config.json");
         await File.WriteAllTextAsync(configuration, original, context.CancellationToken);
         Dictionary<string, string?> environment = EnvironmentConfiguration(home);
         if (relative)
@@ -87,7 +87,7 @@ public sealed partial class ToolCommandTests
             }
 
             string home = CreateDirectory();
-            string configuration = Path.Combine(home, "config.json");
+            string configuration = Path.Join(home, "config.json");
             const string Original = "{\"custom\":\"preserve environment failure\"}";
             await File.WriteAllTextAsync(configuration, Original, context.CancellationToken);
             Dictionary<string, string?> environment = EnvironmentConfiguration(home);
@@ -112,7 +112,7 @@ public sealed partial class ToolCommandTests
     {
         string home = CreateDirectory();
         string other = CreateDirectory();
-        string configuration = Path.Combine(other, "config.json");
+        string configuration = Path.Join(other, "config.json");
         const string Original = "{\"custom\":true}";
         await File.WriteAllTextAsync(configuration, Original, context.CancellationToken);
         Dictionary<string, string?> environment = EnvironmentConfiguration(other);
@@ -140,7 +140,7 @@ public sealed partial class ToolCommandTests
     public async Task EnvironmentInitRejectsInvalidDefaults(string value)
     {
         string home = CreateDirectory();
-        string configuration = Path.Combine(home, "config.json");
+        string configuration = Path.Join(home, "config.json");
         const string Original = "{\"custom\":\"preserve invalid default\"}";
         await File.WriteAllTextAsync(configuration, Original, context.CancellationToken);
         Dictionary<string, string?> environment = EnvironmentConfiguration(home);

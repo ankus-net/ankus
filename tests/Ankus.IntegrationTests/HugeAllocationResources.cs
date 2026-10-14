@@ -24,10 +24,10 @@ internal static class HugeAllocationResources
     /// <param name="cancellationToken">Cancels admission and the limit-setting subprocess.</param>
     internal static async Task RunAsync(int backend, string mode, TestContext context, Func<Task> action, CancellationToken cancellationToken)
     {
-        string directory = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs", "huge-allocations");
+        string directory = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs", "huge-allocations");
         Directory.CreateDirectory(directory);
         string filename = $"{DateTime.UtcNow:yyyyMMddTHHmmssfffffffZ}-pid{backend}-{(mode.Contains("try=True", StringComparison.Ordinal) ? (mode.Contains("alignment=64", StringComparison.Ordinal) ? "aligned-try" : "try") : mode.Contains("alignment=64", StringComparison.Ordinal) ? "aligned" : mode.Contains("zeroed=True", StringComparison.Ordinal) ? "zeroed" : "ordinary")}.txt";
-        string evidence = Path.Combine(directory, filename);
+        string evidence = Path.Join(directory, filename);
         void Record(string message)
         {
             context.WriteLine(message);
@@ -61,6 +61,7 @@ internal static class HugeAllocationResources
 
             await action();
         }
+        // codeql[cs/catch-of-all-exceptions] Metrics and the limit are restored whatever the test threw, and every failure is reported.
         catch (Exception error)
         {
             failures.Add(error);
@@ -91,6 +92,7 @@ internal static class HugeAllocationResources
                 Record("The dedicated backend exited before final /proc metrics could be captured.");
             }
         }
+        // codeql[cs/catch-of-all-exceptions] Metrics and the limit are restored whatever the test threw, and every failure is reported.
         catch (Exception error)
         {
             failures.Add(error);
@@ -110,6 +112,7 @@ internal static class HugeAllocationResources
                 }
             }
         }
+        // codeql[cs/catch-of-all-exceptions] Metrics and the limit are restored whatever the test threw, and every failure is reported.
         catch (Exception error)
         {
             failures.Add(error);
@@ -205,7 +208,7 @@ internal static class HugeAllocationResources
             throw new InvalidOperationException("The backend's cgroup membership is not an absolute hierarchy path.");
         }
 
-        string leaf = Path.GetFullPath(Path.Combine(mountPoint, actual.TrimStart('/')));
+        string leaf = Path.GetFullPath(Path.Join(mountPoint, actual.TrimStart('/')));
         if (leaf != mountPoint && !leaf.StartsWith(mountPoint + "/", StringComparison.Ordinal))
         {
             throw new InvalidOperationException("The backend's cgroup membership escaped the visible hierarchy.");
@@ -268,7 +271,7 @@ internal static class HugeAllocationResources
 
     private static string? ReadController(string directory, string name, bool optional)
     {
-        string path = Path.Combine(directory, name);
+        string path = Path.Join(directory, name);
         return optional && !File.Exists(path) ? null : File.ReadAllText(path).Trim();
     }
 

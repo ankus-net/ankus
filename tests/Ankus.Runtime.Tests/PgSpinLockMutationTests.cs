@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Runtime.ExceptionServices;
 
 namespace Ankus.Runtime.Tests;
 
@@ -292,23 +291,6 @@ internal static class GuardMutationAssertions
     /// </summary>
     internal static void ForeignThreadIsRejected(Action action)
     {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                Assert.ThrowsExactly<InvalidOperationException>(action);
-            }
-            catch (Exception error)
-            {
-                failure = error;
-            }
-        });
-        thread.Start();
-        thread.Join();
-        if (failure is not null)
-        {
-            ExceptionDispatchInfo.Capture(failure).Throw();
-        }
+        DedicatedThread.Run(() => Assert.ThrowsExactly<InvalidOperationException>(action));
     }
 }

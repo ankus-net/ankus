@@ -229,17 +229,17 @@ public sealed partial class NativeBindingNativeTests
     private async Task<string> ExecuteNativeCallsAsync(string headers, NativeHeaderRequest[] requests, string[]? names, string main, bool nativeCompiler = false,
         string? nativeHeaders = null, int major = 18)
     {
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-native-calls-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-native-calls-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
             NativeHeaderRecords records = await CollectCallRecordsAsync(headers, requests, directory, major);
-            string file = Path.Combine(directory, "calls.c");
+            string file = Path.Join(directory, "calls.c");
             string compilerHeaders = "#define PG_VERSION_NUM " + (major * 10000 + 6).ToString(CultureInfo.InvariantCulture) + "\n" + (nativeHeaders ?? headers);
             string source = names is null ? NativeBindingCallSource.Generate(records, compilerHeaders)
                 : NativeBindingCallSource.Generate(records, compilerHeaders, names);
             await File.WriteAllTextAsync(file, source + "\n" + main, context.CancellationToken);
-            string executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "calls.exe" : "calls");
+            string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "calls.exe" : "calls");
             string compiler = OperatingSystem.IsWindows() ? nativeCompiler ? "cl.exe" : "clang-cl.exe" : "clang";
             string[] compile = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/O2", "/Fe" + executable, "/Fo" + Path.ChangeExtension(executable, ".obj"), file]
@@ -257,7 +257,7 @@ public sealed partial class NativeBindingNativeTests
     {
         string compilerHeaders = "#define PG_VERSION_NUM " + (major * 10000 + 6).ToString(CultureInfo.InvariantCulture) + "\n" + headers;
         NativeRecordGraph graph = await CollectMeasuredRecordsAsync(compilerHeaders, requests, directory, major);
-        using JsonDocument ast = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(directory, "records.ast.json"), context.CancellationToken));
+        using JsonDocument ast = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Join(directory, "records.ast.json"), context.CancellationToken));
         var catalog = new NativeHeaderCatalog(graph.Target, NativeBindingHeaderParser.Read(ast.RootElement, requests));
         return new(catalog, graph);
     }

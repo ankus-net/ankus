@@ -46,11 +46,11 @@ internal static class NativeBindingCompilationCommand
         NativeBindingRestoreSettings restore = await NativeBindingRestoreSettings.ReadAsync(arguments[6], cancellationToken);
         string packages = restore.Packages;
         string cache = string.IsNullOrEmpty(arguments[7])
-            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Ankus", "bindings")
+            ? Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Ankus", "bindings")
             : Path.GetFullPath(arguments[7]);
-        string hostDirectory = Path.GetFullPath(Path.Combine(sdk, "..", ".."));
-        string host = Path.Combine(hostDirectory, OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet");
-        string assembly = (await File.ReadAllTextAsync(Path.Combine(source, "native-binding.assembly-name"), cancellationToken)).Trim();
+        string hostDirectory = Path.GetFullPath(Path.Join(sdk, "..", ".."));
+        string host = Path.Join(hostDirectory, OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet");
+        string assembly = (await File.ReadAllTextAsync(Path.Join(source, "native-binding.assembly-name"), cancellationToken)).Trim();
         if (assembly.Length == 0 || assembly.Any(static value => !char.IsAsciiLetterOrDigit(value) && value != '.'))
         {
             throw new FormatException("The binding assembly name is invalid.");
@@ -60,10 +60,10 @@ internal static class NativeBindingCompilationCommand
         // Inventory the selected installation's host and shared runtimes too: servicing or adding
         // a runtime can change framework resolution without changing any SDK files.
         string[] installation = [.. Directory.GetFiles(sdk, "*", SearchOption.AllDirectories)
-            .Concat(Directory.GetFiles(Path.Combine(hostDirectory, "host", "fxr"), "*", SearchOption.AllDirectories))
-            .Concat(Directory.GetFiles(Path.Combine(hostDirectory, "shared", "Microsoft.NETCore.App"), "*", SearchOption.AllDirectories))
+            .Concat(Directory.GetFiles(Path.Join(hostDirectory, "host", "fxr"), "*", SearchOption.AllDirectories))
+            .Concat(Directory.GetFiles(Path.Join(hostDirectory, "shared", "Microsoft.NETCore.App"), "*", SearchOption.AllDirectories))
             .Append(host).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)];
-        string[] explicitFiles = [Path.Combine(source, "native-binding.g.cs"), runtime];
+        string[] explicitFiles = [Path.Join(source, "native-binding.g.cs"), runtime];
         var start = new ProcessStartInfo(host) { UseShellExecute = false };
         // Generated companions have their own build contract. Do not inherit arbitrary
         // environment properties that can redirect SDK imports or compiler tasks.
@@ -78,7 +78,7 @@ internal static class NativeBindingCompilationCommand
             start.Environment.Add(pair);
         }
 
-        start.Environment["MSBuildSDKsPath"] = Path.Combine(sdk, "Sdks");
+        start.Environment["MSBuildSDKsPath"] = Path.Join(sdk, "Sdks");
         start.Environment["DOTNET_MSBUILD_SDK_RESOLVER_CLI_DIR"] = Path.GetDirectoryName(host);
         string architectureRoot = "DOTNET_ROOT_" + RuntimeInformation.ProcessArchitecture.ToString().ToUpperInvariant();
         start.Environment["DOTNET_ROOT"] = hostDirectory;
@@ -91,7 +91,7 @@ internal static class NativeBindingCompilationCommand
         // inputs only on a miss; the cache still verifies recorded dependencies.
         NativeBindingCacheFile[] toolchain = await NativeBindingCache.SnapshotAsync(installation.Concat(restore.Configurations), cancellationToken);
         NativeBindingCacheFile[] selected = await NativeBindingCache.SnapshotAsync([generator, runtime, explicitFiles[0]], cancellationToken);
-        string packs = Path.Combine(hostDirectory, "packs");
+        string packs = Path.Join(hostDirectory, "packs");
         NativeBindingCacheFile? frameworkPacks = Directory.Exists(packs) ? NativeBindingCache.SnapshotDirectory(packs) : null;
         string key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
         {
@@ -114,21 +114,20 @@ internal static class NativeBindingCompilationCommand
         }, cancellationToken);
 
         await VerifySelectedAsync(cancellationToken);
-        string destination = Path.Combine(source, "compiled");
+        string destination = Path.Join(source, "compiled");
         Directory.CreateDirectory(destination);
-        foreach (string extension in s_artifactExtensions)
+        foreach (string name in s_artifactExtensions.Select(extension => assembly + extension))
         {
-            string name = assembly + extension;
-            string target = Path.Combine(destination, name);
-            string artifact = Path.Combine(lease.Directory, name);
+            string target = Path.Join(destination, name);
+            string artifact = Path.Join(lease.Directory, name);
             if (!File.Exists(target) || await NativeBindingCache.HashAsync(target, cancellationToken) != await NativeBindingCache.HashAsync(artifact, cancellationToken))
             {
                 File.Copy(artifact, target, overwrite: true);
             }
         }
 
-        string reference = Path.Combine(source, "native-binding.assembly-path");
-        string content = Path.Combine(destination, assembly + ".dll") + "\n";
+        string reference = Path.Join(source, "native-binding.assembly-path");
+        string content = Path.Join(destination, assembly + ".dll") + "\n";
         if (!File.Exists(reference) || await File.ReadAllTextAsync(reference, cancellationToken) != content)
         {
             await File.WriteAllTextAsync(reference, content, cancellationToken);
@@ -152,7 +151,7 @@ internal static class NativeBindingCompilationCommand
             {
                 // Give the explicit reference an owned logical location, just like generated source.
                 // Reusing a companion must not depend on a former consumer's package directory.
-                string runtimeReference = Path.Combine(Directory.CreateDirectory(Path.Combine(work, "runtime")).FullName, Path.GetFileName(runtime));
+                string runtimeReference = Path.Join(Directory.CreateDirectory(Path.Join(work, "runtime")).FullName, Path.GetFileName(runtime));
                 File.Copy(runtime, runtimeReference);
                 if (await NativeBindingCache.HashAsync(runtimeReference, token) != selected[1].Hash)
                 {
@@ -170,18 +169,18 @@ internal static class NativeBindingCompilationCommand
                     Property("Configuration", BindingConfiguration),
                     Property("UseSharedCompilation", "false"),
                     Property("AnkusSelectedSdkVersion", arguments[4]),
-                    Property("MSBuildUserExtensionsPath", Path.Combine(work, "user-extensions")),
+                    Property("MSBuildUserExtensionsPath", Path.Join(work, "user-extensions")),
                     Property("RestorePackagesPath", packages)));
                 root.Add(XElement.Parse(CompilerInputs));
                 root.Add(restore.CreateTarget());
-                await File.WriteAllTextAsync(Path.Combine(work, "Ankus.NativeBindings.csproj"), project.ToString(), token);
-                File.Copy(explicitFiles[0], Path.Combine(work, "native-binding.g.cs"));
-                if (await NativeBindingCache.HashAsync(Path.Combine(work, "native-binding.g.cs"), token) != selected[2].Hash)
+                await File.WriteAllTextAsync(Path.Join(work, "Ankus.NativeBindings.csproj"), project.ToString(), token);
+                File.Copy(explicitFiles[0], Path.Join(work, "native-binding.g.cs"));
+                if (await NativeBindingCache.HashAsync(Path.Join(work, "native-binding.g.cs"), token) != selected[2].Hash)
                 {
                     throw new IOException("The binding source changed while it was being staged.");
                 }
 
-                await File.WriteAllTextAsync(Path.Combine(work, "global.json"), JsonSerializer.Serialize(new
+                await File.WriteAllTextAsync(Path.Join(work, "global.json"), JsonSerializer.Serialize(new
                 {
                     sdk = new
                     {
@@ -191,7 +190,7 @@ internal static class NativeBindingCompilationCommand
                     },
                 }), token);
                 start.WorkingDirectory = work;
-                foreach (string argument in new[] { "exec", Path.Combine(sdk, "MSBuild.dll"),
+                foreach (string argument in new[] { "exec", Path.Join(sdk, "MSBuild.dll"),
                         "Ankus.NativeBindings.csproj", "-nologo", "-verbosity:minimal", "-nodeReuse:false" })
                 {
                     start.ArgumentList.Add(argument);
@@ -200,7 +199,7 @@ internal static class NativeBindingCompilationCommand
                 // NuGet and credential-provider plugins need the consumer's environment, including
                 // custom configuration substitutions. Only compilation uses the closed environment.
                 var restoreStart = new ProcessStartInfo(host) { UseShellExecute = false, WorkingDirectory = work };
-                restoreStart.Environment["MSBuildSDKsPath"] = Path.Combine(sdk, "Sdks");
+                restoreStart.Environment["MSBuildSDKsPath"] = Path.Join(sdk, "Sdks");
                 restoreStart.Environment["DOTNET_MSBUILD_SDK_RESOLVER_CLI_DIR"] = Path.GetDirectoryName(host);
                 restoreStart.Environment["DOTNET_ROOT"] = hostDirectory;
                 restoreStart.Environment[architectureRoot] = hostDirectory;
@@ -209,7 +208,7 @@ internal static class NativeBindingCompilationCommand
                 // cache, but NuGet's vulnerability metadata replacement file is not safe to
                 // update concurrently on every filesystem. Keep that transient HTTP state owned
                 // by this compiler workspace while retaining the consumer's package/source policy.
-                restoreStart.Environment["NUGET_HTTP_CACHE_PATH"] = Path.Combine(work, "nuget-http-cache");
+                restoreStart.Environment["NUGET_HTTP_CACHE_PATH"] = Path.Join(work, "nuget-http-cache");
                 foreach (string argument in start.ArgumentList)
                 {
                     restoreStart.ArgumentList.Add(argument);
@@ -218,14 +217,14 @@ internal static class NativeBindingCompilationCommand
                 restoreStart.ArgumentList.Add("-target:Restore");
                 Console.WriteLine("Managed binding compilation: preparing compiler inputs");
                 await CompileAsync(restoreStart, token);
-                restore.Verify(await NativeBindingRestoreSettings.ReadAsync(Path.Combine(work, "obj", "project.assets.json"), token));
+                restore.Verify(await NativeBindingRestoreSettings.ReadAsync(Path.Join(work, "obj", "project.assets.json"), token));
                 start.ArgumentList.Add("-target:Compile");
                 start.ArgumentList.Add("-property:SkipCompilerExecution=true");
                 await CompileAsync(start, token);
                 start.ArgumentList.Remove("-property:SkipCompilerExecution=true");
                 start.ArgumentList.Remove("-target:Compile");
                 start.ArgumentList.Add("-target:Build");
-                NativeBindingCacheFile[] compiler = await NativeBindingCompilerInputs.ReadAsync(Path.Combine(work, "compiler-inputs.txt"), token);
+                NativeBindingCacheFile[] compiler = await NativeBindingCompilerInputs.ReadAsync(Path.Join(work, "compiler-inputs.txt"), token);
                 NativeBindingCacheFile[] packageInputs = await ReadPackagesAsync(work, token);
                 NativeBindingCacheFile[] dependencies = [.. toolchain, .. compiler, .. packageInputs];
                 // Restore policy is consumer-specific; compiler inputs need not be. Only
@@ -234,20 +233,19 @@ internal static class NativeBindingCompilationCommand
                 // and analyzers. The request cache above still tracks their physical files.
                 string compilationKey = await CompilationKeyAsync(work, [.. compiler, .. packageInputs], token);
                 await using NativeBindingCacheLease compilation = await NativeBindingCache.GetAsync(
-                    Path.Combine(cache, "compilations"), compilationKey, async (destination, compilerToken) =>
+                    Path.Join(cache, "compilations"), compilationKey, async (destination, compilerToken) =>
                     {
                         compiled = true;
-                        start.ArgumentList.Add("-bl:" + Path.Combine(source, "binding-compile-" + Guid.NewGuid().ToString("N") + ".binlog"));
+                        start.ArgumentList.Add("-bl:" + Path.Join(source, "binding-compile-" + Guid.NewGuid().ToString("N") + ".binlog"));
                         await CompileAsync(start, compilerToken);
-                        string output = Path.Combine(work, "bin", BindingConfiguration, arguments[2]);
-                        foreach (string extension in s_artifactExtensions)
+                        string output = Path.Join(work, "bin", BindingConfiguration, arguments[2]);
+                        foreach (string name in s_artifactExtensions.Select(extension => assembly + extension))
                         {
-                            string name = assembly + extension;
-                            File.Copy(Path.Combine(output, name), Path.Combine(destination, name));
+                            File.Copy(Path.Join(output, name), Path.Join(destination, name));
                         }
 
                         NativeBindingCacheFile[] observed = await NativeBindingCompilerInputs.ReadAsync(
-                            Path.Combine(work, "compiler-inputs.txt"), compilerToken);
+                            Path.Join(work, "compiler-inputs.txt"), compilerToken);
                         NativeBindingCacheFile[] observedPackages = await ReadPackagesAsync(work, compilerToken);
                         if (!compiler.SequenceEqual(observed) || !packageInputs.SequenceEqual(observedPackages))
                         {
@@ -258,17 +256,16 @@ internal static class NativeBindingCompilationCommand
                         // consumer's disposable workspace or package paths as dependencies.
                         return toolchain[..installation.Length];
                     }, token);
-                NativeBindingCacheFile[] actual = await NativeBindingCompilerInputs.ReadAsync(Path.Combine(work, "compiler-inputs.txt"), token);
+                NativeBindingCacheFile[] actual = await NativeBindingCompilerInputs.ReadAsync(Path.Join(work, "compiler-inputs.txt"), token);
                 if (!compiler.SequenceEqual(actual))
                 {
                     throw new IOException("The binding compiler inputs changed after preparation.");
                 }
 
                 await VerifySelectedAsync(token);
-                foreach (string extension in s_artifactExtensions)
+                foreach (string name in s_artifactExtensions.Select(extension => assembly + extension))
                 {
-                    string name = assembly + extension;
-                    File.Copy(Path.Combine(compilation.Directory, name), Path.Combine(stage, name));
+                    File.Copy(Path.Join(compilation.Directory, name), Path.Join(stage, name));
                 }
 
                 return [.. dependencies.Where(input => !input.Path.StartsWith(work + Path.DirectorySeparatorChar, StringComparison.Ordinal))];
@@ -335,7 +332,7 @@ internal static class NativeBindingCompilationCommand
 
     private static async Task<NativeBindingCacheFile[]> ReadPackagesAsync(string work, CancellationToken cancellationToken)
     {
-        await using FileStream stream = File.OpenRead(Path.Combine(work, "obj", "project.assets.json"));
+        await using FileStream stream = File.OpenRead(Path.Join(work, "obj", "project.assets.json"));
         using JsonDocument assets = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken);
         string[] folders = [.. assets.RootElement.GetProperty("packageFolders").EnumerateObject().Select(static folder => folder.Name)];
         var files = new List<string>();
@@ -348,7 +345,7 @@ internal static class NativeBindingCompilationCommand
             }
 
             string path = library.Value.GetProperty("path").GetString()!;
-            string[] candidates = [.. folders.Select(folder => Path.Combine(folder, path))];
+            string[] candidates = [.. folders.Select(folder => Path.Join(folder, path))];
             string directory = candidates.First(Directory.Exists);
             files.AddRange(Directory.GetFiles(directory, "*", SearchOption.AllDirectories));
             directories.AddRange(candidates.Select(NativeBindingCache.SnapshotDirectory));

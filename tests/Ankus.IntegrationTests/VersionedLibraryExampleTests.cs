@@ -26,18 +26,18 @@ public sealed class VersionedLibraryExampleTests(TestContext context)
     {
         int major = (await IntegrationEnvironment.GetInstallationAsync(context.CancellationToken)).Version.Major;
         string output = IntegrationEnvironment.NativeOutputDirectory;
-        IReadOnlyDictionary<string, string> control = ExtensionControlFile.Read(Path.Combine(output, "extension", extension + ".control"));
+        IReadOnlyDictionary<string, string> control = ExtensionControlFile.Read(Path.Join(output, "extension", extension + ".control"));
         Assert.IsFalse(control.ContainsKey("module_pathname"));
         string version = control["default_version"];
         string module = libraryBase + "-" + version;
         string library = module + CustomLibraryNameExampleTests.LibrarySuffix(major);
-        Assert.IsTrue(File.Exists(Path.Combine(output, library)));
-        Assert.IsFalse(File.Exists(Path.Combine(output, libraryBase + CustomLibraryNameExampleTests.LibrarySuffix(major))));
-        string installation = await File.ReadAllTextAsync(Path.Combine(output, "extension", extension + "--" + version + ".sql"),
+        Assert.IsTrue(File.Exists(Path.Join(output, library)));
+        Assert.IsFalse(File.Exists(Path.Join(output, libraryBase + CustomLibraryNameExampleTests.LibrarySuffix(major))));
+        string installation = await File.ReadAllTextAsync(Path.Join(output, "extension", extension + "--" + version + ".sql"),
             context.CancellationToken);
         Assert.Contains($"AS '{module}', ", installation);
         Assert.DoesNotContain("MODULE_PATHNAME", installation);
-        ExtensionSchema schema = ExtensionSchema.Read(Path.Combine(output, library));
+        ExtensionSchema schema = ExtensionSchema.Read(Path.Join(output, library));
         Assert.AreEqual(installation, schema.Sql);
         Assert.AreEqual(library, schema.Artifacts.Library);
         Assert.AreEqual(installation, schema.Graph!.Sql);

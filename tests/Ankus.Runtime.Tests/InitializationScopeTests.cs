@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 
 namespace Ankus.Runtime.Tests;
@@ -20,12 +19,22 @@ public sealed class InitializationScopeTests
     private static int s_closedSessions;
 
     /// <summary>
+    /// Clears the counts the static native callbacks record, before a test drives them.
+    /// </summary>
+    private static void ResetCounts()
+    {
+        s_calls = 0;
+        s_openedSessions = 0;
+        s_closedSessions = 0;
+    }
+
+    /// <summary>
     /// Blocks transaction-only API families before any native call when initialization has no transaction.
     /// </summary>
     [TestMethod]
     public void NontransactionalInitializationBlocksBackendEntryPoints()
     {
-        s_calls = 0;
+        ResetCounts();
         using var scope = new BackendScope(0);
         Assert.ThrowsExactly<InvalidOperationException>(() => Spi.Execute("SELECT 1"));
         Assert.ThrowsExactly<InvalidOperationException>(() => Spi.Connect(static session => session.Execute("SELECT 1")));
@@ -48,7 +57,7 @@ public sealed class InitializationScopeTests
     [DataRow(true)]
     public void NestedDisabledInitializationRestoresOuterBinding(bool fail)
     {
-        s_calls = 0;
+        ResetCounts();
         using (new BackendScope(BackendPointer))
         {
             Assert.AreEqual(37L, Spi.Execute("SELECT 1"));
@@ -113,10 +122,10 @@ public sealed class InitializationScopeTests
     [TestMethod]
     public void InitializationBindingDoesNotFlowToWorkerThreads()
     {
-        s_calls = 0;
+        ResetCounts();
         using var outer = new BackendScope(BackendPointer);
         Assert.AreEqual(37L, Spi.Execute("SELECT 1"));
-        RunWorker(static () =>
+        DedicatedThread.Run(static () =>
         {
             Assert.ThrowsExactly<InvalidOperationException>(() => Spi.Execute("SELECT 2"));
             using (new BackendScope(0))
@@ -137,9 +146,7 @@ public sealed class InitializationScopeTests
     [TestMethod]
     public void InitializationRestoresTheOwningSpiSession()
     {
-        s_calls = 0;
-        s_openedSessions = 0;
-        s_closedSessions = 0;
+        ResetCounts();
         using var outer = new BackendScope(BackendPointer);
         long value = Spi.Connect(session =>
         {
@@ -166,7 +173,7 @@ public sealed class InitializationScopeTests
     [TestMethod]
     public void InitializationPreservesAbortCleanupRestrictions()
     {
-        s_calls = 0;
+        ResetCounts();
         using var outer = new BackendScope(BackendPointer);
         using (new BackendScope(BackendPointer, abortCleanup: true))
         {
@@ -192,7 +199,7 @@ public sealed class InitializationScopeTests
     [TestMethod]
     public void EventQueriesHonorDisabledInitializationAndRecover()
     {
-        s_calls = 0;
+        ResetCounts();
         NativeValue[] arguments = [NativeValue.FromString("ddl_command_end"), NativeValue.FromString("CREATE TABLE")];
         using var outer = new BackendScope(BackendPointer);
         PgEventTriggerContext? context = null;
@@ -251,31 +258,6 @@ public sealed class InitializationScopeTests
         }
 
         return 0;
-    }
-
-    /// <summary>
-    /// Runs thread-affinity assertions while keeping the enclosing callback on its original managed thread.
-    /// </summary>
-    private static void RunWorker(Action action)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        thread.Start();
-        thread.Join();
-        if (failure is not null)
-        {
-            ExceptionDispatchInfo.Capture(failure).Throw();
-        }
     }
 
     /// <summary>

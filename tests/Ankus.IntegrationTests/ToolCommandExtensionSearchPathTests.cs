@@ -21,22 +21,22 @@ public sealed partial class ToolCommandTests
         SharedOutput shared = await GetSharedPublicationAsync(s_extensionSearchPathPublication, token);
         string output = shared.Directory;
         PublishedExtension publication = PublishedExtension.Read(output);
-        string library = Path.Combine(output, publication.Library);
+        string library = Path.Join(output, publication.Library);
         ExtensionSchema schema = ExtensionSchema.Read(library);
         Assert.IsFalse(schema.Relocatable);
         Assert.IsNull(schema.DefaultSchema);
         Assert.Contains("SET search_path TO \"pg_catalog\", @extschema@, \"pg_temp\"", schema.Sql);
         Assert.DoesNotContain("\"@extschema@\"", schema.Sql);
-        Assert.AreEqual("false", ExtensionControlFile.Read(Path.Combine(output, "extension", publication.Control))["relocatable"]);
+        Assert.AreEqual("false", ExtensionControlFile.Read(Path.Join(output, "extension", publication.Control))["relocatable"]);
 
-        await using PostgresTestInstallation owner = await PostgresTestInstallation.StageAsync(s_installation, Path.Combine(directory, "server"), token);
+        await using PostgresTestInstallation owner = await PostgresTestInstallation.StageAsync(s_installation, Path.Join(directory, "server"), token);
         owner.InstallExtensionFiles(output);
-        File.Copy(library, Path.Combine(owner.Installation.LibraryDirectory, publication.Library));
+        File.Copy(library, Path.Join(owner.Installation.LibraryDirectory, publication.Library));
         await using PostgresTestCluster cluster = await PostgresTestCluster.StartAsync(new PostgresTestClusterOptions
         {
             Installation = owner.Installation,
-            DataDirectoryBase = Path.Combine(s_root, "pgdata"),
-            LogDirectory = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
+            DataDirectoryBase = Path.Join(s_root, "pgdata"),
+            LogDirectory = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
         }, token);
         await using NpgsqlConnection connection = await cluster.OpenConnectionAsync(token);
         int backend = connection.ProcessID;
@@ -77,7 +77,7 @@ public sealed partial class ToolCommandTests
         Assert.AreEqual(1, missing.ExitCode);
         Assert.IsEmpty(missing.StandardOutput);
         Assert.Contains("installation schema", missing.StandardError);
-        string selectedPath = Path.Combine(directory, "selected.sql");
+        string selectedPath = Path.Join(directory, "selected.sql");
         ProcessResult extracted = await InvokeAsync(["schema", "--from", library, "read_owned", "--schema", target, "-o", selectedPath], token);
         Assert.AreEqual(0, extracted.ExitCode, extracted.StandardError);
         Assert.IsEmpty(extracted.StandardOutput);
@@ -122,14 +122,14 @@ public sealed partial class ToolCommandTests
         XDocument definition = XDocument.Load(project);
         definition.Root!.Add(new XElement("PropertyGroup", new XElement("AnkusIncludeTests", true)));
         definition.Save(project);
-        await File.WriteAllTextAsync(Path.Combine(directory, "Functions.cs"), ExtensionSearchPathSource, token);
-        string control = Path.Combine(directory, "author settings.control");
+        await File.WriteAllTextAsync(Path.Join(directory, "Functions.cs"), ExtensionSearchPathSource, token);
+        string control = Path.Join(directory, "author settings.control");
         await File.WriteAllTextAsync(control, "comment = 'extension search path'", token);
-        string output = Path.Combine(directory, "published");
+        string output = Path.Join(directory, "published");
         await PublishControlProbeAsync(project, output, token);
         await File.WriteAllTextAsync(control, "relocatable = true", token);
         ProcessResult rejected = await RunDotnetAsync(["publish", project, "-c", "Release", "-r", System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier,
-            "-o", Path.Combine(directory, "rejected"), "-p:AnkusPostgresMajor=" + MajorText(), "-p:AnkusPgConfigPath=" + s_installation.PgConfigPath], token);
+            "-o", Path.Join(directory, "rejected"), "-p:AnkusPostgresMajor=" + MajorText(), "-p:AnkusPgConfigPath=" + s_installation.PgConfigPath], token);
         return new SharedOutput(output, rejected);
     }
 
@@ -139,7 +139,7 @@ public sealed partial class ToolCommandTests
     [TestMethod]
     public async Task SchemaTargetRequiresSelectedDeclarations()
     {
-        string library = Path.Combine(s_published, PublishedExtension.Read(s_published).Library);
+        string library = Path.Join(s_published, PublishedExtension.Read(s_published).Library);
         ProcessResult result = await InvokeAsync(["schema", "--from", library, "--schema", "target"], context.CancellationToken);
         Assert.AreEqual(1, result.ExitCode);
         Assert.IsEmpty(result.StandardOutput);

@@ -68,10 +68,12 @@ public sealed partial class SpiInterpolationAnalyzer
                 _graph = observed.Key;
                 foreach (BasicBlock block in observed.Key.Blocks)
                 {
-                    if (observed.Value[block.Ordinal] is { } state)
+                    if (observed.Value[block.Ordinal] is not { } state)
                     {
-                        EvaluateBlock(block, state.Clone());
+                        continue;
                     }
+
+                    EvaluateBlock(block, state.Clone());
                 }
             }
 
@@ -542,13 +544,10 @@ public sealed partial class SpiInterpolationAnalyzer
                 {
                     if (region.Kind == ControlFlowRegionKind.Try && region.EnclosingRegion is { Kind: ControlFlowRegionKind.TryAndCatch } parent)
                     {
-                        foreach (ControlFlowRegion handler in parent.NestedRegions)
+                        foreach (ControlFlowRegion handler in parent.NestedRegions.Where(handler => handler.Kind is ControlFlowRegionKind.Catch or ControlFlowRegionKind.FilterAndHandler &&
+                                handler.FirstBlockOrdinal >= first && handler.LastBlockOrdinal <= last))
                         {
-                            if (handler.Kind is ControlFlowRegionKind.Catch or ControlFlowRegionKind.FilterAndHandler &&
-                                handler.FirstBlockOrdinal >= first && handler.LastBlockOrdinal <= last)
-                            {
-                                Seed(handler.FirstBlockOrdinal, state);
-                            }
+                            Seed(handler.FirstBlockOrdinal, state);
                         }
                     }
                 }
@@ -583,12 +582,9 @@ public sealed partial class SpiInterpolationAnalyzer
                     continue;
                 }
 
-                foreach (IArgumentOperation argument in invocation.Arguments)
+                foreach (IArgumentOperation argument in invocation.Arguments.Where(static argument => argument.Parameter is { Name: "commandText", Type.SpecialType: SpecialType.System_String }))
                 {
-                    if (argument.Parameter is { Name: "commandText", Type.SpecialType: SpecialType.System_String })
-                    {
-                        _results[(argument.Value.Syntax.SyntaxTree, argument.Value.Syntax.Span)] = true;
-                    }
+                    _results[(argument.Value.Syntax.SyntaxTree, argument.Value.Syntax.Span)] = true;
                 }
             }
         }
@@ -931,10 +927,12 @@ public sealed partial class SpiInterpolationAnalyzer
             {
                 foreach (int site in value.References)
                 {
-                    if (state.Builders.TryGetValue(site, out Value? previous))
+                    if (!(state.Builders.TryGetValue(site, out Value? previous)))
                     {
-                        WriteObject(state, site, Value.Unspecified(previous));
+                        continue;
                     }
+
+                    WriteObject(state, site, Value.Unspecified(previous));
                 }
             }
 
@@ -1343,12 +1341,13 @@ public sealed partial class SpiInterpolationAnalyzer
                         return null;
                     }
 
-                    string marker = "$999999999999999999" + index.ToString("D10", CultureInfo.InvariantCulture) +
+                    string prefix = "$999999999999999999" + index.ToString("D10", CultureInfo.InvariantCulture) +
                         ordinal.ToString("D10", CultureInfo.InvariantCulture);
-                    while (format.IndexOf(marker, StringComparison.Ordinal) >= 0 ||
-                        values.Any(value => value.Texts.Any(candidate => candidate.Sql.IndexOf(marker, StringComparison.Ordinal) >= 0)))
+                    string marker = prefix;
+                    for (int nines = 1; format.IndexOf(marker, StringComparison.Ordinal) >= 0 ||
+                        values.Any(value => value.Texts.Any(candidate => candidate.Sql.IndexOf(marker, StringComparison.Ordinal) >= 0)); nines++)
                     {
-                        marker += "9";
+                        marker = prefix + new string('9', nines);
                     }
 
                     _ = marked.Append(text.Sql, cursor, position - cursor).Append(quote).Append(marker).Append(quote);
@@ -1389,7 +1388,7 @@ public sealed partial class SpiInterpolationAnalyzer
 
         private static Value ReadBuilders(Value references, FlowState state)
             => references.References.Select(id => state.Builders.TryGetValue(id, out Value? value) ? value : Value.Raw())
-                .Aggregate((Value?)null, static (current, value) => current is null ? value : Value.Merge(current, value)) ?? Value.Raw();
+                .Aggregate<Value, Value?>(null, static (current, value) => current is null ? value : Value.Merge(current, value)) ?? Value.Raw();
 
         private void Assign(IOperation target, Value value, FlowState state)
         {
@@ -1972,12 +1971,9 @@ public sealed partial class SpiInterpolationAnalyzer
             /// <param name="target">The merged variables, initially the first path's variables.</param>
             private static void MergeLocals(Dictionary<ISymbol, Value> source, Dictionary<ISymbol, Value> target)
             {
-                foreach (ISymbol symbol in target.Keys.ToArray())
+                foreach (ISymbol symbol in target.Keys.ToArray().Where(symbol => !source.ContainsKey(symbol)))
                 {
-                    if (!source.ContainsKey(symbol))
-                    {
-                        target[symbol] = Value.Merge(target[symbol], Value.Raw());
-                    }
+                    target[symbol] = Value.Merge(target[symbol], Value.Raw());
                 }
 
                 foreach (KeyValuePair<ISymbol, Value> pair in source)
@@ -1998,10 +1994,12 @@ public sealed partial class SpiInterpolationAnalyzer
             {
                 foreach (KeyValuePair<TKey, Value> pair in current.ToArray())
                 {
-                    if (previous.TryGetValue(pair.Key, out Value? old) && pair.Value.Key != old.Key)
+                    if (!(previous.TryGetValue(pair.Key, out Value? old) && pair.Value.Key != old.Key))
                     {
-                        current[pair.Key] = pair.Value.Widen(old);
+                        continue;
                     }
+
+                    current[pair.Key] = pair.Value.Widen(old);
                 }
             }
 

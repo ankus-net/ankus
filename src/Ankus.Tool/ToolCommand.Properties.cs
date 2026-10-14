@@ -22,10 +22,12 @@ internal static partial class ToolCommand
         {
             foreach (string value in result.GetValueOrDefault<string[]>() ?? [])
             {
-                if (PropertyError(value) is string error)
+                if (PropertyError(value) is not string error)
                 {
-                    result.AddError(error);
+                    continue;
                 }
+
+                result.AddError(error);
             }
         });
         command.Options.Add(property);

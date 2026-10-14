@@ -322,14 +322,11 @@ internal sealed unsafe class NativeBindingHeaderReader(NativeClang library, Nati
         var value = new AstEnum(id, Anonymous(cursor) ? string.Empty : library.Name(cursor), File(cursor), Convert(integer, cursor));
         _ast.Enums[id] = value;
         bool signed = Signed(library.Transform(integer, "clang_getCanonicalType"));
-        foreach (NativeClangCursor constant in library.Children(cursor))
+        foreach (NativeClangCursor constant in library.Children(cursor).Where(static constant => constant.Kind == EnumConstantDecl))
         {
-            if (constant.Kind == EnumConstantDecl)
-            {
-                value.Constants.Add((library.Name(constant), signed
-                    ? ((delegate* unmanaged[Cdecl]<NativeClangCursor, long>)library.Export("clang_getEnumConstantDeclValue"))(constant).ToString(CultureInfo.InvariantCulture)
-                    : ((delegate* unmanaged[Cdecl]<NativeClangCursor, ulong>)library.Export("clang_getEnumConstantDeclUnsignedValue"))(constant).ToString(CultureInfo.InvariantCulture)));
-            }
+            value.Constants.Add((library.Name(constant), signed
+                ? ((delegate* unmanaged[Cdecl]<NativeClangCursor, long>)library.Export("clang_getEnumConstantDeclValue"))(constant).ToString(CultureInfo.InvariantCulture)
+                : ((delegate* unmanaged[Cdecl]<NativeClangCursor, ulong>)library.Export("clang_getEnumConstantDeclUnsignedValue"))(constant).ToString(CultureInfo.InvariantCulture)));
         }
 
         return id;
@@ -456,14 +453,11 @@ internal sealed unsafe class NativeBindingHeaderReader(NativeClang library, Nati
         }
         else
         {
-            foreach (NativeClangCursor parameter in library.Children(context))
+            foreach (NativeClangCursor parameter in library.Children(context).Where(static parameter => parameter.Kind == ParmDecl))
             {
-                if (parameter.Kind == ParmDecl)
-                {
-                    string name = library.Name(parameter);
-                    names.Add(name.Length == 0 ? null : name);
-                    types.Add(Convert(library.Type(parameter), parameter));
-                }
+                string name = library.Name(parameter);
+                names.Add(name.Length == 0 ? null : name);
+                types.Add(Convert(library.Type(parameter), parameter));
             }
 
             if (types.Count == 0)

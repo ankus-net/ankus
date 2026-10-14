@@ -163,10 +163,10 @@ public sealed class NativeBindingHeaderCatalogTests(TestContext context)
         string directory = Directory.CreateTempSubdirectory("ankus-header-catalog-").FullName;
         try
         {
-            string include = Directory.CreateDirectory(Path.Combine(directory, "server")).FullName;
-            string system = Directory.CreateDirectory(Path.Combine(directory, "system")).FullName;
-            await File.WriteAllTextAsync(Path.Combine(include, "test.h"), Header, context.CancellationToken);
-            await File.WriteAllTextAsync(Path.Combine(system, "outside.h"), Outside, context.CancellationToken);
+            string include = Directory.CreateDirectory(Path.Join(directory, "server")).FullName;
+            string system = Directory.CreateDirectory(Path.Join(directory, "system")).FullName;
+            await File.WriteAllTextAsync(Path.Join(include, "test.h"), Header, context.CancellationToken);
+            await File.WriteAllTextAsync(Path.Join(system, "outside.h"), Outside, context.CancellationToken);
             string compiler = NativeBindingRecordCommand.FindCompiler(OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang");
             string library = await NativeBindingRecordCommand.FindLibraryAsync(compiler,
                 await NativeBindingHeaderCatalogCommand.ClangMajorAsync(compiler, context.CancellationToken), context.CancellationToken);

@@ -173,7 +173,7 @@ public sealed partial class SpiSession
     {
         CheckAccess();
         SpiScalarResult result = SpiScalarResult.Run(commandText, parameters, SpiResultMode.Pair,
-            SpiScalarResult.RequiresRaw<TFirst>() | SpiScalarResult.RequiresRaw<TSecond>(), this);
+            SpiScalarResult.RequiresRaw<TFirst, TSecond>(), this);
         return result.Read(static values => (values.Get<TFirst>(0), values.Get<TSecond>(1)));
     }
 
@@ -194,7 +194,7 @@ public sealed partial class SpiSession
     {
         CheckAccess();
         SpiScalarResult result = SpiScalarResult.Run(commandText, parameters, SpiResultMode.Triple,
-            SpiScalarResult.RequiresRaw<TFirst>() | SpiScalarResult.RequiresRaw<TSecond>() | SpiScalarResult.RequiresRaw<TThird>(), this);
+            SpiScalarResult.RequiresRaw<TFirst, TSecond, TThird>(), this);
         return result.Read(static values => (values.Get<TFirst>(0), values.Get<TSecond>(1), values.Get<TThird>(2)));
     }
 

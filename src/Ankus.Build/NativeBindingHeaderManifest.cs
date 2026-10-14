@@ -136,9 +136,8 @@ internal static class NativeBindingHeaderManifest
         }
 
         var headers = new SortedSet<string>(StringComparer.Ordinal);
-        foreach (string directory in s_headerDirectories)
+        foreach (string path in s_headerDirectories.Select(directory => Path.Join(root, directory)))
         {
-            string path = Path.Combine(root, directory);
             if (!Directory.Exists(path))
             {
                 continue;
@@ -152,7 +151,7 @@ internal static class NativeBindingHeaderManifest
 
         foreach (string header in s_headerFiles)
         {
-            string path = Path.Combine(root, header.Replace('/', Path.DirectorySeparatorChar));
+            string path = Path.Join(root, header.Replace('/', Path.DirectorySeparatorChar));
             if (File.Exists(path))
             {
                 Add(headers, root, path);

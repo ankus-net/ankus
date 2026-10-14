@@ -101,13 +101,7 @@ internal sealed unsafe class NativeSpinLockLease(nint address, nint data, nint f
             _release = (delegate* unmanaged[Cdecl]<nint, void>)prepared._pointer;
             _ = Invoke(_address, 1);
             _held = true;
-            _previous = s_active;
-            if (s_active is not null)
-            {
-                s_active._next = this;
-            }
-
-            s_active = this;
+            Push(this);
         }
         catch
         {
@@ -235,6 +229,26 @@ internal sealed unsafe class NativeSpinLockLease(nint address, nint data, nint f
     }
 
     /// <summary>
+    /// Makes a newly held lease the newest on this thread. The thread's held leases form one list, so it changes only in
+    /// static methods.
+    /// </summary>
+    private static void Push(NativeSpinLockLease lease)
+    {
+        lease._previous = s_active;
+        if (s_active is not null)
+        {
+            s_active._next = lease;
+        }
+
+        s_active = lease;
+    }
+
+    /// <summary>
+    /// Makes <paramref name="lease"/> the newest lease this thread holds, or records that it holds none.
+    /// </summary>
+    private static void SetActive(NativeSpinLockLease? lease) => s_active = lease;
+
+    /// <summary>
     /// Releases trusted scope-owned storage even if its callback is restoring a nested capability.
     /// </summary>
     internal void Expire()
@@ -250,7 +264,7 @@ internal sealed unsafe class NativeSpinLockLease(nint address, nint data, nint f
         _owner = null;
         if (_next is null)
         {
-            s_active = _previous;
+            SetActive(_previous);
         }
         else
         {

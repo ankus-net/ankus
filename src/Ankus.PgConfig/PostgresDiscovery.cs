@@ -17,12 +17,12 @@ internal static class PostgresDiscovery
     {
         string version = major.ToString(CultureInfo.InvariantCulture);
         string fileName = OperatingSystem.IsWindows() ? "pg_config.exe" : "pg_config";
-        string managed = Path.Combine(homeDirectory, "postgres");
+        string managed = Path.Join(homeDirectory, "postgres");
         if (Directory.Exists(managed))
         {
             foreach (string directory in Directory.EnumerateDirectories(managed).OrderDescending(StringComparer.Ordinal))
             {
-                yield return Path.Combine(directory, "bin", fileName);
+                yield return Path.Join(directory, "bin", fileName);
             }
         }
 
@@ -34,7 +34,7 @@ internal static class PostgresDiscovery
 
         if (OperatingSystem.IsWindows())
         {
-            yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+            yield return Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
                 "PostgreSQL", version, "bin", fileName);
         }
         else if (OperatingSystem.IsMacOS())

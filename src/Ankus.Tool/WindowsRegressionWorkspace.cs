@@ -31,12 +31,12 @@ internal sealed class WindowsRegressionWorkspace : IDisposable
         var workspace = new WindowsRegressionWorkspace(target);
         try
         {
-            CopyDirectory(Path.Combine(source, "sql"), Path.Combine(target, "sql"));
-            CopyDirectory(Path.Combine(source, "expected"), Path.Combine(target, "expected"));
-            string resultMap = Path.Combine(source, "resultmap");
+            CopyDirectory(Path.Join(source, "sql"), Path.Join(target, "sql"));
+            CopyDirectory(Path.Join(source, "expected"), Path.Join(target, "expected"));
+            string resultMap = Path.Join(source, "resultmap");
             if (File.Exists(resultMap))
             {
-                File.Copy(resultMap, Path.Combine(target, "resultmap"));
+                File.Copy(resultMap, Path.Join(target, "resultmap"));
             }
 
             return workspace;
@@ -53,11 +53,11 @@ internal sealed class WindowsRegressionWorkspace : IDisposable
     /// </summary>
     internal void CopyOutputsTo(string destination)
     {
-        CopyDirectory(Path.Combine(DirectoryPath, "results"), Path.Combine(destination, "results"));
+        CopyDirectory(Path.Join(DirectoryPath, "results"), Path.Join(destination, "results"));
         foreach (string name in s_outputFiles)
         {
-            string source = Path.Combine(DirectoryPath, name);
-            string target = Path.Combine(destination, name);
+            string source = Path.Join(DirectoryPath, name);
+            string target = Path.Join(destination, name);
             if (File.Exists(source))
             {
                 File.Copy(source, target, overwrite: true);
@@ -84,7 +84,7 @@ internal sealed class WindowsRegressionWorkspace : IDisposable
         var failures = new List<Exception>();
         foreach (string root in roots.Where(static path => path.Length != 0 && path.All(char.IsAscii)).Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            string path = Path.Combine(root, "ankus-regress-" + Guid.NewGuid().ToString("N"));
+            string path = Path.Join(root, "ankus-regress-" + Guid.NewGuid().ToString("N"));
             try
             {
                 return Directory.CreateDirectory(path).FullName;
@@ -108,12 +108,12 @@ internal sealed class WindowsRegressionWorkspace : IDisposable
         Directory.CreateDirectory(destination);
         foreach (string directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
         {
-            Directory.CreateDirectory(Path.Combine(destination, Path.GetRelativePath(source, directory)));
+            Directory.CreateDirectory(Path.Join(destination, Path.GetRelativePath(source, directory)));
         }
 
         foreach (string file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
         {
-            string target = Path.Combine(destination, Path.GetRelativePath(source, file));
+            string target = Path.Join(destination, Path.GetRelativePath(source, file));
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             File.Copy(file, target, overwrite: true);
         }

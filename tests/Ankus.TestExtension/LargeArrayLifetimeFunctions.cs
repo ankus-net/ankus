@@ -57,10 +57,7 @@ public static class LargeArrayLifetimeFunctions
         }
         finally
         {
-            foreach (PgTextView? alias in aliases)
-            {
-                alias?.Dispose();
-            }
+            Disposal.DisposeAll(aliases);
         }
     }
 }

@@ -15,14 +15,14 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string helper = await ReadPackagedBuildToolAsync();
-        string output = Path.Combine(s_root, "collected header records");
-        string selection = Path.Combine(s_root, "record symbols.txt");
+        string output = Path.Join(s_root, "collected header records");
+        string selection = Path.Join(s_root, "record symbols.txt");
         string[] names = ["CreateStatistics", "FullTransactionIdFromU64", "pg_atomic_read_u32"];
         await File.WriteAllLinesAsync(selection, names, token);
         ProcessResult result = await RunDotnetAsync(
             [helper, "binding-records", selection, MajorText(), s_installation.PgConfigPath, output], token);
         result.EnsureSuccess("dotnet", [helper, "binding-records"]);
-        using JsonDocument document = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(output, "native-records.json"), token));
+        using JsonDocument document = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Join(output, "native-records.json"), token));
         JsonElement graph = document.RootElement.GetProperty("Graph");
         JsonElement target = graph.GetProperty("Target");
         await using NpgsqlConnection connection = await PostgresFixture.Cluster.OpenConnectionAsync(token);
@@ -71,16 +71,16 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string helper = await ReadPackagedBuildToolAsync();
-        string output = Path.Combine(s_root, "invalid record library");
+        string output = Path.Join(s_root, "invalid record library");
         Directory.CreateDirectory(output);
-        string contract = Path.Combine(output, "native-records.json");
+        string contract = Path.Join(output, "native-records.json");
         byte[] expected = "existing record contract\n"u8.ToArray();
         await File.WriteAllBytesAsync(contract, expected, token);
-        string selection = Path.Combine(output, "symbols.txt");
+        string selection = Path.Join(output, "symbols.txt");
         await File.WriteAllTextAsync(selection, "FullTransactionIdFromU64\n", token);
         ProcessResult result = await RunDotnetAsync(
             [helper, "binding-records", selection, MajorText(), s_installation.PgConfigPath, output,
-                "", "", "", "", Path.Combine(output, "missing-libclang")], token);
+                "", "", "", "", Path.Join(output, "missing-libclang")], token);
         Assert.AreEqual(1, result.ExitCode);
         Assert.Contains("Native record worker exited", result.StandardError);
         Assert.AreSequenceEqual(expected, await File.ReadAllBytesAsync(contract, token));

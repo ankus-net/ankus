@@ -43,15 +43,15 @@ public sealed class PostgresTestCluster : IAsyncDisposable
         Port = port;
         string invocation = $"{options.Installation.Version.Major}-{Environment.ProcessId}-{Guid.NewGuid():N}";
         string? session = TestCommandContext.SessionDirectory;
-        DataDirectory = Path.GetFullPath(Path.Combine(TestCommandContext.DataDirectory ?? options.DataDirectoryBase, invocation));
-        LogFilePath = Path.GetFullPath(Path.Combine(options.LogDirectory, $"{invocation}.log"));
+        DataDirectory = Path.GetFullPath(Path.Join(TestCommandContext.DataDirectory ?? options.DataDirectoryBase, invocation));
+        LogFilePath = Path.GetFullPath(Path.Join(options.LogDirectory, $"{invocation}.log"));
         // Another account writes its server log beside the data directory it owns; reads copy it to the retained log.
         _log = _account.Name is null ? new(LogFilePath) : new(LogFilePath, _account, DataDirectory + ".log");
         SocketDirectory = OperatingSystem.IsWindows()
             ? null
             : session is null || _account.Name is not null
-                ? Path.Combine(SelectSocketRoot(Path.GetTempPath(), _account.Name is not null, OperatingSystem.IsMacOS()), $"ak-{Guid.NewGuid():N}")
-                : Path.Combine(session, $"s-{Guid.NewGuid():N}");
+                ? Path.Join(SelectSocketRoot(Path.GetTempPath(), _account.Name is not null, OperatingSystem.IsMacOS()), $"ak-{Guid.NewGuid():N}")
+                : Path.Join(session, $"s-{Guid.NewGuid():N}");
     }
 
     /// <summary>
@@ -72,7 +72,7 @@ public sealed class PostgresTestCluster : IAsyncDisposable
         }
 
         // The longest socket path is the socket directory plus "/.s.PGSQL.65535".
-        int longest = Encoding.UTF8.GetByteCount(Path.Combine(temporary, "ak-" + new string('0', 32), ".s.PGSQL.65535"));
+        int longest = Encoding.UTF8.GetByteCount(Path.Join(temporary, "ak-" + new string('0', 32), ".s.PGSQL.65535"));
         return longest <= 107 ? temporary : "/tmp";
     }
 
@@ -192,6 +192,7 @@ public sealed class PostgresTestCluster : IAsyncDisposable
                 {
                     log = cluster.ReadServerLog();
                 }
+                // codeql[cs/catch-of-all-exceptions] A startup failure is reported together with any cleanup or log failure that followed it.
                 catch (Exception logError)
                 {
                     diagnosticFailure = logError;
@@ -201,6 +202,7 @@ public sealed class PostgresTestCluster : IAsyncDisposable
                 {
                     await cluster.DisposeAsync().ConfigureAwait(false);
                 }
+                // codeql[cs/catch-of-all-exceptions] A startup failure is reported together with any cleanup or log failure that followed it.
                 catch (Exception cleanupError)
                 {
                     Exception[] failures = diagnosticFailure is null ? [error, cleanupError] : [error, diagnosticFailure, cleanupError];
@@ -305,6 +307,7 @@ public sealed class PostgresTestCluster : IAsyncDisposable
         {
             throw;
         }
+        // codeql[cs/catch-of-all-exceptions] Every test failure is reported with the server log of its session.
         catch (Exception error)
         {
             string sessionLog = ReadSessionLog(sessionName, backend);
@@ -406,7 +409,7 @@ public sealed class PostgresTestCluster : IAsyncDisposable
         configuration.AppendLine("logging_collector = off");
         configuration.AppendLine("log_line_prefix = '[%m] [%p] [%c] [%a]: '");
         await _account.WriteFileAsync(
-            Path.Combine(DataDirectory, "postgresql.auto.conf"), configuration.ToString(), cancellationToken).ConfigureAwait(false);
+            Path.Join(DataDirectory, "postgresql.auto.conf"), configuration.ToString(), cancellationToken).ConfigureAwait(false);
 
         beforeStart?.Invoke(this, reservation);
         reservation?.Dispose();
@@ -428,7 +431,7 @@ public sealed class PostgresTestCluster : IAsyncDisposable
             // pg_ctl inserts -D before -o arguments, so PGDATA names the data directory and Valgrind receives its own
             // options before the shell-quoted PostgreSQL executable, as pgrx's USE_VALGRIND wrapper arranges.
             string? suppressions = await Installation.GetValgrindSuppressionsPathAsync(cancellationToken).ConfigureAwait(false);
-            string executable = ShellQuote(Path.Combine(Installation.BinDirectory, "postgres"));
+            string executable = ShellQuote(Path.Join(Installation.BinDirectory, "postgres"));
             startupArguments =
             [
                 "start", "-l", _log.NativeFilePath, "-w", "-t", GetTimeoutSeconds(_options.StartupTimeout + TimeSpan.FromMinutes(1)),
@@ -528,6 +531,7 @@ public sealed class PostgresTestCluster : IAsyncDisposable
                 }
                 catch (OperationCanceledException) when (!timeout.IsCancellationRequested)
                 {
+                    // The fast stop used up its share of the timeout, so an immediate stop follows.
                 }
 
                 if (fast?.ExitCode != 0)
@@ -565,6 +569,7 @@ public sealed class PostgresTestCluster : IAsyncDisposable
         {
             _ = ReadServerLog();
         }
+        // codeql[cs/catch-of-all-exceptions] Every cleanup step still runs, and all of their failures are reported together.
         catch (Exception error)
         {
             failures.Add(error);
@@ -603,6 +608,7 @@ public sealed class PostgresTestCluster : IAsyncDisposable
         {
             _account.DeleteDirectory(path);
         }
+        // codeql[cs/catch-of-all-exceptions] Every cleanup step still runs, and all of their failures are reported together.
         catch (Exception error)
         {
             failures.Add(error);
@@ -615,6 +621,7 @@ public sealed class PostgresTestCluster : IAsyncDisposable
         {
             DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
+        // codeql[cs/catch-of-all-exceptions] An exception in a process exit handler would end the process, so the failure is printed instead.
         catch (Exception error)
         {
             Console.Error.WriteLine($"PostgreSQL cleanup failed for '{DataDirectory}': {error}");

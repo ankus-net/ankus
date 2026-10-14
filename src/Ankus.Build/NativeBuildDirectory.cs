@@ -20,7 +20,7 @@ internal static class NativeBuildDirectory
 
         DirectoryInfo resolved = (DirectoryInfo?)directory.ResolveLinkTarget(returnFinalTarget: true) ?? directory;
         return resolved.Parent is DirectoryInfo parent
-            ? Path.Combine(PhysicalPath(parent), resolved.Name)
+            ? Path.Join(PhysicalPath(parent), resolved.Name)
             : resolved.FullName;
     }
 

@@ -1,5 +1,4 @@
 using System.Buffers.Binary;
-using System.Runtime.CompilerServices;
 
 namespace Ankus.Runtime.Tests;
 
@@ -58,8 +57,11 @@ public sealed class PgRangeTests
         Assert.AreNotEqual(range, new PgRange<int>(1, 3, true, true));
         Assert.AreNotEqual(range, new PgRange<int>(2, 3));
         Assert.AreNotEqual(range, new PgRange<int>(1, 4));
-        Assert.IsFalse(range.Equals(null));
-        Assert.IsFalse(range.Equals(PgRange.Create(1L, 3L)));
+        PgRange<int>? missing = null;
+        object other = PgRange.Create(1L, 3L);
+        Assert.IsFalse(PgRange.Create(1, 3).Equals(missing));
+        Assert.IsFalse(PgRange.Create(1, 3).Equals((object?)missing));
+        Assert.IsFalse(range.Equals(other));
         Assert.AreEqual(PgRange.Empty<int>(), new PgRange<int>());
         Assert.AreEqual(PgRange.Create(1.00m, 2.0m), PgRange.Create(1m, 2m));
     }
@@ -261,6 +263,5 @@ public sealed class PgRangeTests
         }
     }
 
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary1")]
-    private static extern ref int RangeFlag(ref NativeValue value);
+    private static ref int RangeFlag(ref NativeValue value) => ref value._auxiliary1;
 }

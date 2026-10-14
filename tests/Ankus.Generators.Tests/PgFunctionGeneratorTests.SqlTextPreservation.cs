@@ -22,7 +22,7 @@ public sealed partial class PgFunctionGeneratorTests
     [DataRow("replacement", "A\nB")]
     public void AuthoredSqlKeepsQuotedLineEndings(string kind, string value)
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "sql-text-contracts");
+        string project = Path.Join(AppContext.BaseDirectory, "sql-text-contracts");
         string sql = "SELECT '" + value + "';";
         string literal = Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(sql, quote: true);
         string source = kind switch
@@ -33,7 +33,7 @@ public sealed partial class PgFunctionGeneratorTests
                 ", SqlRelocatable = true)] public static int F() => 1; }",
         };
         (Compilation output, ImmutableArray<Diagnostic> errors) = Generate(source,
-            kind == "file" ? [new SqlInput(Path.Combine(project, "seed.sql"), sql)] : [], new SqlOptions(project));
+            kind == "file" ? [new SqlInput(Path.Join(project, "seed.sql"), sql)] : [], new SqlOptions(project));
         Assert.IsEmpty(errors);
         Assert.IsEmpty(output.GetDiagnostics(context.CancellationToken).Where(static error => error.Severity >= DiagnosticSeverity.Warning));
         Assert.AreEqual(sql + "\n", InstallationBody(output));

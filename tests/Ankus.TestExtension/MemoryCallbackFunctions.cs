@@ -667,6 +667,7 @@ public static class MemoryCallbackFunctions
             }
             catch (PgException error) when (operation == 2 && error.SqlState == "22023")
             {
+                // The reset callback raised this error on purpose, and the subtransaction rolled it back.
             }
         }
     }

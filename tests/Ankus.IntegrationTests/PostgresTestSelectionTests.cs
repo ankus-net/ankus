@@ -29,9 +29,9 @@ public sealed partial class ToolCommandTests
         using SelectionProjectLease lease = await AcquireSelectionProjectAsync(s_selectionProjects, token);
         string output = lease.Directory;
         string properties = selection is "extension-project" or "extension-relative"
-            ? Path.Combine(output, "src", "TestCommandProbe", "TestCommandProbe.csproj")
-            : Path.Combine(output, "Directory.Build.props");
-        string extensionDirectory = Path.Combine(output, "src", "TestCommandProbe");
+            ? Path.Join(output, "src", "TestCommandProbe", "TestCommandProbe.csproj")
+            : Path.Join(output, "Directory.Build.props");
+        string extensionDirectory = Path.Join(output, "src", "TestCommandProbe");
         string pgConfig = selection switch
         {
             "extension-relative" or "project-relative" => Path.GetRelativePath(extensionDirectory, s_installation.PgConfigPath),
@@ -46,7 +46,7 @@ public sealed partial class ToolCommandTests
             if (selection == "project-relative")
             {
                 Assert.AreEqual(s_installation.PgConfigPath, Path.GetFullPath(pgConfig,
-                    Path.Combine(output, "tests", "TestCommandProbe.Tests")));
+                    Path.Join(output, "tests", "TestCommandProbe.Tests")));
             }
         }
 
@@ -103,8 +103,8 @@ public sealed partial class ToolCommandTests
         using SelectionProjectLease lease = await AcquireSelectionProjectAsync(s_selectionProjects, token);
         string output = lease.Directory;
         string properties = selection == "extension-project"
-            ? Path.Combine(output, "src", "TestCommandProbe", "TestCommandProbe.csproj")
-            : Path.Combine(output, "Directory.Build.props");
+            ? Path.Join(output, "src", "TestCommandProbe", "TestCommandProbe.csproj")
+            : Path.Join(output, "Directory.Build.props");
         XDocument document = XDocument.Load(properties);
         var selectionProperties = new XElement("PropertyGroup");
         if (selection == "project-path-only")
@@ -125,7 +125,7 @@ public sealed partial class ToolCommandTests
             "explicit-path" => ["--pg-config", s_installation.PgConfigPath],
             _ => [],
         };
-        string project = Path.Combine(output, "tests", "TestCommandProbe.Tests", "TestCommandProbe.Tests.csproj");
+        string project = Path.Join(output, "tests", "TestCommandProbe.Tests", "TestCommandProbe.Tests.csproj");
         string[] forwarded = selection switch
         {
             "forwarded-major" => ["-p:AnkusPostgresMajor=" + MajorText()],
@@ -160,7 +160,7 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         using SelectionProjectLease lease = await AcquireSelectionProjectAsync(s_selectionProjects, token);
         string output = lease.Directory;
-        string extension = Path.Combine(output, "src", "TestCommandProbe", "TestCommandProbe.csproj");
+        string extension = Path.Join(output, "src", "TestCommandProbe", "TestCommandProbe.csproj");
         XDocument document = XDocument.Load(extension);
         document.Root!.Add(new XElement("PropertyGroup", new XElement("AnkusPostgresMajor", s_installation.Version.Major),
             new XElement("AnkusPgConfigPath", s_installation.PgConfigPath)));
@@ -171,13 +171,13 @@ public sealed partial class ToolCommandTests
         }
 
         document.Save(extension);
-        string project = Path.Combine(output, "tests", "TestCommandProbe.Tests", "TestCommandProbe.Tests.csproj");
+        string project = Path.Join(output, "tests", "TestCommandProbe.Tests", "TestCommandProbe.Tests.csproj");
         string[] selection = layout switch
         {
             "directory" => [],
-            "slnx" => ["--solution", Path.Combine(output, "TestCommandProbe.slnx")],
+            "slnx" => ["--solution", Path.Join(output, "TestCommandProbe.slnx")],
             "sdk-element" => ["--project", project],
-            _ => ["--solution", Path.Combine(output, "Selection.sln")],
+            _ => ["--solution", Path.Join(output, "Selection.sln")],
         };
         if (layout == "sln")
         {
@@ -253,7 +253,7 @@ public sealed partial class ToolCommandTests
         string directory = CreateDirectory();
         new XDocument(new XElement("Project", new XElement("PropertyGroup",
             new XElement("AnkusPostgresMajor", s_installation.Version.Major),
-            new XElement("AnkusPgConfigPath", s_installation.PgConfigPath)))).Save(Path.Combine(directory, "Selection.csproj"));
+            new XElement("AnkusPgConfigPath", s_installation.PgConfigPath)))).Save(Path.Join(directory, "Selection.csproj"));
         ProcessResult result = await PackageProcessRunner.RunAsync(s_tool, [command, "--home", directory],
             SelectionEnvironment(), context.CancellationToken, workingDirectory: directory);
 
@@ -268,7 +268,7 @@ public sealed partial class ToolCommandTests
             Assert.Contains("stopped", result.StandardOutput);
         }
 
-        Assert.IsFalse(File.Exists(Path.Combine(directory, "config.json")));
+        Assert.IsFalse(File.Exists(Path.Join(directory, "config.json")));
     }
 
     /// <summary>
@@ -284,13 +284,13 @@ public sealed partial class ToolCommandTests
         string directory = CreateDirectory();
         if (layout == "unrelated")
         {
-            await File.WriteAllTextAsync(Path.Combine(directory, "Library.csproj"), "<Project />", context.CancellationToken);
+            await File.WriteAllTextAsync(Path.Join(directory, "Library.csproj"), "<Project />", context.CancellationToken);
         }
         else if (layout == "projects")
         {
-            await File.WriteAllTextAsync(Path.Combine(directory, "First.csproj"),
+            await File.WriteAllTextAsync(Path.Join(directory, "First.csproj"),
                 "<Project><PropertyGroup><AnkusPostgresMajor>13</AnkusPostgresMajor></PropertyGroup></Project>", context.CancellationToken);
-            await File.WriteAllTextAsync(Path.Combine(directory, "Second.csproj"),
+            await File.WriteAllTextAsync(Path.Join(directory, "Second.csproj"),
                 "<Project><PropertyGroup><AnkusPostgresMajor>19</AnkusPostgresMajor></PropertyGroup></Project>", context.CancellationToken);
         }
 
@@ -314,9 +314,9 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        await File.WriteAllTextAsync(Path.Combine(directory, "First.csproj"),
+        await File.WriteAllTextAsync(Path.Join(directory, "First.csproj"),
             "<Project><PropertyGroup><AnkusPostgresMajor>17</AnkusPostgresMajor></PropertyGroup></Project>", token);
-        await File.WriteAllTextAsync(Path.Combine(directory, "Second.csproj"),
+        await File.WriteAllTextAsync(Path.Join(directory, "Second.csproj"),
             "<Project><PropertyGroup><AnkusPostgresMajor>16</AnkusPostgresMajor></PropertyGroup></Project>", token);
         string solution = format == "slnx"
             ? "<Solution><Project Path=\"First.csproj\" /><Project Path=\"Second.csproj\" /></Solution>"
@@ -329,7 +329,7 @@ public sealed partial class ToolCommandTests
                 Global
                 EndGlobal
                 """;
-        await File.WriteAllTextAsync(Path.Combine(directory, "Selection." + format), solution, token);
+        await File.WriteAllTextAsync(Path.Join(directory, "Selection." + format), solution, token);
         string[] commands = ["info", "test", "start", "stop", "status"];
         foreach (string command in commands)
         {
@@ -356,13 +356,13 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "Host.csproj");
+        string project = Path.Join(directory, "Host.csproj");
         new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
             new XElement("PropertyGroup", new XElement("TargetFramework", "net10.0"), new XElement("OutputType", "Exe")),
             new XElement("ItemGroup", new XElement("PackageReference", new XAttribute("Include", "Ankus.Testing"),
                 new XAttribute("Version", s_version)))))
             .Save(project);
-        await File.WriteAllTextAsync(Path.Combine(directory, "Program.cs"), "System.Console.WriteLine(42);", token);
+        await File.WriteAllTextAsync(Path.Join(directory, "Program.cs"), "System.Console.WriteLine(42);", token);
         foreach (string major in new[] { "17", "18", "" })
         {
             string path = major.Length == 0 ? "" : "postgres " + major + "/pg_config";
@@ -370,7 +370,7 @@ public sealed partial class ToolCommandTests
                 "-p:AnkusPgConfigPath=" + path], token);
             Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
             using JsonDocument config = JsonDocument.Parse(await File.ReadAllTextAsync(
-                Path.Combine(directory, "bin", "Debug", "net10.0", "Host.runtimeconfig.json"), token));
+                Path.Join(directory, "bin", "Debug", "net10.0", "Host.runtimeconfig.json"), token));
             JsonElement settings = config.RootElement.GetProperty("runtimeOptions").GetProperty("configProperties");
             if (major.Length == 0)
             {
@@ -395,7 +395,7 @@ public sealed partial class ToolCommandTests
     public async Task OfflineCommandsUseEvaluatedPostgresMajor(string command)
     {
         string root = CreateDirectory();
-        string project = Path.Combine(root, "Metadata.csproj");
+        string project = Path.Join(root, "Metadata.csproj");
         await File.WriteAllTextAsync(project, """
             <Project>
               <PropertyGroup>
@@ -411,8 +411,8 @@ public sealed partial class ToolCommandTests
         Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
         Assert.Contains("selection_pg17", result.StandardOutput);
         Assert.DoesNotContain("selection_pg18", result.StandardOutput);
-        Assert.IsFalse(File.Exists(Path.Combine(root, "config.json")));
-        Assert.IsFalse(Directory.Exists(Path.Combine(root, "bin")));
+        Assert.IsFalse(File.Exists(Path.Join(root, "config.json")));
+        Assert.IsFalse(Directory.Exists(Path.Join(root, "bin")));
     }
 
     /// <summary>
@@ -425,7 +425,7 @@ public sealed partial class ToolCommandTests
     public async Task OfflineCommandsResolveForwardedPgConfigFromProject(string command)
     {
         string root = CreateDirectory();
-        string project = Path.Combine(root, "Metadata.csproj");
+        string project = Path.Join(root, "Metadata.csproj");
         await File.WriteAllTextAsync(project, """
             <Project>
               <PropertyGroup>
@@ -433,7 +433,7 @@ public sealed partial class ToolCommandTests
               </PropertyGroup>
             </Project>
             """, context.CancellationToken);
-        string selectedDirectory = Directory.CreateDirectory(Path.Combine(root, "selected-postgres")).FullName;
+        string selectedDirectory = Directory.CreateDirectory(Path.Join(root, "selected-postgres")).FullName;
         string selectedPgConfig = CopyRunnablePgConfig(selectedDirectory);
 
         string relative = Path.GetRelativePath(root, selectedPgConfig);
@@ -445,7 +445,7 @@ public sealed partial class ToolCommandTests
 
         Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
         Assert.Contains("relative_pg_config", result.StandardOutput);
-        Assert.IsFalse(Directory.Exists(Path.Combine(root, "bin")));
+        Assert.IsFalse(Directory.Exists(Path.Join(root, "bin")));
     }
 
     /// <summary>
@@ -458,10 +458,10 @@ public sealed partial class ToolCommandTests
     public async Task OfflineCommandsInferMajorFromProjectPgConfig(string command)
     {
         string root = CreateDirectory();
-        string selectedDirectory = Directory.CreateDirectory(Path.Combine(root, "selected-postgres")).FullName;
+        string selectedDirectory = Directory.CreateDirectory(Path.Join(root, "selected-postgres")).FullName;
         string selectedPgConfig = CopyRunnablePgConfig(selectedDirectory);
 
-        string project = Path.Combine(root, "Metadata.csproj");
+        string project = Path.Join(root, "Metadata.csproj");
         await File.WriteAllTextAsync(project, $$"""
             <Project>
               <PropertyGroup>
@@ -476,7 +476,7 @@ public sealed partial class ToolCommandTests
 
         Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
         Assert.Contains("selection_pg" + MajorText(), result.StandardOutput);
-        Assert.IsFalse(Directory.Exists(Path.Combine(root, "bin")));
+        Assert.IsFalse(Directory.Exists(Path.Join(root, "bin")));
     }
 
     /// <summary>
@@ -486,14 +486,14 @@ public sealed partial class ToolCommandTests
     /// <returns>The copied pg_config path.</returns>
     private static string CopyRunnablePgConfig(string destinationDirectory)
     {
-        string selectedPgConfig = Path.Combine(destinationDirectory, Path.GetFileName(s_installation.PgConfigPath));
+        string selectedPgConfig = Path.Join(destinationDirectory, Path.GetFileName(s_installation.PgConfigPath));
         File.Copy(s_installation.PgConfigPath, selectedPgConfig);
         if (OperatingSystem.IsWindows())
         {
             string sourceDirectory = Path.GetDirectoryName(s_installation.PgConfigPath)!;
             foreach (string dependency in Directory.EnumerateFiles(sourceDirectory, "*.dll"))
             {
-                File.Copy(dependency, Path.Combine(destinationDirectory, Path.GetFileName(dependency)));
+                File.Copy(dependency, Path.Join(destinationDirectory, Path.GetFileName(dependency)));
             }
         }
         else
@@ -523,16 +523,16 @@ public sealed partial class ToolCommandTests
             if (state.Directory is null)
             {
                 state.Directory = await CreateSelectionProjectAsync(token);
-                state.Properties = await File.ReadAllTextAsync(Path.Combine(state.Directory, "Directory.Build.props"), token);
+                state.Properties = await File.ReadAllTextAsync(Path.Join(state.Directory, "Directory.Build.props"), token);
                 state.Extension = await File.ReadAllTextAsync(
-                    Path.Combine(state.Directory, "src", "TestCommandProbe", "TestCommandProbe.csproj"), token);
+                    Path.Join(state.Directory, "src", "TestCommandProbe", "TestCommandProbe.csproj"), token);
             }
             else
             {
-                await File.WriteAllTextAsync(Path.Combine(state.Directory, "Directory.Build.props"), state.Properties, token);
+                await File.WriteAllTextAsync(Path.Join(state.Directory, "Directory.Build.props"), state.Properties, token);
                 await File.WriteAllTextAsync(
-                    Path.Combine(state.Directory, "src", "TestCommandProbe", "TestCommandProbe.csproj"), state.Extension, token);
-                string solution = Path.Combine(state.Directory, "Selection.sln");
+                    Path.Join(state.Directory, "src", "TestCommandProbe", "TestCommandProbe.csproj"), state.Extension, token);
+                string solution = Path.Join(state.Directory, "Selection.sln");
                 if (File.Exists(solution))
                 {
                     File.Delete(solution);
@@ -560,10 +560,10 @@ public sealed partial class ToolCommandTests
     /// <returns>The generated solution directory with symbolic-link ancestors resolved.</returns>
     private static async Task<string> CreateSelectionProjectAsync(CancellationToken token)
     {
-        string output = Path.Combine(CreateSharedDirectory(), "selection project");
+        string output = Path.Join(CreateSharedDirectory(), "selection project");
         (await InvokeAsync(["new", "TestCommandProbe", "-o", output], token)).EnsureSuccess(s_tool, ["new"]);
-        string hostDirectory = Path.Combine(output, "tests", "TestCommandProbe.Tests");
-        await File.WriteAllTextAsync(Path.Combine(hostDirectory, "SelectionTests.cs"), $$"""
+        string hostDirectory = Path.Join(output, "tests", "TestCommandProbe.Tests");
+        await File.WriteAllTextAsync(Path.Join(hostDirectory, "SelectionTests.cs"), $$"""
             using Microsoft.VisualStudio.TestTools.UnitTesting;
             using Npgsql;
             namespace TestCommandProbe.Tests;

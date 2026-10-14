@@ -30,9 +30,19 @@ public static class CustomTextTypeFunctions
         internal static int s_constructions;
 
         /// <summary>
+        /// Counts a codec construction for the counters SQL reads.
+        /// </summary>
+        private static void CountConstruction() => Interlocked.Increment(ref s_constructions);
+
+        /// <summary>
         /// Counts custom parser calls.
         /// </summary>
         internal static int s_parses;
+
+        /// <summary>
+        /// Counts a parse for the counters SQL reads.
+        /// </summary>
+        private static void CountParse() => Interlocked.Increment(ref s_parses);
 
         /// <summary>
         /// Counts custom formatter calls.
@@ -40,14 +50,19 @@ public static class CustomTextTypeFunctions
         internal static int s_formats;
 
         /// <summary>
+        /// Counts a format for the counters SQL reads.
+        /// </summary>
+        private static void CountFormat() => Interlocked.Increment(ref s_formats);
+
+        /// <summary>
         /// Records deferred construction without retaining backend resources.
         /// </summary>
-        public TextCodec() => s_constructions++;
+        public TextCodec() => CountConstruction();
 
         /// <inheritdoc />
         public override TextValue Parse(string text)
         {
-            s_parses++;
+            CountParse();
             switch (text)
             {
                 case "!pgparse":
@@ -70,7 +85,7 @@ public static class CustomTextTypeFunctions
         /// <inheritdoc />
         public override string Format(TextValue value)
         {
-            s_formats++;
+            CountFormat();
             return value.Text switch
             {
                 "!pgformat" => throw new PgException("P7912", "custom text format failed"),
@@ -187,11 +202,16 @@ public static class CustomTextTypeFunctions
         internal static int s_attempts;
 
         /// <summary>
+        /// Counts an attempt for the counters SQL reads.
+        /// </summary>
+        private static void CountAttempt() => Interlocked.Increment(ref s_attempts);
+
+        /// <summary>
         /// Reports a deferred factory failure.
         /// </summary>
         public FaultCodec()
         {
-            s_attempts++;
+            CountAttempt();
             throw new PgException("P7910", "custom text factory failed");
         }
 

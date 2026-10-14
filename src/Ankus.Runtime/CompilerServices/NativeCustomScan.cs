@@ -170,6 +170,7 @@ public static unsafe class NativeCustomScan
                     throw new ArgumentOutOfRangeException(nameof(operation), operation, "Unknown or unsupported custom scan operation.");
             }
         }
+        // codeql[cs/catch-of-all-exceptions] Native code calls this, so every exception goes back to PostgreSQL as an error instead of unwinding through it.
         catch (Exception exception)
         {
             NativeError.Write(exception, error);
@@ -269,6 +270,7 @@ public static unsafe class NativeCustomScan
             scan.AttachShared(scan.State!);
             return 0;
         }
+        // codeql[cs/catch-of-all-exceptions] Native code calls this, so every exception goes back to PostgreSQL as an error instead of unwinding through it.
         catch (Exception exception)
         {
             NativeError.Write(exception, error);

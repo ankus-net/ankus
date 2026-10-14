@@ -175,26 +175,12 @@ public sealed partial class PgArrayViewTests
             Assert.ThrowsExactly<InvalidOperationException>(view.Dispose);
         }
 
-        Exception? failure = null;
-        var worker = new Thread(() =>
+        DedicatedThread.Run(() =>
         {
-            try
-            {
-                Assert.ThrowsExactly<InvalidOperationException>(() => _ = cursor.Current);
-                Assert.ThrowsExactly<InvalidOperationException>(() => view.GetEnumerator());
-                Assert.ThrowsExactly<InvalidOperationException>(view.Dispose);
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
+            Assert.ThrowsExactly<InvalidOperationException>(() => _ = cursor.Current);
+            Assert.ThrowsExactly<InvalidOperationException>(() => view.GetEnumerator());
+            Assert.ThrowsExactly<InvalidOperationException>(view.Dispose);
         });
-        worker.Start();
-        worker.Join();
-        if (failure is not null)
-        {
-            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
-        }
 
         Func<NativeMemoryRequest, NativeMemoryResult> previous = fixture.Handler!;
         fixture.Handler = request => request._operation == NativeMemoryOperation.CaptureGeneration && request._context == 101

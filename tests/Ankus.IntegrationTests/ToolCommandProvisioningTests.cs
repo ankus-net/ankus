@@ -35,7 +35,7 @@ public sealed partial class ToolCommandTests
     public async Task InitRejectsInvalidDownloadJobsBeforeFilesystemChanges(string jobs)
     {
         string home = CreateDirectory();
-        string configuration = Path.Combine(home, "config.json");
+        string configuration = Path.Join(home, "config.json");
         const string Original = "{\"pg13\":\"preserve\",\"port\":30000}";
         await File.WriteAllTextAsync(configuration, Original, context.CancellationToken);
         ProcessResult result = await InvokeAsync(["init", "--pg18", "download", "--jobs", jobs, "--home", home], context.CancellationToken);

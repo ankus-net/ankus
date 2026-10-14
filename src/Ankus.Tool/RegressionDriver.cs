@@ -34,10 +34,9 @@ internal static class RegressionDriver
         }
 
         string status = Directory.CreateTempSubdirectory("ankus-regression-status-").FullName;
-        WindowsRegressionWorkspace? workspace = null;
         try
         {
-            workspace = WindowsRegressionWorkspace.Create(directory);
+            using WindowsRegressionWorkspace? workspace = WindowsRegressionWorkspace.Create(directory);
             string nativeDirectory = workspace?.DirectoryPath ?? directory;
             string executable = Environment.ProcessPath ?? throw new InvalidOperationException("Cannot locate the Ankus executable.");
             bool hosted = string.Equals(Path.GetFileNameWithoutExtension(executable), "dotnet", StringComparison.OrdinalIgnoreCase);
@@ -53,12 +52,12 @@ internal static class RegressionDriver
             };
             string launcher = ReferenceVariable(ExecutableVariable) +
                 (hosted ? " " + ReferenceVariable(AssemblyVariable) : "") + " " + ClientSwitch;
-            string results = Path.Combine(directory, "results");
+            string results = Path.Join(directory, "results");
             if (Directory.Exists(results))
             {
                 foreach (string name in names)
                 {
-                    File.Delete(Path.Combine(results, name + ".out"));
+                    File.Delete(Path.Join(results, name + ".out"));
                 }
             }
 
@@ -92,14 +91,7 @@ internal static class RegressionDriver
         }
         finally
         {
-            try
-            {
-                workspace?.Dispose();
-            }
-            finally
-            {
-                Directory.Delete(status, recursive: true);
-            }
+            Directory.Delete(status, recursive: true);
         }
     }
 
@@ -132,5 +124,5 @@ internal static class RegressionDriver
             ? value : throw new InvalidOperationException($"Missing regression launcher setting {name}.");
 
     private static string StatusFile(string directory, string application)
-        => Path.Combine(directory, Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(application))) + ".status");
+        => Path.Join(directory, Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(application))) + ".status");
 }

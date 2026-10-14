@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 
 namespace Ankus.Runtime.Tests;
@@ -31,7 +30,7 @@ public sealed class PgAggregateTests
         {
             saved = scope.Context;
             Assert.AreEqual(601, saved.MemoryContext.Id);
-            RunWorker(() => Assert.ThrowsExactly<InvalidOperationException>(() => saved.MemoryContext));
+            DedicatedThread.Run(() => Assert.ThrowsExactly<InvalidOperationException>(() => saved.MemoryContext));
             using (var nested = new AggregateScope(owner: 202))
             {
                 Assert.ThrowsExactly<InvalidOperationException>(() => saved.MemoryContext);
@@ -63,7 +62,7 @@ public sealed class PgAggregateTests
         Assert.IsNull(NativeAggregate.Read<Probe>(nullState));
         Assert.ThrowsExactly<InvalidOperationException>(() => NativeAggregate.Write(state));
         Assert.AreSame(payload, state.Value);
-        RunWorker(() => Assert.AreSame(payload, state.Value));
+        DedicatedThread.Run(() => Assert.AreSame(payload, state.Value));
         Assert.AreEqual(0, payload.DisposeCount);
     }
 
@@ -329,7 +328,7 @@ public sealed class PgAggregateTests
         var original = new PgAggregateState<int>(42);
         NativeValue originalPointer = NativeAggregate.Write(original);
         Registration originalRegistration = fixture.Last!;
-        using (var inner = new AggregateScope(202))
+        using (new AggregateScope(202))
         {
             PgAggregateState<int> borrowed = NativeAggregate.Read<int>(Scalar(originalRegistration.Id))!;
             Assert.AreSame(original, borrowed);
@@ -500,7 +499,7 @@ public sealed class PgAggregateTests
         var state = new PgAggregateState<Probe>(payload);
         NativeAggregate.Write(state);
         Registration ownerRegistration = fixture.Last!;
-        RunWorker(() =>
+        DedicatedThread.Run(() =>
         {
             using var workerFixture = new ApiFixture();
             using var workerScope = new AggregateScope(202);
@@ -770,8 +769,8 @@ public sealed class PgAggregateTests
             Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => context.Compare(left, right, -1));
             Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => context.Compare(left, right, 2));
             Assert.ThrowsExactly<ArgumentException>(() => context.Compare(left, SpiParameter.Create("bad\0text")));
-            RunWorker(() => Assert.ThrowsExactly<InvalidOperationException>(() => context.Compare(left, right)));
-            using (var child = new AggregateScope(202))
+            DedicatedThread.Run(() => Assert.ThrowsExactly<InvalidOperationException>(() => context.Compare(left, right)));
+            using (new AggregateScope(202))
             {
                 Assert.ThrowsExactly<InvalidOperationException>(() => context.Compare(left, right));
             }
@@ -888,6 +887,7 @@ public sealed class PgAggregateTests
             *output = (void*)fixture.Comparison;
             return 0;
         }
+        // codeql[cs/catch-of-all-exceptions] This stands in for native code, so every exception goes back as an error instead of unwinding through it.
         catch (Exception exception)
         {
             NativeError.Write(exception, error);
@@ -919,6 +919,7 @@ public sealed class PgAggregateTests
 
             throw new PgException("P0001", "backend reached");
         }
+        // codeql[cs/catch-of-all-exceptions] This stands in for native code, so every exception goes back as an error instead of unwinding through it.
         catch (Exception exception)
         {
             NativeError.Write(exception, error);
@@ -979,60 +980,28 @@ public sealed class PgAggregateTests
     /// </summary>
     private static void Collect()
     {
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
-    }
-
-    /// <summary>
-    /// Executes thread ownership checks without moving the parent scope's continuation to another thread.
-    /// </summary>
-    private static void RunWorker(Action action)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-
-        thread.Start();
-        thread.Join();
-        if (failure is not null)
-        {
-            ExceptionDispatchInfo.Capture(failure).Throw();
-        }
+        GarbageCollection.Collect();
     }
 
     /// <summary>
     /// Accesses the first scalar discriminator for malformed transport fixtures.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary1")]
-    private static extern ref int Auxiliary1(ref NativeValue value);
+    private static ref int Auxiliary1(ref NativeValue value) => ref value._auxiliary1;
 
     /// <summary>
     /// Accesses the second scalar discriminator for malformed transport fixtures.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary2")]
-    private static extern ref int Auxiliary2(ref NativeValue value);
+    private static ref int Auxiliary2(ref NativeValue value) => ref value._auxiliary2;
 
     /// <summary>
     /// Accesses the temporal discriminator for malformed transport fixtures.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_temporalInfinity")]
-    private static extern ref int Infinity(ref NativeValue value);
+    private static ref int Infinity(ref NativeValue value) => ref value._temporalInfinity;
 
     /// <summary>
     /// Accesses the buffer length for malformed transport fixtures.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_length")]
-    private static extern ref int Length(ref NativeValue value);
+    private static ref int Length(ref NativeValue value) => ref value._length;
 
     /// <summary>
     /// Enters and exits a controlled aggregate callback scope.
@@ -1304,15 +1273,11 @@ public sealed class PgAggregateTests
         {
             try
             {
-                foreach (Registration registration in Registrations)
+                foreach (Registration registration in Registrations.Where(static registration => !registration.Released))
                 {
-                    if (!registration.Released)
+                    if (Release(registration) is PgException error)
                     {
-                        PgException? error = Release(registration);
-                        if (error is not null)
-                        {
-                            throw error;
-                        }
+                        throw error;
                     }
                 }
             }

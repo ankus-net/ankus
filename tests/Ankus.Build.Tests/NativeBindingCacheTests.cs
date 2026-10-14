@@ -25,9 +25,9 @@ public sealed partial class NativeBindingCacheTests(TestContext context)
         string root = Directory.CreateTempSubdirectory("ankus-binding-cache-link-").FullName;
         try
         {
-            string target = Path.Combine(root, "target");
-            string input = Path.Combine(root, "input");
-            string cache = Path.Combine(root, "cache");
+            string target = Path.Join(root, "target");
+            string input = Path.Join(root, "input");
+            string cache = Path.Join(root, "cache");
             await File.WriteAllTextAsync(target, "original", context.CancellationToken);
             File.CreateSymbolicLink(input, target);
             int produced = 0;
@@ -35,21 +35,21 @@ public sealed partial class NativeBindingCacheTests(TestContext context)
             {
                 produced++;
                 string hash = await NativeBindingCache.HashAsync(input, token);
-                await File.WriteAllTextAsync(Path.Combine(stage, "binding.dll"), await File.ReadAllTextAsync(input, token), token);
+                await File.WriteAllTextAsync(Path.Join(stage, "binding.dll"), await File.ReadAllTextAsync(input, token), token);
                 return [new(input, hash)];
             }
 
             for (int attempt = 0; attempt < 2; attempt++)
             {
                 await using NativeBindingCacheLease lease = await NativeBindingCache.GetAsync(cache, s_key, Produce, context.CancellationToken);
-                Assert.AreEqual("original", await File.ReadAllTextAsync(Path.Combine(lease.Directory, "binding.dll"), context.CancellationToken));
+                Assert.AreEqual("original", await File.ReadAllTextAsync(Path.Join(lease.Directory, "binding.dll"), context.CancellationToken));
                 Assert.AreEqual(1, produced);
             }
 
             DateTime timestamp = File.GetLastWriteTimeUtc(target);
             if (retarget)
             {
-                target = Path.Combine(root, "replacement");
+                target = Path.Join(root, "replacement");
                 await File.WriteAllTextAsync(target, "modified", context.CancellationToken);
                 File.Delete(input);
                 File.CreateSymbolicLink(input, target);
@@ -62,7 +62,7 @@ public sealed partial class NativeBindingCacheTests(TestContext context)
             File.SetLastWriteTimeUtc(target, timestamp);
             await using NativeBindingCacheLease changed = await NativeBindingCache.GetAsync(cache, s_key, Produce, context.CancellationToken);
             Assert.AreEqual(2, produced);
-            Assert.AreEqual("modified", await File.ReadAllTextAsync(Path.Combine(changed.Directory, "binding.dll"), context.CancellationToken));
+            Assert.AreEqual("modified", await File.ReadAllTextAsync(Path.Join(changed.Directory, "binding.dll"), context.CancellationToken));
         }
         finally
         {
@@ -80,12 +80,12 @@ public sealed partial class NativeBindingCacheTests(TestContext context)
         string root = Directory.CreateTempSubdirectory("ankus-binding-cache-artifact-link-").FullName;
         try
         {
-            string target = Path.Combine(root, "target");
-            string cache = Path.Combine(root, "cache");
+            string target = Path.Join(root, "target");
+            string cache = Path.Join(root, "cache");
             await File.WriteAllTextAsync(target, "verified", context.CancellationToken);
             IOException error = await Assert.ThrowsExactlyAsync<IOException>(() => NativeBindingCache.GetAsync(cache, s_key, (stage, _) =>
             {
-                File.CreateSymbolicLink(Path.Combine(stage, "binding.dll"), target);
+                File.CreateSymbolicLink(Path.Join(stage, "binding.dll"), target);
                 return Task.FromResult<IReadOnlyList<NativeBindingCacheFile>>([]);
             }, context.CancellationToken));
             Assert.Contains("artifacts changed before publication", error.Message);
@@ -93,10 +93,10 @@ public sealed partial class NativeBindingCacheTests(TestContext context)
             Assert.AreEqual("verified", await File.ReadAllTextAsync(target, context.CancellationToken));
             await using NativeBindingCacheLease recovered = await NativeBindingCache.GetAsync(cache, s_key, async (stage, token) =>
             {
-                await File.WriteAllTextAsync(Path.Combine(stage, "binding.dll"), "verified", token);
+                await File.WriteAllTextAsync(Path.Join(stage, "binding.dll"), "verified", token);
                 return [];
             }, context.CancellationToken);
-            string artifact = Path.Combine(recovered.Directory, "binding.dll");
+            string artifact = Path.Join(recovered.Directory, "binding.dll");
             Assert.IsFalse(File.GetAttributes(artifact).HasFlag(FileAttributes.ReparsePoint));
             Assert.AreEqual("verified", await File.ReadAllTextAsync(artifact, context.CancellationToken));
         }
@@ -124,12 +124,12 @@ public sealed partial class NativeBindingCacheTests(TestContext context)
         string root = Directory.CreateTempSubdirectory("ankus-binding-cache-").FullName;
         try
         {
-            string cache = Path.Combine(root, "cache");
-            string inputs = Directory.CreateDirectory(Path.Combine(root, "inputs")).FullName;
-            string input = Path.Combine(inputs, "input");
+            string cache = Path.Join(root, "cache");
+            string inputs = Directory.CreateDirectory(Path.Join(root, "inputs")).FullName;
+            string input = Path.Join(inputs, "input");
             await File.WriteAllTextAsync(input, "original", context.CancellationToken);
-            string extraInput = Path.Combine(inputs, "extra");
-            string candidate = Path.Combine(root, "preferred-package");
+            string extraInput = Path.Join(inputs, "extra");
+            string candidate = Path.Join(root, "preferred-package");
             if (change == "removed-input")
             {
                 await File.WriteAllTextAsync(extraInput, "extra", context.CancellationToken);
@@ -140,7 +140,7 @@ public sealed partial class NativeBindingCacheTests(TestContext context)
             {
                 produced++;
                 string hash = await NativeBindingCache.HashAsync(input, token);
-                await File.WriteAllTextAsync(Path.Combine(stage, "binding.dll"), await File.ReadAllTextAsync(input, token), token);
+                await File.WriteAllTextAsync(Path.Join(stage, "binding.dll"), await File.ReadAllTextAsync(input, token), token);
                 return [new(input, hash), NativeBindingCache.SnapshotDirectory(inputs), NativeBindingCache.SnapshotDirectory(candidate)];
             }
 
@@ -148,7 +148,7 @@ public sealed partial class NativeBindingCacheTests(TestContext context)
             await using (NativeBindingCacheLease lease = await NativeBindingCache.GetAsync(cache, s_key, Produce, context.CancellationToken))
             {
                 entry = lease.Directory;
-                Assert.AreEqual("original", await File.ReadAllTextAsync(Path.Combine(entry, "binding.dll"), context.CancellationToken));
+                Assert.AreEqual("original", await File.ReadAllTextAsync(Path.Join(entry, "binding.dll"), context.CancellationToken));
             }
 
             await using (NativeBindingCacheLease lease = await NativeBindingCache.GetAsync(cache, s_key, Produce, context.CancellationToken))
@@ -157,7 +157,7 @@ public sealed partial class NativeBindingCacheTests(TestContext context)
                 Assert.AreEqual(1, produced);
             }
 
-            string artifact = Path.Combine(entry, "binding.dll");
+            string artifact = Path.Join(entry, "binding.dll");
             if (change is "artifact" or "input")
             {
                 string file = change == "input" ? input : artifact;
@@ -171,7 +171,7 @@ public sealed partial class NativeBindingCacheTests(TestContext context)
             }
             else if (change == "manifest")
             {
-                await File.WriteAllTextAsync(Path.Combine(entry, "manifest.json"), "not json", context.CancellationToken);
+                await File.WriteAllTextAsync(Path.Join(entry, "manifest.json"), "not json", context.CancellationToken);
             }
             else if (change == "added-input")
             {
@@ -187,14 +187,14 @@ public sealed partial class NativeBindingCacheTests(TestContext context)
             }
             else
             {
-                await File.WriteAllTextAsync(Path.Combine(entry, "unexpected"), "changed", context.CancellationToken);
+                await File.WriteAllTextAsync(Path.Join(entry, "unexpected"), "changed", context.CancellationToken);
             }
 
             await using (NativeBindingCacheLease lease = await NativeBindingCache.GetAsync(cache, s_key, Produce, context.CancellationToken))
             {
                 Assert.AreEqual(2, produced);
                 Assert.AreEqual(change == "input" ? "modified" : "original",
-                    await File.ReadAllTextAsync(Path.Combine(lease.Directory, "binding.dll"), context.CancellationToken));
+                    await File.ReadAllTextAsync(Path.Join(lease.Directory, "binding.dll"), context.CancellationToken));
                 Assert.AreSequenceEqual<string>(["binding.dll", "manifest.json"], Directory.GetFiles(lease.Directory).Select(static file => Path.GetFileName(file)).Order(StringComparer.Ordinal));
             }
 
@@ -222,7 +222,7 @@ public sealed partial class NativeBindingCacheTests(TestContext context)
             async Task<IReadOnlyList<NativeBindingCacheFile>> Produce(string stage, CancellationToken token)
             {
                 produced++;
-                await File.WriteAllTextAsync(Path.Combine(stage, "binding.dll"), "verified", token);
+                await File.WriteAllTextAsync(Path.Join(stage, "binding.dll"), "verified", token);
                 return [];
             }
 
@@ -245,12 +245,12 @@ public sealed partial class NativeBindingCacheTests(TestContext context)
                 Assert.AreEqual(cancellation.Token, error.CancellationToken);
                 Assert.IsTrue(waiting.IsCanceled);
                 Assert.AreEqual(1, produced);
-                Assert.AreEqual("verified", await File.ReadAllTextAsync(Path.Combine(first.Directory, "binding.dll"), context.CancellationToken));
+                Assert.AreEqual("verified", await File.ReadAllTextAsync(Path.Join(first.Directory, "binding.dll"), context.CancellationToken));
             }
 
             await using NativeBindingCacheLease recovered = await NativeBindingCache.GetAsync(root, s_key, Produce, context.CancellationToken);
             Assert.AreEqual(1, produced);
-            Assert.AreEqual("verified", await File.ReadAllTextAsync(Path.Combine(recovered.Directory, "binding.dll"), context.CancellationToken));
+            Assert.AreEqual("verified", await File.ReadAllTextAsync(Path.Join(recovered.Directory, "binding.dll"), context.CancellationToken));
         }
         finally
         {
@@ -270,12 +270,12 @@ public sealed partial class NativeBindingCacheTests(TestContext context)
         string root = Directory.CreateTempSubdirectory("ankus-binding-cache-failure-").FullName;
         try
         {
-            string sentinel = Path.Combine(root, "unrelated");
+            string sentinel = Path.Join(root, "unrelated");
             await File.WriteAllTextAsync(sentinel, "preserve", context.CancellationToken);
             using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
             async Task<IReadOnlyList<NativeBindingCacheFile>> Fail(string stage, CancellationToken token)
             {
-                await File.WriteAllTextAsync(Path.Combine(stage, "binding.dll"), "partial", token);
+                await File.WriteAllTextAsync(Path.Join(stage, "binding.dll"), "partial", token);
                 if (cancel)
                 {
                     await cancellation.CancelAsync();
@@ -299,10 +299,10 @@ public sealed partial class NativeBindingCacheTests(TestContext context)
             Assert.AreEqual("preserve", await File.ReadAllTextAsync(sentinel, context.CancellationToken));
             await using NativeBindingCacheLease recovered = await NativeBindingCache.GetAsync(root, s_key, async (stage, token) =>
             {
-                await File.WriteAllTextAsync(Path.Combine(stage, "binding.dll"), "complete", token);
+                await File.WriteAllTextAsync(Path.Join(stage, "binding.dll"), "complete", token);
                 return [];
             }, context.CancellationToken);
-            Assert.AreEqual("complete", await File.ReadAllTextAsync(Path.Combine(recovered.Directory, "binding.dll"), context.CancellationToken));
+            Assert.AreEqual("complete", await File.ReadAllTextAsync(Path.Join(recovered.Directory, "binding.dll"), context.CancellationToken));
         }
         finally
         {
@@ -319,13 +319,13 @@ public sealed partial class NativeBindingCacheTests(TestContext context)
         string root = Directory.CreateTempSubdirectory("ankus-binding-cache-input-").FullName;
         try
         {
-            string input = Path.Combine(root, "input");
-            string cache = Path.Combine(root, "cache");
+            string input = Path.Join(root, "input");
+            string cache = Path.Join(root, "cache");
             await File.WriteAllTextAsync(input, "before", context.CancellationToken);
             IOException error = await Assert.ThrowsExactlyAsync<IOException>(() => NativeBindingCache.GetAsync(cache, s_key, async (stage, token) =>
             {
                 string hash = await NativeBindingCache.HashAsync(input, token);
-                await File.WriteAllTextAsync(Path.Combine(stage, "binding.dll"), "stale", token);
+                await File.WriteAllTextAsync(Path.Join(stage, "binding.dll"), "stale", token);
                 await File.WriteAllTextAsync(input, "after", token);
                 return [new(input, hash)];
             }, context.CancellationToken));
@@ -348,13 +348,13 @@ public sealed partial class NativeBindingCacheTests(TestContext context)
         string root = Directory.CreateTempSubdirectory("ankus-binding-cache-replace-").FullName;
         try
         {
-            string input = Path.Combine(root, "input");
-            string cache = Path.Combine(root, "cache");
+            string input = Path.Join(root, "input");
+            string cache = Path.Join(root, "cache");
             await File.WriteAllTextAsync(input, "previous", context.CancellationToken);
             async Task<IReadOnlyList<NativeBindingCacheFile>> Produce(string stage, CancellationToken token)
             {
                 string hash = await NativeBindingCache.HashAsync(input, token);
-                File.Copy(input, Path.Combine(stage, "binding.dll"));
+                File.Copy(input, Path.Join(stage, "binding.dll"));
                 return [new(input, hash)];
             }
 
@@ -362,19 +362,19 @@ public sealed partial class NativeBindingCacheTests(TestContext context)
             await using (NativeBindingCacheLease lease = await NativeBindingCache.GetAsync(cache, s_key, Produce, context.CancellationToken))
             {
                 entry = lease.Directory;
-                Assert.AreEqual("previous", await File.ReadAllTextAsync(Path.Combine(entry, "binding.dll"), context.CancellationToken));
+                Assert.AreEqual("previous", await File.ReadAllTextAsync(Path.Join(entry, "binding.dll"), context.CancellationToken));
             }
 
             await File.WriteAllTextAsync(input, "replacement", context.CancellationToken);
             await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => NativeBindingCache.GetAsync(cache, s_key, async (stage, token) =>
             {
-                await File.WriteAllTextAsync(Path.Combine(stage, "binding.dll"), "partial", token);
+                await File.WriteAllTextAsync(Path.Join(stage, "binding.dll"), "partial", token);
                 throw new InvalidOperationException("replacement failed");
             }, context.CancellationToken));
-            Assert.AreEqual("previous", await File.ReadAllTextAsync(Path.Combine(entry, "binding.dll"), context.CancellationToken));
+            Assert.AreEqual("previous", await File.ReadAllTextAsync(Path.Join(entry, "binding.dll"), context.CancellationToken));
             Assert.AreSequenceEqual<string>([entry], Directory.GetDirectories(cache));
             await using NativeBindingCacheLease recovered = await NativeBindingCache.GetAsync(cache, s_key, Produce, context.CancellationToken);
-            Assert.AreEqual("replacement", await File.ReadAllTextAsync(Path.Combine(recovered.Directory, "binding.dll"), context.CancellationToken));
+            Assert.AreEqual("replacement", await File.ReadAllTextAsync(Path.Join(recovered.Directory, "binding.dll"), context.CancellationToken));
         }
         finally
         {

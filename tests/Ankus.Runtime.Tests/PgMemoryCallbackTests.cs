@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Runtime.ExceptionServices;
 
 namespace Ankus.Runtime.Tests;
 
@@ -357,14 +356,7 @@ public sealed unsafe partial class PgMemoryCallbackTests
     public void CancellationRequiresLiveCapabilityUntilActionIsConsumed()
     {
         using var fixture = new MemoryContextTestFixture();
-        PgMemoryCallback registration;
-        using (MemoryContextTestFixture.Enter())
-        {
-            registration = PgMemoryContext.Current.RegisterResetCallback(static () =>
-            {
-            });
-        }
-
+        using PgMemoryCallback registration = RegisterInCallback();
         Assert.ThrowsExactly<InvalidOperationException>(registration.Dispose);
         Assert.IsTrue(registration.IsPending);
         using (MemoryContextTestFixture.Enter())
@@ -374,6 +366,16 @@ public sealed unsafe partial class PgMemoryCallbackTests
 
         Assert.IsFalse(registration.IsPending);
         registration.Dispose();
+
+        static PgMemoryCallback RegisterInCallback()
+        {
+            using (MemoryContextTestFixture.Enter())
+            {
+                return PgMemoryContext.Current.RegisterResetCallback(static () =>
+                {
+                });
+            }
+        }
     }
 
     /// <summary>
@@ -387,7 +389,7 @@ public sealed unsafe partial class PgMemoryCallbackTests
         int calls = 0;
         using PgMemoryCallback registration = PgMemoryContext.Current.RegisterResetCallback(() => calls++);
         NativeMemoryRequest registered = GetRegistration(fixture);
-        RunWorker(() =>
+        DedicatedThread.Run(() =>
         {
             using var workerFixture = new MemoryContextTestFixture();
             Assert.ThrowsExactly<InvalidOperationException>(registration.Dispose);
@@ -585,34 +587,7 @@ public sealed unsafe partial class PgMemoryCallbackTests
     /// </summary>
     private static void CollectUnreferencedValues()
     {
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
-    }
-
-    /// <summary>
-    /// Runs affinity assertions on a fresh thread and propagates assertion failures to the test runner.
-    /// </summary>
-    private static void RunWorker(Action action)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        thread.Start();
-        thread.Join();
-        if (failure is not null)
-        {
-            ExceptionDispatchInfo.Capture(failure).Throw();
-        }
+        GarbageCollection.Collect();
     }
 
     /// <summary>

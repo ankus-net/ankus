@@ -74,6 +74,7 @@ internal sealed class SpiConversionScope : IDisposable
         {
             _relations.Dispose();
         }
+        // codeql[cs/catch-of-all-exceptions] Every cleanup step still runs, and all of their failures are reported together.
         catch (Exception cleanup)
         {
             (failures ??= []).Add(cleanup);
@@ -97,6 +98,7 @@ internal sealed class SpiConversionScope : IDisposable
             {
                 _views[index].Dispose();
             }
+            // codeql[cs/catch-of-all-exceptions] Every cleanup step still runs, and all of their failures are reported together.
             catch (Exception cleanup)
             {
                 (failures ??= []).Add(cleanup);

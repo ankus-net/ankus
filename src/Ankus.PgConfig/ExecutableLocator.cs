@@ -30,9 +30,9 @@ internal static class ExecutableLocator
             return null;
         }
 
-        foreach (string directory in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+        foreach (string candidate in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+            .Select(directory => Path.Join(directory.Trim('"'), executableName)))
         {
-            string candidate = Path.Combine(directory.Trim('"'), executableName);
             if (File.Exists(candidate))
             {
                 return Path.GetFullPath(candidate);

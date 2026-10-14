@@ -176,6 +176,7 @@ public sealed unsafe partial class PgMemoryContext
             {
                 allocation.Dispose();
             }
+            // codeql[cs/catch-of-all-exceptions] A failed cleanup is reported together with the failure that required it.
             catch (Exception cleanupError)
             {
                 throw new AggregateException("Initializing a PostgreSQL native value and releasing its allocation failed.", primary, cleanupError);

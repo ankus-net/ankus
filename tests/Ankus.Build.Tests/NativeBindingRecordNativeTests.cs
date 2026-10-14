@@ -34,7 +34,7 @@ public sealed partial class NativeBindingNativeTests
             """;
         NativeHeaderRequest[] requests = [new("current", "current", false), new("first", "first", false), new("second", "second", false),
             new("array_call", "array_call", true), new("variadic_call", "variadic_call", true), new("unspecified_call", "unspecified_call", true)];
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-native-records-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-native-records-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
@@ -89,9 +89,9 @@ public sealed partial class NativeBindingNativeTests
             Assert.AreEqual("char", graph.Types[tail.Element!.Value].Name);
             Assert.AreNotEqual(graph.Types[graph.Types[graph.Roots["first"]].Canonical].Declaration,
                 graph.Types[graph.Types[graph.Roots["second"]].Canonical].Declaration);
-            foreach (string anonymous in new[] { "first", "second" })
+            string[] anonymousRoots = ["first", "second"];
+            foreach (NativeRecordDeclaration record in anonymousRoots.Select(anonymous => Record(graph.Roots[anonymous])))
             {
-                NativeRecordDeclaration record = Record(graph.Roots[anonymous]);
                 Assert.AreEqual("", record.Name);
                 Assert.AreEqual("same", Assert.ContainsSingle(record.Fields).Name);
                 Assert.AreEqual(4L, record.Size);
@@ -113,8 +113,8 @@ public sealed partial class NativeBindingNativeTests
             Assert.IsFalse(unspecified.HasPrototype);
             Assert.IsEmpty(unspecified.Parameters);
 
-            string file = Path.Combine(directory, "independent.c");
-            string executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "independent.exe" : "independent");
+            string file = Path.Join(directory, "independent.c");
+            string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "independent.exe" : "independent");
             const string Main = """
                 #include <stddef.h>
                 #include <stdio.h>
@@ -145,7 +145,7 @@ public sealed partial class NativeBindingNativeTests
 
             string serialized = JsonSerializer.Serialize(graph, NativeBindingRecordWorker.JsonOptions);
             Assert.DoesNotContain(directory, serialized);
-            string otherDirectory = Path.Combine(directory, "different source location");
+            string otherDirectory = Path.Join(directory, "different source location");
             Directory.CreateDirectory(otherDirectory);
             NativeRecordGraph repeated = await CollectRecordsAsync(Headers, [.. requests.Reverse()], otherDirectory);
             Assert.AreEqual(serialized, JsonSerializer.Serialize(repeated, NativeBindingRecordWorker.JsonOptions));
@@ -193,7 +193,7 @@ public sealed partial class NativeBindingNativeTests
             } AttributeRoot;
             extern AttributeRoot attributes;
             """;
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-native-attributes-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-native-attributes-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
@@ -253,12 +253,12 @@ public sealed partial class NativeBindingNativeTests
     public async Task NativeRecordWorkerRejectsInvalidArtifactsAndRecovers()
     {
         const string Headers = "extern int current;";
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-native-record-worker-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-native-record-worker-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
             NativeRecordGraph expected = await CollectRecordsAsync(Headers, [new("current", "current", false)], directory);
-            string input = Path.Combine(directory, "native-record-request.json");
+            string input = Path.Join(directory, "native-record-request.json");
             NativeRecordRequest? request = JsonSerializer.Deserialize<NativeRecordRequest>(await File.ReadAllTextAsync(input, context.CancellationToken), NativeBindingRecordWorker.JsonOptions);
             Assert.IsNotNull(request);
             NativeRecordRequest mismatch = request with
@@ -279,7 +279,7 @@ public sealed partial class NativeBindingNativeTests
                 NativeBindingRecordWorker.InspectAsync(missing, directory, context.CancellationToken));
             Assert.Contains("Unexpected or duplicate native record root", failure.Message);
 
-            string invalid = Path.Combine(directory, "invalid.ast");
+            string invalid = Path.Join(directory, "invalid.ast");
             await File.WriteAllTextAsync(invalid, "not a compiler AST", context.CancellationToken);
             failure = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
                 NativeBindingRecordWorker.InspectAsync(request with
@@ -291,7 +291,7 @@ public sealed partial class NativeBindingNativeTests
             Assert.AreEqual(JsonSerializer.Serialize(expected, NativeBindingRecordWorker.JsonOptions),
                 JsonSerializer.Serialize(recovered, NativeBindingRecordWorker.JsonOptions));
 
-            string observations = Path.Combine(directory, "native-record-observations.json");
+            string observations = Path.Join(directory, "native-record-observations.json");
             byte[] before = await File.ReadAllBytesAsync(observations, context.CancellationToken);
             using var cancellation = new CancellationTokenSource();
             await cancellation.CancelAsync();
@@ -310,7 +310,7 @@ public sealed partial class NativeBindingNativeTests
     [TestMethod]
     public async Task EmptyRecordSelectionRetainsOnlyTarget()
     {
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-empty-records-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-empty-records-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
@@ -334,7 +334,7 @@ public sealed partial class NativeBindingNativeTests
     public async Task CollectedRecordsRejectEnumWiderThan64Bits()
     {
         const string Headers = "typedef enum WideEnum : unsigned __int128 { Huge = (unsigned __int128)1 << 64 } WideEnum; extern WideEnum current;";
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-wide-enum-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-wide-enum-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
@@ -354,9 +354,9 @@ public sealed partial class NativeBindingNativeTests
     private async Task<NativeRecordGraph> CollectMeasuredRecordsAsync(string headers, IReadOnlyList<NativeHeaderRequest> requests, string directory,
         int major, params string[] frontendOptions)
     {
-        string file = Path.Combine(directory, "records.c");
-        string ast = Path.Combine(directory, "records.ast");
-        string json = Path.Combine(directory, "records.ast.json");
+        string file = Path.Join(directory, "records.c");
+        string ast = Path.Join(directory, "records.ast");
+        string json = Path.Join(directory, "records.ast.json");
         string compiler = NativeBindingRecordCommand.FindCompiler(OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang");
         string[] frontend = OperatingSystem.IsWindows()
             ? ["/nologo", "/std:c11", "/W4", "/WX", "/Zs", .. frontendOptions]
@@ -367,7 +367,7 @@ public sealed partial class NativeBindingNativeTests
         using JsonDocument document = JsonDocument.Parse(await File.ReadAllTextAsync(json, context.CancellationToken));
         NativeHeaderTarget target = NativeBindingHeaderTarget.Read(document.RootElement, major);
         await NativeBindingHeaderCommand.CompileAsync(compiler, [.. frontend, "-Xclang", "-emit-pch", "-Xclang", "-o", "-Xclang", ast, file],
-            Path.Combine(directory, "records.txt"), directory, context.CancellationToken);
+            Path.Join(directory, "records.txt"), directory, context.CancellationToken);
         string library = await NativeBindingRecordCommand.FindLibraryAsync(compiler, target.ClangMajor, context.CancellationToken);
         var request = new NativeRecordRequest(ast, library, target, requests.ToDictionary(static value => value.Name, StringComparer.Ordinal));
         return await NativeBindingRecordWorker.InspectAsync(request, directory, context.CancellationToken);

@@ -120,21 +120,20 @@ public sealed class UnicodeLowercaseTests
     /// <returns>The complete Rust scalar facts and contextual outputs.</returns>
     private static ReferenceFacts ReadReference()
     {
-        string[] lines = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, "string-semantics-reference.txt"));
+        string[] lines = File.ReadAllLines(Path.Join(AppContext.BaseDirectory, "string-semantics-reference.txt"));
         Assert.AreEqual("V;17;0;0", lines[0]);
         var mappings = new Dictionary<int, string>();
         var cased = new HashSet<int>();
         var ignorable = new HashSet<int>();
         var strings = new List<(string Input, string Expected)>();
-        foreach (string line in lines.Skip(1))
+        foreach (string[] fields in lines.Skip(1).Select(static line => line.Split(';')))
         {
-            string[] fields = line.Split(';');
             if (fields[0] == "M")
             {
                 var mapped = new StringBuilder();
                 foreach (string value in fields[2].Split(','))
                 {
-                    mapped.Append(new Rune(int.Parse(value, NumberStyles.HexNumber, CultureInfo.InvariantCulture)).ToString());
+                    mapped.Append(new Rune(int.Parse(value, NumberStyles.HexNumber, CultureInfo.InvariantCulture)));
                 }
 
                 mappings.Add(int.Parse(fields[1], NumberStyles.HexNumber, CultureInfo.InvariantCulture), mapped.ToString());

@@ -268,7 +268,7 @@ public static partial class GucFunctions
             s_retainedText = Text;
         }
 
-        GC.Collect();
+        GarbageCollection.Collect();
         return s_retainedText;
     }
 
@@ -279,7 +279,7 @@ public static partial class GucFunctions
     [PgFunction]
     public static string GucRetainedExtras()
     {
-        GC.Collect();
+        GarbageCollection.Collect();
         return string.Join(',', s_retained.Select(extra => Convert.ToHexString(extra.AsSpan())));
     }
 

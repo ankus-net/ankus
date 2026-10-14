@@ -62,7 +62,7 @@ public sealed class PostgresTargetInfo
     /// <summary>
     /// Gets the manifest path, which build settings accept in place of a <c>pg_config</c> path.
     /// </summary>
-    public string ManifestPath => Path.Combine(RootDirectory, ManifestFileName);
+    public string ManifestPath => Path.Join(RootDirectory, ManifestFileName);
 
     /// <summary>
     /// Gets the version of Ankus that exported the information; only the same version can consume its bindings.
@@ -136,7 +136,7 @@ public sealed class PostgresTargetInfo
     /// </summary>
     /// <param name="targetPath">An absolute path as the target reported it.</param>
     /// <returns>The local path, which exists only for files and directories the export captured.</returns>
-    public string MapPath(string targetPath) => Path.Combine(RootDirectory, FilesDirectory, ToArchivePath(targetPath).Replace('/', Path.DirectorySeparatorChar));
+    public string MapPath(string targetPath) => Path.Join(RootDirectory, FilesDirectory, ToArchivePath(targetPath).Replace('/', Path.DirectorySeparatorChar));
 
     /// <summary>
     /// Gets the local path of one native binding artifact measured on the target.
@@ -151,7 +151,7 @@ public sealed class PostgresTargetInfo
             throw new ArgumentException("A binding artifact is named by its file name.", nameof(name));
         }
 
-        return Path.Combine(RootDirectory, BindingsDirectory, name);
+        return Path.Join(RootDirectory, BindingsDirectory, name);
     }
 
     /// <summary>
@@ -163,7 +163,7 @@ public sealed class PostgresTargetInfo
     public static PostgresTargetInfo Open(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        string manifest = Path.GetFullPath(Directory.Exists(path) ? Path.Combine(path, ManifestFileName) : path);
+        string manifest = Path.GetFullPath(Directory.Exists(path) ? Path.Join(path, ManifestFileName) : path);
         if (!File.Exists(manifest))
         {
             throw new FileNotFoundException("The target information manifest does not exist.", manifest);
@@ -217,7 +217,7 @@ public sealed class PostgresTargetInfo
     {
         foreach ((string name, string expected) in _files)
         {
-            string path = Path.Combine(RootDirectory, name.Replace('/', Path.DirectorySeparatorChar));
+            string path = Path.Join(RootDirectory, name.Replace('/', Path.DirectorySeparatorChar));
             if (!File.Exists(path))
             {
                 throw new InvalidDataException($"Target information is missing '{name}'.");
@@ -244,8 +244,8 @@ public sealed class PostgresTargetInfo
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(archive);
         ArgumentException.ThrowIfNullOrWhiteSpace(cacheDirectory);
-        string destination = Path.Combine(Path.GetFullPath(cacheDirectory), await HashAsync(archive, cancellationToken).ConfigureAwait(false));
-        if (File.Exists(Path.Combine(destination, ManifestFileName)))
+        string destination = Path.Join(Path.GetFullPath(cacheDirectory), await HashAsync(archive, cancellationToken).ConfigureAwait(false));
+        if (File.Exists(Path.Join(destination, ManifestFileName)))
         {
             PostgresTargetInfo existing = Open(destination);
             await existing.VerifyAsync(cancellationToken).ConfigureAwait(false);
@@ -253,7 +253,7 @@ public sealed class PostgresTargetInfo
         }
 
         Directory.CreateDirectory(cacheDirectory);
-        string stage = Path.Combine(Path.GetFullPath(cacheDirectory), "." + Path.GetRandomFileName());
+        string stage = Path.Join(Path.GetFullPath(cacheDirectory), "." + Path.GetRandomFileName());
         bool moved = false;
         try
         {
@@ -266,7 +266,7 @@ public sealed class PostgresTargetInfo
                 Directory.Move(stage, destination);
                 moved = true;
             }
-            catch (IOException) when (File.Exists(Path.Combine(destination, ManifestFileName)))
+            catch (IOException) when (File.Exists(Path.Join(destination, ManifestFileName)))
             {
                 // Another process extracted the same archive first; its copy is verified below.
             }
@@ -330,7 +330,7 @@ public sealed class PostgresTargetInfo
                 // Windows installations keep their library dependencies' headers beside PostgreSQL's own, and link
                 // extensions against the server's import library.
                 CopyTree(installation.IncludeDirectory, stage, files);
-                CopyFile(Path.Combine(installation.LibraryDirectory, "postgres.lib"), stage, files);
+                CopyFile(Path.Join(installation.LibraryDirectory, "postgres.lib"), stage, files);
             }
 
             string[] searched = [.. GetIncludeDirectories(installation.PreprocessorArguments).Prepend(installation.IncludeDirectory)
@@ -345,13 +345,13 @@ public sealed class PostgresTargetInfo
             }
 
             // Keep every search directory so no flag falls back to a build-machine directory of the same name.
-            Directory.CreateDirectory(Path.Combine(stage, FilesDirectory, ToArchivePath(installation.IncludeDirectory)));
+            Directory.CreateDirectory(Path.Join(stage, FilesDirectory, ToArchivePath(installation.IncludeDirectory)));
             foreach (string directory in GetIncludeDirectories(installation.PreprocessorArguments))
             {
-                Directory.CreateDirectory(Path.Combine(stage, FilesDirectory, ToArchivePath(directory)));
+                Directory.CreateDirectory(Path.Join(stage, FilesDirectory, ToArchivePath(directory)));
             }
 
-            Directory.CreateDirectory(Path.Combine(stage, BindingsDirectory));
+            Directory.CreateDirectory(Path.Join(stage, BindingsDirectory));
             foreach ((string name, string source) in bindings)
             {
                 if (Path.GetFileName(name) != name)
@@ -359,16 +359,16 @@ public sealed class PostgresTargetInfo
                     throw new ArgumentException("Binding artifacts are named by their file names.", nameof(bindings));
                 }
 
-                File.Copy(source, Path.Combine(stage, BindingsDirectory, name));
+                File.Copy(source, Path.Join(stage, BindingsDirectory, name));
                 files[BindingsDirectory + "/" + name] = "";
             }
 
             foreach (string name in files.Keys.ToArray())
             {
-                files[name] = await HashAsync(Path.Combine(stage, name.Replace('/', Path.DirectorySeparatorChar)), cancellationToken).ConfigureAwait(false);
+                files[name] = await HashAsync(Path.Join(stage, name.Replace('/', Path.DirectorySeparatorChar)), cancellationToken).ConfigureAwait(false);
             }
 
-            await using (FileStream stream = File.Create(Path.Combine(stage, ManifestFileName)))
+            await using (FileStream stream = File.Create(Path.Join(stage, ManifestFileName)))
             await using (var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true }))
             {
                 writer.WriteStartObject();
@@ -396,9 +396,9 @@ public sealed class PostgresTargetInfo
                 writer.WriteEndObject();
             }
 
-            await File.WriteAllTextAsync(Path.Combine(stage, MajorFileName),
+            await File.WriteAllTextAsync(Path.Join(stage, MajorFileName),
                 installation.Version.Major.ToString(CultureInfo.InvariantCulture) + "\n", cancellationToken).ConfigureAwait(false);
-            await File.WriteAllTextAsync(Path.Combine(stage, RuntimeFileName), runtimeIdentifier + "\n", cancellationToken).ConfigureAwait(false);
+            await File.WriteAllTextAsync(Path.Join(stage, RuntimeFileName), runtimeIdentifier + "\n", cancellationToken).ConfigureAwait(false);
             string output = Path.GetFullPath(archive);
             Directory.CreateDirectory(Path.GetDirectoryName(output)!);
             string partial = output + ".partial";
@@ -526,7 +526,7 @@ public sealed class PostgresTargetInfo
             return;
         }
 
-        string destination = Path.Combine(stage, name.Replace('/', Path.DirectorySeparatorChar));
+        string destination = Path.Join(stage, name.Replace('/', Path.DirectorySeparatorChar));
         Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
         File.Copy(file, destination);
         files.Add(name, "");
@@ -544,7 +544,7 @@ public sealed class PostgresTargetInfo
 
     private static string ReadValue(string directory, string name)
     {
-        string path = Path.Combine(directory, name);
+        string path = Path.Join(directory, name);
         return File.Exists(path) ? File.ReadAllText(path).Trim() : throw new InvalidDataException($"The target information has no {name} file.");
     }
 

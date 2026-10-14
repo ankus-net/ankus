@@ -46,9 +46,9 @@ public static class CancellationFunctions
                     throw new ArgumentOutOfRangeException(nameof(mode));
             }
         }
-        catch (Exception exception)
+        catch (PgQueryCanceledException exception)
         {
-            if (exception is PgQueryCanceledException { Diagnostic.SqlState: PgSqlStates.QueryCanceled })
+            if (exception is { Diagnostic.SqlState: PgSqlStates.QueryCanceled })
             {
                 s_observed |= 1;
             }

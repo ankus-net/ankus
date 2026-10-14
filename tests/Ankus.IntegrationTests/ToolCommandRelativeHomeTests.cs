@@ -17,20 +17,20 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string home = Path.Combine(directory, homeName);
+        string home = Path.Join(directory, homeName);
         Directory.CreateDirectory(home);
-        string configuration = Path.Combine(home, "config.json");
+        string configuration = Path.Join(home, "config.json");
         const string Missing = "missing/bin/pg_config";
         await WriteRegistrationAsync(Missing);
-        string output = Path.Combine(directory, "nested", "consumer");
+        string output = Path.Join(directory, "nested", "consumer");
         (await InvokeAsync(["new", "HomeProbe", "--output", output], token)).EnsureSuccess(s_tool, ["new"]);
-        string project = Path.Combine(output, "src", "HomeProbe", "HomeProbe.csproj");
+        string project = Path.Join(output, "src", "HomeProbe", "HomeProbe.csproj");
         var environment = new Dictionary<string, string?>(s_environment, StringComparer.Ordinal)
         {
             ["ANKUS_HOME"] = homeName,
             ["ANKUS_TEST_PG_CONFIG"] = null,
             ["AnkusPgConfigPath"] = null,
-            ["NUGET_PACKAGES"] = Path.Combine(directory, "packages"),
+            ["NUGET_PACKAGES"] = Path.Join(directory, "packages"),
             ["ANKUS_TEST_EXPECTED_HOME"] = home,
         };
 
@@ -41,7 +41,7 @@ public sealed partial class ToolCommandTests
         Assert.AreEqual(Missing, JsonNode.Parse(await File.ReadAllTextAsync(configuration, token))![s_postgresKey]!.GetValue<string>());
 
         await WriteRegistrationAsync(s_installation.PgConfigPath);
-        await File.WriteAllTextAsync(Path.Combine(output, "tests", "HomeProbe.Tests", "HomeSelectionTests.cs"), """
+        await File.WriteAllTextAsync(Path.Join(output, "tests", "HomeProbe.Tests", "HomeSelectionTests.cs"), """
             using Microsoft.VisualStudio.TestTools.UnitTesting;
 
             namespace HomeProbe.Tests;
@@ -59,9 +59,9 @@ public sealed partial class ToolCommandTests
                 }
             }
             """, token);
-        string reports = Path.Combine(directory, "reports");
+        string reports = Path.Join(directory, "reports");
         ProcessResult tested = await PackageProcessRunner.RunAsync("dotnet",
-            ["test", "--solution", Path.Combine(output, "HomeProbe.slnx"), "--report-trx", "--results-directory", reports,
+            ["test", "--solution", Path.Join(output, "HomeProbe.slnx"), "--report-trx", "--results-directory", reports,
                 "-p:AnkusPostgresMajor=" + MajorText()],
             environment, token, workingDirectory: directory);
         tested.EnsureSuccess("dotnet", ["test"]);
@@ -78,19 +78,19 @@ public sealed partial class ToolCommandTests
         Assert.Contains("ManagedErrorsLeaveBackendUsable", names);
         Assert.Contains("HomeProbe.BackendChecks.AdditionInsidePostgres()", names);
         Assert.Contains("HomeProbe.BackendChecks.ExpectedFailure()", names);
-        string bin = Path.Combine(Path.GetDirectoryName(project)!, "bin");
-        Assert.IsFalse(Directory.Exists(Path.Combine(bin, "ankus-test-pgdata")));
-        Assert.IsEmpty(Directory.GetDirectories(Path.Combine(bin, "ankus-test-publish")));
+        string bin = Path.Join(Path.GetDirectoryName(project)!, "bin");
+        Assert.IsFalse(Directory.Exists(Path.Join(bin, "ankus-test-pgdata")));
+        Assert.IsEmpty(Directory.GetDirectories(Path.Join(bin, "ankus-test-publish")));
 
         // A built host must keep the selected home even when launched from another directory.
         await WriteRegistrationAsync(Missing);
         ProcessResult rejectedHost = await PackageProcessRunner.RunAsync("dotnet",
-            ["test", "--solution", Path.Combine(output, "HomeProbe.slnx"), "--no-build", "--report-trx",
-                "--results-directory", Path.Combine(directory, "rejected-host-reports"),
+            ["test", "--solution", Path.Join(output, "HomeProbe.slnx"), "--no-build", "--report-trx",
+                "--results-directory", Path.Join(directory, "rejected-host-reports"),
                 "-p:AnkusPostgresMajor=" + MajorText()], environment, token, workingDirectory: output);
         Assert.AreNotEqual(0, rejectedHost.ExitCode, "The test host must retain the build's registration instead of discovering another server.");
         Assert.Contains(Path.GetFullPath(Missing, home), rejectedHost.StandardOutput + rejectedHost.StandardError);
-        Assert.IsEmpty(Directory.GetDirectories(Path.Combine(bin, "ankus-test-publish")));
+        Assert.IsEmpty(Directory.GetDirectories(Path.Join(bin, "ankus-test-publish")));
 
         async Task WriteRegistrationAsync(string path)
             => await File.WriteAllTextAsync(configuration, new JsonObject { [s_postgresKey] = path }.ToJsonString(), token);

@@ -16,6 +16,11 @@ public sealed unsafe class PgSubtransactionTests
     private static int s_failStage;
 
     /// <summary>
+    /// Makes the static native callback fail at <paramref name="stage"/>, or at none when it is zero.
+    /// </summary>
+    private static void FailAtStage(int stage) => s_failStage = stage;
+
+    /// <summary>
     /// Rejects null work and offline calls before executing user code.
     /// </summary>
     [TestMethod]
@@ -255,7 +260,7 @@ public sealed unsafe class PgSubtransactionTests
         nint previous = Enter();
         try
         {
-            s_failStage = stage;
+            FailAtStage(stage);
             bool invoked = false;
             PgException failure = Assert.ThrowsExactly<PgException>(() => PgTransaction.RunInSubtransaction(() => invoked = true));
             Assert.AreEqual("55000", failure.SqlState);
@@ -263,7 +268,7 @@ public sealed unsafe class PgSubtransactionTests
             Assert.AreEqual("native boundary detail", failure.Detail);
             Assert.AreEqual(stage == 2, invoked);
             Assert.HasCount(stage - 1, s_statuses!);
-            s_failStage = 0;
+            FailAtStage(0);
             Assert.AreEqual(42, PgTransaction.RunInSubtransaction(static () => 42));
         }
         finally
@@ -291,7 +296,7 @@ public sealed unsafe class PgSubtransactionTests
         nint previous = Enter();
         try
         {
-            s_failStage = 3;
+            FailAtStage(3);
             PgQueryCanceledException failure = Assert.ThrowsExactly<PgQueryCanceledException>(() =>
                 PgTransaction.RunInSubtransaction(static () => throw new InvalidOperationException("earlier managed failure")));
             Assert.AreEqual("native cancellation", failure.Message);
@@ -313,7 +318,7 @@ public sealed unsafe class PgSubtransactionTests
     {
         NativeBackend.Exit(previous);
         s_statuses = null;
-        s_failStage = 0;
+        FailAtStage(0);
     }
 
     /// <summary>
@@ -357,6 +362,7 @@ public sealed unsafe class PgSubtransactionTests
 
             return status;
         }
+        // codeql[cs/catch-of-all-exceptions] This stands in for native code, so every exception goes back as an error instead of unwinding through it.
         catch (Exception exception)
         {
             NativeError.Write(exception, error);

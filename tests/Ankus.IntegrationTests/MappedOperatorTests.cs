@@ -374,12 +374,22 @@ public sealed class MappedOperatorTests(TestContext context)
     private async Task Plan(NpgsqlConnection connection, string sql, string node, string? index = null, bool condition = false, string? direction = null)
     {
         using JsonDocument plan = JsonDocument.Parse(await Scalar<string>(connection, "EXPLAIN(FORMAT JSON) " + sql));
-        Assert.Contains(item => item.GetProperty("Node Type").GetString() == node &&
-            (index is null || item.TryGetProperty("Index Name", out JsonElement name) && name.GetString() == index) &&
-            (!condition || item.TryGetProperty("Index Cond", out JsonElement predicate) && !string.IsNullOrWhiteSpace(predicate.GetString())) &&
-            (direction is null || item.TryGetProperty("Scan Direction", out JsonElement scan) && scan.GetString() == direction),
+        Assert.Contains(item => item.GetProperty("Node Type").GetString() == node && Has(item, "Index Name", index) &&
+            (!condition || HasCondition(item)) && Has(item, "Scan Direction", direction),
             Nodes(plan.RootElement[0].GetProperty("Plan")), plan.RootElement.ToString());
     }
+
+    /// <summary>
+    /// Checks a plan node's text property, when a value is expected.
+    /// </summary>
+    private static bool Has(JsonElement item, string property, string? expected)
+        => expected is null || item.TryGetProperty(property, out JsonElement value) && value.GetString() == expected;
+
+    /// <summary>
+    /// Checks that a plan node probes its index with a condition.
+    /// </summary>
+    private static bool HasCondition(JsonElement item)
+        => item.TryGetProperty("Index Cond", out JsonElement condition) && !string.IsNullOrWhiteSpace(condition.GetString());
 
     /// <summary>
     /// Traverses nested executor plans.

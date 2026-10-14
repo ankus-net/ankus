@@ -172,10 +172,7 @@ public static unsafe class MemoryAllocationFunctions
         }
         finally
         {
-            foreach (PgAllocation allocation in allocations)
-            {
-                allocation.Dispose();
-            }
+            Disposal.DisposeAll(allocations);
         }
 
         owner.Reset();

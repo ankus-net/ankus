@@ -30,12 +30,12 @@ public sealed partial class NativeBindingNativeTests
             extern struct Pair measure(NativeWidth value, void (*handler)(uint32_t));
             extern void done(void);
             """;
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-signature-probe-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-signature-probe-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
-            string file = Path.Combine(directory, "probe.c");
-            string executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "probe.exe" : "probe");
+            string file = Path.Join(directory, "probe.c");
+            string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "probe.exe" : "probe");
             string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "cc";
             string[] arguments = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/O2", "/W4", "/WX", "/Fe" + executable, "/Fo" + Path.ChangeExtension(executable, ".obj"), file]
@@ -124,12 +124,12 @@ public sealed partial class NativeBindingNativeTests
                 return 0;
             }
             """);
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-native-signatures-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-native-signatures-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
-            string file = Path.Combine(directory, "signatures.c");
-            string executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "signatures.exe" : "signatures");
+            string file = Path.Join(directory, "signatures.c");
+            string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "signatures.exe" : "signatures");
             await File.WriteAllTextAsync(file, source.ToString(), context.CancellationToken);
             string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "cc";
             string[] arguments = OperatingSystem.IsWindows()

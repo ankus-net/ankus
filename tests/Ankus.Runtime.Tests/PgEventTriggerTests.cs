@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Runtime.CompilerServices;
-using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -23,6 +22,20 @@ public sealed class PgEventTriggerTests
 
     [ThreadStatic]
     private static int s_releaseCount;
+
+    /// <summary>
+    /// Sets the result the static native SPI callback returns, or null for none.
+    /// </summary>
+    private static void Respond(SpiResult? result) => s_result = result;
+
+    /// <summary>
+    /// Clears the query and release counts the static native callbacks record.
+    /// </summary>
+    private static void ResetCounts()
+    {
+        s_queryCount = 0;
+        s_releaseCount = 0;
+    }
 
     /// <summary>
     /// Every event kind retains the exact native event and command text after the borrowed buffers are released.
@@ -179,7 +192,7 @@ public sealed class PgEventTriggerTests
     {
         using var backend = new BackendScope();
         PgEventTriggerContext context = Enter(eventName);
-        s_queryCount = 0;
+        ResetCounts();
         try
         {
             for (int helper = 0; helper < 3; helper++)
@@ -236,8 +249,8 @@ public sealed class PgEventTriggerTests
         SpiRow second = helper == 0
             ? DdlRow([null, null, null, "GRANT", "TABLE", null, null, false])
             : DroppedRow([1247U, 8101U, 0, false, true, false, "type", "é schema", "second", "\"é schema\".second", null, null]);
-        s_result = new SpiResult(ResultColumns(first), [first, second], 2);
-        s_releaseCount = 0;
+        Respond(new SpiResult(ResultColumns(first), [first, second], 2));
+        ResetCounts();
         PgEventTriggerContext context = Enter(eventName);
         object snapshots;
         try
@@ -248,7 +261,7 @@ public sealed class PgEventTriggerTests
         finally
         {
             NativeEventTrigger.Exit(context);
-            s_result = null;
+            Respond(null);
         }
 
         IList list = Assert.IsInstanceOfType<IList>(snapshots);
@@ -289,8 +302,8 @@ public sealed class PgEventTriggerTests
     public void HelpersDistinguishEmptyCollectionsFromMissingRewriteMetadata(string eventName, int helper)
     {
         using var backend = new BackendScope();
-        s_result = new SpiResult([], [], 0);
-        s_releaseCount = 0;
+        Respond(new SpiResult([], [], 0));
+        ResetCounts();
         PgEventTriggerContext context = Enter(eventName);
         try
         {
@@ -309,7 +322,7 @@ public sealed class PgEventTriggerTests
         finally
         {
             NativeEventTrigger.Exit(context);
-            s_result = null;
+            Respond(null);
         }
     }
 
@@ -321,22 +334,22 @@ public sealed class PgEventTriggerTests
     {
         using var backend = new BackendScope();
         var row = new SpiRow([8100U, 5], [new("table_oid", 26), new("reason", 23)]);
-        s_result = new SpiResult(ResultColumns(row), [row], 1);
-        s_releaseCount = 0;
+        Respond(new SpiResult(ResultColumns(row), [row], 1));
+        ResetCounts();
         PgEventTriggerContext context = Enter("table_rewrite", "ALTER TABLE");
         PgTableRewrite rewrite;
         try
         {
             rewrite = context.GetTableRewrite();
             Assert.AreEqual(1, s_releaseCount);
-            s_result = new SpiResult(ResultColumns(row), [row, row], 2);
+            Respond(new SpiResult(ResultColumns(row), [row, row], 2));
             Assert.ThrowsExactly<InvalidOperationException>(context.GetTableRewrite);
             Assert.AreEqual(2, s_releaseCount);
         }
         finally
         {
             NativeEventTrigger.Exit(context);
-            s_result = null;
+            Respond(null);
         }
 
         Assert.AreEqual(8100U, rewrite.TableOid);
@@ -426,43 +439,28 @@ public sealed class PgEventTriggerTests
         PgEventTriggerContext context = Enter("ddl_command_end", "CREATE TABLE é");
         try
         {
-            Exception? failure = null;
-            var worker = new Thread(() =>
+            DedicatedThread.Run(() =>
             {
+                using var workerBackend = new BackendScope();
+                ResetCounts();
+                Assert.AreEqual("ddl_command_end", context.Event);
+                Assert.AreEqual("CREATE TABLE é", context.CommandTag);
+                Assert.AreEqual(PgEventTriggerKind.DdlCommandEnd, context.Kind);
+                Assert.ThrowsExactly<InvalidOperationException>(() => context.GetDdlCommands());
+                Assert.ThrowsExactly<InvalidOperationException>(() => NativeEventTrigger.Exit(context));
+                Assert.AreEqual(0, s_queryCount);
+                PgEventTriggerContext own = Enter("sql_drop");
                 try
                 {
-                    using var workerBackend = new BackendScope();
-                    s_queryCount = 0;
-                    Assert.AreEqual("ddl_command_end", context.Event);
-                    Assert.AreEqual("CREATE TABLE é", context.CommandTag);
-                    Assert.AreEqual(PgEventTriggerKind.DdlCommandEnd, context.Kind);
-                    Assert.ThrowsExactly<InvalidOperationException>(() => context.GetDdlCommands());
-                    Assert.ThrowsExactly<InvalidOperationException>(() => NativeEventTrigger.Exit(context));
-                    Assert.AreEqual(0, s_queryCount);
-                    PgEventTriggerContext own = Enter("sql_drop");
-                    try
-                    {
-                        Assert.IsNull(own.Parent);
-                        Assert.ThrowsExactly<PgException>(() => own.GetDroppedObjects());
-                        Assert.AreEqual(1, s_queryCount);
-                    }
-                    finally
-                    {
-                        NativeEventTrigger.Exit(own);
-                    }
+                    Assert.IsNull(own.Parent);
+                    Assert.ThrowsExactly<PgException>(() => own.GetDroppedObjects());
+                    Assert.AreEqual(1, s_queryCount);
                 }
-                catch (Exception exception)
+                finally
                 {
-                    failure = exception;
+                    NativeEventTrigger.Exit(own);
                 }
             });
-
-            worker.Start();
-            worker.Join();
-            if (failure is not null)
-            {
-                ExceptionDispatchInfo.Capture(failure).Throw();
-            }
 
             Assert.ThrowsExactly<PgException>(context.GetDdlCommands);
         }
@@ -763,6 +761,7 @@ public sealed class PgEventTriggerTests
                 PopulateResult(s_result, result);
                 return 0;
             }
+            // codeql[cs/catch-of-all-exceptions] This stands in for native code, so every exception goes back as an error instead of unwinding through it.
             catch (Exception exception)
             {
                 NativeError.Write(exception, error);
@@ -834,26 +833,22 @@ public sealed class PgEventTriggerTests
     /// <summary>
     /// Accesses the first discriminator to construct malformed native text headers.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary1")]
-    private static extern ref int Auxiliary1(ref NativeValue value);
+    private static ref int Auxiliary1(ref NativeValue value) => ref value._auxiliary1;
 
     /// <summary>
     /// Accesses the second discriminator to construct malformed native text headers.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary2")]
-    private static extern ref int Auxiliary2(ref NativeValue value);
+    private static ref int Auxiliary2(ref NativeValue value) => ref value._auxiliary2;
 
     /// <summary>
     /// Accesses the temporal discriminator to construct malformed native text headers.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_temporalInfinity")]
-    private static extern ref int Infinity(ref NativeValue value);
+    private static ref int Infinity(ref NativeValue value) => ref value._temporalInfinity;
 
     /// <summary>
     /// Accesses the byte length to construct malformed native text headers without dereferencing them.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_length")]
-    private static extern ref int Length(ref NativeValue value);
+    private static ref int Length(ref NativeValue value) => ref value._length;
 
     /// <summary>
     /// Binds the controlled native callback on this thread and restores any enclosing binding after each test scope.

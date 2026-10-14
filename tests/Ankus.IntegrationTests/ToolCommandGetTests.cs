@@ -15,13 +15,13 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string extension = Directory.CreateDirectory(Path.Combine(directory, "extension")).FullName;
+        string extension = Directory.CreateDirectory(Path.Join(directory, "extension")).FullName;
         PublishedExtension original = PublishedExtension.Read(s_published);
         original.Write(directory);
-        string control = Path.Combine(extension, original.Control);
+        string control = Path.Join(extension, original.Control);
         const string Text = "default_version='0.1.0'\ncomment='old'\ncomment='  exact = ''quote'' # value  '\nrequires=''\nrelocatable=true\n";
         await File.WriteAllTextAsync(control, Text, token);
-        string home = Path.Combine(directory, "unregistered home");
+        string home = Path.Join(directory, "unregistered home");
         (string Property, string? Expected)[] cases =
         [
             ("extname", "ankus_tool_probe"), ("default_version", "0.1.0"),
@@ -64,8 +64,8 @@ public sealed partial class ToolCommandTests
             new XAttribute("Condition", "'$(Configuration)' == 'Query+Checked'"),
             new XElement("AssemblyName", "Ankus.Control.Query"),
             new XElement("AnkusExtensionName", "ankus_query_configured"),
-            new XElement("Version", "3.2.1")))).Save(Path.Combine(directory, "query.props"));
-        string author = Path.Combine(directory, "author settings.control");
+            new XElement("Version", "3.2.1")))).Save(Path.Join(directory, "query.props"));
+        string author = Path.Join(directory, "author settings.control");
         await File.WriteAllTextAsync(author, "comment='query = exact ''comment'''\nschema='Query Schema'\nrequires=''", token);
         string[] options = ["--home", s_home, "--pg", MajorText(), "--project", project, "-c", Configuration];
         var expected = new Dictionary<string, string>(StringComparer.Ordinal)
@@ -85,14 +85,14 @@ public sealed partial class ToolCommandTests
         }
 
         Assert.IsEmpty(Directory.GetFiles(directory, PublishedExtension.FileName, SearchOption.AllDirectories));
-        Assert.IsFalse(Directory.Exists(Path.Combine(directory, "bin", "ankus")));
+        Assert.IsFalse(Directory.Exists(Path.Join(directory, "bin", "ankus")));
         guard.Remove();
         definition.Save(project);
         string output = CreateDirectory();
         ProcessResult published = await InvokeAsync(["publish", .. options, "--output", output], token);
         Assert.AreEqual(0, published.ExitCode, published.StandardOutput + published.StandardError);
         PublishedExtension manifest = PublishedExtension.Read(output);
-        IReadOnlyDictionary<string, string> control = ExtensionControlFile.Read(Path.Combine(output, "extension", manifest.Control));
+        IReadOnlyDictionary<string, string> control = ExtensionControlFile.Read(Path.Join(output, "extension", manifest.Control));
         foreach ((string property, string value) in expected.Where(static item => item.Key != "extname"))
         {
             Assert.AreEqual(value, control[property], property);
@@ -119,13 +119,13 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
         string project = await CreateControlProjectAsync(directory, token, "ankus_query_edits");
-        string authored = Path.Combine(directory, "author settings.control");
+        string authored = Path.Join(directory, "author settings.control");
         await File.WriteAllTextAsync(authored, "comment='first'", token);
         string[] options = ["--home", s_home, "--pg", MajorText(), "--project", project];
         ProcessResult original = await InvokeAsync(["get", "relocatable", .. options], token);
         Assert.AreEqual(0, original.ExitCode, original.StandardError);
         Assert.AreEqual("true" + Environment.NewLine, original.StandardOutput);
-        string source = Path.Combine(directory, "Functions.cs");
+        string source = Path.Join(directory, "Functions.cs");
         string text = await File.ReadAllTextAsync(source, token);
         await File.WriteAllTextAsync(source, text.Replace("public static class Functions", "[PgSchema(\"query_fixed\")]\npublic static class Functions", StringComparison.Ordinal), token);
         ProcessResult changed = await InvokeAsync(["get", "relocatable", .. options], token);
@@ -159,30 +159,30 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string projectDirectory = Directory.CreateDirectory(Path.Combine(directory, "src")).FullName;
+        string projectDirectory = Directory.CreateDirectory(Path.Join(directory, "src")).FullName;
         string project = await CreateControlProjectAsync(projectDirectory, token);
         XDocument definition = XDocument.Load(project);
         definition.Descendants("AnkusExtensionName").Remove();
         definition.Root!.Add(new XElement("PropertyGroup", new XElement("AssemblyName", "Query.Identity.With.Dots")));
         definition.Save(project);
-        await File.WriteAllTextAsync(Path.Combine(projectDirectory, "Functions.cs"), "invalid C# source", token);
-        string home = Path.Combine(directory, "unregistered");
+        await File.WriteAllTextAsync(Path.Join(projectDirectory, "Functions.cs"), "invalid C# source", token);
+        string home = Path.Join(directory, "unregistered");
         ProcessResult explicitProject = await InvokeAsync(["get", "extname", "--project", project, "--home", home], token);
         Assert.AreEqual(0, explicitProject.ExitCode, explicitProject.StandardError);
         Assert.AreEqual("query_identity_with_dots" + Environment.NewLine, explicitProject.StandardOutput);
         Assert.IsEmpty(explicitProject.StandardError);
         new XDocument(new XElement("Solution", new XElement("Project", new XAttribute("Path", "src/ControlProbe.csproj"))))
-            .Save(Path.Combine(directory, "Query.slnx"));
+            .Save(Path.Join(directory, "Query.slnx"));
         ProcessResult solution = await PackageProcessRunner.RunAsync(s_tool, ["get", "extname", "--home", home],
             s_environment, token, workingDirectory: directory);
         Assert.AreEqual(0, solution.ExitCode, solution.StandardError);
         Assert.AreEqual(explicitProject.StandardOutput, solution.StandardOutput);
-        File.Copy(project, Path.Combine(projectDirectory, "Other.csproj"));
+        File.Copy(project, Path.Join(projectDirectory, "Other.csproj"));
         ProcessResult ambiguous = await InvokeAsync(["get", "extname", "--project", projectDirectory, "--home", home], token);
         Assert.AreNotEqual(0, ambiguous.ExitCode);
         Assert.IsEmpty(ambiguous.StandardOutput);
         Assert.Contains("Specify --project", ambiguous.StandardError);
-        Assert.IsFalse(Directory.Exists(Path.Combine(projectDirectory, "obj")));
+        Assert.IsFalse(Directory.Exists(Path.Join(projectDirectory, "obj")));
         Assert.IsFalse(Directory.Exists(home));
     }
 
@@ -194,9 +194,9 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "Query.csproj");
+        string project = Path.Join(directory, "Query.csproj");
         await File.WriteAllTextAsync(project, "<Project />", token);
-        string[] query = ["get", "git_hash", "--project", project, "--home", Path.Combine(directory, "no registration")];
+        string[] query = ["get", "git_hash", "--project", project, "--home", Path.Join(directory, "no registration")];
         try
         {
             ProcessResult missingGit = await PackageProcessRunner.RunAsync("git", ["-C", directory, "rev-parse", "--verify", "HEAD"], s_environment, token);
@@ -228,7 +228,7 @@ public sealed partial class ToolCommandTests
                 previous = actual.StandardOutput;
             }
 
-            Assert.IsFalse(Directory.Exists(Path.Combine(directory, "obj")));
+            Assert.IsFalse(Directory.Exists(Path.Join(directory, "obj")));
         }
         finally
         {
@@ -258,7 +258,7 @@ public sealed partial class ToolCommandTests
         string directory = CreateDirectory();
         PublishedExtension original = PublishedExtension.Read(s_published);
         original.Write(directory);
-        string control = Path.Combine(Directory.CreateDirectory(Path.Combine(directory, "extension")).FullName, original.Control);
+        string control = Path.Join(Directory.CreateDirectory(Path.Join(directory, "extension")).FullName, original.Control);
         await File.WriteAllTextAsync(control, "comment='retained'", token);
         List<string> arguments = ["get", failure == "git_hash" ? "git_hash" : "comment", "--from", directory];
         switch (failure)
@@ -272,7 +272,7 @@ public sealed partial class ToolCommandTests
                 arguments.AddRange(["--pg", MajorText()]);
                 break;
             case "manifest":
-                await File.WriteAllTextAsync(Path.Combine(directory, PublishedExtension.FileName), "invalid manifest", token);
+                await File.WriteAllTextAsync(Path.Join(directory, PublishedExtension.FileName), "invalid manifest", token);
                 break;
             case "control":
                 await File.WriteAllTextAsync(control, "comment='unterminated", token);

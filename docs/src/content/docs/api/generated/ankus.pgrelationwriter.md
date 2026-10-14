@@ -18,14 +18,14 @@ public sealed class PgRelationWriter : IDisposable
 
 <p>
 A writer locks the table in <code>ROW EXCLUSIVE</code> mode and keeps its executor state for the rest of the transaction
-or until it is disposed. Dispose it before the transaction commits: its <code>AFTER</code> triggers run then, and a
-transaction that commits with a writer still open fails. Rows use the table's own columns, from
-[Descriptor](/api/ankus.pgrelationwriter/#member-73d13a827c335765).
+or until it is disposed. Dispose it before the transaction commits; a transaction that commits with a writer still
+open fails. Rows use the table's own columns, from [Descriptor](/api/ankus.pgrelationwriter/#member-73d13a827c335765).
 </p>
 <p>
 Updates, deletes and lookups find a row by the table's replica identity index, or else its primary key, using the
 key's columns; a table with neither matches every column. The row found is locked until the transaction ends.
-Triggers fire as <code>session_replication_role</code> selects. Each operation needs the matching table privilege, and,
+Triggers fire as <code>session_replication_role</code> selects; a change's <code>AFTER</code> triggers fire when it completes, as
+the apply worker fires them. Each operation needs the matching table privilege, and,
 as for the built-in apply worker, a table whose row-level security applies to the user is refused, because these
 helpers do not apply policies. Each change is visible to the next. Only ordinary tables can be written.
 </p>
@@ -117,8 +117,7 @@ Exceptions:
 
 ### Dispose()
 
-Runs the table's queued <code>AFTER</code> triggers and closes the writer. The table stays locked until the
-transaction ends.
+Closes the writer and releases its executor state. The table stays locked until the transaction ends.
 
 ```csharp
 public void Dispose()

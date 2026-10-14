@@ -293,11 +293,13 @@ internal sealed class DatumTypeDeclaration(INamedTypeSymbol type, INamedTypeSymb
 
         foreach (AttributeData attribute in attributes)
         {
-            if (attribute.AttributeClass?.ToDisplayString() == "Ankus.PgSqlTypeProviderAttribute" &&
-                attribute.ConstructorArguments.Length == 2 && attribute.ConstructorArguments[1].Value is ITypeSymbol supplied)
+            if (!(attribute.AttributeClass?.ToDisplayString() == "Ankus.PgSqlTypeProviderAttribute" &&
+                attribute.ConstructorArguments.Length == 2 && attribute.ConstructorArguments[1].Value is ITypeSymbol supplied))
             {
-                Collect(supplied, DatumMappingDiagnostics.Argument(attribute, 1, context.CancellationToken));
+                continue;
             }
+
+            Collect(supplied, DatumMappingDiagnostics.Argument(attribute, 1, context.CancellationToken));
         }
 
         bool valid = true;
@@ -349,16 +351,13 @@ internal sealed class DatumTypeDeclaration(INamedTypeSymbol type, INamedTypeSymb
             }
         }
 
-        foreach (INamedTypeSymbol requested in requestedRanges)
+        foreach (INamedTypeSymbol requested in requestedRanges.Where(requested => !invalidRangeBounds.Contains(RangeTypeDeclaration.Bound(requested)!) &&
+                !declarations.Any(item => SymbolEqualityComparer.Default.Equals(item.Type, requested))))
         {
-            if (!invalidRangeBounds.Contains(RangeTypeDeclaration.Bound(requested)!) &&
-                !declarations.Any(item => SymbolEqualityComparer.Default.Equals(item.Type, requested)))
-            {
-                usages.TryGetValue(requested, out Location? usage);
-                context.Report(RangeMappingDiagnostics.MissingSelection, usage ??
-                    RangeTypeDeclaration.Bound(requested)!.Locations.FirstOrDefault(static item => item.IsInSource), requested.ToDisplayString());
-                valid = false;
-            }
+            usages.TryGetValue(requested, out Location? usage);
+            context.Report(RangeMappingDiagnostics.MissingSelection, usage ??
+                RangeTypeDeclaration.Bound(requested)!.Locations.FirstOrDefault(static item => item.IsInSource), requested.ToDisplayString());
+            valid = false;
         }
 
         foreach (IMethodSymbol method in signatures)

@@ -16,7 +16,7 @@ public sealed class PostgresDistributionClientTests(TestContext context)
     private static readonly TimeSpan[] s_firstTwoWaits = [TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2)];
     private static readonly TimeSpan[] s_allWaits = [TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4)];
 
-    private readonly string _root = Path.Combine(Path.GetTempPath(), "ankus-download-test-" + Guid.NewGuid().ToString("N"));
+    private readonly string _root = Path.Join(Path.GetTempPath(), "ankus-download-test-" + Guid.NewGuid().ToString("N"));
 
     /// <summary>
     /// Removes only this test's files, including after a failed assertion.
@@ -114,9 +114,9 @@ public sealed class PostgresDistributionClientTests(TestContext context)
         byte[] archive = Archive(zip, root + "/bin/probe", payload);
         using var handler = new DistributionHandler(archive);
         using var client = new HttpClient(handler);
-        string destination = Path.Combine(_root, "installed");
+        string destination = Path.Join(_root, "installed");
         await new PostgresDistributionClient(client).DownloadAsync(Version(), destination, zip, context.CancellationToken);
-        Assert.AreSequenceEqual(payload, await File.ReadAllBytesAsync(Path.Combine(destination, "bin", "probe"), context.CancellationToken));
+        Assert.AreSequenceEqual(payload, await File.ReadAllBytesAsync(Path.Join(destination, "bin", "probe"), context.CancellationToken));
         Assert.AreEqual(destination, Assert.ContainsSingle(Directory.GetFileSystemEntries(_root)));
         Assert.HasCount(zip ? 1 : 2, handler.Requests);
         Assert.AreEqual(zip ? "https://get.enterprisedb.com/postgresql/postgresql-18.6-1-windows-x64-binaries.zip"
@@ -147,7 +147,7 @@ public sealed class PostgresDistributionClientTests(TestContext context)
         using var handler = new DistributionHandler(Archive(zip, root + "/" + suffix, [1]));
         using var client = new HttpClient(handler);
         await Assert.ThrowsExactlyAsync<InvalidDataException>(() => new PostgresDistributionClient(client)
-            .DownloadAsync(Version(), Path.Combine(_root, "installed"), zip, context.CancellationToken));
+            .DownloadAsync(Version(), Path.Join(_root, "installed"), zip, context.CancellationToken));
         Assert.IsEmpty(Directory.GetFileSystemEntries(_root));
     }
 
@@ -163,7 +163,7 @@ public sealed class PostgresDistributionClientTests(TestContext context)
         using var handler = new DistributionHandler(Archive(zip, (zip ? "pgsql" : "postgresql-18.6") + "/link", [], link: true));
         using var client = new HttpClient(handler);
         await Assert.ThrowsExactlyAsync<InvalidDataException>(() => new PostgresDistributionClient(client)
-            .DownloadAsync(Version(), Path.Combine(_root, "installed"), zip, context.CancellationToken));
+            .DownloadAsync(Version(), Path.Join(_root, "installed"), zip, context.CancellationToken));
         Assert.IsEmpty(Directory.GetFileSystemEntries(_root));
     }
 
@@ -180,7 +180,7 @@ public sealed class PostgresDistributionClientTests(TestContext context)
         using var handler = new DistributionHandler(Archive(false, "postgresql-18.6/file", [1]), checksum: checksum);
         using var client = new HttpClient(handler);
         await Assert.ThrowsExactlyAsync<InvalidDataException>(() => new PostgresDistributionClient(client)
-            .DownloadAsync(Version(), Path.Combine(_root, "installed"), false, context.CancellationToken));
+            .DownloadAsync(Version(), Path.Join(_root, "installed"), false, context.CancellationToken));
         Assert.IsEmpty(Directory.GetFileSystemEntries(_root));
     }
 
@@ -193,7 +193,7 @@ public sealed class PostgresDistributionClientTests(TestContext context)
         using var handler = new DistributionHandler([], status: HttpStatusCode.NotFound);
         using var client = new HttpClient(handler);
         var distributions = new PostgresDistributionClient(client);
-        string destination = Path.Combine(_root, "installed");
+        string destination = Path.Join(_root, "installed");
         await Assert.ThrowsExactlyAsync<HttpRequestException>(() => distributions.DownloadAsync(Version(), destination, false, context.CancellationToken));
         Assert.IsEmpty(Directory.GetFileSystemEntries(_root));
         using var canceled = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
@@ -212,7 +212,7 @@ public sealed class PostgresDistributionClientTests(TestContext context)
         using var client = new HttpClient(handler);
         var version = new PostgresVersion(19, 0, PostgresReleaseStage.Beta, 4);
         InvalidOperationException error = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
-            new PostgresDistributionClient(client).DownloadAsync(version, Path.Combine(_root, "installed"), true, context.CancellationToken));
+            new PostgresDistributionClient(client).DownloadAsync(version, Path.Join(_root, "installed"), true, context.CancellationToken));
         Assert.Contains("PostgreSQL 19beta4", error.Message);
         Assert.Contains("ankus init --pg19", error.Message);
         Assert.AreEqual("https://get.enterprisedb.com/postgresql/postgresql-19beta4-1-windows-x64-binaries.zip",
@@ -226,9 +226,9 @@ public sealed class PostgresDistributionClientTests(TestContext context)
     [TestMethod]
     public async Task PreservesExistingDestination()
     {
-        string destination = Path.Combine(_root, "installed");
+        string destination = Path.Join(_root, "installed");
         Directory.CreateDirectory(destination);
-        string existing = Path.Combine(destination, "keep");
+        string existing = Path.Join(destination, "keep");
         await File.WriteAllTextAsync(existing, "user data", context.CancellationToken);
         using var handler = new DistributionHandler([]);
         using var client = new HttpClient(handler);
@@ -261,7 +261,7 @@ public sealed class PostgresDistributionClientTests(TestContext context)
 
         using var handler = new DistributionHandler(archive);
         using var client = new HttpClient(handler);
-        Task Download() => new PostgresDistributionClient(client).DownloadAsync(Version(), Path.Combine(_root, "installed"),
+        Task Download() => new PostgresDistributionClient(client).DownloadAsync(Version(), Path.Join(_root, "installed"),
             zip, context.CancellationToken);
         if (failure == "duplicate")
         {
@@ -342,13 +342,13 @@ public sealed class PostgresDistributionClientTests(TestContext context)
         using var client = new HttpClient(handler);
         var waits = new List<TimeSpan>();
         var warnings = new List<string>();
-        string destination = Path.Combine(_root, "installed");
+        string destination = Path.Join(_root, "installed");
         await new PostgresDistributionClient(client, (wait, _) =>
         {
             waits.Add(wait);
             return Task.CompletedTask;
         }).DownloadAsync(Version(), destination, false, context.CancellationToken, new SynchronousProgress(warnings));
-        Assert.AreEqual("ready", await File.ReadAllTextAsync(Path.Combine(destination, "README"), context.CancellationToken));
+        Assert.AreEqual("ready", await File.ReadAllTextAsync(Path.Join(destination, "README"), context.CancellationToken));
         Assert.AreSequenceEqual(s_firstTwoWaits, waits);
         Assert.HasCount(2, warnings);
         Assert.StartsWith("Warning: PostgreSQL 18.6 download attempt 1/4 failed; retrying in 1s: ", warnings[0]);
@@ -362,10 +362,10 @@ public sealed class PostgresDistributionClientTests(TestContext context)
         {
             waits.Add(wait);
             return Task.CompletedTask;
-        }).DownloadAsync(Version(), Path.Combine(_root, "never"), false, context.CancellationToken));
+        }).DownloadAsync(Version(), Path.Join(_root, "never"), false, context.CancellationToken));
         Assert.AreSequenceEqual(s_allWaits, waits);
         Assert.AreEqual(PostgresDistributionClient.DownloadAttempts, broken.ArchiveRequests);
-        Assert.IsFalse(Path.Exists(Path.Combine(_root, "never")));
+        Assert.IsFalse(Path.Exists(Path.Join(_root, "never")));
     }
 
     /// <summary>
@@ -388,15 +388,17 @@ public sealed class PostgresDistributionClientTests(TestContext context)
         {
             if (request.RequestUri!.AbsoluteUri.EndsWith(".tar.gz", StringComparison.Ordinal) && ArchiveRequests++ < failures)
             {
-                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)
-                {
-                    Content = new StringContent("upstream busy\nretry later"),
-                });
+                return Task.FromResult(Respond(HttpStatusCode.ServiceUnavailable, new StringContent("upstream busy\nretry later")));
             }
 
             return base.SendAsync(request, cancellationToken);
         }
     }
+
+    /// <summary>
+    /// Creates a response that the client receiving it disposes.
+    /// </summary>
+    private static HttpResponseMessage Respond(HttpStatusCode status, HttpContent content) => new(status) { Content = content };
 
     private sealed class SynchronousProgress(List<string> messages) : IProgress<string>
     {
@@ -417,7 +419,7 @@ public sealed class PostgresDistributionClientTests(TestContext context)
                 : uri.EndsWith(".sha256", StringComparison.Ordinal)
                     ? Encoding.UTF8.GetBytes(checksum ?? Convert.ToHexStringLower(SHA256.HashData(archive)) + "  postgresql-18.6.tar.gz\n")
                     : archive;
-            return Task.FromResult(new HttpResponseMessage(status) { Content = new ByteArrayContent(content) });
+            return Task.FromResult(Respond(status, new ByteArrayContent(content)));
         }
     }
 }

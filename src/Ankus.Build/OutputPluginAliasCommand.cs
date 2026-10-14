@@ -56,7 +56,7 @@ internal static partial class OutputPluginAliasCommand
         }
 
         // The list is always rewritten, so a later publish without aliases does not keep listing old modules.
-        await File.WriteAllLinesAsync(Path.Combine(artifacts, "plugin-libraries.txt"), modules, cancellationToken);
+        await File.WriteAllLinesAsync(Path.Join(artifacts, "plugin-libraries.txt"), modules, cancellationToken);
         if (aliases.Length == 0)
         {
             return;
@@ -68,10 +68,10 @@ internal static partial class OutputPluginAliasCommand
             : await PostgresInstallation.CreateAsync(arguments[4], cancellationToken: cancellationToken);
         for (int index = 0; index < aliases.Length; index++)
         {
-            string source = Path.Combine(artifacts, "plugin-" + aliases[index] + ".c");
+            string source = Path.Join(artifacts, "plugin-" + aliases[index] + ".c");
             await File.WriteAllTextAsync(source, Source(target), cancellationToken);
             (string compiler, List<string> compilerArguments) = await GetCompilerAsync(installation, arguments[5], arguments[6], arguments[7],
-                source, Path.Combine(output, modules[index]), Path.Combine(artifacts, "plugin-" + aliases[index]), cancellationToken);
+                source, Path.Join(output, modules[index]), Path.Join(artifacts, "plugin-" + aliases[index]), cancellationToken);
             await RunAsync(compiler, compilerArguments, cancellationToken);
             Console.WriteLine($"Ankus: built output plugin alias {modules[index]} for {library}.");
         }
@@ -113,21 +113,21 @@ internal static partial class OutputPluginAliasCommand
             arguments.AddRange(["/nologo", "/std:c11", "/O2", "/MT", "/WX", "/utf-8", "/LD", $"/Fo{intermediate}.obj", $"/Fe{module}"]);
             arguments.Add($"/I{installation.ServerIncludeDirectory}");
             arguments.Add($"/I{installation.IncludeDirectory}");
-            arguments.Add($"/I{Path.Combine(installation.ServerIncludeDirectory, "port", "win32")}");
-            arguments.Add($"/I{Path.Combine(installation.ServerIncludeDirectory, "port", "win32_msvc")}");
+            arguments.Add($"/I{Path.Join(installation.ServerIncludeDirectory, "port", "win32")}");
+            arguments.Add($"/I{Path.Join(installation.ServerIncludeDirectory, "port", "win32_msvc")}");
             foreach (string directory in WindowsToolchain.GetIncludeDirectories(libraryDirectories))
             {
                 arguments.Add($"/I{directory}");
             }
 
             string postgres = installation.TargetInfo?.MapPath(installation.LibraryDirectory) ?? installation.LibraryDirectory;
-            arguments.AddRange([source, "/link", "/NOIMPLIB", "/NOEXP", Path.Combine(postgres, "postgres.lib")]);
+            arguments.AddRange([source, "/link", "/NOIMPLIB", "/NOEXP", Path.Join(postgres, "postgres.lib")]);
             foreach (string directory in libraryDirectories.Split(';', StringSplitOptions.RemoveEmptyEntries))
             {
                 arguments.Add($"/LIBPATH:{directory.Trim()}");
             }
 
-            return (Path.Combine(Path.GetDirectoryName(linker) ?? string.Empty, "cl.exe"), arguments);
+            return (Path.Join(Path.GetDirectoryName(linker) ?? string.Empty, "cl.exe"), arguments);
         }
 
         arguments.AddRange(await installation.GetPreprocessorArgumentsAsync(cancellationToken));

@@ -117,6 +117,24 @@ internal static class SerializationEmitter
             source.AppendLine("            bool seen" + index + " = false;");
         }
 
+        EmitMemberSwitch(node, source);
+        for (int index = 0; index < node.Members.Count; index++)
+        {
+            SerializationModel.Member member = node.Members[index];
+            if (member.Required || !model.Nodes[member.Value].CanBeNull)
+            {
+                source.AppendLine("            if (!seen" + index + ") throw new global::System.FormatException(" + Literal("Missing required member: " + member.SerializedName) + ");");
+            }
+        }
+
+        EmitConstruction(node, source);
+    }
+
+    /// <summary>
+    /// Reads each property into its member's slot, rejecting a repeated member and skipping unknown ones.
+    /// </summary>
+    private static void EmitMemberSwitch(SerializationModel.Node node, StringBuilder source)
+    {
         source.AppendLine("            string? key;");
         source.AppendLine("            while ((key = reader.ReadPropertyName()) is not null)");
         source.AppendLine("            {");
@@ -135,15 +153,13 @@ internal static class SerializationEmitter
         source.AppendLine("                    default: reader.Skip(); break;");
         source.AppendLine("                }");
         source.AppendLine("            }");
-        for (int index = 0; index < node.Members.Count; index++)
-        {
-            SerializationModel.Member member = node.Members[index];
-            if (member.Required || !model.Nodes[member.Value].CanBeNull)
-            {
-                source.AppendLine("            if (!seen" + index + ") throw new global::System.FormatException(" + Literal("Missing required member: " + member.SerializedName) + ");");
-            }
-        }
+    }
 
+    /// <summary>
+    /// Calls the selected constructor once and sets the remaining writable members.
+    /// </summary>
+    private static void EmitConstruction(SerializationModel.Node node, StringBuilder source)
+    {
         source.AppendLine("            return new " + node.ConstructionType + "(" +
             string.Join(", ", node.ConstructorMembers.Select(static index => "value" + index)) + ")");
         source.AppendLine("            {");

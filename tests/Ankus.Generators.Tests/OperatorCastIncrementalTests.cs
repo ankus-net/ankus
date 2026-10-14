@@ -392,7 +392,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(99, error.Location.GetMappedLineSpan().StartLinePosition.Line);
         CSharpCompilation repaired = edited.ReplaceSyntaxTree(moved, CSharpSyntaxTree.ParseText(
             AliasCacheSource(kind is "context" or "modifier" or "same type"), path: "Repaired.cs", cancellationToken: context.CancellationToken));
-        driver = RunModule(driver, repaired, out Compilation output);
+        _ = RunModule(driver, repaired, out Compilation output);
         Assert.Contains("Repaired.cs:", ManifestValue(output, "Ankus.Sql"));
         Assert.Contains(kind is "context" or "modifier" or "same type" ? "CREATE CAST (integer AS bigint)" : "CREATE OPERATOR @+", InstallationBody(output));
     }

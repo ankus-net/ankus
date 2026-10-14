@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Text;
 
 namespace Ankus.IntegrationTests;
 
@@ -33,12 +35,11 @@ internal sealed class RetryPortCollisionTestMethodAttribute(
     public override async Task<TestResult[]> ExecuteAsync(ITestMethod testMethod)
     {
         TestResult[] results = await base.ExecuteAsync(testMethod).ConfigureAwait(false);
-        string superseded = string.Empty;
+        var superseded = new StringBuilder();
         for (int attempt = 2; attempt <= MaximumAttempts && IsPortCollision(results); attempt++)
         {
-            superseded += $"Attempt {attempt - 1} lost its PostgreSQL port to another process and was rerun:{Environment.NewLine}" +
-                string.Join(Environment.NewLine, results.Select(static result => result.TestFailureException?.Message)) +
-                Environment.NewLine;
+            superseded.AppendLine(CultureInfo.InvariantCulture, $"Attempt {attempt - 1} lost its PostgreSQL port to another process and was rerun:")
+                .AppendJoin(Environment.NewLine, results.Select(static result => result.TestFailureException?.Message)).AppendLine();
             results = await base.ExecuteAsync(testMethod).ConfigureAwait(false);
         }
 

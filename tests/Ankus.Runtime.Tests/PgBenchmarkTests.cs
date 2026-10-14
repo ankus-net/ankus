@@ -105,6 +105,7 @@ public sealed class PgBenchmarkTests
             long minimum = Math.Max(1, System.Diagnostics.Stopwatch.Frequency / 1_000);
             while (System.Diagnostics.Stopwatch.GetTimestamp() - started < minimum)
             {
+                // Spin until the work has taken a measurable millisecond.
             }
 
             setupElapsed = System.Diagnostics.Stopwatch.GetTimestamp() - started;
@@ -137,6 +138,7 @@ public sealed class PgBenchmarkTests
             long minimum = Math.Max(1, System.Diagnostics.Stopwatch.Frequency / 1_000);
             while (System.Diagnostics.Stopwatch.GetTimestamp() - started < minimum)
             {
+                // Spin until the work has taken a measurable millisecond.
             }
 
             boundaryElapsed = System.Diagnostics.Stopwatch.GetTimestamp() - started;
@@ -273,7 +275,7 @@ public sealed class PgBenchmarkTests
     public void EstimatorsMatchCriterionArithmetic()
     {
         PgBenchmarkRunner.Sample[] samples = [.. Enumerable.Range(1, 10)
-            .Select(static value => new PgBenchmarkRunner.Sample(value - 1, value, value * value))];
+            .Select(static value => new PgBenchmarkRunner.Sample(value - 1, value, (double)value * value))];
         var configuration = new PgBenchmarkConfiguration(10, 1, 1, 100, 0.01, 0.05);
 
         PgBenchmarkRunner.Estimate[] linear = PgBenchmarkRunner.EstimateSamples(
@@ -565,11 +567,9 @@ public sealed class PgBenchmarkTests
             new(9, 1, 1, 100, 0.01, 0.05),
             new(10, 1, 0, 100, 0.01, 0.05),
         ];
-        foreach (PgBenchmarkConfiguration configuration in invalidConfigurations)
+        foreach (PgBenchmarkDefinition definition in invalidConfigurations.Select(static configuration => new PgBenchmarkDefinition("benches",
+            "Extension.Benchmarks.Invalid()", "ankus_bench_invalid", null, PgBenchmarkTransactionMode.Shared, "Benchmarks.cs", 31, configuration)))
         {
-            var definition = new PgBenchmarkDefinition("benches", "Extension.Benchmarks.Invalid()",
-                "ankus_bench_invalid", null, PgBenchmarkTransactionMode.Shared,
-                "Benchmarks.cs", 31, configuration);
             bool invoked = false;
 
             PgJsonb result = PgBenchmarkRunner.Run(definition, null, bencher =>
@@ -621,7 +621,7 @@ public sealed class PgBenchmarkTests
             {
                 PgBenchmarkRunner.Sample selected = samples[random.Next(samples.Length)];
                 products += selected.Iterations * selected.ElapsedNanoseconds;
-                squares += selected.Iterations * selected.Iterations;
+                squares += (double)selected.Iterations * selected.Iterations;
             }
 
             distribution[bootstrap] = products / squares;

@@ -51,13 +51,13 @@ internal static class NativeTargetCommand
         string directory = Directory.CreateTempSubdirectory("ankus-target-export-").FullName;
         try
         {
-            string bindings = Path.Combine(directory, "bindings");
+            string bindings = Path.Join(directory, "bindings");
             await NativeBindingSourceCommand.RunAsync([arguments[0], installation.PgConfigPath, bindings, arguments[3], arguments[4],
                 runtime, arguments[6], arguments[7], arguments[8], arguments[9]], cancellationToken);
             IReadOnlyList<string> headers = OperatingSystem.IsWindows() ? []
                 : await ReadDependenciesAsync(installation, arguments, runtime, directory, cancellationToken);
             await PostgresTargetInfo.CreateArchiveAsync(installation, runtime, arguments[6], Version,
-                NativeBindingSourceCache.Artifacts.ToDictionary(static name => name, name => Path.Combine(bindings, name)),
+                NativeBindingSourceCache.Artifacts.ToDictionary(static name => name, name => Path.Join(bindings, name)),
                 headers, arguments[2], cancellationToken);
             Console.WriteLine($"Target information: PostgreSQL {installation.Version} on {runtime} written to {Path.GetFullPath(arguments[2])}.");
         }
@@ -99,7 +99,7 @@ internal static class NativeTargetCommand
         foreach (string name in NativeBindingSourceCache.Artifacts)
         {
             string source = target.GetBindingPath(name);
-            string destination = Path.Combine(output, name);
+            string destination = Path.Join(output, name);
             if (!File.Exists(destination) || await NativeBindingCache.HashAsync(destination, cancellationToken) !=
                 await NativeBindingCache.HashAsync(source, cancellationToken))
             {
@@ -119,7 +119,7 @@ internal static class NativeTargetCommand
         string compiler = NativeBindingRecordCommand.FindCompiler(arguments[7].Length != 0 ? arguments[7] : "clang");
         List<string> options = await NativeBindingHeaderCommand.CreateArgumentsAsync(installation,
             ["", arguments[0], installation.PgConfigPath, directory, compiler, arguments[4], runtime, arguments[6]], cancellationToken);
-        string input = Path.Combine(directory, "native-target-input.c");
+        string input = Path.Join(directory, "native-target-input.c");
         await File.WriteAllTextAsync(input, NativeBindingResources.ReadManifest(installation.Version.Major), cancellationToken);
         string rule = await NativeBindingLayoutCommand.RunProcessAsync(compiler, [.. options, "-M", input], directory, cancellationToken);
         return [.. ParseDependencies(rule).Skip(1).Where(static path => Path.IsPathFullyQualified(path)).Select(Path.GetFullPath)];

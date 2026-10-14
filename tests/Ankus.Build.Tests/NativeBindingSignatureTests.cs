@@ -99,7 +99,7 @@ public sealed partial class NativeBindingNativeTests
     public async Task NativeCallContractsRejectChangedIdentity(string mutation, string reason)
     {
         const string Headers = "typedef int Number; struct Entry { int value; }; extern int native_value(Number value, struct Entry *entry); extern int native_empty(void);";
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-signature-identity-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-signature-identity-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
@@ -217,7 +217,7 @@ public sealed partial class NativeBindingNativeTests
     public async Task NativeCallContractsRejectSameSizeTypeChanges(string replacement)
     {
         const string Headers = "extern int native_value(int value);";
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-signature-value-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-signature-value-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
@@ -266,7 +266,7 @@ public sealed partial class NativeBindingNativeTests
     public async Task NativeCallContractsRejectDifferentParameterTypes(string declarations, string left, string right, string reason)
     {
         string headers = declarations + $"\nextern void native_value({left});\nextern void native_other({right});";
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-signature-parameter-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-signature-parameter-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
@@ -306,7 +306,7 @@ public sealed partial class NativeBindingNativeTests
     public async Task NativeCallContractsValidateWrittenAndCanonicalTypes(bool canonical)
     {
         const string Headers = "typedef const int Number; extern int native_value(Number value); extern float native_other(float value); extern void native_keep(Number value);";
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-signature-forms-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-signature-forms-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
@@ -356,7 +356,7 @@ public sealed partial class NativeBindingNativeTests
             extern First native_first(First value);
             extern Second native_second(Second value);
             """;
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-signature-anonymous-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-signature-anonymous-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
@@ -404,7 +404,7 @@ public sealed partial class NativeBindingNativeTests
     public async Task NativeCallContractsValidateUnselectedSymbols(bool empty, bool isFunction)
     {
         string headers = "extern int native_value(int value); extern float native_unused" + (isFunction ? "(float value);" : ";");
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-signature-unselected-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-signature-unselected-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {

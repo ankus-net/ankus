@@ -47,9 +47,8 @@ internal sealed class ExtensionManifest
         using var pe = new PEReader(stream);
         MetadataReader reader = pe.GetMetadataReader();
         var manifest = new ExtensionManifest();
-        foreach (CustomAttributeHandle handle in reader.GetAssemblyDefinition().GetCustomAttributes())
+        foreach (CustomAttribute attribute in reader.GetAssemblyDefinition().GetCustomAttributes().Select(handle => reader.GetCustomAttribute(handle)))
         {
-            CustomAttribute attribute = reader.GetCustomAttribute(handle);
             if (attribute.Constructor.Kind != HandleKind.MemberReference)
             {
                 continue;

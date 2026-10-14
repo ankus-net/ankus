@@ -31,7 +31,7 @@ public static class FunctionStateFunctions
 
         Counter state = call.GetOrCreateState(() => CreateCounter(call, failDispose));
         s_saved = call;
-        GC.Collect();
+        GarbageCollection.Collect();
         return $"{state.Next()}|{state.Text.Read<string?>() ?? "NULL"}";
     }
 
@@ -308,6 +308,7 @@ public static class FunctionStateFunctions
             }
             catch (InvalidOperationException)
             {
+                // Cleanup can neither create nor read function state.
             }
 
             if (failDispose)

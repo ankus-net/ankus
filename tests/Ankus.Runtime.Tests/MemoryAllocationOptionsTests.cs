@@ -431,7 +431,7 @@ public sealed unsafe class MemoryAllocationOptionsTests
     {
         using var fixture = new MemoryContextTestFixture();
         using MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter();
-        PgAllocation allocation = PgMemoryContext.Current.Allocate(17);
+        using PgAllocation allocation = PgMemoryContext.Current.Allocate(17);
         fixture.Requests.Clear();
         void* pointer = allocation.DangerousDetach();
         Assert.AreEqual(701, (nint)pointer);

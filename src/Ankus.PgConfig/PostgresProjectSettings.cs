@@ -342,12 +342,14 @@ public sealed class PostgresProjectSettings
         string[] removals = ["GlobalPropertiesToRemove", "UndefineProperties"];
         foreach (string metadata in removals)
         {
-            if (reference.TryGetProperty(metadata, out JsonElement names))
+            if (!(reference.TryGetProperty(metadata, out JsonElement names)))
             {
-                foreach (string name in names.GetString()!.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-                {
-                    properties.Remove(name);
-                }
+                continue;
+            }
+
+            foreach (string name in names.GetString()!.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                properties.Remove(name);
             }
         }
 

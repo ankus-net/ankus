@@ -92,9 +92,9 @@ internal static class AllocatorFixtureCompiler
     /// <param name="cancellationToken">Cancels the compiler process.</param>
     internal static async Task BuildAsync(PostgresInstallation installation, CancellationToken cancellationToken)
     {
-        string source = Path.Combine(IntegrationEnvironment.RepositoryRoot, "tests", "Ankus.IntegrationTests", "Native", "allocator_fixture.c");
+        string source = Path.Join(IntegrationEnvironment.RepositoryRoot, "tests", "Ankus.IntegrationTests", "Native", "allocator_fixture.c");
         await CompileModuleAsync(installation, source,
-            Path.Combine(IntegrationEnvironment.NativeOutputDirectory, ModuleFileName), cancellationToken);
+            Path.Join(IntegrationEnvironment.NativeOutputDirectory, ModuleFileName), cancellationToken);
     }
 
     /// <summary>
@@ -140,11 +140,11 @@ internal static class AllocatorFixtureCompiler
             arguments = ["/nologo", "/std:c11", "/LD", "/O2", "/MD", "/WX",
                 "/I" + installation.ServerIncludeDirectory,
                 "/I" + installation.IncludeDirectory,
-                "/I" + Path.Combine(installation.ServerIncludeDirectory, "port", "win32"),
-                "/I" + Path.Combine(installation.ServerIncludeDirectory, "port", "win32_msvc"),
+                "/I" + Path.Join(installation.ServerIncludeDirectory, "port", "win32"),
+                "/I" + Path.Join(installation.ServerIncludeDirectory, "port", "win32_msvc"),
                 "/Fo" + Path.ChangeExtension(outputPath, ".obj"), source, "/link",
                 "/OUT:" + outputPath,
-                Path.Combine(installation.LibraryDirectory, "postgres.lib")];
+                Path.Join(installation.LibraryDirectory, "postgres.lib")];
         }
         else
         {

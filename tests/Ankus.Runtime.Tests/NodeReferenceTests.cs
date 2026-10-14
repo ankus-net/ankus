@@ -343,12 +343,17 @@ public sealed unsafe partial class NodeReferenceTests
         [ThreadStatic]
         private static Contract? s_current;
 
+        /// <summary>
+        /// Makes <paramref name="current"/> the Contract this thread's native callbacks use, or restores the enclosing one.
+        /// </summary>
+        private static void Install(Contract? current) => s_current = current;
+
         private readonly Contract? _previous = s_current;
 
         /// <summary>
         /// Installs metadata without exposing shared state across parallel test threads.
         /// </summary>
-        internal Contract() => s_current = this;
+        internal Contract() => Install(this);
 
         /// <summary>
         /// Gets this thread's explicit test contract.
@@ -403,7 +408,7 @@ public sealed unsafe partial class NodeReferenceTests
         /// <summary>
         /// Restores the enclosing test contract.
         /// </summary>
-        public void Dispose() => s_current = _previous;
+        public void Dispose() => Install(_previous);
     }
 
     /// <summary>

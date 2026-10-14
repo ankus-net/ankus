@@ -158,7 +158,7 @@ public static class TransactionCallbackFunctions
             static () => s_events.Add("abort"));
         if (cancelSecond)
         {
-            s_preCommitSecond.Dispose();
+            Cancel(s_preCommitSecond);
         }
 
         return s_preCommitFirst.IsPending && s_preCommitSecond.IsPending == !cancelSecond &&
@@ -288,9 +288,7 @@ public static class TransactionCallbackFunctions
     [PgFunction]
     public static bool TransactionCallbackRootAlive()
     {
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
+        GarbageCollection.Collect();
         return s_root?.IsAlive == true;
     }
 

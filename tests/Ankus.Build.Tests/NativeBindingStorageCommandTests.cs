@@ -32,12 +32,12 @@ public sealed class NativeBindingStorageCommandTests(TestContext context)
     [DataRow("ExecutorRun;\n")]
     public async Task InvalidStorageSelectionsPreserveContract(string selection)
     {
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-storage-command-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-storage-command-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
-            string list = Path.Combine(directory, "symbols.txt");
-            string contract = Path.Combine(directory, "native-storage.json");
+            string list = Path.Join(directory, "symbols.txt");
+            string contract = Path.Join(directory, "native-storage.json");
             await File.WriteAllTextAsync(list, selection, context.CancellationToken);
             await File.WriteAllTextAsync(contract, "existing storage", context.CancellationToken);
             await Assert.ThrowsExactlyAsync<FormatException>(() => NativeBindingStorageCommand.RunAsync(

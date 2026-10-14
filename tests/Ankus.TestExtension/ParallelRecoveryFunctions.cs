@@ -67,81 +67,79 @@ public static unsafe class ParallelRecoveryFunctions
 
         var observations = new List<string>();
         int cleanupCount = 0;
-        using PgMemoryContext owner = PgMemoryContext.Create("parallel recovery cleanup", PgMemoryContext.Get(PgMemoryContextKind.Top));
-        using PgMemoryCallback cleanup = owner.RegisterResetCallback(() => cleanupCount++);
-        using PgAllocation allocation = owner.Allocate(8);
-        using SpiPreparedStatement retained = Spi.Prepare("SELECT 42");
         try
         {
-            owner.Run(() =>
+            try
             {
+                // The owner's reset runs and consumes this callback, after the statement and allocation are released.
+                using PgMemoryContext owner = PgMemoryContext.Create("parallel recovery cleanup", PgMemoryContext.Get(PgMemoryContextKind.Top));
+                _ = owner.RegisterResetCallback(() => cleanupCount++);
+                using PgAllocation allocation = owner.Allocate(8);
+                using SpiPreparedStatement retained = Spi.Prepare("SELECT 42");
+                owner.Run(() =>
+                {
+                    try
+                    {
+                        if (mode == 1)
+                        {
+                            fixed (byte* name = "ankus_missing_parallel_provider\0"u8)
+                            {
+                                _ = NativeMethods.GetCustomScanMethods((sbyte*)name, false);
+                            }
+                        }
+                        else
+                        {
+                            Spi.Connect(session => session.Query(mode == 0 ? "SELECT 1 / ($1::integer - $1)" :
+                                "SELECT datatype.parallel_detailed_error($1)", readOnly: true, limit: 1,
+                                SpiParameter.Create(value)));
+                        }
+
+                        throw new InvalidOperationException("The deliberate worker failure did not occur.");
+                    }
+                    catch (PgException error)
+                    {
+                        RecordError(observations, error);
+                    }
+                });
+
                 try
                 {
-                    if (mode == 1)
-                    {
-                        fixed (byte* name = "ankus_missing_parallel_provider\0"u8)
-                        {
-                            _ = NativeMethods.GetCustomScanMethods((sbyte*)name, false);
-                        }
-                    }
-                    else
-                    {
-                        Spi.Connect(session => session.Query(mode == 0 ? "SELECT 1 / ($1::integer - $1)" :
-                            "SELECT datatype.parallel_detailed_error($1)", readOnly: true, limit: 1,
-                            SpiParameter.Create(value)));
-                    }
-
-                    throw new InvalidOperationException("The deliberate worker failure did not occur.");
+                    observations.Add(Spi.Query("SELECT 42", readOnly: true, limit: 1)[0].Get<int>(0).ToString(CultureInfo.InvariantCulture));
+                    observations.AddRange(["<success>", "<success>", "<success>"]);
                 }
                 catch (PgException error)
                 {
                     RecordError(observations, error);
                 }
-            });
 
-            try
-            {
-                observations.Add(Spi.Query("SELECT 42", readOnly: true, limit: 1)[0].Get<int>(0).ToString(CultureInfo.InvariantCulture));
-                observations.AddRange(["<success>", "<success>", "<success>"]);
-            }
-            catch (PgException error)
-            {
-                RecordError(observations, error);
-            }
+                try
+                {
+                    observations.Add(NativeMethods.GetCurrentTransactionNestLevel().ToString(CultureInfo.InvariantCulture));
+                    observations.AddRange(["<success>", "<success>", "<success>"]);
+                }
+                catch (PgException error)
+                {
+                    RecordError(observations, error);
+                }
 
-            try
-            {
-                observations.Add(NativeMethods.GetCurrentTransactionNestLevel().ToString(CultureInfo.InvariantCulture));
-                observations.AddRange(["<success>", "<success>", "<success>"]);
-            }
-            catch (PgException error)
-            {
-                RecordError(observations, error);
-            }
+                if (replace)
+                {
+                    throw new PgException("P7801", "Managed replacement after parallel failure.");
+                }
 
-            if (replace)
-            {
-                throw new PgException("P7801", "Managed replacement after parallel failure.");
-            }
-
-            s_completed.Add(identity);
-            return value;
-        }
-        finally
-        {
-            try
-            {
-                retained.Dispose();
-                allocation.Dispose();
-                owner.Dispose();
-                observations.Add($"disposed:{cleanupCount}");
+                s_completed.Add(identity);
+                return value;
             }
             finally
             {
-                observations.Add("finally");
-                string path = System.IO.Path.Combine(directory, $"ankus-parallel-recovery-{identity}-{Environment.ProcessId}.done");
-                File.WriteAllLines(path, observations);
+                observations.Add($"disposed:{cleanupCount}");
             }
+        }
+        finally
+        {
+            observations.Add("finally");
+            string path = System.IO.Path.Join(directory, $"ankus-parallel-recovery-{identity}-{Environment.ProcessId}.done");
+            File.WriteAllLines(path, observations);
         }
     }
 

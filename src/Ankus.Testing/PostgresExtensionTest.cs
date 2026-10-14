@@ -226,16 +226,16 @@ public sealed class PostgresExtensionTest : IAsyncDisposable
         // must not replace its assemblies, symbols or incremental-clean inventory.
         // The SDK artifacts layout also separates every referenced project's outputs.
         string buildKey = PublicationBuildKey(properties);
-        string buildArtifacts = Path.Combine(root, "obj", "ankus-test-build");
-        string buildOutput = Path.Combine(buildArtifacts, "publish-cache", buildKey);
+        string buildArtifacts = Path.Join(root, "obj", "ankus-test-build");
+        string buildOutput = Path.Join(buildArtifacts, "publish-cache", buildKey);
         string invocation = Guid.NewGuid().ToString("N");
         string output = session is null
-            ? Path.Combine(root, "bin", "ankus-test-publish", invocation)
-            : Path.Combine(session, "publish", invocation);
-        string logs = Path.Combine(root, "bin", "ankus-test-logs");
+            ? Path.Join(root, "bin", "ankus-test-publish", invocation)
+            : Path.Join(session, "publish", invocation);
+        string logs = Path.Join(root, "bin", "ankus-test-logs");
         string dataDirectoryBase = session is null
-            ? Path.Combine(Path.GetFullPath(options.DataDirectoryBase ?? Path.GetTempPath()), "ankus-test-pgdata-" + invocation)
-            : Path.Combine(commandData!, invocation);
+            ? Path.Join(Path.GetFullPath(options.DataDirectoryBase ?? Path.GetTempPath()), "ankus-test-pgdata-" + invocation)
+            : Path.Join(commandData!, invocation);
         Directory.CreateDirectory(output);
         Directory.CreateDirectory(logs);
         PostgresServerAccount account = PostgresServerAccount.Create(TestCommandContext.RunAs);
@@ -245,8 +245,8 @@ public sealed class PostgresExtensionTest : IAsyncDisposable
         {
             await account.CreateDirectoryAsync(dataDirectoryBase, cancellationToken).ConfigureAwait(false);
             Directory.CreateDirectory(buildArtifacts);
-            await using (FileStream buildLock = await LockBuildAsync(
-                Path.Combine(buildArtifacts, "publish.lock"), cancellationToken).ConfigureAwait(false))
+            await using (await LockBuildAsync(
+                Path.Join(buildArtifacts, "publish.lock"), cancellationToken).ConfigureAwait(false))
             {
                 if (Directory.Exists(buildOutput))
                 {
@@ -257,13 +257,13 @@ public sealed class PostgresExtensionTest : IAsyncDisposable
                 await ProcessRunner.RunCheckedAsync("dotnet",
                     ["publish", projectPath, .. PropertyArguments(properties), "--artifacts-path", buildArtifacts,
                         "-o", buildOutput,
-                        "-bl:" + Path.Combine(logs, invocation + ".binlog")],
+                        "-bl:" + Path.Join(logs, invocation + ".binlog")],
                     new Dictionary<string, string?>(), cancellationToken, workingDirectory: root).ConfigureAwait(false);
                 CopyDirectory(buildOutput, output);
             }
 
             PublishedExtension manifest = PublishedExtension.Read(output);
-            ExtensionSchema schema = ExtensionSchema.Read(Path.Combine(output, manifest.Library));
+            ExtensionSchema schema = ExtensionSchema.Read(Path.Join(output, manifest.Library));
             if (manifest.PostgresMajor != installation.Version.Major || manifest.RuntimeIdentifier != RuntimeInformation.RuntimeIdentifier)
             {
                 throw new InvalidOperationException("The published extension does not match the selected PostgreSQL target.");
@@ -278,8 +278,8 @@ public sealed class PostgresExtensionTest : IAsyncDisposable
                 // Keep these paths short: PostgreSQL on Windows cannot open files beyond MAX_PATH. Another account owns
                 // the data directories, so its staging goes in the command session, which only ankus test --runas uses.
                 string scriptBase = account.Name is null
-                    ? Path.Combine(dataDirectoryBase, "share")
-                    : Path.Combine(session!, "share", invocation);
+                    ? Path.Join(dataDirectoryBase, "share")
+                    : Path.Join(session!, "share", invocation);
                 PostgresExtensionFiles.Stage(output, scriptBase);
                 string controlPath = scriptBase.Replace("\\", "/", StringComparison.Ordinal).Replace("'", "''", StringComparison.Ordinal);
                 configuration.Insert(0, $"extension_control_path = '{controlPath}{separator}$system'");
@@ -287,8 +287,8 @@ public sealed class PostgresExtensionTest : IAsyncDisposable
             else
             {
                 string stageRoot = session is null
-                    ? Path.Combine(Path.GetTempPath(), "ankus-test-postgresql-" + invocation)
-                    : Path.Combine(session, "postgresql", invocation);
+                    ? Path.Join(Path.GetTempPath(), "ankus-test-postgresql-" + invocation)
+                    : Path.Join(session, "postgresql", invocation);
                 stagedInstallation = await PostgresTestInstallation.StageAsync(installation, stageRoot, cancellationToken)
                     .ConfigureAwait(false);
                 stagedInstallation.InstallExtensionFiles(output);
@@ -401,12 +401,12 @@ public sealed class PostgresExtensionTest : IAsyncDisposable
     {
         foreach (string directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
         {
-            Directory.CreateDirectory(Path.Combine(destination, Path.GetRelativePath(source, directory)));
+            Directory.CreateDirectory(Path.Join(destination, Path.GetRelativePath(source, directory)));
         }
 
         foreach (string file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
         {
-            string destinationFile = Path.Combine(destination, Path.GetRelativePath(source, file));
+            string destinationFile = Path.Join(destination, Path.GetRelativePath(source, file));
             Directory.CreateDirectory(Path.GetDirectoryName(destinationFile)!);
             File.Copy(file, destinationFile, overwrite: true);
         }

@@ -60,7 +60,7 @@ public static class TransactionBoundaryFunctions
                 s_events.Add("pre-finally");
             }
         }));
-        PgTransactionCallback cancelled = PgTransaction.RegisterCallback(PgTransactionEvent.PrePrepare,
+        using PgTransactionCallback cancelled = PgTransaction.RegisterCallback(PgTransactionEvent.PrePrepare,
             static () => s_events.Add("cancelled-pre"));
         s_receipts.Add(cancelled);
         cancelled.Dispose();
@@ -183,9 +183,7 @@ public static class TransactionBoundaryFunctions
     /// </summary>
     private static bool ParallelRootAlive()
     {
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
+        GarbageCollection.Collect();
         return (s_parallelRoot ?? throw new InvalidOperationException("Missing parallel callback root.")).IsAlive;
     }
 

@@ -129,7 +129,7 @@ public static unsafe class AllocatorContextFunctions
     public static string AllocatorIndividualFree()
     {
         PgMemoryContext owner = Owner();
-        PgAllocation first = owner.Allocate(64);
+        using PgAllocation first = owner.Allocate(64);
         PgAllocation control = owner.Allocate(64);
         first.Write(731);
         control.Write(9123);

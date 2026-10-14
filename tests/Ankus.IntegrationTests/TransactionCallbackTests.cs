@@ -418,10 +418,20 @@ public sealed class TransactionCallbackTests(TestContext context)
             await ExecuteAsync(connection, transaction,
                 "SELECT datatype.transaction_callback_register_start_sql('SELECT pg_temp.subtransaction_probe()')", token);
             // Npgsql defers SaveAsync until the next command, so the savepoint is sent directly.
-            PostgresException error = await Assert.ThrowsExactlyAsync<PostgresException>(
+            NpgsqlException failure = await Assert.ThrowsAsync<NpgsqlException>(
                 () => ExecuteAsync(connection, transaction, "SAVEPOINT starting", token));
-            Assert.AreEqual("FATAL", error.InvariantSeverity);
-            Assert.StartsWith("BeginInternalSubTransaction: unexpected state", error.MessageText);
+            if (failure is PostgresException error)
+            {
+                Assert.AreEqual("FATAL", error.InvariantSeverity);
+                Assert.StartsWith("BeginInternalSubTransaction: unexpected state", error.MessageText);
+            }
+            else
+            {
+                // Windows can reset the connection before the client reads the FATAL, which the server log keeps.
+                Assert.IsTrue(OperatingSystem.IsWindows(), failure.ToString());
+                Assert.Contains("BeginInternalSubTransaction: unexpected state", PostgresFixture.Cluster.ReadServerLog());
+            }
+
             Assert.AreEqual(System.Data.ConnectionState.Closed, connection.State);
         }
 

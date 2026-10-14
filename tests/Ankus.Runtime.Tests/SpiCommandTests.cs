@@ -151,6 +151,7 @@ public sealed class SpiCommandTests
         Assert.ThrowsExactly<InvalidOperationException>(() => command.CommandText);
         Assert.ThrowsExactly<InvalidOperationException>(() => Spi.Execute(command));
         SpiParameter parameter = default;
+        // codeql[cs/call-to-object-tostring] Spi.Sql binds each interpolated value as a parameter; nothing is formatted as text.
         ArgumentException error = Assert.ThrowsExactly<ArgumentException>(() => Spi.Sql($"SELECT {parameter}"));
         Assert.AreEqual("value", error.ParamName);
     }

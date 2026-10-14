@@ -35,7 +35,7 @@ public sealed class NativeTargetCommandTests(TestContext context)
         string directory = Directory.CreateTempSubdirectory("ankus-target-import-").FullName;
         try
         {
-            string root = Path.Combine(directory, "target");
+            string root = Path.Join(directory, "target");
             Directory.CreateDirectory(root);
             var manifest = new JsonObject
             {
@@ -56,11 +56,11 @@ public sealed class NativeTargetCommandTests(TestContext context)
                 },
                 ["files"] = new JsonObject(),
             };
-            await File.WriteAllTextAsync(Path.Combine(root, PostgresTargetInfo.ManifestFileName), manifest.ToJsonString(), token);
-            await File.WriteAllTextAsync(Path.Combine(root, "postgres-major"), "18\n", token);
-            await File.WriteAllTextAsync(Path.Combine(root, "runtime-identifier"), "linux-x64\n", token);
+            await File.WriteAllTextAsync(Path.Join(root, PostgresTargetInfo.ManifestFileName), manifest.ToJsonString(), token);
+            await File.WriteAllTextAsync(Path.Join(root, "postgres-major"), "18\n", token);
+            await File.WriteAllTextAsync(Path.Join(root, "runtime-identifier"), "linux-x64\n", token);
             PostgresTargetInfo target = PostgresTargetInfo.Open(root);
-            string output = Path.Combine(directory, "output");
+            string output = Path.Join(directory, "output");
             InvalidOperationException major = await Assert.ThrowsExactlyAsync<InvalidOperationException>(
                 () => NativeTargetCommand.ImportAsync(target, 17, "linux-x64", output, token));
             Assert.Contains("describes PostgreSQL 18, but this build selects 17", major.Message);
@@ -79,6 +79,6 @@ public sealed class NativeTargetCommandTests(TestContext context)
     }
 
     private static string Rooted(params string[] segments)
-        => Path.Combine([OperatingSystem.IsWindows() ? @"C:\" : "/", .. segments]);
+        => Path.Join([OperatingSystem.IsWindows() ? @"C:\" : "/", .. segments]);
 
 }

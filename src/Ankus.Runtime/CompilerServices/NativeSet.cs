@@ -61,13 +61,9 @@ public static class NativeSet
         }
         catch
         {
-            try
+            using (arguments)
             {
                 iterator?.Dispose();
-            }
-            finally
-            {
-                arguments.Dispose();
             }
 
             throw;
@@ -171,13 +167,9 @@ public static class NativeSet
         /// </summary>
         public void Dispose()
         {
-            try
+            using (arguments)
             {
                 iterator.Dispose();
-            }
-            finally
-            {
-                arguments.Dispose();
             }
         }
     }

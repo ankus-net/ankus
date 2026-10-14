@@ -160,9 +160,8 @@ internal static partial class NativeBindingParser
 
         foreach ((string name, NativeBindingType type) in types)
         {
-            foreach (NativeBindingField field in type.IsUnion ? type.Fields : type.Fields.Take(1))
+            foreach (string parent in (type.IsUnion ? type.Fields : type.Fields.Take(1)).Select(static field => DirectType(field.Representation)))
             {
-                string parent = DirectType(field.Representation);
                 if (!types.ContainsKey(parent))
                 {
                     continue;

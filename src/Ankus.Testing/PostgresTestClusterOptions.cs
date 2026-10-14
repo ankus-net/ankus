@@ -36,7 +36,7 @@ public sealed class PostgresTestClusterOptions
         get;
         init;
     }
-        = Path.Combine(Directory.GetCurrentDirectory(), "artifacts", "test-pgdata");
+        = Path.Join(Directory.GetCurrentDirectory(), "artifacts", "test-pgdata");
 
     /// <summary>
     /// Gets or sets the architecture-independent PostgreSQL data directory supplied
@@ -105,7 +105,7 @@ public sealed class PostgresTestClusterOptions
         get;
         init;
     }
-        = Path.Combine(Directory.GetCurrentDirectory(), "artifacts", "test-logs");
+        = Path.Join(Directory.GetCurrentDirectory(), "artifacts", "test-logs");
 
     /// <summary>
     /// Gets additional settings appended to <c>postgresql.auto.conf</c> after the

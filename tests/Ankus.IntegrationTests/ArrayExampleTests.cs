@@ -79,7 +79,7 @@ public sealed class ArrayExampleTests(TestContext context)
         {
             await InstallAsync(connection, transaction, token);
             string input = $"ARRAY(SELECT value::real FROM generate_series(1,{length}) AS value)";
-            float expected = length * (length + 1) / 2;
+            float expected = length * (length + 1f) / 2;
             string[] functions = ["sum_vector_array", "sum_vector_vec", "sum_vector_slice", "sum_vector_simd"];
             foreach (string function in functions)
             {
@@ -200,7 +200,7 @@ public sealed class ArrayExampleTests(TestContext context)
     [TestMethod]
     public async Task ArraySampleGeneratedCustomTypeTestRunsInPostgres()
     {
-        string project = Path.Combine(IntegrationEnvironment.RepositoryRoot, "samples", "Ankus.Examples.Arrays", "Ankus.Examples.Arrays.csproj");
+        string project = Path.Join(IntegrationEnvironment.RepositoryRoot, "samples", "Ankus.Examples.Arrays", "Ankus.Examples.Arrays.csproj");
         PgTestCase test = Assert.ContainsSingle(ArrayFunctions.PostgresTests.Cases);
         Assert.EndsWith(".CustomTypeArrayRoundTrip()", test.Name);
         Assert.IsNull(test.ExpectedError);
@@ -210,7 +210,7 @@ public sealed class ArrayExampleTests(TestContext context)
             ProjectPath = project,
             Installation = await IntegrationEnvironment.GetInstallationAsync(context.CancellationToken),
             IncludeTests = true,
-            DataDirectoryBase = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-pgdata"),
+            DataDirectoryBase = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-pgdata"),
         }, context.CancellationToken);
         await fixture.RunTestAsync(test, context.CancellationToken);
         await using NpgsqlConnection connection = await fixture.Cluster.OpenConnectionAsync(context.CancellationToken);

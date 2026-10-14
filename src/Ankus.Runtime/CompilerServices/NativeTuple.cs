@@ -41,12 +41,20 @@ public unsafe partial struct NativeValue
         PgHeapTuple tuple = ReadTuple(recent);
         if (!ReferenceEquals(tuple.Descriptor, recent))
         {
-            PgTupleDescriptor?[] descriptors = s_recentDescriptors ??= new PgTupleDescriptor?[8];
-            descriptors[s_nextRecentDescriptor] = tuple.Descriptor;
-            s_nextRecentDescriptor = (s_nextRecentDescriptor + 1) % descriptors.Length;
+            RememberDescriptor(tuple.Descriptor);
         }
 
         return tuple;
+    }
+
+    /// <summary>
+    /// Keeps a descriptor among the eight this thread read most recently, replacing the oldest.
+    /// </summary>
+    private static void RememberDescriptor(PgTupleDescriptor descriptor)
+    {
+        PgTupleDescriptor?[] descriptors = s_recentDescriptors ??= new PgTupleDescriptor?[8];
+        descriptors[s_nextRecentDescriptor] = descriptor;
+        s_nextRecentDescriptor = (s_nextRecentDescriptor + 1) % descriptors.Length;
     }
 
     /// <summary>
@@ -291,7 +299,7 @@ public unsafe partial struct NativeValue
             }
 
             NativeValue item = ReadContainerValue(data, ref offset);
-            if (((physicalMetadata || dropped || unavailable) && item.IsNull == 0) || (item.IsNull == 0 && composite != item.IsTuple))
+            if (item.IsNull == 0 && (physicalMetadata || dropped || unavailable || composite != item.IsTuple))
             {
                 throw new InvalidOperationException("Tuple field transport does not match its descriptor.");
             }

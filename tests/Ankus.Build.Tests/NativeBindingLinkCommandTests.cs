@@ -20,25 +20,25 @@ public sealed partial class NativeBindingNativeTests
         string directory = Directory.CreateTempSubdirectory("ankus-link-path-").FullName;
         try
         {
-            string parent = Path.Combine(directory, new string('p', 80));
-            string output = Path.Combine(parent, new string('q', consumerLength - parent.Length - 1));
-            string cache = Path.Combine(directory, "cache");
+            string parent = Path.Join(directory, new string('p', 80));
+            string output = Path.Join(parent, new string('q', consumerLength - parent.Length - 1));
+            string cache = Path.Join(directory, "cache");
             Assert.AreEqual(consumerLength, output.Length);
             await NativeBindingLinkCommand.PublishAsync(output, cache, "int native_published(void) { return 42; }\n",
                 (file, artifact, token) => NativeBindingLayoutCommand.RunProcessAsync("cl.exe",
                     ["/nologo", "/WX", "/c", "/O2", "/Fo" + artifact, file], directory, token), context.CancellationToken);
             string stored = Assert.ContainsSingle(Directory.GetFiles(cache, "native-calls.obj", SearchOption.AllDirectories));
-            string selected = (await File.ReadAllTextAsync(Path.Combine(output, "native-call-libraries.txt"), context.CancellationToken)).Trim();
+            string selected = (await File.ReadAllTextAsync(Path.Join(output, "native-call-libraries.txt"), context.CancellationToken)).Trim();
             Assert.AreEqual(stored, selected);
             Directory.Delete(output, recursive: true);
-            string main = Path.Combine(directory, "main.c");
-            string caller = Path.Combine(directory, "main.obj");
-            string executable = Path.Combine(directory, "main.exe");
+            string main = Path.Join(directory, "main.c");
+            string caller = Path.Join(directory, "main.obj");
+            string executable = Path.Join(directory, "main.exe");
             await File.WriteAllTextAsync(main,
                 "#include <stdio.h>\nextern int native_published(void);\nint main(void) { printf(\"%d\\n\", native_published()); return 0; }\n",
                 context.CancellationToken);
             await RunAsync("cl.exe", ["/nologo", "/WX", "/c", "/O2", "/Fo" + caller, main], directory);
-            string response = Path.Combine(directory, "link.rsp");
+            string response = Path.Join(directory, "link.rsp");
             await File.WriteAllTextAsync(response, $"/NOLOGO\n/OUT:\"{executable}\"\n\"{caller}\"\n\"{selected}\"\n", context.CancellationToken);
             await RunAsync("link.exe", ["@" + response], directory);
             Assert.AreEqual("42\n", (await RunAsync(executable, [], directory)).ReplaceLineEndings("\n"));
@@ -63,9 +63,9 @@ public sealed partial class NativeBindingNativeTests
         var stages = new HashSet<string>(StringComparer.Ordinal);
         try
         {
-            string output = Path.Combine(directory, "output");
-            string cache = Path.Combine(directory, "cache");
-            string manifest = Path.Combine(output, "native-call-libraries.txt");
+            string output = Path.Join(directory, "output");
+            string cache = Path.Join(directory, "cache");
+            string manifest = Path.Join(output, "native-call-libraries.txt");
             const string Original = "int native_published(void) { return 41; }\n";
             const string Recovered = "int native_published(void) { return 42; }\n";
             await NativeBindingLinkCommand.PublishAsync(output, cache, Original, CompileAsync, context.CancellationToken);
@@ -104,7 +104,7 @@ public sealed partial class NativeBindingNativeTests
 
             Assert.AreEqual(previous, await File.ReadAllTextAsync(manifest, context.CancellationToken));
             Assert.AreSequenceEqual(bytes, await File.ReadAllBytesAsync(artifact, context.CancellationToken));
-            Assert.AreEqual(Original, await File.ReadAllTextAsync(Path.Combine(Path.GetDirectoryName(artifact)!, "native-calls.c"), context.CancellationToken));
+            Assert.AreEqual(Original, await File.ReadAllTextAsync(Path.Join(Path.GetDirectoryName(artifact)!, "native-calls.c"), context.CancellationToken));
             Assert.IsEmpty(Directory.GetDirectories(output, "native-call-link-*"));
             Assert.DoesNotContain(Directory.Exists, stages);
             Assert.IsEmpty(Directory.GetFiles(output, "native-call-manifest-*"));
@@ -113,7 +113,7 @@ public sealed partial class NativeBindingNativeTests
             string replacement = (await File.ReadAllTextAsync(manifest, context.CancellationToken)).Trim();
             Assert.AreNotEqual(artifact, replacement);
             Assert.AreEqual("42\n", await ExecutePublishedBodyAsync(replacement, directory));
-            Assert.AreEqual(Recovered, await File.ReadAllTextAsync(Path.Combine(Path.GetDirectoryName(replacement)!, "native-calls.c"), context.CancellationToken));
+            Assert.AreEqual(Recovered, await File.ReadAllTextAsync(Path.Join(Path.GetDirectoryName(replacement)!, "native-calls.c"), context.CancellationToken));
             Assert.AreSequenceEqual(bytes, await File.ReadAllBytesAsync(artifact, context.CancellationToken));
             Assert.IsEmpty(Directory.GetDirectories(output, "native-call-link-*"));
             await NativeBindingLinkCommand.PublishEmptyAsync(output, context.CancellationToken);
@@ -149,11 +149,11 @@ public sealed partial class NativeBindingNativeTests
         {
             NativeHeaderRecords records = await CollectCallRecordsAsync("extern int known(int value); extern int current; typedef int (*Operation)(int); extern Operation callback;",
                 [new("known", "known", true), new("current", "current", false), new("callback", "callback", false)], directory);
-            string contract = Path.Combine(directory, "records.json");
-            string consumer = Path.Combine(directory, "consumer.obj");
-            string output = Path.Combine(directory, "output");
+            string contract = Path.Join(directory, "records.json");
+            string consumer = Path.Join(directory, "consumer.obj");
+            string output = Path.Join(directory, "output");
             Directory.CreateDirectory(output);
-            string manifest = Path.Combine(output, "native-call-libraries.txt");
+            string manifest = Path.Join(output, "native-call-libraries.txt");
             await File.WriteAllTextAsync(contract, JsonSerializer.Serialize(records, NativeBindingRecordWorker.JsonOptions), context.CancellationToken);
             await File.WriteAllTextAsync(manifest, "previous-object\n", context.CancellationToken);
             string[] arguments = [contract, "missing-pg-config", output, consumer, "missing-compiler", "", ""];
@@ -215,7 +215,7 @@ public sealed partial class NativeBindingNativeTests
 
     private async Task<string> ExecutePublishedBodyAsync(string artifact, string directory)
     {
-        string file = Path.Combine(directory, "consumer-" + Guid.NewGuid().ToString("N") + ".c");
+        string file = Path.Join(directory, "consumer-" + Guid.NewGuid().ToString("N") + ".c");
         string executable = Path.ChangeExtension(file, OperatingSystem.IsWindows() ? ".exe" : ".out");
         await File.WriteAllTextAsync(file, "#include <stdio.h>\nextern int native_published(void);\nint main(void) { printf(\"%d\\n\", native_published()); return 0; }\n",
             context.CancellationToken);

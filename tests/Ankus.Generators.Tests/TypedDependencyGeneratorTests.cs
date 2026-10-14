@@ -66,12 +66,10 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.IsEmpty(compilation.GetDiagnostics(context.CancellationToken).Where(static item => item.Severity == DiagnosticSeverity.Error));
         string sql = InstallationBody(compilation);
         AssertSqlControlBefore(sql, "SELECT 'before';", $"SELECT '{expected}';");
-        foreach (string other in new[] { "empty", "number", "nullable", "text" })
+        string[] variants = ["empty", "number", "nullable", "text"];
+        foreach (string other in variants.Where(other => other != expected))
         {
-            if (other != expected)
-            {
-                AssertSqlControlBefore(sql, $"SELECT '{other}';", "SELECT 'before';");
-            }
+            AssertSqlControlBefore(sql, $"SELECT '{other}';", "SELECT 'before';");
         }
     }
 

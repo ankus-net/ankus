@@ -172,8 +172,9 @@ public readonly partial record struct PgInet : IComparable<PgInet>
     /// Formats a detached address, omitting a full-width prefix. No backend access is required.
     /// </summary>
     /// <returns>Round-trippable IPv4 or IPv6 text.</returns>
-    public override string ToString() => Address.ToString() +
-        (PrefixLength == Width ? string.Empty : "/" + PrefixLength.ToString(CultureInfo.InvariantCulture));
+    public override string ToString() => PrefixLength == Width
+        ? Address.ToString()
+        : string.Create(CultureInfo.InvariantCulture, $"{Address}/{PrefixLength}");
 
     /// <summary>
     /// Compares two inet values in PostgreSQL order.

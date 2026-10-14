@@ -87,12 +87,10 @@ internal static class NativeBindingRecordValidation
                 throw new FormatException("Native pointer storage disagrees with the selected target.");
             }
 
-            if (canonical.Kind == "function" || (canonical.Kind == "scalar" && canonical.Name == "void"))
+            bool nonObject = canonical.Kind == "function" || canonical.Kind == "scalar" && canonical.Name == "void";
+            if (nonObject && (type.Size is not null || type.Alignment is not null))
             {
-                if (type.Size is not null || type.Alignment is not null)
-                {
-                    throw new FormatException("A non-object native type has object storage.");
-                }
+                throw new FormatException("A non-object native type has object storage.");
             }
 
             if (type.Kind is "array" or "vector")
@@ -130,14 +128,18 @@ internal static class NativeBindingRecordValidation
                 }
             }
 
-            if (tagged && Declaration(type.Declaration!.Value).Kind == "enum" != (type.Kind == "enum"))
+            if (tagged)
             {
-                throw new FormatException("Native type references the wrong declaration kind.");
-            }
+                NativeRecordDeclaration target = Declaration(type.Declaration!.Value);
+                if (target.Kind == "enum" != (type.Kind == "enum"))
+                {
+                    throw new FormatException("Native type references the wrong declaration kind.");
+                }
 
-            if (tagged && (type.Size != Declaration(type.Declaration!.Value).Size || type.Alignment != Declaration(type.Declaration.Value).Alignment))
-            {
-                throw new FormatException("Native tagged storage disagrees with its declaration.");
+                if (type.Size != target.Size || type.Alignment != target.Alignment)
+                {
+                    throw new FormatException("Native tagged storage disagrees with its declaration.");
+                }
             }
         }
 
@@ -161,11 +163,7 @@ internal static class NativeBindingRecordValidation
 
             totalFields += declaration.Fields.Count;
             totalConstants += declaration.EnumValues.Count;
-            if (totalFields > 1_000_000 || (!declaration.IsComplete && declaration.Fields.Count != 0) ||
-                totalConstants > 1_000_000 || (!declaration.IsComplete && declaration.EnumValues.Count != 0) ||
-                (declaration.Kind == "enum" && declaration.IsComplete && declaration.EnumUnderlying is null) ||
-                (declaration.Kind == "enum" && declaration.Fields.Count != 0) ||
-                (declaration.Kind != "enum" && (declaration.EnumUnderlying is not null || declaration.EnumValues.Count != 0)))
+            if (totalFields > 1_000_000 || totalConstants > 1_000_000 || !ConsistentMembers(declaration))
             {
                 throw new FormatException("Invalid fields or enum values for the native declaration.");
             }
@@ -203,12 +201,7 @@ internal static class NativeBindingRecordValidation
                     NativeBindingCDeclaration.ValidateName(field.Name);
                 }
 
-                if ((!field.IsAnonymous && field.Name.Length == 0 && field.BitWidth is null) ||
-                    (field.IsAnonymous && canonicalField.Kind != "record") ||
-                    (field.BitWidth == 0 && field.Name.Length != 0) ||
-                    (field.BitWidth is int bitWidth && (fieldType.Size is null || bitWidth > (BigInteger)fieldType.Size.Value * 8)) ||
-                    (fieldType.Size is null && (canonicalField.Kind != "array" || canonicalField.Count is not null)) ||
-                    (field.BitWidth is null && field.OffsetBits % 8 != 0) || (declaration.Kind == "union" && field.OffsetBits != 0))
+                if (!ConsistentField(field, fieldType, canonicalField, declaration.Kind))
                 {
                     throw new FormatException("Native field shape contradicts its physical layout.");
                 }
@@ -274,9 +267,60 @@ internal static class NativeBindingRecordValidation
             ? value : throw new FormatException("Invalid native declaration index.");
     }
 
+    /// <summary>
+    /// Checks that only a complete declaration lists members, and that an enum has constants and, once complete, an
+    /// underlying type, but no fields.
+    /// </summary>
+    private static bool ConsistentMembers(NativeRecordDeclaration declaration)
+    {
+        if (!declaration.IsComplete && (declaration.Fields.Count != 0 || declaration.EnumValues.Count != 0))
+        {
+            return false;
+        }
+
+        return declaration.Kind == "enum"
+            ? declaration.Fields.Count == 0 && (!declaration.IsComplete || declaration.EnumUnderlying is not null)
+            : declaration.EnumUnderlying is null && declaration.EnumValues.Count == 0;
+    }
+
+    /// <summary>
+    /// Checks that a field's name, bit width and offset agree with its type and the record that contains it.
+    /// </summary>
+    private static bool ConsistentField(NativeRecordField field, NativeRecordType fieldType, NativeRecordType canonicalField,
+        string declarationKind)
+    {
+        // Only an anonymous record member may be unnamed, apart from unnamed bit-field padding.
+        if (field.IsAnonymous ? canonicalField.Kind != "record" : field.Name.Length == 0 && field.BitWidth is null)
+        {
+            return false;
+        }
+
+        if (field.BitWidth is int bitWidth)
+        {
+            // A zero-width bit-field only aligns the next one, so it has no name.
+            if (bitWidth == 0 && field.Name.Length != 0 || fieldType.Size is not long size || bitWidth > (BigInteger)size * 8)
+            {
+                return false;
+            }
+        }
+        else if (field.OffsetBits % 8 != 0)
+        {
+            return false;
+        }
+
+        // Only a flexible array member has no size.
+        if (fieldType.Size is null && (canonicalField.Kind != "array" || canonicalField.Count is not null))
+        {
+            return false;
+        }
+
+        return declarationKind != "union" || field.OffsetBits == 0;
+    }
+
     private static void Storage(long? size, long? alignment)
     {
-        if (size < 0 || (alignment is long value && (value <= 0 || !BitOperations.IsPow2((ulong)value))) || (size is not null && alignment is null))
+        bool validAlignment = alignment is not long value || value > 0 && BitOperations.IsPow2((ulong)value);
+        if (size < 0 || size is not null && alignment is null || !validAlignment)
         {
             throw new FormatException("Invalid native object size or alignment.");
         }

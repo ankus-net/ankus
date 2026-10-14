@@ -114,16 +114,12 @@ public sealed class PgInternalTests
     {
         using var fixture = new InternalFixture();
         WeakReference<Payload> weak = CreateRetainedPayload();
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
+        GarbageCollection.Collect();
         Assert.IsTrue(IsAlive(weak));
         PgException error = Assert.IsInstanceOfType<PgException>(fixture.Invoke());
         Assert.AreEqual("38000", error.SqlState);
         Assert.Contains("cleanup probe", error.Message);
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
+        GarbageCollection.Collect();
         Assert.IsFalse(IsAlive(weak));
         Assert.IsFalse(PgInternal.DangerousCreate(4096, PgMemoryContext.Current).IsManaged);
     }
@@ -228,17 +224,13 @@ public sealed class PgInternalTests
         /// <inheritdoc />
         public void Dispose()
         {
-            try
+            using (_scope)
+            using (Memory)
             {
                 while (_registrations.Count != 0)
                 {
                     Assert.IsNull(Invoke());
                 }
-            }
-            finally
-            {
-                Memory.Dispose();
-                _scope.Dispose();
             }
         }
 

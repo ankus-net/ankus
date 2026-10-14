@@ -146,9 +146,8 @@ public sealed partial class PgFunctionGeneratorTests
         string[] statements = OperatorCastStatements(compilation);
         Assert.IsLessThan(Array.IndexOf(statements, "SELECT 'input';"), Array.IndexOf(statements, "SELECT 'shell';"));
         Assert.IsLessThan(Array.IndexOf(statements, "SELECT 'complete';"), Array.IndexOf(statements, "SELECT 'input';"));
-        foreach (string statement in statements.Where(static statement => statement.StartsWith("CREATE FUNCTION", StringComparison.Ordinal) || statement.StartsWith("CREATE OPERATOR", StringComparison.Ordinal)))
+        foreach (int position in statements.Where(static statement => statement.StartsWith("CREATE FUNCTION", StringComparison.Ordinal) || statement.StartsWith("CREATE OPERATOR", StringComparison.Ordinal)).Select(statement => Array.IndexOf(statements, statement)))
         {
-            int position = Array.IndexOf(statements, statement);
             Assert.IsGreaterThan(Array.IndexOf(statements, "SELECT 'complete';"), position);
             Assert.IsGreaterThan(Array.IndexOf(statements, "SELECT 'before';"), position);
             Assert.IsLessThan(Array.IndexOf(statements, "SELECT 'after';"), position);

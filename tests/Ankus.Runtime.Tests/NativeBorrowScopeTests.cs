@@ -123,27 +123,13 @@ public sealed class NativeBorrowScopeTests
         using var fixture = new MemoryContextTestFixture();
         using MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter();
         NativeBorrowScope lease = NativeMemoryContext.BorrowScope;
-        Exception? failure = null;
-        var worker = new Thread(() =>
+        DedicatedThread.Run(() =>
         {
-            try
-            {
-                using var otherFixture = new MemoryContextTestFixture();
-                using MemoryContextTestFixture.Scope otherScope = MemoryContextTestFixture.Enter();
-                Assert.ThrowsExactly<InvalidOperationException>(lease.Validate);
-                Assert.IsEmpty(otherFixture.Requests);
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
+            using var otherFixture = new MemoryContextTestFixture();
+            using MemoryContextTestFixture.Scope otherScope = MemoryContextTestFixture.Enter();
+            Assert.ThrowsExactly<InvalidOperationException>(lease.Validate);
+            Assert.IsEmpty(otherFixture.Requests);
         });
-        worker.Start();
-        worker.Join();
-        if (failure is not null)
-        {
-            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
-        }
 
         lease.Validate();
         Assert.IsEmpty(fixture.Requests);

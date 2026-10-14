@@ -85,6 +85,7 @@ public static class PreloadFunctions
         }
         catch (InvalidOperationException)
         {
+            // Handling the exception is what this checks.
         }
         finally
         {

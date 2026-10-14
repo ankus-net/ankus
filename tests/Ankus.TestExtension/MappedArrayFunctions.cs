@@ -54,7 +54,7 @@ public static class MappedArrayFunctions
     /// </summary>
     [PgFunction(Name = "alias")]
     public static string Alias(PgArray<MappedU24Alias?> value)
-        => string.Join('|', value.Select(static item => item?.Value.ToString(CultureInfo.InvariantCulture) ?? "NULL"));
+        => string.Join('|', value.Select(static item => item is { } present ? present.Value.ToString(CultureInfo.InvariantCulture) : "NULL"));
 
     /// <summary>
     /// Constructs alias output independently, including a value beyond the primary wrapper's valid maximum.
@@ -75,7 +75,7 @@ public static class MappedArrayFunctions
     /// </summary>
     [PgFunction(Name = "total")]
     [PgCast]
-    public static long Total(PgArray<MappedU24?> value) => value.Sum(static item => item?.Value ?? 0);
+    public static long Total(PgArray<MappedU24?> value) => value.Sum(static item => item is { } present ? present.Value : 0);
 
     /// <summary>
     /// Copies dedicated nullable integer arrays through generated input and output.
@@ -163,7 +163,7 @@ public static class MappedArrayFunctions
 
         PgArray<MappedPositive?>? values = result[0][0].Read<PgArray<MappedPositive?>?>();
         return values is null ? "NULL" : string.Create(CultureInfo.InvariantCulture,
-            $"{values.ElementTypeOid}|{values.Rank}|{values.Count}|{string.Join(',', values.Select(static item => item?.Value.ToString(CultureInfo.InvariantCulture) ?? "NULL"))}");
+            $"{values.ElementTypeOid}|{values.Rank}|{values.Count}|{string.Join(',', values.Select(static item => item is { } present ? present.Value.ToString(CultureInfo.InvariantCulture) : "NULL"))}");
     }
 
     /// <summary>
@@ -236,7 +236,7 @@ public static class MappedArrayFunctions
         if (width == 2)
         {
             (ReadMappedInt? first, PgArray<ArrayValue?>? values) = Read<ReadMappedInt?, PgArray<ArrayValue?>?>(surface, sql);
-            return $"{first?.Value.ToString(CultureInfo.InvariantCulture) ?? "NULL"}~{Describe(values)}";
+            return $"{(first is { } present ? present.Value.ToString(CultureInfo.InvariantCulture) : "NULL")}~{Describe(values)}";
         }
 
         if (width == 3)
@@ -294,7 +294,7 @@ public static class MappedArrayFunctions
     /// Reads a genuinely read-only mapped array in a generated function.
     /// </summary>
     [PgFunction(Name = "read_only")]
-    public static int ReadOnly(ReadMappedInt?[] values) => values.Sum(static value => value?.Value ?? 0);
+    public static int ReadOnly(ReadMappedInt?[] values) => values.Sum(static value => value is { } present ? present.Value : 0);
 
     /// <summary>
     /// Writes a genuinely write-only mapped vector without attempting reverse conversion.
@@ -405,7 +405,8 @@ public static class MappedArrayFunctions
     {
         if (reject)
         {
-            MappedSign[] disguised = (MappedSign[])(object)new[] { -1, 0, 42 };
+            object values = new[] { -1, 0, 42 };
+            MappedSign[] disguised = (MappedSign[])values;
             Spi.Execute("SELECT nextval('mapped_array_effect'),$1", SpiParameter.Create(disguised));
             return "unexpected success";
         }
@@ -436,7 +437,7 @@ public static class MappedArrayFunctions
             value = oid == 0 ? PgFunctions.Call<PgArray<ResultPositive?>?>(name) : PgFunctions.Call<PgArray<ResultPositive?>?>(oid);
         }
 
-        return value is null ? "NULL" : string.Join('|', value.Select(static item => item?.Value.ToString(CultureInfo.InvariantCulture) ?? "NULL"));
+        return value is null ? "NULL" : string.Join('|', value.Select(static item => item is { } present ? present.Value.ToString(CultureInfo.InvariantCulture) : "NULL"));
     }
 
     /// <summary>
@@ -493,7 +494,7 @@ public static class MappedArrayFunctions
     /// </summary>
     [PgFunction(Name = "variadic")]
     public static string Variadic(params ArrayValue?[]? values) => values is null ? "NULL" : string.Create(CultureInfo.InvariantCulture,
-        $"{values.Sum(static value => value?.Value ?? 0)}|{values.Count(static value => value is not null)}");
+        $"{values.Sum(static value => value is { } present ? present.Value : 0)}|{values.Count(static value => value is not null)}");
 
     /// <summary>
     /// Delays all managed input inspection until after iterator initialization and nested SPI activity.
@@ -582,7 +583,7 @@ public static class MappedArrayFunctions
         using SpiRawResult raw = Spi.QueryRaw("SELECT $1", parameter);
         PgArray<ArrayLive?>? result = raw[0][0].Read<PgArray<ArrayLive?>?>();
         return string.Create(CultureInfo.InvariantCulture,
-            $"{parameter.TypeOid}|{(result is null ? "NULL" : string.Join(',', result.Select(static item => item?.Value.ToString(CultureInfo.InvariantCulture) ?? "NULL")))}|{ArrayLiveConverter.Writes}");
+            $"{parameter.TypeOid}|{(result is null ? "NULL" : string.Join(',', result.Select(static item => item is { } present ? present.Value.ToString(CultureInfo.InvariantCulture) : "NULL")))}|{ArrayLiveConverter.Writes}");
     }
 
     /// <summary>
@@ -605,7 +606,7 @@ public static class MappedArrayFunctions
     {
         ArrayLive?[]? result = oid == 0 ? PgFunctions.Call<ArrayLive?[]?>("pg_temp.mapped_array_live_result")
             : PgFunctions.Call<ArrayLive?[]?>(oid);
-        return result is null ? "NULL" : string.Join(',', result.Select(static item => item?.Value.ToString(CultureInfo.InvariantCulture) ?? "NULL"));
+        return result is null ? "NULL" : string.Join(',', result.Select(static item => item is { } present ? present.Value.ToString(CultureInfo.InvariantCulture) : "NULL"));
     }
 
     /// <summary>
@@ -620,7 +621,7 @@ public static class MappedArrayFunctions
     /// Describes rank, dimensions, bounds and every value independently of SQL text formatting.
     /// </summary>
     internal static string Describe(PgArray<ArrayValue?>? value) => value is null ? "NULL" : string.Create(CultureInfo.InvariantCulture,
-        $"{value.ElementTypeOid}|{value.Rank}|{value.Count}|{string.Join(',', value.Lengths.ToArray())}|{string.Join(',', value.LowerBounds.ToArray())}|{string.Join(',', value.Select(static item => item?.Value.ToString(CultureInfo.InvariantCulture) ?? "NULL"))}");
+        $"{value.ElementTypeOid}|{value.Rank}|{value.Count}|{string.Join(',', value.Lengths.ToArray())}|{string.Join(',', value.LowerBounds.ToArray())}|{string.Join(',', value.Select(static item => item is { } present ? present.Value.ToString(CultureInfo.InvariantCulture) : "NULL"))}");
 
     /// <summary>
     /// Reads retained text and its original shape during later aggregate callbacks.

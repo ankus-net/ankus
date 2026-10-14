@@ -19,14 +19,14 @@ public sealed partial class ToolCommandTests
     public async Task SdkBindingDiscoveryLeavesNativeLinkInputsDeferred()
     {
         string root = CreateBindingDirectory();
-        string project = Path.Combine(root, "BindingDiscovery.csproj");
+        string project = Path.Join(root, "BindingDiscovery.csproj");
         File.Copy(s_project, project);
         ProcessResult result = await RunDotnetAsync(
             ["msbuild", project, "-restore", "-target:_ResolveAnkusBindings", "-verbosity:quiet",
                 "-property:Configuration=Release", "-property:RuntimeIdentifier=" + RuntimeInformation.RuntimeIdentifier,
                 "-property:AnkusPostgresMajor=" + MajorText(), "-property:AnkusPgConfigPath=" + s_installation.PgConfigPath,
                 "-getItem:ManagedBinary,LinkerArg,NativeLibrary,_AnkusBindingAssembly",
-                "-bl:" + Path.Combine(root, "binding-discovery-{}.binlog")], context.CancellationToken);
+                "-bl:" + Path.Join(root, "binding-discovery-{}.binlog")], context.CancellationToken);
         result.EnsureSuccess("dotnet", ["msbuild"]);
         using JsonDocument document = JsonDocument.Parse(result.StandardOutput);
         JsonElement items = document.RootElement.GetProperty("Items");
@@ -48,14 +48,14 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string root = CreateBindingDirectory();
-        string provider = Path.Combine(root, "provider");
-        string consumer = Path.Combine(root, "consumer");
+        string provider = Path.Join(root, "provider");
+        string consumer = Path.Join(root, "consumer");
         Directory.CreateDirectory(provider);
         Directory.CreateDirectory(consumer);
         LinkBindingIntermediates(provider);
         LinkBindingIntermediates(consumer);
-        string providerProject = Path.Combine(provider, "BindingProvider.csproj");
-        string consumerProject = Path.Combine(consumer, "BindingConsumer.csproj");
+        string providerProject = Path.Join(provider, "BindingProvider.csproj");
+        string consumerProject = Path.Join(consumer, "BindingConsumer.csproj");
         File.Copy(s_project, providerProject);
         XDocument project = XDocument.Load(s_project);
         project.Root!.Add(new XElement("ItemGroup", new XElement("ProjectReference",
@@ -69,7 +69,7 @@ public sealed partial class ToolCommandTests
         }
 
         project.Save(consumerProject);
-        await File.WriteAllTextAsync(Path.Combine(provider, "BindingProvider.cs"), """
+        await File.WriteAllTextAsync(Path.Join(provider, "BindingProvider.cs"), """
             using Ankus.Postgres;
             public static class BindingProvider
             {
@@ -78,7 +78,7 @@ public sealed partial class ToolCommandTests
                 public static ErrorData CreateError(int value) => new() { elevel = value, output_to_client = true };
             }
             """, token);
-        await File.WriteAllTextAsync(Path.Combine(consumer, "BindingConsumer.cs"), """
+        await File.WriteAllTextAsync(Path.Join(consumer, "BindingConsumer.cs"), """
             using Ankus;
             using Ankus.Postgres;
             public static partial class BindingConsumer
@@ -487,10 +487,10 @@ public sealed partial class ToolCommandTests
             """, token);
         string[] options = ["-c", "Release", "-r", RuntimeInformation.RuntimeIdentifier,
             "-p:AnkusPostgresMajor=" + MajorText(), "-p:AnkusPgConfigPath=" + s_installation.PgConfigPath];
-        await File.WriteAllTextAsync(Path.Combine(provider, "BindingCallbacks.cs"), ManagedNativeCallbackSource, token);
-        await File.WriteAllTextAsync(Path.Combine(provider, "BindingHookCallbacks.cs"), NativeHookSource, token);
-        await File.WriteAllTextAsync(Path.Combine(consumer, "CallbackExports.cs"), NativeCallbackExportSource, token);
-        string unsafeProbe = Path.Combine(consumer, "MissingUnsafe.cs");
+        await File.WriteAllTextAsync(Path.Join(provider, "BindingCallbacks.cs"), ManagedNativeCallbackSource, token);
+        await File.WriteAllTextAsync(Path.Join(provider, "BindingHookCallbacks.cs"), NativeHookSource, token);
+        await File.WriteAllTextAsync(Path.Join(consumer, "CallbackExports.cs"), NativeCallbackExportSource, token);
+        string unsafeProbe = Path.Join(consumer, "MissingUnsafe.cs");
         await File.WriteAllTextAsync(unsafeProbe, """
             using Ankus.Postgres;
             public static class MissingUnsafe
@@ -511,12 +511,12 @@ public sealed partial class ToolCommandTests
         }
 
         File.Delete(unsafeProbe);
-        string published = Path.Combine(root, "published");
+        string published = Path.Join(root, "published");
         (await RunDotnetAsync(["publish", consumerProject, .. options, "-o", published], token))
             .EnsureSuccess("dotnet", ["publish"]);
 
-        string providerAssembly = Assert.ContainsSingle(Directory.GetFiles(Path.Combine(provider, "bin"), "Ankus.Postgres.*.dll", SearchOption.AllDirectories));
-        string consumerAssembly = Assert.ContainsSingle(Directory.GetFiles(Path.Combine(consumer, "bin"), "Ankus.Postgres.*.dll", SearchOption.AllDirectories));
+        string providerAssembly = Assert.ContainsSingle(Directory.GetFiles(Path.Join(provider, "bin"), "Ankus.Postgres.*.dll", SearchOption.AllDirectories));
+        string consumerAssembly = Assert.ContainsSingle(Directory.GetFiles(Path.Join(consumer, "bin"), "Ankus.Postgres.*.dll", SearchOption.AllDirectories));
         Assert.AreEqual(Path.GetFileName(providerAssembly), Path.GetFileName(consumerAssembly));
         byte[] expected = SHA256.HashData(await File.ReadAllBytesAsync(providerAssembly, token));
         Assert.AreSequenceEqual(expected, SHA256.HashData(await File.ReadAllBytesAsync(consumerAssembly, token)));
@@ -527,28 +527,28 @@ public sealed partial class ToolCommandTests
         Assert.Contains("Native binding sources: reused after native verification.", repeated.StandardOutput);
         Assert.AreEqual(written, File.GetLastWriteTimeUtc(consumerAssembly));
 
-        string driver = Path.Combine(root, "driver");
+        string driver = Path.Join(root, "driver");
         Directory.CreateDirectory(driver);
-        string driverProject = Path.Combine(driver, "BindingDriver.csproj");
+        string driverProject = Path.Join(driver, "BindingDriver.csproj");
         new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
             new XElement("PropertyGroup", new XElement("TargetFramework", "net10.0"),
                 new XElement("OutputType", "Exe"), new XElement("TreatWarningsAsErrors", "true")),
             new XElement("ItemGroup", new XElement("ProjectReference", new XAttribute("Include", consumerProject)))))
             .Save(driverProject);
-        await File.WriteAllTextAsync(Path.Combine(driver, "Program.cs"), """
+        await File.WriteAllTextAsync(Path.Join(driver, "Program.cs"), """
             Ankus.Postgres.RangeTblRef value = BindingProvider.Create(41);
             System.Console.WriteLine($"{value.rtindex}|{BindingConsumer.NativeBindingRoundTrip(value.rtindex)}");
             """, token);
         ProcessResult managed = await RunDotnetAsync(["run", "--project", driverProject, .. options], token);
         managed.EnsureSuccess("dotnet", ["run"]);
         Assert.EndsWith("41|42", managed.StandardOutput.Trim());
-        await File.WriteAllTextAsync(Path.Combine(driver, "Program.cs"), """
+        await File.WriteAllTextAsync(Path.Join(driver, "Program.cs"), """
             Ankus.Postgres.RangeTblRef value = BindingProvider.Create(51);
             System.Console.WriteLine($"{value.rtindex}|{BindingConsumer.NativeBindingRoundTrip(value.rtindex)}");
             """, token);
         (await RunDotnetAsync(["build", driverProject, .. options, "--no-restore", "-p:BuildProjectReferences=false"], token))
             .EnsureSuccess("dotnet", ["build"]);
-        string driverAssembly = Path.Combine(driver, "bin", "Release", "net10.0", RuntimeInformation.RuntimeIdentifier, "BindingDriver.dll");
+        string driverAssembly = Path.Join(driver, "bin", "Release", "net10.0", RuntimeInformation.RuntimeIdentifier, "BindingDriver.dll");
         ProcessResult existing = await RunDotnetAsync([driverAssembly], token);
         existing.EnsureSuccess("dotnet", [driverAssembly]);
         Assert.AreEqual("51|52", existing.StandardOutput.Trim());
@@ -647,7 +647,7 @@ public sealed partial class ToolCommandTests
         (await RunDotnetAsync(["build", consumerProject, .. options], token)).EnsureSuccess("dotnet", ["build"]);
         Assert.AreSequenceEqual(expected, SHA256.HashData(await File.ReadAllBytesAsync(consumerAssembly, token)));
 
-        string artifacts = Path.Combine(root, "isolated artifacts");
+        string artifacts = Path.Join(root, "isolated artifacts");
         (await RunDotnetAsync(["build", consumerProject, .. options, "--artifacts-path", artifacts], token))
             .EnsureSuccess("dotnet", ["build"]);
         string[] references = Directory.GetFiles(artifacts, "native-binding.assembly-path", SearchOption.AllDirectories);
@@ -662,10 +662,10 @@ public sealed partial class ToolCommandTests
 
     private static async Task<string> CompileBindingProviderAsync(string root, CancellationToken token)
     {
-        string directory = Directory.CreateDirectory(Path.Combine(root, "native provider")).FullName;
-        string file = Path.Combine(directory, "provider.c");
-        string artifact = Path.Combine(directory, OperatingSystem.IsWindows() ? "provider.obj" : "provider.o");
-        string library = Path.Combine(directory, OperatingSystem.IsWindows() ? "provider.lib" : "libprovider.a");
+        string directory = Directory.CreateDirectory(Path.Join(root, "native provider")).FullName;
+        string file = Path.Join(directory, "provider.c");
+        string artifact = Path.Join(directory, OperatingSystem.IsWindows() ? "provider.obj" : "provider.o");
+        string library = Path.Join(directory, OperatingSystem.IsWindows() ? "provider.lib" : "libprovider.a");
         await File.WriteAllTextAsync(file, """
             #include "postgres.h"
             #include "replication/output_plugin.h"
@@ -677,8 +677,8 @@ public sealed partial class ToolCommandTests
         string compiler = OperatingSystem.IsWindows() ? "cl.exe" : "clang";
         string[] options = OperatingSystem.IsWindows()
             ? ["/nologo", "/std:c11", "/WX", "/O2", "/c", "/I" + s_installation.ServerIncludeDirectory, "/I" + s_installation.IncludeDirectory,
-                "/I" + Path.Combine(s_installation.ServerIncludeDirectory, "port", "win32"),
-                "/I" + Path.Combine(s_installation.ServerIncludeDirectory, "port", "win32_msvc"), "/Fo" + artifact, file]
+                "/I" + Path.Join(s_installation.ServerIncludeDirectory, "port", "win32"),
+                "/I" + Path.Join(s_installation.ServerIncludeDirectory, "port", "win32_msvc"), "/Fo" + artifact, file]
             : [.. await s_installation.GetPreprocessorArgumentsAsync(token), "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-O2", "-fPIC", "-c",
                 "-isystem", s_installation.ServerIncludeDirectory, "-isystem", s_installation.IncludeDirectory, file, "-o", artifact];
         await PackageProcessRunner.RunCheckedAsync(compiler, options, s_environment, token, workingDirectory: directory);
@@ -695,7 +695,7 @@ public sealed partial class ToolCommandTests
     public async Task PackagedBuildToolRejectsMismatchedBindingRuntime()
     {
         string helper = await ReadPackagedBuildToolAsync();
-        string output = Path.Combine(s_root, "mismatched binding runtime");
+        string output = Path.Join(s_root, "mismatched binding runtime");
         string otherRuntime = RuntimeInformation.RuntimeIdentifier == "linux-x64" ? "linux-arm64" : "linux-x64";
         ProcessResult result = await RunDotnetAsync(
             [helper, "binding-sources", MajorText(), s_installation.PgConfigPath, output, "", "", otherRuntime],
@@ -703,8 +703,8 @@ public sealed partial class ToolCommandTests
         Assert.AreEqual(1, result.ExitCode);
         Assert.Contains($"Native bindings target {RuntimeInformation.RuntimeIdentifier}", result.StandardError);
         Assert.Contains($"requested runtime is {otherRuntime}", result.StandardError);
-        Assert.IsFalse(File.Exists(Path.Combine(output, "native-binding.g.cs")));
-        Assert.IsFalse(File.Exists(Path.Combine(output, "Ankus.NativeBindings.csproj")));
+        Assert.IsFalse(File.Exists(Path.Join(output, "native-binding.g.cs")));
+        Assert.IsFalse(File.Exists(Path.Join(output, "Ankus.NativeBindings.csproj")));
     }
 
     /// <summary>
@@ -717,7 +717,7 @@ public sealed partial class ToolCommandTests
         string helper = await ReadPackagedBuildToolAsync();
         string root = CreateBindingDirectory();
         // Reproduce a valid output path whose former nested compiler working directory exceeded Windows MAX_PATH.
-        string output = Path.Combine(root, new string('p', Math.Max(1, 220 - root.Length - 1)));
+        string output = Path.Join(root, new string('p', Math.Max(1, 220 - root.Length - 1)));
         string temporary = Directory.CreateTempSubdirectory("ankus-node-test-").FullName;
         try
         {
@@ -737,9 +737,9 @@ public sealed partial class ToolCommandTests
             ["TMP"] = temporary,
             ["TEMP"] = temporary,
         };
-        string sentinel = Path.Combine(temporary, "unrelated.txt");
+        string sentinel = Path.Join(temporary, "unrelated.txt");
         await File.WriteAllTextAsync(sentinel, "preserve unrelated temporary files", token);
-        string cache = Path.Combine(temporary, "binding-cache");
+        string cache = Path.Join(temporary, "binding-cache");
         string[] command = [helper, "binding-sources", MajorText(), s_installation.PgConfigPath, output, "", "", "", "", "", "", cache];
         (await PackageProcessRunner.RunAsync("dotnet", command, environment, token, workingDirectory: s_root)).EnsureSuccess("dotnet", command);
         Assert.IsEmpty(Directory.GetDirectories(temporary, "ankus-node-*"));
@@ -750,16 +750,16 @@ public sealed partial class ToolCommandTests
         var expected = new Dictionary<string, byte[]>(StringComparer.Ordinal);
         foreach (string name in names)
         {
-            expected.Add(name, await File.ReadAllBytesAsync(Path.Combine(output, name), token));
+            expected.Add(name, await File.ReadAllBytesAsync(Path.Join(output, name), token));
         }
 
         ProcessResult rejected = await PackageProcessRunner.RunAsync("dotnet",
-            [.. command[..^2], Path.Combine(output, "missing-libclang"), cache], environment, token, workingDirectory: s_root);
+            [.. command[..^2], Path.Join(output, "missing-libclang"), cache], environment, token, workingDirectory: s_root);
         Assert.AreEqual(1, rejected.ExitCode);
         Assert.Contains("Cannot locate the selected libclang library", rejected.StandardError);
         foreach (string name in names)
         {
-            Assert.AreSequenceEqual(expected[name], await File.ReadAllBytesAsync(Path.Combine(output, name), token), name);
+            Assert.AreSequenceEqual(expected[name], await File.ReadAllBytesAsync(Path.Join(output, name), token), name);
         }
 
         Assert.IsEmpty(Directory.GetDirectories(temporary, "ankus-node-*"));
@@ -779,7 +779,7 @@ public sealed partial class ToolCommandTests
         Assert.Contains("offset RangeTblRef.rtindex", invalidLayout.StandardError);
         foreach (string name in names)
         {
-            Assert.AreSequenceEqual(expected[name], await File.ReadAllBytesAsync(Path.Combine(output, name), token), name);
+            Assert.AreSequenceEqual(expected[name], await File.ReadAllBytesAsync(Path.Join(output, name), token), name);
         }
 
         Assert.IsEmpty(Directory.GetDirectories(temporary, "ankus-node-*"));
@@ -791,7 +791,7 @@ public sealed partial class ToolCommandTests
         Assert.Contains("Current native node observations disagree with the cached companion contract", invalidAvailability.StandardError);
         foreach (string name in names)
         {
-            Assert.AreSequenceEqual(expected[name], await File.ReadAllBytesAsync(Path.Combine(output, name), token), name);
+            Assert.AreSequenceEqual(expected[name], await File.ReadAllBytesAsync(Path.Join(output, name), token), name);
         }
 
         Assert.IsEmpty(Directory.GetDirectories(temporary, "ankus-node-*"));
@@ -804,13 +804,13 @@ public sealed partial class ToolCommandTests
         Assert.Contains("Current native node observations disagree with the cached companion contract", invalidDeclarations.StandardError);
         foreach (string name in names)
         {
-            Assert.AreSequenceEqual(expected[name], await File.ReadAllBytesAsync(Path.Combine(output, name), token), name);
+            Assert.AreSequenceEqual(expected[name], await File.ReadAllBytesAsync(Path.Join(output, name), token), name);
         }
 
         Assert.IsEmpty(Directory.GetDirectories(temporary, "ankus-node-*"));
         Assert.IsEmpty(Directory.GetDirectories(temporary, "ankus-source-*"));
         await ReplaceCachedArtifactAsync(cache, "native-node-declarations.json", expected["native-node-declarations.json"], token);
-        string concurrentOutput = Path.Combine(temporary, "concurrent consumer");
+        string concurrentOutput = Path.Join(temporary, "concurrent consumer");
         string[] concurrentCommand = [.. command];
         concurrentCommand[4] = concurrentOutput;
         ProcessResult[] recovered = await Task.WhenAll(
@@ -824,10 +824,10 @@ public sealed partial class ToolCommandTests
 
         foreach (string name in names)
         {
-            Assert.AreSequenceEqual(expected[name], await File.ReadAllBytesAsync(Path.Combine(output, name), token), name);
+            Assert.AreSequenceEqual(expected[name], await File.ReadAllBytesAsync(Path.Join(output, name), token), name);
             if (name != "Ankus.NativeBindings.csproj")
             {
-                Assert.AreSequenceEqual(expected[name], await File.ReadAllBytesAsync(Path.Combine(concurrentOutput, name), token), name);
+                Assert.AreSequenceEqual(expected[name], await File.ReadAllBytesAsync(Path.Join(concurrentOutput, name), token), name);
             }
         }
 
@@ -847,7 +847,7 @@ public sealed partial class ToolCommandTests
     {
         string file = Assert.ContainsSingle(Directory.GetFiles(cache, name, SearchOption.AllDirectories));
         await File.WriteAllBytesAsync(file, content, token);
-        string manifestPath = Path.Combine(Path.GetDirectoryName(file)!, "manifest.json");
+        string manifestPath = Path.Join(Path.GetDirectoryName(file)!, "manifest.json");
         JsonNode manifest = JsonNode.Parse(await File.ReadAllTextAsync(manifestPath, token))!;
         JsonNode artifact = manifest["Artifacts"]!.AsArray().Single(entry => entry!["Path"]!.GetValue<string>() == name)!;
         artifact["Hash"] = Convert.ToHexString(SHA256.HashData(content));
@@ -866,7 +866,7 @@ public sealed partial class ToolCommandTests
 
         DirectoryInfo resolved = (DirectoryInfo?)directory.ResolveLinkTarget(returnFinalTarget: true) ?? directory;
         return resolved.Parent is DirectoryInfo parent
-            ? Path.Combine(PhysicalBindingDirectory(parent), resolved.Name)
+            ? Path.Join(PhysicalBindingDirectory(parent), resolved.Name)
             : resolved.FullName;
     }
 
@@ -877,10 +877,10 @@ public sealed partial class ToolCommandTests
             return;
         }
 
-        string intermediate = Path.Combine(project, "obj", "Release", "net10.0", RuntimeInformation.RuntimeIdentifier);
-        string physical = Path.Combine(intermediate, "physical bindings");
+        string intermediate = Path.Join(project, "obj", "Release", "net10.0", RuntimeInformation.RuntimeIdentifier);
+        string physical = Path.Join(intermediate, "physical bindings");
         Directory.CreateDirectory(physical);
-        string linked = Path.Combine(intermediate, "ankus-bindings");
+        string linked = Path.Join(intermediate, "ankus-bindings");
         Directory.CreateSymbolicLink(linked, physical);
     }
 }

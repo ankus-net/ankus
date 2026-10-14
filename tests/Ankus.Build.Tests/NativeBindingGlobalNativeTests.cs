@@ -35,7 +35,7 @@ public sealed partial class NativeBindingNativeTests
             "native_unbounded", "native_opaque", "native_callback"];
         NativeHeaderRequest[] requests = [new("public_value", "native_value", false),
             .. names.Select(static name => new NativeHeaderRequest(name, name, false))];
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-global-native-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-global-native-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
@@ -174,9 +174,9 @@ public sealed partial class NativeBindingNativeTests
                     return 0;
                 }
                 """;
-            string file = Path.Combine(directory, "globals.c");
+            string file = Path.Join(directory, "globals.c");
             await File.WriteAllTextAsync(file, source + Main, context.CancellationToken);
-            string executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "globals.exe" : "globals");
+            string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "globals.exe" : "globals");
             string compiler = OperatingSystem.IsWindows() ? "cl.exe" : "clang";
             string[] arguments = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/O2", "/Fe" + executable, "/Fo" + Path.ChangeExtension(executable, ".obj"), file]

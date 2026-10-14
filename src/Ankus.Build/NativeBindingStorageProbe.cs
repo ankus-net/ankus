@@ -153,9 +153,8 @@ internal static class NativeBindingStorageProbe
         }
 
         var observed = new Dictionary<(string Name, string Slot), NativeHeaderValueStorage>();
-        foreach (string line in lines.Skip(1))
+        foreach (string[] fields in lines.Skip(1).Select(static line => line.Split('|')))
         {
-            string[] fields = line.Split('|');
             if (fields.Length != 7 || fields[0] != "value" ||
                 !values.TryGetValue((fields[1], fields[2]), out NativeHeaderType? type) ||
                 observed.ContainsKey((fields[1], fields[2])))
@@ -176,15 +175,17 @@ internal static class NativeBindingStorageProbe
                 "1" => true,
                 _ => throw new FormatException("Invalid native integer signedness."),
             };
-            if ((alignment is null) != opaque || alignment is ulong aligned && (aligned == 0 || (aligned & (aligned - 1)) != 0) ||
-                (size is null) != (opaque || array is { Count: null }) ||
-                size == 0 && !AllowsEmpty(canonical) ||
-                (elementSize is not null) != (array is not null) ||
-                elementSize == 0 && array is not null && !AllowsEmpty(Canonical(array.Element)) ||
-                isSigned.HasValue != (!opaque && IsInteger(canonical)) ||
-                KnownSignedness(canonical) is bool expectedSign && isSigned != expectedSign ||
-                canonical is NativeHeaderScalar { Name: "char" } && isSigned != catalog.Target.Numeric.CharIsSigned ||
-                canonical is NativeHeaderPointer && size != (ulong)catalog.Target.PointerSize)
+            // Opaque types have no layout, and only an incomplete array has no size.
+            bool alignmentValid = alignment is not ulong aligned || aligned != 0 && (aligned & (aligned - 1)) == 0;
+            bool storageValid = (alignment is null) == opaque && alignmentValid &&
+                (size is null) == (opaque || array is { Count: null }) && (size != 0 || AllowsEmpty(canonical));
+            bool elementValid = (elementSize is not null) == (array is not null) &&
+                (elementSize != 0 || array is null || AllowsEmpty(Canonical(array.Element)));
+            bool signValid = isSigned.HasValue == (!opaque && IsInteger(canonical)) &&
+                (KnownSignedness(canonical) is not bool expectedSign || isSigned == expectedSign) &&
+                (canonical is not NativeHeaderScalar { Name: "char" } || isSigned == catalog.Target.Numeric.CharIsSigned);
+            bool pointerValid = canonical is not NativeHeaderPointer || size == (ulong)catalog.Target.PointerSize;
+            if (!storageValid || !elementValid || !signValid || !pointerValid)
             {
                 throw new FormatException("Inconsistent native value storage.");
             }

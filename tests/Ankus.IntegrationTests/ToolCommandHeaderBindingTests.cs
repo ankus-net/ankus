@@ -16,15 +16,15 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string helper = await ReadPackagedBuildToolAsync();
-        string output = Path.Combine(s_root, "native header types");
-        string selection = Path.Combine(s_root, "native header symbols.txt");
+        string output = Path.Join(s_root, "native header types");
+        string selection = Path.Join(s_root, "native header symbols.txt");
         string[] names = ["ConditionVariableSleep", "ExecutorRun", "ExecutorRun_hook", "TYPEALIGN", "pg_atomic_read_u32", "pg_popcount32", "proc_exit"];
         await File.WriteAllLinesAsync(selection, names, token);
         ProcessResult result = await RunDotnetAsync(
             [helper, "binding-header-types", selection, MajorText(), s_installation.PgConfigPath, output], token);
         result.EnsureSuccess("dotnet", [helper, "binding-header-types"]);
         using JsonDocument document = JsonDocument.Parse(await File.ReadAllTextAsync(
-            Path.Combine(output, "native-header-types.json"), token));
+            Path.Join(output, "native-header-types.json"), token));
         JsonElement target = document.RootElement.GetProperty("Target");
         await using NpgsqlConnection connection = await PostgresFixture.Cluster.OpenConnectionAsync(token);
         await using var command = new NpgsqlCommand("SELECT current_setting('server_version_num')::integer", connection);
@@ -126,12 +126,12 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string helper = await ReadPackagedBuildToolAsync();
-        string output = Path.Combine(s_root, "mismatched header runtime");
+        string output = Path.Join(s_root, "mismatched header runtime");
         Directory.CreateDirectory(output);
-        string contract = Path.Combine(output, "native-header-types.json");
+        string contract = Path.Join(output, "native-header-types.json");
         byte[] expected = "existing header contract\n"u8.ToArray();
         await File.WriteAllBytesAsync(contract, expected, token);
-        string selection = Path.Combine(output, "symbols.txt");
+        string selection = Path.Join(output, "symbols.txt");
         await File.WriteAllTextAsync(selection, "ExecutorRun\n", token);
         string otherRuntime = RuntimeInformation.RuntimeIdentifier == "linux-x64" ? "linux-arm64" : "linux-x64";
         ProcessResult result = await RunDotnetAsync(
@@ -148,8 +148,8 @@ public sealed partial class ToolCommandTests
     public async Task PackagedBuildToolRejectsMismatchedHeaderMajor()
     {
         string helper = await ReadPackagedBuildToolAsync();
-        string output = Path.Combine(s_root, "mismatched header major");
-        string selection = Path.Combine(s_root, "mismatched header symbols.txt");
+        string output = Path.Join(s_root, "mismatched header major");
+        string selection = Path.Join(s_root, "mismatched header symbols.txt");
         await File.WriteAllTextAsync(selection, "ExecutorRun\n", context.CancellationToken);
         int otherMajor = s_installation.Version.Major == 18 ? 17 : 18;
         ProcessResult result = await RunDotnetAsync(

@@ -156,7 +156,7 @@ public static class ReplicationConnectionFunctions
     [PgFunction]
     public static string ReplicationUseAfterDispose(string connection)
     {
-        PgReplicationConnection replication = PgReplicationConnection.Connect(connection, "ankus_test");
+        using PgReplicationConnection replication = PgReplicationConnection.Connect(connection, "ankus_test");
         replication.Dispose();
         replication.Dispose();
         try

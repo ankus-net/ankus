@@ -103,25 +103,28 @@ internal static class NativeBindingEnums
         foreach (string line in lines)
         {
             string[] parts = line.Split('|');
-            if (parts[0] == "enum")
+            switch (parts[0])
             {
-                if (parts.Length != 4 || !expected.ContainsKey(parts[1]) ||
-                    !int.TryParse(parts[2], NumberStyles.None, CultureInfo.InvariantCulture, out int size) ||
-                    size is not (1 or 2 or 4 or 8) || parts[3] is not ("0" or "1") ||
-                    !layouts.TryAdd(parts[1], new(size, parts[3] == "1")))
-                {
-                    throw new FormatException($"Invalid or duplicate native enum: {line}");
-                }
-            }
-            else if (parts[0] == "constant")
-            {
-                if (parts.Length != 4 || !layouts.TryGetValue(parts[1], out NativeBindingEnumLayout? layout) ||
-                    !expected[parts[1]].Values.TryGetValue(parts[2], out string? expression) ||
-                    !BigInteger.TryParse(parts[3], NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out BigInteger observed) ||
-                    !Fits(observed, layout) || observed != NativeValue(expression, layout) || !constants.Add((parts[1], parts[2])))
-                {
-                    throw new FormatException($"Mismatched or duplicate native enum constant: {line}");
-                }
+                case "enum":
+                    if (parts.Length != 4 || !expected.ContainsKey(parts[1]) ||
+                        !int.TryParse(parts[2], NumberStyles.None, CultureInfo.InvariantCulture, out int size) ||
+                        size is not (1 or 2 or 4 or 8) || parts[3] is not ("0" or "1") ||
+                        !layouts.TryAdd(parts[1], new(size, parts[3] == "1")))
+                    {
+                        throw new FormatException($"Invalid or duplicate native enum: {line}");
+                    }
+
+                    break;
+                case "constant":
+                    if (parts.Length != 4 || !layouts.TryGetValue(parts[1], out NativeBindingEnumLayout? layout) ||
+                        !expected[parts[1]].Values.TryGetValue(parts[2], out string? expression) ||
+                        !BigInteger.TryParse(parts[3], NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out BigInteger observed) ||
+                        !Fits(observed, layout) || observed != NativeValue(expression, layout) || !constants.Add((parts[1], parts[2])))
+                    {
+                        throw new FormatException($"Mismatched or duplicate native enum constant: {line}");
+                    }
+
+                    break;
             }
         }
 

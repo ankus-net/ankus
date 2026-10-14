@@ -28,7 +28,7 @@ public sealed partial class ToolCommandTests
     public async Task InvalidBuildConfigurationsDoNotMutateState(string configuration)
     {
         string home = CreateDirectory();
-        string project = Path.Combine(home, "missing.csproj");
+        string project = Path.Join(home, "missing.csproj");
         foreach (string operation in new[] { "build", "publish", "install", "package", "schema", "run", "connect", "get", "regress", "test" })
         {
             string[] command = operation == "get" ? [operation, "comment"] : [operation];
@@ -50,7 +50,7 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         const string Configuration = "Shipping+Checked";
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "Configured.csproj");
+        string project = Path.Join(directory, "Configured.csproj");
         XDocument definition = XDocument.Load(s_project);
         definition.Root!.Add(new XElement("Import", new XAttribute("Project", "shipping.props")));
         definition.Save(project);
@@ -59,8 +59,8 @@ public sealed partial class ToolCommandTests
             new XElement("AssemblyName", "Ankus.Configured.Library"),
             new XElement("AnkusExtensionName", "ankus_configured"),
             new XElement("AnkusExtensionVersion", "3.2.1"),
-            new XElement("DefineConstants", "$(DefineConstants);CONFIGURED_BUILD")))).Save(Path.Combine(directory, "shipping.props"));
-        await File.WriteAllTextAsync(Path.Combine(directory, "Functions.cs"), """
+            new XElement("DefineConstants", "$(DefineConstants);CONFIGURED_BUILD")))).Save(Path.Join(directory, "shipping.props"));
+        await File.WriteAllTextAsync(Path.Join(directory, "Functions.cs"), """
             using Ankus;
             public static class Functions
             {
@@ -78,12 +78,12 @@ public sealed partial class ToolCommandTests
         string[] options = ["--home", s_home, "--pg", MajorText(), "--project", project, "-c", Configuration];
         ProcessResult build = await InvokeAsync(["build", .. options], token);
         Assert.AreEqual(0, build.ExitCode, build.StandardOutput + build.StandardError);
-        string publication = Path.Combine(directory, "bin", "ankus", s_postgresKey, RuntimeInformation.RuntimeIdentifier, Configuration);
+        string publication = Path.Join(directory, "bin", "ankus", s_postgresKey, RuntimeInformation.RuntimeIdentifier, Configuration);
         PublishedExtension original = PublishedExtension.Read(publication);
         Assert.AreEqual("ankus_configured.control", original.Control);
         Assert.AreEqual("ankus_configured--3.2.1.sql", original.Sql);
         Assert.StartsWith("Ankus.Configured.Library.", original.Library);
-        Assert.IsFalse(Directory.Exists(Path.Combine(directory, "bin", "ankus", s_postgresKey, RuntimeInformation.RuntimeIdentifier, "Release")));
+        Assert.IsFalse(Directory.Exists(Path.Join(directory, "bin", "ankus", s_postgresKey, RuntimeInformation.RuntimeIdentifier, "Release")));
 
         string output = CreateDirectory();
         ProcessResult publish = await InvokeAsync(["publish", .. options, "--output", output], token);
@@ -103,13 +103,13 @@ public sealed partial class ToolCommandTests
         string stage = CreateDirectory();
         ProcessResult install = await InvokeAsync(["install", .. options, "--destdir", stage], token);
         Assert.AreEqual(0, install.ExitCode, install.StandardOutput + install.StandardError);
-        string extension = Path.Combine(StagedPath(stage, s_installation.SharedDirectory), "extension");
-        Assert.AreEqual(await File.ReadAllTextAsync(Path.Combine(publication, "extension", original.Sql), token),
-            await File.ReadAllTextAsync(Path.Combine(extension, original.Sql), token));
-        Assert.AreEqual(await File.ReadAllTextAsync(Path.Combine(publication, "extension", original.Control), token),
-            await File.ReadAllTextAsync(Path.Combine(extension, original.Control), token));
-        Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Combine(publication, original.Library), token),
-            await File.ReadAllBytesAsync(Path.Combine(StagedPath(stage, s_installation.LibraryDirectory), original.Library), token));
+        string extension = Path.Join(StagedPath(stage, s_installation.SharedDirectory), "extension");
+        Assert.AreEqual(await File.ReadAllTextAsync(Path.Join(publication, "extension", original.Sql), token),
+            await File.ReadAllTextAsync(Path.Join(extension, original.Sql), token));
+        Assert.AreEqual(await File.ReadAllTextAsync(Path.Join(publication, "extension", original.Control), token),
+            await File.ReadAllTextAsync(Path.Join(extension, original.Control), token));
+        Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Join(publication, original.Library), token),
+            await File.ReadAllBytesAsync(Path.Join(StagedPath(stage, s_installation.LibraryDirectory), original.Library), token));
         Assert.HasCount(3, Directory.GetFiles(stage, "*", SearchOption.AllDirectories));
     }
 }

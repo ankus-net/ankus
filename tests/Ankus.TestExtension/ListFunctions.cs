@@ -381,13 +381,18 @@ public static unsafe class ListFunctions
     [PgFunction]
     public static string ListSaved()
     {
+        if (s_saved is not { } saved)
+        {
+            return "missing";
+        }
+
         try
         {
-            return s_saved is null ? "missing" : string.Join(',', s_saved.ToArray());
+            return string.Join(',', saved.ToArray());
         }
         catch (ObjectDisposedException)
         {
-            s_saved?.Dispose();
+            saved.Dispose();
             s_saved = null;
             return "stale";
         }

@@ -53,7 +53,7 @@ public sealed class NativeUnsafeAccessCodeFixProvider : CodeFixProvider
             context.RegisterCodeFix(CodeAction.Create("Use an unsafe block", async token =>
             {
                 Solution corrected = await ApplyProjectAsync(context.Document.Project,
-                    ImmutableDictionary<DocumentId, ImmutableArray<Diagnostic>>.Empty.Add(context.Document.Id, [diagnostic]), token).ConfigureAwait(false);
+                    ImmutableDictionary.Create<DocumentId, ImmutableArray<Diagnostic>>().Add(context.Document.Id, [diagnostic]), token).ConfigureAwait(false);
                 return corrected.GetDocument(context.Document.Id)!;
             }, nameof(NativeUnsafeAccessCodeFixProvider)), diagnostic);
         }

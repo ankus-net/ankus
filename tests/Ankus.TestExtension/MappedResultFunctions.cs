@@ -20,17 +20,17 @@ public static class MappedResultFunctions
     {
         if (width == 1)
         {
-            return Number(Read<ResultInt?>(surface, sql)?.Value);
+            return Number(Read<ResultInt?>(surface, sql));
         }
 
         if (width == 2)
         {
             (ResultInt? first, ReadMappedInt? second) = Read<ResultInt?, ReadMappedInt?>(surface, sql);
-            return $"{Number(first?.Value)}|{Number(second?.Value)}";
+            return $"{Number(first)}|{Number(second)}";
         }
 
         (ResultInt? number, ReadMappedInt? alias, ResultText? text) = Read<ResultInt?, ReadMappedInt?, ResultText?>(surface, sql);
-        return $"{Number(number?.Value)}|{Number(alias?.Value)}|{text?.Value ?? "<NULL>"}";
+        return $"{Number(number)}|{Number(alias)}|{text?.Value ?? "<NULL>"}";
     }
 
     /// <summary>
@@ -340,6 +340,16 @@ public static class MappedResultFunctions
     /// Formats absence separately from the exact integer zero.
     /// </summary>
     private static string Number(int? value) => value?.ToString(CultureInfo.InvariantCulture) ?? "<NULL>";
+
+    /// <summary>
+    /// Formats a mapped integer result, or its absence.
+    /// </summary>
+    private static string Number(ResultInt? value) => value is { } present ? Number(present.Value) : "<NULL>";
+
+    /// <summary>
+    /// Formats a read-only mapped integer result, or its absence.
+    /// </summary>
+    private static string Number(ReadMappedInt? value) => value is { } present ? Number(present.Value) : "<NULL>";
 
     /// <summary>
     /// Dispatches the same requested scalar type through independent owner entry points.

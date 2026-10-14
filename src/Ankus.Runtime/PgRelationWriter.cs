@@ -7,14 +7,14 @@ namespace Ankus;
 /// <remarks>
 /// <para>
 /// A writer locks the table in <c>ROW EXCLUSIVE</c> mode and keeps its executor state for the rest of the transaction
-/// or until it is disposed. Dispose it before the transaction commits: its <c>AFTER</c> triggers run then, and a
-/// transaction that commits with a writer still open fails. Rows use the table's own columns, from
-/// <see cref="Descriptor"/>.
+/// or until it is disposed. Dispose it before the transaction commits; a transaction that commits with a writer still
+/// open fails. Rows use the table's own columns, from <see cref="Descriptor"/>.
 /// </para>
 /// <para>
 /// Updates, deletes and lookups find a row by the table's replica identity index, or else its primary key, using the
 /// key's columns; a table with neither matches every column. The row found is locked until the transaction ends.
-/// Triggers fire as <c>session_replication_role</c> selects. Each operation needs the matching table privilege, and,
+/// Triggers fire as <c>session_replication_role</c> selects; a change's <c>AFTER</c> triggers fire when it completes, as
+/// the apply worker fires them. Each operation needs the matching table privilege, and,
 /// as for the built-in apply worker, a table whose row-level security applies to the user is refused, because these
 /// helpers do not apply policies. Each change is visible to the next. Only ordinary tables can be written.
 /// </para>
@@ -233,8 +233,7 @@ public sealed unsafe class PgRelationWriter : IDisposable
     }
 
     /// <summary>
-    /// Runs the table's queued <c>AFTER</c> triggers and closes the writer. The table stays locked until the
-    /// transaction ends.
+    /// Closes the writer and releases its executor state. The table stays locked until the transaction ends.
     /// </summary>
     public void Dispose()
     {

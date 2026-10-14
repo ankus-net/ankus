@@ -67,6 +67,7 @@ internal static partial class ToolCommand
             Console.Error.WriteLine("Ankus: command canceled.");
             return 130;
         }
+        // codeql[cs/catch-of-all-exceptions] The command reports any failure as a message and a nonzero exit code.
         catch (Exception error)
         {
             Console.Error.WriteLine($"Ankus: {error.Message}");
@@ -285,7 +286,7 @@ internal static partial class ToolCommand
             if (package && root is null)
             {
                 string name = Path.GetFileNameWithoutExtension(PublishedExtension.Read(source).Control);
-                root = Path.Combine(Path.GetFullPath(source), name + "-" + installation.Label);
+                root = Path.Join(Path.GetFullPath(source), name + "-" + installation.Label);
             }
 
             if (elevated)
@@ -409,7 +410,7 @@ internal static partial class ToolCommand
     {
         string? output = result.CommandResult.Command.Name is "install" or "package" or "run" or "regress" or "bench"
             ? null : result.GetValue<string?>("--output");
-        return Path.GetFullPath(output ?? Path.Combine(Path.GetDirectoryName(selection.Project)!, "bin", "ankus",
+        return Path.GetFullPath(output ?? Path.Join(Path.GetDirectoryName(selection.Project)!, "bin", "ankus",
             selection.Installation.Label, selection.Installation.TargetInfo?.RuntimeIdentifier ?? RuntimeInformation.RuntimeIdentifier,
             selection.Configuration));
     }
