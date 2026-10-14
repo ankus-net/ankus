@@ -1,9 +1,14 @@
 name: CodeQL
 
 on:
+  # No analyzed language reads Markdown, so commits that change only Markdown are not scanned again.
   pull_request:
+    paths-ignore:
+      - '**/*.md'
   push:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
   schedule:
     - cron: '41 8 * * 2'
   workflow_dispatch:
