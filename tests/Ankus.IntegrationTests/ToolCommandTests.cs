@@ -78,14 +78,14 @@ public sealed partial class ToolCommandTests(TestContext context)
             ["pack", Path.Join(repository, "src/Ankus.NativeAot.Runtime"), "-c", "Release", "-o", feed,
                 "-p:AnkusRuntimeIdentifier=" + runtimeIdentifier, "-p:AnkusRuntimeSdkPath=" + runtimeSdk,
                 "-p:AnkusRuntimeSourcePath=" + runtimeSource,
-                "-bl:" + Path.Join(repository, "artifacts", "runtime-package-pack-{}.binlog")],
+                "-bl:" + Path.Join(repository, "artifacts", "runtime-package-pack.binlog")],
             new Dictionary<string, string?>(), token);
         await PackageProcessRunner.RunCheckedAsync("dotnet",
             ["pack", Path.Join(repository, "src/Ankus.NativeAot.Compiler"), "-c", "Release", "-o", feed,
                 "-p:AnkusCompilerRuntimeIdentifier=" + runtimeIdentifier,
                 "-p:AnkusCompilerToolsPath=" + compilerTools,
                 "-p:AnkusRuntimeSourcePath=" + runtimeSource,
-                "-bl:" + Path.Join(repository, "artifacts", "compiler-package-pack-{}.binlog")],
+                "-bl:" + Path.Join(repository, "artifacts", "compiler-package-pack.binlog")],
             new Dictionary<string, string?>(), token);
 
         string[] projects = ["src/Ankus.Runtime", "src/Ankus.Generators", "src/Ankus.PgConfig",
@@ -96,7 +96,7 @@ public sealed partial class ToolCommandTests(TestContext context)
         {
             await PackageProcessRunner.RunCheckedAsync("dotnet",
                 ["pack", Path.Join(repository, project), "-c", "Release", "-o", feed, "-p:PackageVersion=" + s_version,
-                    "-bl:" + Path.Join(repository, "artifacts", "package-pack-{}.binlog")],
+                    "-bl:" + Path.Join(repository, "artifacts", "package-pack-" + Path.GetFileName(project) + ".binlog")],
                 new Dictionary<string, string?>(), token);
         }
 

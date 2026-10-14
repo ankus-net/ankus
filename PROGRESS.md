@@ -339,6 +339,19 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   their processes. New PgConfig tests cover a shared reference and the order of
   reported problems; the 52 selection and cluster backend tests pass on Linux x64
   with PostgreSQL 18.
+- Test logs no longer accumulate without bound. Every run adds a server log per
+  cluster and a binary log per extension publish, and nothing removed them: one
+  validation checkout held 21,866 files and 6.4 GB under `artifacts/test-logs`,
+  and an extension project's `bin/ankus-test-logs` grows the same way. pgrx keeps
+  server output in memory for its failure report, so it has nothing to clean.
+  The first cluster a test process starts in a log directory now removes the
+  server logs, Windows event sidecars and publish binary logs that the fixtures
+  named, once they are seven days past their last write, and leaves every other
+  file. The integration suite expires its own `artifacts/test-logs` the same
+  way, and the package pack logs it writes into `artifacts` now keep one fixed
+  name per package. Tests cover the recognized names, a prune beside foreign and
+  recent files, and a real cluster start; with the cluster tests they pass on
+  Linux x64 with PostgreSQL 18 (35 of 35).
 - GitHub flagged the C# scan's quality: read from source alone, it resolved only
   81% of calls. Nearly all the misses were MSTest calls in the test projects,
   whose global `using` MSTest's package adds through MSBuild, which a scan of the

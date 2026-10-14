@@ -134,7 +134,7 @@ The fixture to dispose after all tests finish.
 PostgreSQL 18 and later use a per-cluster extension search path. Earlier versions run from an isolated,
 relocatable copy of the selected installation.
 Custom SQL directories are remapped into owned test storage without changing the authored control file.
-Server logs and build logs remain in the project's bin/ankus-test-logs directory.
+Server logs and build logs remain in the project's bin/ankus-test-logs directory for seven days after their last write.
 
 <a id="member-96deb75b043968f2"></a>
 

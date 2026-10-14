@@ -332,7 +332,8 @@ test uses a savepoint to recover from an expected error and verifies the next
 query on the same connection.
 
 Build logs and PostgreSQL logs remain under the extension project's
-`bin/ankus-test-logs/`. A failed test's exception carries its session's log
+`bin/ankus-test-logs/` for seven days after their last write; a later run
+removes them and leaves any other files in the directory. A failed test's exception carries its session's log
 lines and, when its backend died, the server's report about that process. The
 cluster and temporary published library are removed on disposal. A failed build or extension load fails initialization and cleans up
 the resources it created.

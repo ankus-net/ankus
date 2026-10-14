@@ -247,7 +247,9 @@ dotnet test --project tests/Ankus.IntegrationTests/Ankus.IntegrationTests.csproj
 ```
 
 Filtering still runs Native AOT publishing and cluster startup. Server logs are
-retained in `artifacts/test-logs`. A failure report includes the failing test's
+retained in `artifacts/test-logs`, and each integration run first removes files
+there that are more than seven days old, as the public fixture does with its own
+logs. A failure report includes the failing test's
 PostgreSQL session log.
 Windows fixtures retain their own Application-event messages in the same log,
 including PostgreSQL versions that route diagnostics there under a service

@@ -100,6 +100,10 @@ public sealed class PostgresTestClusterOptions
     /// <summary>
     /// Gets the directory where server logs remain available after cluster shutdown.
     /// </summary>
+    /// <remarks>
+    /// A server log stays for seven days after its last write. The first cluster a process starts in the directory
+    /// removes older server logs and extension build logs that the test fixtures named; other files are left alone.
+    /// </remarks>
     public string LogDirectory
     {
         get;

@@ -34,6 +34,7 @@ public sealed class NativeAotExtensionTests(TestContext context)
             Environment.SetEnvironmentVariable("DOTNET_CLI_TELEMETRY_OPTOUT", "1");
         }
 
+        IntegrationEnvironment.PruneTestLogs();
         return PostgresFixture.InitializeAsync(context);
     }
 

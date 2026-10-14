@@ -372,6 +372,7 @@ public sealed class PostgresTestCluster : IAsyncDisposable
     {
         await _account.CreateDirectoryAsync(Path.GetDirectoryName(DataDirectory)!, cancellationToken).ConfigureAwait(false);
         Directory.CreateDirectory(Path.GetDirectoryName(LogFilePath)!);
+        TestLogRetention.Prune(Path.GetDirectoryName(LogFilePath)!);
         if (SocketDirectory is not null)
         {
             await _account.CreateDirectoryAsync(SocketDirectory, cancellationToken).ConfigureAwait(false);

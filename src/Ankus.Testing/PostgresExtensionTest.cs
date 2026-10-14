@@ -63,7 +63,7 @@ public sealed class PostgresExtensionTest : IAsyncDisposable
     /// PostgreSQL 18 and later use a per-cluster extension search path. Earlier versions run from an isolated,
     /// relocatable copy of the selected installation.
     /// Custom SQL directories are remapped into owned test storage without changing the authored control file.
-    /// Server logs and build logs remain in the project's bin/ankus-test-logs directory.
+    /// Server logs and build logs remain in the project's bin/ankus-test-logs directory for seven days after their last write.
     /// </remarks>
     public static Task<PostgresExtensionTest> StartAsync(string projectPath,
         PostgresInstallation? installation = null, CancellationToken cancellationToken = default)
@@ -238,6 +238,7 @@ public sealed class PostgresExtensionTest : IAsyncDisposable
             : Path.Join(commandData!, invocation);
         Directory.CreateDirectory(output);
         Directory.CreateDirectory(logs);
+        TestLogRetention.Prune(logs);
         PostgresServerAccount account = PostgresServerAccount.Create(TestCommandContext.RunAs);
         PostgresTestCluster? cluster = null;
         PostgresTestInstallation? stagedInstallation = null;

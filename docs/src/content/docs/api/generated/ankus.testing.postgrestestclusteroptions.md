@@ -80,6 +80,9 @@ public string LogDirectory { get; init; }
 
 Value: [string](https://learn.microsoft.com/dotnet/api/system.string)
 
+A server log stays for seven days after its last write. The first cluster a process starts in the directory
+removes older server logs and extension build logs that the test fixtures named; other files are left alone.
+
 <a id="member-ebc10be9428d0370"></a>
 
 ### Port

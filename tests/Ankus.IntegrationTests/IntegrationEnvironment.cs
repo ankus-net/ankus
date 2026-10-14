@@ -347,6 +347,53 @@ internal static class IntegrationEnvironment
         return concurrency;
     }
 
+    /// <summary>
+    /// Removes test logs and build logs from earlier runs once they reach the fixtures' retention age. Every run adds
+    /// hundreds of server logs and a binary log per publish beneath the repository's test-log directory, which only the
+    /// tests write, so its subdirectories expire like the fixtures' own logs.
+    /// </summary>
+    internal static void PruneTestLogs()
+    {
+        string root = Path.Join(RepositoryRoot, "artifacts", "test-logs");
+        if (!Directory.Exists(root))
+        {
+            return;
+        }
+
+        // The server account may own a directory this account cannot read; skip it rather than fail the run.
+        var everything = new EnumerationOptions { RecurseSubdirectories = true, AttributesToSkip = 0 };
+        DateTime cutoff = DateTime.UtcNow - TestLogRetention.Retention;
+        foreach (string path in Directory.EnumerateFiles(root, "*", everything))
+        {
+            if (File.GetLastWriteTimeUtc(path) < cutoff)
+            {
+                TryDelete(() => File.Delete(path));
+            }
+        }
+
+        // Removing a file refreshes its directory's write time, so an emptied directory goes regardless of age. This
+        // runs before any test writes, and deepest first, so a directory its subdirectories leave empty goes as well.
+        foreach (string path in Directory.EnumerateDirectories(root, "*", everything).OrderDescending(StringComparer.Ordinal))
+        {
+            if (!Directory.EnumerateFileSystemEntries(path).Any())
+            {
+                TryDelete(() => Directory.Delete(path));
+            }
+        }
+
+        static void TryDelete(Action delete)
+        {
+            try
+            {
+                delete();
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                // Another run may hold the log open, or the server account may own it; a later run tries again.
+            }
+        }
+    }
+
     private static async Task PublishExtensionAsync(string directory, string name, string output,
         PostgresInstallation installation, CancellationToken cancellationToken)
     {
