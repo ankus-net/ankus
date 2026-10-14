@@ -21,7 +21,7 @@ repository root with `dotnet run --file`.
 | `metadata` | Validate and export the pinned runtime identity. |
 | `runtime-info` | Validate and print the checkout's runtime repository, commit and matching package/compiler versions locally. |
 | `release-metadata` | Validate a release tag and export release metadata. |
-| `quality` | Install PostgreSQL headers, build Ankus and validate generated API and site documentation. |
+| `quality` | Install PostgreSQL headers, build Ankus and every automation app, and validate generated API and site documentation. |
 | `runtime-build` | Build and stage the runtime and compiler host for the runner's platform. |
 | `runtime-pack` | Pack a staged runtime and compiler host for CI. |
 | `runtime-test` | Use a staged runtime to run the complete unit and PostgreSQL integration test suites. |

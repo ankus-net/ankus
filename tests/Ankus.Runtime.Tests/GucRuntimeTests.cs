@@ -258,7 +258,7 @@ public sealed class GucRuntimeTests
     /// </summary>
     /// <param name="text">The native string value.</param>
     [TestMethod]
-    [DataRow((string?)null)]
+    [DataRow(default(string))]
     [DataRow("")]
     [DataRow("café 🐘")]
     public void NativeStringReadsOwnValuesAndReleaseBuffers(string? text)

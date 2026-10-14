@@ -41,7 +41,7 @@ public sealed partial class ToolCommandTests
     /// </summary>
     /// <param name="value">The absent or empty environment selection.</param>
     [TestMethod]
-    [DataRow((string?)null)]
+    [DataRow(default(string))]
     [DataRow("")]
     public async Task EmptyEnvironmentMajorRetainsProjectInstallation(string? value)
     {

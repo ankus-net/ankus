@@ -76,6 +76,7 @@ public static partial class GucLifetimeFunctions
     [PgFunction]
     public static long GucLifetimeMallocBytes()
     {
+        // codeql[cs/call-to-unmanaged-code] Only glibc itself can report its allocator's statistics.
         MallocInfo info = ReadMallocInfo();
         return checked((long)(info.AllocatedBytes + info.MappedBytes));
     }

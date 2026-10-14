@@ -223,7 +223,7 @@ public sealed partial class PgFunctionGeneratorTests
     /// </summary>
     /// <param name="name">An invalid PostgreSQL operator token.</param>
     [TestMethod]
-    [DataRow((string?)null)]
+    [DataRow(default(string))]
     [DataRow("")]
     [DataRow(" ")]
     [DataRow("a")]
