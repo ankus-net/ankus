@@ -321,7 +321,9 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   GitHub-hosted Windows, whose work directory is on another drive than
   PostgreSQL; such a consumer now reaches the installation through a directory
   junction in the shared work root. The eight selection cases still pass on
-  Linux x64 with PostgreSQL 18.
+  Linux x64 with PostgreSQL 18. A design-time build test's four fake
+  dependencies, which MSBuild builds in parallel, appended to one log, and
+  Windows refused one write; each now keeps its own log.
 - Assertion-enabled PostgreSQL builds on macOS ARM64 stopped in
   `PgRelationWriter`. A writer began one `AFTER`-trigger query when it opened and
   ended it when disposed, so a writer left open at commit left the query on the
