@@ -16,6 +16,10 @@ on:
 permissions:
   contents: read
 
+env:
+  # The SDK's telemetry can deadlock a build against MSBuild's logging; see NativeAotExtensionTests.
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+
 jobs:
   analyze:
     name: Analyze ${{ matrix.language }}

@@ -26,6 +26,14 @@ public sealed class NativeAotExtensionTests(TestContext context)
                 ((int)IntegrationEnvironment.StartupTimeout.TotalSeconds).ToString(CultureInfo.InvariantCulture));
         }
 
+        // The suite starts hundreds of dotnet builds. With CLI telemetry on, the SDK can deadlock: its telemetry setup
+        // loads an assembly while MSBuild, holding its logging lock, hands that telemetry an event that needs the same
+        // load, and the build never returns. Without telemetry neither path runs.
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOTNET_CLI_TELEMETRY_OPTOUT")))
+        {
+            Environment.SetEnvironmentVariable("DOTNET_CLI_TELEMETRY_OPTOUT", "1");
+        }
+
         return PostgresFixture.InitializeAsync(context);
     }
 

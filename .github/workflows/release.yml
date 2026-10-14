@@ -16,6 +16,8 @@ permissions:
 
 env:
   ANKUS_RUNNER_PRIVATE_IDENTIFIERS: ${{ secrets.ANKUS_RUNNER_PRIVATE_IDENTIFIERS }}
+  # The SDK's telemetry can deadlock a build against MSBuild's logging; see NativeAotExtensionTests.
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
   GIT_CONFIG_COUNT: 1
   GIT_CONFIG_KEY_0: core.longpaths
   GIT_CONFIG_VALUE_0: 'true'
