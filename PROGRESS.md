@@ -37,19 +37,21 @@ Repository `global.json` selects stable SDK **10.0.400** with
 target is **net10.0**. Installing another SDK does not silently change an
 extension's selected compiler, target framework or embedded runtime.
 
-Extensions embed runtime and compiler host **10.0.12-ankus.5**, based on runtime
-fork commit `e3f084f4590644bcf7c191c0d281076757c0b93c` and paired with the 10.0.12
-Native AOT framework and compiler targets. It keeps PostgreSQL's signals on the
-backend thread. It replaces **ankus.4** (`d23f4e7374cd3878dc5696fbc26ee6ecdddde1ca`,
-selected by **bdb5d1c**), with which complete primary CI and Intel acceptance
-passed. Additional-version acceptance remains in progress.
+Extensions embed runtime and compiler host **10.0.13-ankus.1**, built from runtime
+fork commit `f97c4dea9e1cab1f4afcbd8d9c67eb5f7d88a492` on branch
+`ankus/runtime-10.0.13` and paired with the 10.0.13 Native AOT framework and
+compiler targets. It keeps PostgreSQL's signals on the backend thread. It
+replaces **10.0.12-ankus.5** (`e3f084f4590644bcf7c191c0d281076757c0b93c`).
+Complete suites pass on it for every supported PostgreSQL major on Linux x64,
+macOS ARM64, Windows x64 and Intel macOS; see
+[current acceptance](#current-complete-acceptance-evidence).
 Servicing requires
 immutable patched-runtime and compiler packages, matching compiler selection,
 complete backend validation and extension rebuild/redeployment. Check current
 upstream servicing before releasing 0.1.0.
 
 .NET 10.0.13 shipped on 2026-10-13 with security fixes, and the servicing
-update to **10.0.13-ankus.1** is in validation. Microsoft builds .NET 10 from
+update to **10.0.13-ankus.1** is complete. Microsoft builds .NET 10 from
 dotnet/dotnet, whose release commit `4099f83977f4d29604a9aeb971fb0a7bc1d5f699`
 took dotnet/runtime `6aa72daa24f66c01c3d7b6a32519e9d21396deec` and changes 75
 more files in `src/runtime`: the release's security fixes and versions, which
@@ -62,9 +64,8 @@ activation handler, which fixes a hang the release rehearsal found (see below)
 and which the probe exercises. The same comparison for 10.0.12 found 13 shipped
 files beyond the dotnet/runtime tag (HttpListener requests, WebSocket
 compression, EventPipe's diagnostic socket) that **ankus.5**, built from the
-tag, lacks; 10.0.13-ankus.1 has them. CI must build the runtime from the fork
-and pass the probes and complete suites before the release rehearsal and
-platform matrices are rerun.
+tag, lacks; 10.0.13-ankus.1 has them. CI builds the runtime from the fork and
+passes its probes before the complete suites run.
 
 The first servicing CI run (38448888187 on **84504b5**) built the runtime from
 the fork on all three platforms and passed every Linux integration test, but
@@ -111,8 +112,8 @@ version jobs instead of four, and the rerun passed.
 
 | Runtime line | Evidence and remaining requirements |
 | --- | --- |
-| .NET 10 LTS | Patched runtime and complete primary-platform suites exist. Complete supported PostgreSQL/platform combinations and final release acceptance remain required. |
-| .NET 11 STS | SDK 11 RC1 targeting net10.0 passes complete PostgreSQL 18.6/Linux x64 acceptance. This does not implement net11.0. Its own patched compiler/runtime, GA and cross-platform acceptance remain required. |
+| .NET 10 LTS | Patched runtime **10.0.13-ankus.1** passes complete suites for every supported PostgreSQL major on Linux x64, macOS ARM64, Windows x64 and Intel macOS. A release rehearsal on the commit to be released remains before 0.1.0. |
+| .NET 11 STS | SDK 11 RC2 targeting net10.0 passes complete PostgreSQL 18.6/Linux x64 acceptance apart from two preview-notice rows. This does not implement net11.0. Its own patched compiler/runtime, GA and cross-platform acceptance remain required. |
 | Later LTS/STS releases | Repeat explicit compiler/runtime/RID and packed-consumer acceptance, following upstream support lifecycles and servicing supported majors. |
 
 See the [public support policy](docs/src/content/docs/reference/dotnet-support.md)
@@ -370,6 +371,20 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   Linux x64, macOS ARM64 and Windows x64. Its first CI run had failed on Windows,
   where PostgreSQL writes stderr beside the retained log and the log appears only
   when read; retention now covers every file named after a cluster's log.
+- .NET 11 RC2 (SDK 11.0.100-rc.2.26504.105, 2026-10-13) was checked against the
+  `net10.0` target, as RC1 was. Its Native AOT publish skips the full build, so
+  the output directory stays empty, yet it still copies the documentation file
+  from there; extensions with documentation could not publish, and a plain
+  `PublishAot` console app fails the same way. This looks like an SDK bug and
+  is recorded here, not reported. `Ankus.Sdk` defaults `UseOptimizedPublish` to
+  `false`, which keeps the SDK 10 publish path and output. The test fixture's
+  publish no longer inherits the MSBuild paths of the SDK that ran the tests,
+  which had loaded SDK 11 tasks into an SDK 10 build. `dotnet sln add` now
+  rejects a project that a reference adds again, and CA2026 flags an undisposed
+  `JsonDocument`; one test each changed. With SDK 10.0.402 beside RC2 for the
+  generated consumers, the complete PostgreSQL 18.6/Linux x64 suite passed
+  14,956 of 15,010 with 52 platform skips. The two failures are an editor-load
+  test's rows that see RC2's preview notice, which release SDKs do not print.
 - GitHub flagged the C# scan's quality: read from source alone, it resolved only
   81% of calls. Nearly all the misses were MSTest calls in the test projects,
   whose global `using` MSTest's package adds through MSBuild, which a scan of the

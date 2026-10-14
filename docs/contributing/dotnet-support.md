@@ -102,6 +102,24 @@ errors. Earlier interrupted preview runs are not completed evidence. These
 results establish the Linux RC1 experiment; cross-platform and GA acceptance
 and the separate `net11.0` runtime target remain required.
 
+SDK **11.0.100-rc.2.26504.105**, released on 2026-10-13 and still targeting
+`net10.0`, changed three things Ankus relied on. It publishes Native AOT without
+the full build (`UseOptimizedPublish`), which leaves the output directory empty
+but still copies the documentation file from it; a plain `PublishAot` console
+app that generates documentation fails the same way. `Ankus.Sdk` therefore
+defaults `UseOptimizedPublish` to `false`, so extensions publish as they do on
+SDK 10. `dotnet sln add` now rejects a project that another project's reference
+adds a second time, which one test's setup did, and its analyzers report
+`JsonDocument.Parse(...).RootElement` as CA2026, which one test also did.
+Generated consumers keep SDK 10 through their `global.json`; the test fixture
+now publishes with the SDK the extension's directory selects instead of
+inheriting the MSBuild paths of the SDK that ran the tests, and an offline
+restore test offers the .NET 10 reference packs that SDK 11 downloads. With SDK
+10.0.402 installed beside RC2, the complete PostgreSQL 18.6/Linux x64 suite
+passes **14,956 of 15,010 with 52 platform skips**. The two failures are one
+design-time build test's data rows, which see RC2's preview notice (NETSDK1057);
+a release SDK does not print it.
+
 1. Use an isolated writable runtime checkout based on the selected .NET 11
    release tag/commit. Keep reference clones read-only. Review each existing
    patch against upstream changes; remove a local change only when upstream

@@ -19,11 +19,11 @@ release line until that .NET major reaches Microsoft's end of support. Use the
 latest servicing release of that Ankus line. Adding .NET 11 will not remove
 .NET 10 support or require existing extensions to retarget immediately.
 
-As checked on September 28, 2026, Microsoft's policy provides three years for
+As checked on October 14, 2026, Microsoft's policy provides three years for
 LTS releases and two years for STS releases, with current patches required.
-.NET 10 support ends November 14, 2028. .NET 11 is currently at RC1, with general
-availability expected in November 2026. Microsoft's RC1 go-live status does not
-establish Ankus support. See the [.NET support policy](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core)
+.NET 10 support ends November 14, 2028. .NET 11 is currently at RC2, with general
+availability expected in November 2026. Microsoft's go-live status for its
+release candidates does not establish Ankus support. See the [.NET support policy](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core)
 for current dates.
 
 Ankus releases use their own version numbers independently of .NET. There is
@@ -48,11 +48,13 @@ and `allowPrerelease: false`. A .NET 11 SDK can coexist for other projects witho
 changing that selection. Installing a newer SDK does not retarget your extension
 or update its embedded runtime. See [.NET SDK selection](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json).
 
-SDK 11 RC1 targeting `net10.0` has passed the complete test suite against
+SDK 11 RC2 targeting `net10.0` passes the complete test suite against
 PostgreSQL 18.6 on Linux x64, using the .NET 10 compiler and embedded runtime.
-Cross-platform and final-release validation remain open, as does the separate
-`net11.0` runtime target. Keep the generated stable SDK selection until that
-acceptance is complete.
+SDK 11 can publish Native AOT without a full build, but in RC2 that path loses
+an extension's documentation file, so Ankus keeps `UseOptimizedPublish` off
+unless your project turns it on. Cross-platform and final-release validation
+remain open, as does the separate `net11.0` runtime target. Keep the generated
+stable SDK selection until that acceptance is complete.
 
 Keep `net10.0` until Ankus documents support for another target. Ankus will select
 a matching runtime for each supported target; extension authors should not need
