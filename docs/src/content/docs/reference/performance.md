@@ -18,9 +18,10 @@ approaches, not as guarantees, and measure your own code with
 | Aggregate transition from `int` into a `long` state, per row | 95 ns |
 | `Spi.Select` of one `int` column in 1,000-row queries, per row including the query | 93 ns |
 | Reading a Boolean, integer, real or enum setting property | 24 ns |
-| A managed custom scan row with one `bigint` column | 182 ns |
+| A managed custom scan row with one `bigint` column | 157 ns |
+| Replacing a built-in cell of a row with `PgHeapTuple.Set` | 27 ns |
 | A function that reads a composite row and returns one, per call | 1.12 µs |
-| A `BEFORE INSERT` row trigger that trims one text column, per row | 0.90 µs, against 0.54 µs for PL/pgSQL |
+| A `BEFORE INSERT` row trigger that trims one text column, per row | 0.75 µs, against 0.46 µs for PL/pgSQL |
 | A `BEFORE INSERT` row trigger that only checks its row, per row | 0.55 µs |
 
 ## Applying replicated changes
