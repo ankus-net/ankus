@@ -27,13 +27,13 @@ only the first gate.
 
 | Upstream change | Required Ankus behavior and acceptance |
 | --- | --- |
-| Headers, #2377 / `4f36fae4` | Retain all seven expanded `pg13.h`–`pg19.h` manifests, foreign declarations, constants, node/type graphs, OIDs and attribution. The checked-in manifests match upstream byte for byte: 481, 490, 497, 501, 508, 524 and 535 direct includes, respectively. The .NET maintenance command now discovers headers from each selected PostgreSQL server include tree with the same deliberate exclusions, formatting and version guard; binding check mode separately compares all seven with the pinned pgrx bytes, and Linux full-suite CI checks the selected installed manifest. Source cases retain newly exposed function signatures, mutable global storage, callback fields, inline helpers and struct fields. Backend cases execute the hash and overflow helpers and compare `max_prepared_xacts` with PostgreSQL's setting system. Complete current supported-major evidence remains required. |
+| Headers, #2377 / `4f36fae4` | Retain all seven expanded `pg13.h`–`pg19.h` manifests, foreign declarations, constants, node/type graphs, OIDs and attribution. The checked-in manifests match upstream byte for byte: 481, 490, 497, 501, 508, 524 and 535 direct includes, respectively. The .NET maintenance command now discovers headers from each selected PostgreSQL server include tree with the same deliberate exclusions, formatting and version guard; binding check mode separately compares all seven with the pinned pgrx bytes, and Linux full-suite CI checks the selected installed manifest. Source cases retain newly exposed function signatures, mutable global storage, callback fields, inline helpers and struct fields. Backend cases execute the hash and overflow helpers and compare `max_prepared_xacts` with PostgreSQL's setting system. The complete suites pass on every supported major and platform on runtime 10.0.13-ankus.1. |
 | PostgreSQL 19 beta 4, #2383 / `46eae1dd` | Keep bindings, OIDs, SQLSTATEs, version metadata and server fixtures on the same beta. Current inputs are aligned; refresh complete PG19 backend evidence after the current runtime and cleanup changes. Stable supported majors retain their own APIs and headers. |
-| Cargo argument forwarding, #2343 / `bc09b536` | Source-case reconciliation covers the idiomatic repeatable `--property`/`-p` equivalent through initial project evaluation, restore, build, schema/no-build reuse, publication and nested test/benchmark calls. Automatic response files and explicit precedence are retained. Consumer cases select a custom restore configuration, package root and intermediate root with spaces; project/solution discovery, explicit projects, repeated values and relative `pg_config` paths are covered. Complete current platform acceptance remains required. |
+| Cargo argument forwarding, #2343 / `bc09b536` | Source-case reconciliation covers the idiomatic repeatable `--property`/`-p` equivalent through initial project evaluation, restore, build, schema/no-build reuse, publication and nested test/benchmark calls. Automatic response files and explicit precedence are retained. Consumer cases select a custom restore configuration, package root and intermediate root with spaces; project/solution discovery, explicit projects, repeated values and relative `pg_config` paths are covered. The complete suites pass on every supported platform on runtime 10.0.13-ankus.1. |
 | Package prefix, #2382 / `577ee501` | Preserve custom installation-prefix layouts, libraries, control files and authored/upgrade SQL through relocation and PostgreSQL loading. `--prefix-dir` and backend package-prefix tests exist; retain them in refreshed platform/version acceptance. |
 | Lazy error allocations, #2369 / `b91a9ae0` | The upstream changes replace eager Rust `ok_or`/`unwrap_or` values with closures. Corresponding Ankus CLI, declaration/type graph, binding, SPI and test-harness failure paths use conditional branches, `?? throw` or deferred diagnostics, so successful paths do not construct those errors. No mechanical .NET change or performance claim is warranted; exact diagnostics and ownership tests remain. |
 | Shared-memory macro lookup, #2371 / `7d512caf` | Generated shared-memory hooks resolve framework helpers without consumer imports. A source case with fully qualified attributes, no `using Ankus` and colliding consumer `PgSharedMemory`/`PgLwLock<T>` names compiles and dispatches the intended consumer callbacks through globally qualified framework transport. Retain real preload/chaining evidence on every supported platform/version. |
-| Reporting interrupts, #2374 / `925e50fc` | Hold interrupts for non-ERROR reports and restore holdoff state after recoverable failures. Preserve real cancellation, FATAL/PANIC intent and managed unwinding in ordinary, GUC, worker and cleanup paths. Existing native guards and hook tests remain required. The cleanup-reporting defects found during the refresh are fixed: completion-callback failures report through a fixed buffer that preserves the primary error and durable outcome, and a terminal cleanup report keeps its FATAL or PANIC intent even when building it fails. Complete current platform/version acceptance remains required. |
+| Reporting interrupts, #2374 / `925e50fc` | Hold interrupts for non-ERROR reports and restore holdoff state after recoverable failures. Preserve real cancellation, FATAL/PANIC intent and managed unwinding in ordinary, GUC, worker and cleanup paths. Existing native guards and hook tests remain required. The cleanup-reporting defects found during the refresh are fixed: completion-callback failures report through a fixed buffer that preserves the primary error and durable outcome, and a terminal cleanup report keeps its FATAL or PANIC intent even when building it fails. The complete suites pass on every supported major and platform on runtime 10.0.13-ankus.1. |
 | Varlena pointer safety, #2368 / `3223e80e` | Ankus's native bridges detoast first, then obtain the payload address with `VARDATA_ANY` and length with `VARSIZE_ANY_EXHDR`; they never construct an intermediate managed span or native slice from a one-byte-header size. Existing native/backend tests cover one-byte, four-byte, compressed and external/toasted storage, zero payloads, exact 126/127 boundaries and ownership. Refresh supported-major evidence with the current source. |
 | Contribution rules, #2384 / `96284542` | Apply relevant ownership, minimal unsafe scope, measurement and evidence principles through Ankus's existing .NET conventions and user instructions. Rust-only rules are not automatic repository policy changes. No change to Ankus's `AGENTS.md` is required by this refresh. |
 | CLI skills/docs, #2385 / `c21c79e8` | Reconcile updated command options, defaults, examples and limitations with the CLI inventory and public guides. Keep maintainer commands in contributor documentation and personal validation details private. Do not import upstream shell scripts or Rust agent instructions into user workflows. |
@@ -82,7 +82,7 @@ precedence. See the [CLI guide](../../src/content/docs/reference/cli.md#pass-msb
 Execution-account options (`test --runas`, `regress --runas`) and privileged
 installation (`install --sudo`) are implemented with real-account evidence. Every
 Linux and macOS runner has a least-privilege run-as account, so these cases run
-in CI; complete version/platform validation is still required.
+in CI, and the complete version and platform suites pass on runtime 10.0.13-ankus.1.
 The framework also requires versioned extension SQL upgrades, custom/versioned shared-library names,
 control-file settings, dependency handling, and deterministic packaging.
 Primary author settings and native dependency/privilege behavior are implemented
@@ -92,7 +92,7 @@ PostgreSQL update evidence. Alternate SQL directory layouts preserve omitted,
 empty, relative and absolute values through installation and packaging, with
 owned test staging and Unix parent/symbolic-link traversal. See the control and
 directory milestones for exact tests and platform evidence; the complete
-PostgreSQL/platform matrix remains required.
+PostgreSQL/platform matrix passes on runtime 10.0.13-ankus.1.
 
 NuGet packages now provide the extension-author project SDK, runtime, source generator, PostgreSQL configuration,
 testing harness, and .NET tool. The SDK embeds a framework-dependent .NET 10 native-build helper and references
@@ -132,8 +132,8 @@ Primary sources: `pgrx-macros/src/lib.rs`, `pgrx-sql-entity-graph/src/`, `pgrx/s
 
 The operator option attributes are `opname`, `commutator`, `negator`, `restrict`, `join`, `hashes`, and
 `merges`. GUC-specific derives/hooks are tracked with GUCs below. PostgreSQL event callbacks and owned
-descriptive metadata are implemented as documented above. Full custom-scan support remains required
-alongside the source-level macro inventory.
+descriptive metadata are implemented as documented above. Custom scans, which pgrx exposes only through
+its raw bindings, have native and managed providers; see the [custom scan guide](../../src/content/docs/custom-scans.md).
 
 ### Datum conversions and user-defined types
 
@@ -198,8 +198,8 @@ All example directories in `pgrx-examples/` require a corresponding working .NET
 Every directory above has a corresponding sample under `samples/` with backend
 integration tests; the [pgrx examples reference](../../src/content/docs/reference/pgrx-examples.md)
 maps each one, including the idiomatic .NET mapping of the Rust-specific
-`bad_ideas` and `nostd` scenarios. Complete supported-version and platform
-evidence for every sample remains required.
+`bad_ideas` and `nostd` scenarios. Their backend tests run in the complete
+suites, which pass on every supported major and platform on runtime 10.0.13-ankus.1.
 
 Required test-source inventory:
 
