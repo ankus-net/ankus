@@ -138,11 +138,14 @@ jobs:
       - name: Compile the native bridge and fixtures
         run: dotnet run --file ./eng/Ankus.Ci.cs -- native-analysis-run
 
+      # CodeQL sizes its analysis to most of the host's memory by default. The dedicated Linux host also runs version
+      # suites of about 15 GB each, and two analyses beside them had the kernel stop a runner.
       - name: Analyze
         uses: github/codeql-action/analyze@v4
         with:
           category: /language:c-cpp
           output: artifacts/codeql-results
+          ram: 12288
 
       - name: Archive CodeQL results
         uses: actions/upload-artifact@v7
