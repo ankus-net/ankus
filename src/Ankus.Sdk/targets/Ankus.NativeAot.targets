@@ -1,8 +1,7 @@
 <Project>
+  <Import Project="Ankus.NativeAot.Lines.props" />
+
   <PropertyGroup>
-    <_AnkusNativeAotVersion>10.0.13-ankus.1</_AnkusNativeAotVersion>
-    <_AnkusNativeAotCompilerVersion>10.0.13</_AnkusNativeAotCompilerVersion>
-    <_AnkusNativeAotCompilerHostVersion>10.0.13-ankus.1</_AnkusNativeAotCompilerHostVersion>
     <_AnkusNativeAotSdkPath Condition="'$(AnkusNativeAotSdkPath)' != ''">$([MSBuild]::NormalizeDirectory('$(AnkusNativeAotSdkPath)'))</_AnkusNativeAotSdkPath>
     <_AnkusNativeAotCompilerToolsPath Condition="'$(AnkusNativeAotCompilerToolsPath)' != ''">$([MSBuild]::NormalizeDirectory('$(AnkusNativeAotCompilerToolsPath)'))</_AnkusNativeAotCompilerToolsPath>
     <_AnkusNativeAotPayloadVersion Condition="'$(AnkusNativeAotSdkPath)' != ''">$(_AnkusNativeAotVersion)</_AnkusNativeAotPayloadVersion>
@@ -16,8 +15,8 @@
 
   <Target Name="_ValidateAnkusNativeAotTarget" BeforeTargets="_CheckForUnsupportedNETCoreVersion;ProcessFrameworkReferences"
           Condition="'$(PublishAot)' == 'true'">
-    <Error Condition="'$(TargetFramework)' != 'net10.0'"
-           Text="Ankus extensions require TargetFramework=net10.0." />
+    <Error Condition="'$(_AnkusNativeAotVersion)' == ''"
+           Text="Ankus extensions require TargetFramework=net10.0 or net11.0." />
   </Target>
 
   <Target Name="_ResolveAnkusNativeAotRuntime" BeforeTargets="ProcessFrameworkReferences"

@@ -15,7 +15,7 @@
          project-body entry point for the same targets. -->
     <None Include="../../src/Ankus.Sdk/Sdk/Sdk.props;../../src/Ankus.Sdk/Sdk/Sdk.targets" Link="AnkusSdk/Sdk/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/Ankus.Sdk/Ankus.props;../../src/Ankus.Sdk/Ankus.Sdk.targets" Link="AnkusSdk/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../src/Ankus.Sdk/targets/*.targets" Link="AnkusSdk/targets/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/Ankus.Sdk/targets/*.targets;../../src/Ankus.Sdk/targets/*.props" Link="AnkusSdk/targets/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <PropertyGroup>
     <EnableMSTestSourceGeneration>true</EnableMSTestSourceGeneration>

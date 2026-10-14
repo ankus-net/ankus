@@ -9,6 +9,8 @@
     <PublishAot>true</PublishAot>
     <IsAotCompatible>true</IsAotCompatible>
     <NativeLib>Shared</NativeLib>
+    <!-- PostgreSQL extension libraries carry the extension's name; .NET 11 would otherwise add a lib prefix on Unix. -->
+    <UseNativeLibPrefix Condition="'$(UseNativeLibPrefix)' == ''">false</UseNativeLibPrefix>
     <!-- SDK 11 publishes Native AOT without the full build, leaving the output directory empty, yet still copies the
          documentation file from it. Extensions publish through the full build, as every SDK 10 publish does. -->
     <UseOptimizedPublish Condition="'$(UseOptimizedPublish)' == ''">false</UseOptimizedPublish>

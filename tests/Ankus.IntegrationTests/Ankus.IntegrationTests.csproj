@@ -3,6 +3,8 @@
   <PropertyGroup>
     <RootNamespace>Ankus.IntegrationTests</RootNamespace>
     <EnableMSTestSourceGeneration>true</EnableMSTestSourceGeneration>
+    <!-- These tests compile against sample extensions, so they follow an acceptance run's retargeting, such as to net11.0. -->
+    <TargetFramework Condition="'$(AnkusExtensionTargetFramework)' != ''">$(AnkusExtensionTargetFramework)</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>

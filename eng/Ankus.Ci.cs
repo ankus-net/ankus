@@ -438,7 +438,7 @@ static void ValidateRuntimeIdentity(string repositoryRoot)
         "src/Ankus.NativeAot.Runtime/build/Ankus.NativeAot.Runtime.osx-arm64.props",
         "src/Ankus.NativeAot.Runtime/build/Ankus.NativeAot.Runtime.osx-x64.props",
         "src/Ankus.NativeAot.Runtime/build/Ankus.NativeAot.Runtime.win-x64.props",
-        "src/Ankus.Sdk/targets/Ankus.NativeAot.targets",
+        "src/Ankus.Sdk/targets/Ankus.NativeAot.Lines.props",
     ];
 
     foreach (string relativePath in runtimeFiles)
@@ -456,7 +456,7 @@ static void ValidateRuntimeIdentity(string repositoryRoot)
         "src/Ankus.NativeAot.Runtime/build/Ankus.NativeAot.Runtime.osx-arm64.props",
         "src/Ankus.NativeAot.Runtime/build/Ankus.NativeAot.Runtime.osx-x64.props",
         "src/Ankus.NativeAot.Runtime/build/Ankus.NativeAot.Runtime.win-x64.props",
-        "src/Ankus.Sdk/targets/Ankus.NativeAot.targets",
+        "src/Ankus.Sdk/targets/Ankus.NativeAot.Lines.props",
     ];
 
     foreach (string relativePath in compilerFiles)

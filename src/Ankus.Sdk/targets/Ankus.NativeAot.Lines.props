@@ -1,0 +1,19 @@
+<Project>
+  <!-- Each supported target framework embeds its own patched Native AOT runtime and the matching upstream compiler.
+       The SDK selects a line from the extension's TargetFramework; runtime packages are packed for one line. -->
+  <PropertyGroup>
+    <_AnkusNativeAotLine Condition="'$(_AnkusNativeAotLine)' == ''">$(TargetFramework)</_AnkusNativeAotLine>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(_AnkusNativeAotLine)' == 'net10.0'">
+    <_AnkusNativeAotVersion>10.0.13-ankus.1</_AnkusNativeAotVersion>
+    <_AnkusNativeAotCompilerVersion>10.0.13</_AnkusNativeAotCompilerVersion>
+    <_AnkusNativeAotCompilerHostVersion>10.0.13-ankus.1</_AnkusNativeAotCompilerHostVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(_AnkusNativeAotLine)' == 'net11.0'">
+    <_AnkusNativeAotVersion>11.0.0-rc.2.26504.105-ankus.1</_AnkusNativeAotVersion>
+    <_AnkusNativeAotCompilerVersion>11.0.0-rc.2.26504.105</_AnkusNativeAotCompilerVersion>
+    <_AnkusNativeAotCompilerHostVersion>11.0.0-rc.2.26504.105-ankus.1</_AnkusNativeAotCompilerHostVersion>
+  </PropertyGroup>
+</Project>
