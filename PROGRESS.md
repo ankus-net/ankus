@@ -228,10 +228,10 @@ timings, rejected attempts and superseded
 results remain in the [acceptance history](docs/contributing/evidence/port-history.md#superseded-active-and-primary-acceptance-detail-before-sqldatetime-acceptance-2026-10-06).
 These results establish the named combinations, not full-port completion.
 
-The first rows below use the current runtime, `10.0.13-ankus.1` from fork commit
-`f97c4de`. With the primary CI above, every supported major passes on Linux x64,
-macOS ARM64 and Windows x64, and PostgreSQL 19 beta passes on Intel macOS; the
-other Intel majors last passed on `ankus.5`, below.
+The first rows below use the current runtime, `10.0.13-ankus.1`. With the primary
+CI above, every supported major passes on Linux x64, macOS ARM64, Windows x64 and
+Intel macOS. Fork commit `f97c4de` changed only build-time tasks, so the Intel
+majors that passed on `b9bc343` ran the same runtime and compiler.
 
 | Earlier complete evidence | Platform / PostgreSQL | Result | Duration |
 | --- | --- | --- | --- |
@@ -240,6 +240,7 @@ other Intel majors last passed on `ankus.5`, below.
 | Same platform-versions run / revision / runtime | Windows x64 / each of 13–16 and 19 | 14,990 total per major; 14,944 passed; 46 platform skips; zero failures | 30m28s–59m36s jobs |
 | [Platform versions 38568898790](https://github.com/willibrandon/ankus/actions/runs/38568898790) and [38568893884](https://github.com/willibrandon/ankus/actions/runs/38568893884), **badb5d0 / same runtime** | macOS ARM64 / 15; Windows x64 / 18 | 14,990 total each; 14,925 and 14,944 passed; 65 and 46 platform skips; zero failures | 32m44s and 54m51s jobs |
 | [Intel run 38569108147](https://github.com/willibrandon/ankus/actions/runs/38569108147), **2b1e0ec / same runtime** | macOS x64 / 19 beta | 14,990 total; 14,925 passed; 65 platform skips; zero failures | 1h29m53s job |
+| [Intel run 38465047679](https://github.com/willibrandon/ankus/actions/runs/38465047679), **87afae3 / 10.0.13-ankus.1 (b9bc343)** | macOS x64 / each of 13–18 | 14,986 total per major; 14,921 passed; 65 platform skips; zero failures | 1h24m53s–1h27m36s jobs, run in turn |
 | [Intel weekly 38115991171](https://github.com/willibrandon/ankus/actions/runs/38115991171), **f220a27 / ankus.5** | macOS x64 / each of 13–18 and 19 beta | 14,654 total per major; 14,589 passed; 65 platform skips; zero failures | 1h21m36s–1h24m00s jobs, run in turn |
 | [Version CI 38102793609](https://github.com/willibrandon/ankus/actions/runs/38102793609), **be3fbcd / ankus.5** | Linux x64 / each of 13–17 and 19 beta 4 | 14,512 total per major; 14,457–14,460 passed; 52–55 platform skips; zero failures | 27m31s–35m27s jobs; 1h24m for three reruns sharing one host |
 | [Platform versions 38109393201](https://github.com/willibrandon/ankus/actions/runs/38109393201), **660ea5e / ankus.5** | macOS ARM64 / each of 13–17 and 19 beta 4 (assertions enabled) | 14,642 total per major; 14,573–14,577 passed; 65–69 platform skips; zero failures | 25m52s–32m09s jobs |
