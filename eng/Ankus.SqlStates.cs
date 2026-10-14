@@ -23,9 +23,8 @@ try
     {
         string source = await ReadCatalog(args[0], tag);
         int entries = 0;
-        foreach (string rawLine in source.Split('\n'))
+        foreach (string line in source.Split('\n', StringSplitOptions.TrimEntries))
         {
-            string line = rawLine.Trim();
             if (line.Length == 0 || line.StartsWith('#') || line.StartsWith("Section:", StringComparison.Ordinal))
             {
                 continue;
@@ -124,8 +123,9 @@ try
     Console.WriteLine($"SQLSTATE catalog: {definitions.Count} names, {definitions.Values.Select(static value => value.Code).Distinct(StringComparer.Ordinal).Count()} values.");
     return 0;
 }
-catch (Exception error)
+catch (Exception error) when (error is InvalidOperationException or IOException)
 {
+    // An invalid catalog, an unreadable checkout or a stale generated file is reported as one line.
     Console.Error.WriteLine(error.Message);
     return 1;
 }

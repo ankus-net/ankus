@@ -154,7 +154,7 @@ internal sealed class CustomTypeDeclaration(INamedTypeSymbol type, INamedTypeSym
             return Invalid(CustomTypeDiagnosticKind.AbstractType, typeLocation, type.Name);
         }
 
-        if (type.IsUnboundGenericType || ContainingTypes(type).Any(static current => current.IsGenericType))
+        if (type.IsUnboundGenericType || TypeNesting.SelfAndContainers(type).Any(static current => current.IsGenericType))
         {
             return Invalid(CustomTypeDiagnosticKind.GenericType, typeLocation, type.Name);
         }
@@ -294,17 +294,6 @@ internal sealed class CustomTypeDeclaration(INamedTypeSymbol type, INamedTypeSym
     }
 
     /// <summary>
-    /// Enumerates the declaration and its containing types for closed-generic validation.
-    /// </summary>
-    private static IEnumerable<INamedTypeSymbol> ContainingTypes(INamedTypeSymbol type)
-    {
-        for (INamedTypeSymbol? current = type; current is not null; current = current.ContainingType)
-        {
-            yield return current;
-        }
-    }
-
-    /// <summary>
     /// Accepts statically closed codec types and verifies containing declarations and generic arguments.
     /// </summary>
     private static bool AccessibleCodec(ITypeSymbol type, IAssemblySymbol assembly)
@@ -319,15 +308,12 @@ internal sealed class CustomTypeDeclaration(INamedTypeSymbol type, INamedTypeSym
             return false;
         }
 
-        for (INamedTypeSymbol? current = named; current is not null; current = current.ContainingType)
+        if (TypeNesting.SelfAndContainers(named).Any(current => current.IsFileLocal || !(current.DeclaredAccessibility == Accessibility.Public ||
+            current.DeclaredAccessibility is Accessibility.Internal or Accessibility.ProtectedOrInternal &&
+            current.ContainingAssembly.GivesAccessTo(assembly)) ||
+            current.TypeArguments.Any(argument => !AccessibleCodec(argument, assembly))))
         {
-            if (current.IsFileLocal || !(current.DeclaredAccessibility == Accessibility.Public ||
-                current.DeclaredAccessibility is Accessibility.Internal or Accessibility.ProtectedOrInternal &&
-                current.ContainingAssembly.GivesAccessTo(assembly)) ||
-                current.TypeArguments.Any(argument => !AccessibleCodec(argument, assembly)))
-            {
-                return false;
-            }
+            return false;
         }
 
         return true;
@@ -337,17 +323,8 @@ internal sealed class CustomTypeDeclaration(INamedTypeSymbol type, INamedTypeSym
     /// Requires every containing type to be visible to the generated dispatchers.
     /// </summary>
     private static bool Accessible(INamedTypeSymbol type)
-    {
-        for (INamedTypeSymbol? current = type; current is not null; current = current.ContainingType)
-        {
-            if (current.IsGenericType || current.IsFileLocal || current.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
+        => TypeNesting.SelfAndContainers(type).All(static current => !current.IsGenericType && !current.IsFileLocal &&
+            current.DeclaredAccessibility is Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal);
 
     /// <summary>
     /// Detaches the fully validated storage contract without retaining compiler symbols or attributes.

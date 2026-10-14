@@ -22,8 +22,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # JavaScript and TypeScript are the documentation site.
-        language: [actions, csharp, javascript-typescript]
+        include:
+          - language: actions
+            build-mode: none
+          # A traced build lets the scan see what the source generators emit, so it resolves every call.
+          - language: csharp
+            build-mode: manual
+          # JavaScript and TypeScript are the documentation site.
+          - language: javascript-typescript
+            build-mode: none
     steps:
       - uses: actions/checkout@v5
         with:
@@ -33,19 +40,34 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      # These languages are read from source, so the scan does not need the patched runtime or PostgreSQL.
+      # None of these needs the patched runtime; the C# build uses PostgreSQL's headers, as the quality job does.
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
-          build-mode: none
+          build-mode: ${{ matrix.build-mode }}
           config-file: ./.github/codeql-config.yml
+
+      - name: Build the solution
+        if: matrix.build-mode == 'manual'
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- solution-build
 
       - name: Analyze
         uses: github/codeql-action/analyze@v4
         with:
           category: /language:${{ matrix.language }}
           output: artifacts/codeql-results
+          upload: never
+
+      # The traced build includes what source generators add; their results are left out, as .NET analyzers do.
+      - name: Leave out generated sources
+        run: dotnet run --file ./eng/Ankus.CodeQl.cs -- filter artifacts/codeql-results
+
+      - name: Upload results
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: artifacts/codeql-results
+          category: /language:${{ matrix.language }}
 
       - name: Archive CodeQL results
         uses: actions/upload-artifact@v7

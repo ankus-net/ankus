@@ -12,7 +12,7 @@ repository root with `dotnet run --file`.
 | `Ankus.Headers.cs` | Regenerate or check one header manifest directly from an installed PostgreSQL 13–19 server-header tree. |
 | `Ankus.Templates.cs` | Stage the shared extension, worker and optional test-framework assets for the version-matched template package. |
 | `Ankus.BuildTimings.cs` | Read individual binding-task durations and cache outcomes from retained MSBuild binary logs without exposing command arguments. |
-| `Ankus.CodeQl.cs` | Fail the CodeQL workflow for every finding in its SARIF results, which code scanning would otherwise only list, and dismiss the alerts of results that a `codeql[rule]` comment marks. |
+| `Ankus.CodeQl.cs` | Fail the CodeQL workflow for every finding in its SARIF results, which code scanning would otherwise only list; leave results in generated sources out before upload; and dismiss the alerts of results that a `codeql[rule]` comment marks. |
 
 `Ankus.Ci.cs` provides these commands:
 
@@ -21,7 +21,8 @@ repository root with `dotnet run --file`.
 | `metadata` | Validate and export the pinned runtime identity. |
 | `runtime-info` | Validate and print the checkout's runtime repository, commit and matching package/compiler versions locally. |
 | `release-metadata` | Validate a release tag and export release metadata. |
-| `quality` | Install PostgreSQL headers, build Ankus and validate generated API and site documentation. |
+| `solution-build` | Install PostgreSQL headers, then build the solution and every automation app without the patched runtime, as the CodeQL C# scan traces it. |
+| `quality` | Run `solution-build`, then validate generated API and site documentation. |
 | `runtime-build` | Build and stage the runtime and compiler host for the runner's platform. |
 | `runtime-pack` | Pack a staged runtime and compiler host for CI. |
 | `runtime-test` | Use a staged runtime to run the complete unit and PostgreSQL integration test suites. |

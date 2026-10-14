@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Ankus.CompilerServices;
@@ -27,17 +29,20 @@ internal static unsafe class NativeQuote
 
         byte[] first = s_utf8.GetBytes(text);
         byte[]? second = qualifier is null ? null : s_utf8.GetBytes(qualifier);
-        fixed (byte* firstAddress = first, secondAddress = second)
+
+        // The native side needs a valid address even for zero bytes. An array's data reference pins it even when it is
+        // empty, where pinning the array itself gives null; a missing qualifier is the null address.
+        ref byte secondData = ref second is null ? ref Unsafe.NullRef<byte>() : ref MemoryMarshal.GetArrayDataReference(second);
+        fixed (byte* firstAddress = &MemoryMarshal.GetArrayDataReference(first))
+        fixed (byte* secondAddress = &secondData)
         {
-            // An empty array pins as null; the native side needs a valid address even for zero bytes.
-            byte empty = 0;
             NativeMemoryRequest request = new()
             {
                 _operation = NativeMemoryOperation.Quote,
                 _flags = kind,
-                _pointer = firstAddress == null ? (nint)(&empty) : (nint)firstAddress,
+                _pointer = (nint)firstAddress,
                 _length = (nuint)first.Length,
-                _data = qualifier is null ? 0 : secondAddress == null ? (nint)(&empty) : (nint)secondAddress,
+                _data = (nint)secondAddress,
                 _value = second?.Length ?? 0,
             };
             NativeMemoryContext.Invoke(ref request, out NativeMemoryResult result);

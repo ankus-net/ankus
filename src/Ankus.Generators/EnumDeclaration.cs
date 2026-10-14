@@ -46,7 +46,7 @@ internal sealed record EnumDeclaration(string Name, string? Schema, string Manag
             return Invalid(EnumDeclarationDiagnostics.Flags, Location(flags));
         }
 
-        for (INamedTypeSymbol? container = type; container is not null; container = container.ContainingType)
+        foreach (INamedTypeSymbol container in TypeNesting.SelfAndContainers(type))
         {
             if (container.Arity != 0)
             {

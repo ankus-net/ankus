@@ -11,7 +11,7 @@ public sealed partial class PgFunctionGeneratorTests
     /// </summary>
     /// <param name="schema">The support function's optional fixed schema.</param>
     [TestMethod]
-    [DataRow((string?)null)]
+    [DataRow(default(string))]
     [DataRow("planner")]
     public void PlannerSupportUsesDeclaredIdentity(string? schema)
     {

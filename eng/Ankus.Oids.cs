@@ -136,8 +136,9 @@ try
     Console.WriteLine($"OID catalog: {definitions.Count} native names, {names.Count} numeric members, PostgreSQL 13–19.");
     return 0;
 }
-catch (Exception error)
+catch (Exception error) when (error is InvalidOperationException or IOException)
 {
+    // An invalid catalog, an unreadable checkout or a stale generated file is reported as one line.
     Console.Error.WriteLine(error.Message);
     return 1;
 }

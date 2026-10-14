@@ -50,12 +50,12 @@ try
             WriteOutput("version", GetReleaseVersion());
             break;
 
+        case "solution-build":
+            BuildSolution(repositoryRoot);
+            break;
+
         case "quality":
-            ValidateRuntimeIdentity(repositoryRoot);
-            InstallPostgreSql(repositoryRoot, "18");
-            ConfigureHeaderFrontend(repositoryRoot);
-            Run(GetDotNetHost(), ["restore", "Ankus.slnx", "-p:PublishAot=false"]);
-            Run(GetDotNetHost(), ["build", "Ankus.slnx", "--configuration", "Release", "--no-incremental", "--no-restore", "-p:PublishAot=false"]);
+            BuildSolution(repositoryRoot);
             Run(GetDotNetHost(), ["run", "--project", "src/Ankus.DocGenerator", "--configuration", "Release", "--no-build", "--", "--check"]);
             Run("corepack", ["enable"]);
             Dictionary<string, string?> continuousIntegration = new()
@@ -254,6 +254,24 @@ static void RequireArguments(string[] commandArguments, int count)
     if (commandArguments.Length != count)
     {
         throw new InvalidOperationException($"Command '{commandArguments[0]}' expects {count - 1} arguments.");
+    }
+}
+
+// Compiles every C# source in the repository without the patched runtime: the solution against PostgreSQL 18's headers,
+// and each automation app, including this one, which `dotnet run` compiled before it started. A CI checkout has no
+// outputs, so a plain build compiles everything; a rebuild would also clean a project that the solution builds under
+// two sets of properties while other projects read its first output.
+static void BuildSolution(string repositoryRoot)
+{
+    ValidateRuntimeIdentity(repositoryRoot);
+    InstallPostgreSql(repositoryRoot, "18");
+    ConfigureHeaderFrontend(repositoryRoot);
+    Run(GetDotNetHost(), ["restore", "Ankus.slnx", "-p:PublishAot=false"]);
+    Run(GetDotNetHost(), ["build", "Ankus.slnx", "--configuration", "Release", "--no-restore", "-p:PublishAot=false"]);
+    foreach (string app in Directory.EnumerateFiles(Path.Join(repositoryRoot, "eng"), "*.cs")
+        .Where(static app => !Path.GetFileName(app).Equals("Ankus.Ci.cs", StringComparison.Ordinal)).Order(StringComparer.Ordinal))
+    {
+        Run(GetDotNetHost(), ["build", app]);
     }
 }
 
@@ -941,16 +959,9 @@ static string? FindOnPath(string command)
         return null;
     }
 
-    foreach (string directory in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
-    {
-        string candidate = Path.Join(directory, command);
-        if (File.Exists(candidate))
-        {
-            return candidate;
-        }
-    }
-
-    return null;
+    return path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+        .Select(directory => Path.Join(directory, command))
+        .FirstOrDefault(File.Exists);
 }
 
 static void SelectPostgreSql(string version, string pgConfig)
@@ -1206,7 +1217,8 @@ static void StopJobPostgreSqlServers()
     List<int> postmasters = [.. servers
         .Where(server => !servers.ContainsKey(server.Value) && HasEnvironmentEntry(server.Key, marker))
         .Select(static server => server.Key)];
-    foreach (string signal in (ReadOnlySpan<string>)["INT", "QUIT"])
+    string[] signals = ["INT", "QUIT"];
+    foreach (string signal in signals)
     {
         // SIGINT requests a fast shutdown and SIGQUIT an immediate one; both exit through PostgreSQL's own cleanup.
         foreach (int postmaster in postmasters)
@@ -1543,9 +1555,8 @@ static void SaveBuildTimings(string repositoryRoot)
 
         bool include = false;
         int rows = 0;
-        foreach (string line in output.Split('\n'))
+        foreach (string text in output.Split('\n', StringSplitOptions.TrimEntries))
         {
-            string text = line.Trim();
             if (text is "Target Performance Summary:" or "Task Performance Summary:")
             {
                 include = true;

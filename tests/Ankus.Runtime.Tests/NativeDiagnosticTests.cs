@@ -41,7 +41,7 @@ public sealed class NativeDiagnosticTests
     /// </summary>
     /// <param name="detail">The optional detail, including an explicitly empty value.</param>
     [TestMethod]
-    [DataRow((string?)null)]
+    [DataRow(default(string))]
     [DataRow("")]
     [DataRow("detail café")]
     public unsafe void OptionalDiagnosticsRetainNullAndEmpty(string? detail)

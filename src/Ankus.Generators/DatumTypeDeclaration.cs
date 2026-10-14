@@ -619,22 +619,11 @@ internal sealed class DatumTypeDeclaration(INamedTypeSymbol type, INamedTypeSymb
         => type is INamedTypeSymbol { Name: "PgAggregateState", Arity: 1 } state && state.ContainingNamespace.ToDisplayString() == "Ankus";
 
     /// <summary>
-    /// Enumerates a declaration and its containing managed types.
-    /// </summary>
-    private static IEnumerable<INamedTypeSymbol> Containers(INamedTypeSymbol type)
-    {
-        for (INamedTypeSymbol? current = type; current is not null; current = current.ContainingType)
-        {
-            yield return current;
-        }
-    }
-
-    /// <summary>
     /// Checks closed type accessibility from generated code, including generic arguments and friend assemblies.
     /// </summary>
     private static bool Accessible(ITypeSymbol type, IAssemblySymbol assembly)
         => type is IArrayTypeSymbol array ? Accessible(array.ElementType, assembly) :
-            type is INamedTypeSymbol named && Containers(named).All(current => !current.IsUnboundGenericType && !current.IsFileLocal &&
+            type is INamedTypeSymbol named && TypeNesting.SelfAndContainers(named).All(current => !current.IsUnboundGenericType && !current.IsFileLocal &&
                 IsAccessible(current, assembly) && current.TypeArguments.All(argument => Accessible(argument, assembly)));
 
     /// <summary>

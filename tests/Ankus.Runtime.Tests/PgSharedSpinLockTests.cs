@@ -48,6 +48,7 @@ public sealed unsafe partial class PgSharedTests
             });
         }));
         fixture.UseReplacement(new PgSpinLockValue<SpinState>(new SpinState(101)));
+        // codeql[cs/dispose-not-called-on-throw] The test disposes this at the step it checks; the fake native layer holds nothing an earlier failure could leak.
         staleParent.Dispose();
         Assert.IsNotNull(staleChild);
         staleChild.Dispose();
@@ -107,7 +108,7 @@ public sealed unsafe partial class PgSharedTests
         PgShared<SpinState> storage = fixture.Start(new SpinState(11));
         var admissions = new List<int>();
         spins.BeforeRelease = () => admissions.Add(fixture.Access->_readers);
-        PgSpinLockGuard<int> expired = storage.Read((in state) =>
+        using (PgSpinLockGuard<int> expired = storage.Read((in state) =>
         {
             PgSpinLockGuard<int> outer = state._counter.Lock();
             outer.Value = 17;
@@ -121,12 +122,14 @@ public sealed unsafe partial class PgSharedTests
             Assert.AreEqual(1, fixture.Access->_readers);
             Assert.AreEqual(17, outer.Value);
             return outer;
-        });
-        Assert.AreSequenceEqual([2, 1], admissions);
-        Assert.AreEqual(0, fixture.Access->_readers);
-        Assert.IsEmpty(spins.Held);
-        Assert.ThrowsExactly<ObjectDisposedException>(() => expired.Value);
-        expired.Dispose();
+        }))
+        {
+            Assert.AreSequenceEqual([2, 1], admissions);
+            Assert.AreEqual(0, fixture.Access->_readers);
+            Assert.IsEmpty(spins.Held);
+            Assert.ThrowsExactly<ObjectDisposedException>(() => expired.Value);
+        }
+
         Assert.HasCount(2, spins.Released);
         Assert.AreEqual((17, 119), storage.Read(static (in state) =>
         {

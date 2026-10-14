@@ -306,7 +306,7 @@ public sealed partial class NativeLogTests
     /// </summary>
     /// <param name="detail">The optional field value.</param>
     [TestMethod]
-    [DataRow((string?)null)]
+    [DataRow(default(string))]
     [DataRow("")]
     [DataRow("café 🐘")]
     public void OptionalFieldsPreserveNullAndEmpty(string? detail)

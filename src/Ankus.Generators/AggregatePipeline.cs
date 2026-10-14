@@ -91,7 +91,7 @@ internal static class AggregatePipeline
     private static string MetadataName(INamedTypeSymbol type)
     {
         var types = new Stack<string>();
-        for (INamedTypeSymbol? current = type; current is not null; current = current.ContainingType)
+        foreach (INamedTypeSymbol current in TypeNesting.SelfAndContainers(type))
         {
             types.Push(current.MetadataName);
         }
