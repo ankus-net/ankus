@@ -385,6 +385,9 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   generated consumers, the complete PostgreSQL 18.6/Linux x64 suite passed
   14,956 of 15,010 with 52 platform skips. The two failures are an editor-load
   test's rows that see RC2's preview notice, which release SDKs do not print.
+  On the stable SDK, CI 38633861172 on 0903e5d passed on Linux x64, macOS ARM64
+  and Windows x64; the macOS job's first attempt lost nuget.org during restore
+  (NU1900) and passed when rerun.
 - GitHub flagged the C# scan's quality: read from source alone, it resolved only
   81% of calls. Nearly all the misses were MSTest calls in the test projects,
   whose global `using` MSTest's package adds through MSBuild, which a scan of the
