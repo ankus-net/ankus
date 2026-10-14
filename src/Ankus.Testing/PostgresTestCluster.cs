@@ -174,9 +174,10 @@ public sealed class PostgresTestCluster : IAsyncDisposable
         for (int attempt = 1; ; attempt++)
         {
             timeout.Token.ThrowIfCancellationRequested();
-            using PortReservation? reservation = options.Port is null ? PortReservation.Create() : null;
-            int selectedPort = options.Port ?? reservation?.Port
-                ?? throw new InvalidOperationException("No PostgreSQL test port was selected.");
+            // A configured port is used as given; otherwise a free one stays reserved until the server binds it.
+            int? configuredPort = options.Port;
+            using PortReservation? reservation = configuredPort is null ? PortReservation.Create() : null;
+            int selectedPort = configuredPort ?? reservation!.Port;
             var cluster = new PostgresTestCluster(options, selectedPort);
             AppDomain.CurrentDomain.ProcessExit += cluster.OnProcessExit;
             try

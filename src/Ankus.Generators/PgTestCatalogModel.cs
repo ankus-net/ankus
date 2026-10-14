@@ -25,7 +25,7 @@ internal sealed record PgTestCatalogModel(PgTestCatalogModel.Owner Container, Eq
         internal static Owner Create(INamedTypeSymbol owner)
         {
             var containers = new Stack<string>();
-            for (INamedTypeSymbol? type = owner; type is not null; type = type.ContainingType)
+            foreach (INamedTypeSymbol type in TypeNesting.SelfAndContainers(owner))
             {
                 string accessibility = type.DeclaredAccessibility switch
                 {

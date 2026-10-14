@@ -47,8 +47,11 @@ internal static class SerializationEmitter
         switch (node.Kind)
         {
             case "primitive":
-                string conversion = node.Primitive is "Int64" or "UInt64" ? "checked((" + node.Managed + ")reader.Read" + node.Primitive + "())" :
-                    "reader.Read" + node.Primitive + "()";
+                // Narrower integers read through the 64-bit primitive and convert back with an overflow check.
+                string read = "reader.Read" + node.Primitive + "()";
+                string conversion = (node.Primitive, node.Managed) is ("Int64", not "long") or ("UInt64", not "ulong")
+                    ? "checked((" + node.Managed + ")" + read + ")"
+                    : read;
                 source.AppendLine("            return " + conversion + ";");
                 break;
             case "nullable":

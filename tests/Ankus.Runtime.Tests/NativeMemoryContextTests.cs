@@ -101,6 +101,7 @@ public sealed class NativeMemoryContextTests
         {
             Assert.AreEqual("context café 🐘", context.Name);
             Assert.AreEqual(303, allocation.Context.Id);
+            // codeql[cs/dispose-not-called-on-throw] The test disposes this at the step it checks; the fake native layer holds nothing an earlier failure could leak.
             allocation.Dispose();
         }
 
