@@ -366,6 +366,10 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   [guard-tier evidence](docs/contributing/evidence/guard-tiers.md#managed-custom-scans).
   Runtime (2,490) and generator (5,033) tests pass, as do the 365 trigger,
   custom scan, composite and tuple backend tests on Linux x64 with PostgreSQL 18.
+  CI 38615376583 on 81cd651, which includes the log retention change, passed on
+  Linux x64, macOS ARM64 and Windows x64. Its first CI run had failed on Windows,
+  where PostgreSQL writes stderr beside the retained log and the log appears only
+  when read; retention now covers every file named after a cluster's log.
 - GitHub flagged the C# scan's quality: read from source alone, it resolved only
   81% of calls. Nearly all the misses were MSTest calls in the test projects,
   whose global `using` MSTest's package adds through MSBuild, which a scan of the
