@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Runtime.CompilerServices;
 
 namespace Ankus.Runtime.Tests;
 
@@ -254,6 +253,5 @@ public sealed class PgItemPointerTests
     /// <summary>
     /// Exposes the internal transport field for independent wire assertions and corruption witnesses.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary1")]
-    private static extern ref int Auxiliary1(ref NativeValue value);
+    private static ref int Auxiliary1(ref NativeValue value) => ref value._auxiliary1;
 }

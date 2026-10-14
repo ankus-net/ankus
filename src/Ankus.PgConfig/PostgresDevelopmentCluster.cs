@@ -31,9 +31,9 @@ public sealed partial class PostgresDevelopmentCluster
         ArgumentOutOfRangeException.ThrowIfGreaterThan(installation.Version.Major, 19);
         _installation = installation;
         _registry = new PostgresRegistry(homeDirectory);
-        _root = Path.Combine(_registry.HomeDirectory, "clusters");
-        DataDirectory = Path.Combine(_root, installation.Label);
-        LogFilePath = Path.Combine(_root, installation.Label + ".log");
+        _root = Path.Join(_registry.HomeDirectory, "clusters");
+        DataDirectory = Path.Join(_root, installation.Label);
+        LogFilePath = Path.Join(_root, installation.Label + ".log");
     }
 
     /// <summary>
@@ -114,7 +114,7 @@ public sealed partial class PostgresDevelopmentCluster
             await InitializeAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        string settings = Path.Combine(DataDirectory, "ankus.conf");
+        string settings = Path.Join(DataDirectory, "ankus.conf");
         string temporary = settings + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
@@ -204,6 +204,7 @@ public sealed partial class PostgresDevelopmentCluster
                     }
                 }
             }
+            // codeql[cs/catch-of-all-exceptions] A startup failure is reported together with any cleanup or log failure that followed it.
             catch (Exception cleanupError)
             {
                 cleanupFailure = cleanupError;
@@ -215,6 +216,7 @@ public sealed partial class PostgresDevelopmentCluster
             {
                 diagnostics = ReadServerLog(CancellationToken.None);
             }
+            // codeql[cs/catch-of-all-exceptions] A startup failure is reported together with any cleanup or log failure that followed it.
             catch (Exception logError)
             {
                 diagnosticFailure = logError;
@@ -281,7 +283,7 @@ public sealed partial class PostgresDevelopmentCluster
         if (_log is null && OperatingSystem.IsWindows() && Path.Exists(DataDirectory))
         {
             RequireOwnedCluster();
-            string identityPath = Path.Combine(DataDirectory, ".ankus-log-identity");
+            string identityPath = Path.Join(DataDirectory, ".ankus-log-identity");
             if (File.Exists(identityPath))
             {
                 _log = new(LogFilePath, ReadLogIdentity(identityPath));
@@ -300,7 +302,7 @@ public sealed partial class PostgresDevelopmentCluster
         Guid identity = Guid.NewGuid();
         if (OperatingSystem.IsWindows())
         {
-            string path = Path.Combine(DataDirectory, ".ankus-log-identity");
+            string path = Path.Join(DataDirectory, ".ankus-log-identity");
             if (File.Exists(path))
             {
                 identity = ReadLogIdentity(path);
@@ -349,7 +351,7 @@ public sealed partial class PostgresDevelopmentCluster
         => "--tool=memcheck --leak-check=no --gen-suppressions=all --time-stamp=yes " +
             "--error-markers=VALGRINDERROR-BEGIN,VALGRINDERROR-END --trace-children=yes " +
             (suppressions is null ? string.Empty : ShellQuote("--suppressions=" + suppressions) + " ") +
-            ShellQuote(Path.Combine(installation.BinDirectory, "postgres"));
+            ShellQuote(Path.Join(installation.BinDirectory, "postgres"));
 
     /// <summary>
     /// Quotes a word for the POSIX shell that <c>pg_ctl</c> starts the server through.
@@ -399,12 +401,12 @@ public sealed partial class PostgresDevelopmentCluster
     }
 
     private FileStream AcquireLock()
-        => new(Path.Combine(_root, _installation.Label + ".lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+        => new(Path.Join(_root, _installation.Label + ".lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
 
     private void RequireOwnedCluster()
     {
-        string marker = Path.Combine(DataDirectory, ".ankus-cluster");
-        string version = Path.Combine(DataDirectory, "PG_VERSION");
+        string marker = Path.Join(DataDirectory, ".ankus-cluster");
+        string version = Path.Join(DataDirectory, "PG_VERSION");
         if ((File.GetAttributes(DataDirectory) & FileAttributes.ReparsePoint) != 0 ||
             !File.Exists(marker) || !File.Exists(version) ||
             File.ReadAllText(marker) != _installation.Label ||
@@ -416,15 +418,15 @@ public sealed partial class PostgresDevelopmentCluster
 
     private async Task InitializeAsync(CancellationToken cancellationToken)
     {
-        string staging = Path.Combine(_root, ".init-" + Guid.NewGuid().ToString("N"));
+        string staging = Path.Join(_root, ".init-" + Guid.NewGuid().ToString("N"));
         try
         {
             await RunCheckedAsync(_installation.InitDbPath,
                 ["-D", staging, "--auth=trust", "--encoding=UTF8", "--locale=C", "--username=postgres",
                     "-L", _installation.SharedDirectory], cancellationToken).ConfigureAwait(false);
-            await File.AppendAllTextAsync(Path.Combine(staging, "postgresql.conf"),
+            await File.AppendAllTextAsync(Path.Join(staging, "postgresql.conf"),
                 "\n# Settings supplied by ankus start.\ninclude = 'ankus.conf'\n", cancellationToken).ConfigureAwait(false);
-            await File.WriteAllTextAsync(Path.Combine(staging, ".ankus-cluster"), _installation.Label, cancellationToken).ConfigureAwait(false);
+            await File.WriteAllTextAsync(Path.Join(staging, ".ankus-cluster"), _installation.Label, cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
             Directory.Move(staging, DataDirectory);
         }

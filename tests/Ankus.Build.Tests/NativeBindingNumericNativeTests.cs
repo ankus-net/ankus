@@ -15,7 +15,7 @@ public sealed partial class NativeBindingNativeTests
     public async Task CollectedNumericModelsFollowCompilerOptions(bool charIsSigned)
     {
         const string Headers = "#include <stddef.h>\nextern char character; extern wchar_t wide; extern long double extended;";
-        string directory = Path.Combine(Path.GetTempPath(), "ankus-native-numeric-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus-native-numeric-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
@@ -42,8 +42,8 @@ public sealed partial class NativeBindingNativeTests
                     return 0;
                 }
                 """;
-            string file = Path.Combine(directory, "independent.c");
-            string executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "independent.exe" : "independent");
+            string file = Path.Join(directory, "independent.c");
+            string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "independent.exe" : "independent");
             await File.WriteAllTextAsync(file, Main, context.CancellationToken);
             string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "cc";
             string[] arguments = OperatingSystem.IsWindows()
@@ -71,13 +71,13 @@ public sealed partial class NativeBindingNativeTests
     [DataRow("floating")]
     public async Task RecordWorkerValidatesNumericIdentity(string change)
     {
-        string directory = Path.Combine(Path.GetTempPath(), "ankus-numeric-worker-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus-numeric-worker-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
             NativeRecordGraph expected = await CollectRecordsAsync("extern int value;", [new("value", "value", false)], directory);
             NativeRecordRequest request = JsonSerializer.Deserialize<NativeRecordRequest>(await File.ReadAllTextAsync(
-                Path.Combine(directory, "native-record-request.json"), context.CancellationToken), NativeBindingRecordWorker.JsonOptions)!;
+                Path.Join(directory, "native-record-request.json"), context.CancellationToken), NativeBindingRecordWorker.JsonOptions)!;
             NativeNumericModel numeric = expected.Target.Numeric;
             NativeNumericModel mismatch = change == "char" ? numeric with
             {
@@ -130,7 +130,7 @@ public sealed partial class NativeBindingNativeTests
     public async Task NativeCallBodiesRejectNumericAbiChanges(string change)
     {
         const string Headers = "#define PG_VERSION_NUM 180006\nchar native_char(char value) { return value; }\nlong double native_extended(long double value) { return value; }";
-        string directory = Path.Combine(Path.GetTempPath(), "ankus-numeric-calls-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus-numeric-calls-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
@@ -169,8 +169,8 @@ public sealed partial class NativeBindingNativeTests
                     Target = target
                 }
             };
-            string file = Path.Combine(directory, "calls.c");
-            string diagnostics = Path.Combine(directory, "calls.txt");
+            string file = Path.Join(directory, "calls.c");
+            string diagnostics = Path.Join(directory, "calls.txt");
             string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang";
             string[] arguments = OperatingSystem.IsWindows() ? ["/nologo", "/std:c11", "/W4", "/WX", "/Zs", file]
                 : ["-std=c11", "-Wall", "-Wextra", "-Werror", "-fsyntax-only", file];
@@ -192,7 +192,7 @@ public sealed partial class NativeBindingNativeTests
                 }
                 """;
             await File.WriteAllTextAsync(file, NativeBindingCallSource.Generate(records, Headers) + "\n" + Main, context.CancellationToken);
-            string executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "calls.exe" : "calls");
+            string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "calls.exe" : "calls");
             string[] compile = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/O2", "/Fe" + executable, "/Fo" + Path.ChangeExtension(executable, ".obj"), file]
                 : ["-std=c11", "-Wall", "-Wextra", "-Werror", "-O2", file, "-o", executable];

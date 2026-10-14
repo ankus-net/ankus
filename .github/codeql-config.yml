@@ -3,3 +3,11 @@ name: Ankus CodeQL configuration
 # Every query of the suite runs on every file, and the workflow fails on any finding. Nothing is excluded here.
 queries:
   - uses: security-and-quality
+
+# A `// codeql[rule] reason` comment marks a finding the code must keep. CodeQL only reads those comments when the
+# alert suppression query runs alongside the suite, so each finding carries the comment into its result.
+packs:
+  csharp:
+    - codeql/csharp-queries:AlertSuppression.ql
+  cpp:
+    - codeql/cpp-queries:AlertSuppression.ql

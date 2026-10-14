@@ -22,10 +22,10 @@ public sealed unsafe class PgProcessTests
             return default;
         };
         List<string> ran = [];
-        using (MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter())
+        using (MemoryContextTestFixture.Enter())
         {
             _ = PgProcess.OnExit(code => ran.Add("first " + code));
-            IDisposable removed = PgProcess.OnExit(code => ran.Add("removed " + code));
+            using IDisposable removed = PgProcess.OnExit(code => ran.Add("removed " + code));
             _ = PgProcess.OnExit(_ => throw new InvalidOperationException("exit failed"));
             _ = PgProcess.OnExit(code => ran.Add("last " + code));
             removed.Dispose();

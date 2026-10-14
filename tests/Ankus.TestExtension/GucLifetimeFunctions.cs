@@ -44,9 +44,7 @@ public static partial class GucLifetimeFunctions
     [PgFunction]
     public static int[] GucLifetimeCollect()
     {
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
+        GarbageCollection.Collect();
         int observed = 0;
         int alive = 0;
         for (int index = 0; index < s_observed.Length; index++)

@@ -12,13 +12,13 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string helper = await ReadPackagedBuildToolAsync();
-        string output = Path.Combine(s_root, "collected native calls");
-        string selection = Path.Combine(s_root, "call symbols.txt");
+        string output = Path.Join(s_root, "collected native calls");
+        string selection = Path.Join(s_root, "call symbols.txt");
         await File.WriteAllTextAsync(selection, "FullTransactionIdFromU64\n", token);
         ProcessResult collected = await RunDotnetAsync(
             [helper, "binding-call-sources", selection, MajorText(), s_installation.PgConfigPath, output], token);
         collected.EnsureSuccess("dotnet", [helper, "binding-call-sources"]);
-        string file = Path.Combine(output, "execute.c");
+        string file = Path.Join(output, "execute.c");
         const string Source = """
             #include "native-calls.c"
             #include <stdio.h>
@@ -41,11 +41,11 @@ public sealed partial class ToolCommandTests
             """;
         await File.WriteAllTextAsync(file, Source, token);
         string compiler = OperatingSystem.IsWindows() ? "cl.exe" : "clang";
-        string executable = Path.Combine(output, OperatingSystem.IsWindows() ? "execute.exe" : "execute");
+        string executable = Path.Join(output, OperatingSystem.IsWindows() ? "execute.exe" : "execute");
         string[] options = OperatingSystem.IsWindows()
             ? ["/nologo", "/std:c11", "/WX", "/O2", "/Gy", "/Gw", "/I" + s_installation.ServerIncludeDirectory, "/I" + s_installation.IncludeDirectory,
-                "/I" + Path.Combine(s_installation.ServerIncludeDirectory, "port", "win32"),
-                "/I" + Path.Combine(s_installation.ServerIncludeDirectory, "port", "win32_msvc"),
+                "/I" + Path.Join(s_installation.ServerIncludeDirectory, "port", "win32"),
+                "/I" + Path.Join(s_installation.ServerIncludeDirectory, "port", "win32_msvc"),
                 "/Fe" + executable, "/Fo" + Path.ChangeExtension(executable, ".obj"), file, "/link", "/OPT:REF"]
             : [.. await s_installation.GetPreprocessorArgumentsAsync(token), "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-O2",
                 "-isystem", s_installation.ServerIncludeDirectory, "-isystem", s_installation.IncludeDirectory, file, "-o", executable,
@@ -64,12 +64,12 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string helper = await ReadPackagedBuildToolAsync();
-        string output = Path.Combine(s_root, "invalid native calls");
+        string output = Path.Join(s_root, "invalid native calls");
         Directory.CreateDirectory(output);
-        string source = Path.Combine(output, "native-calls.c");
+        string source = Path.Join(output, "native-calls.c");
         byte[] expected = "existing native call source\n"u8.ToArray();
         await File.WriteAllBytesAsync(source, expected, token);
-        string selection = Path.Combine(output, "symbols.txt");
+        string selection = Path.Join(output, "symbols.txt");
         await File.WriteAllTextAsync(selection, "ExecutorRun_hook\n", token);
         ProcessResult failed = await RunDotnetAsync(
             [helper, "binding-call-sources", selection, MajorText(), s_installation.PgConfigPath, output], token);
@@ -80,7 +80,7 @@ public sealed partial class ToolCommandTests
         await File.WriteAllTextAsync(selection, "FullTransactionIdFromU64\n", token);
         ProcessResult compilerFailure = await RunDotnetAsync(
             [helper, "binding-call-sources", selection, MajorText(), s_installation.PgConfigPath, output,
-                "", "", "", "", "", Path.Combine(output, "missing-native-compiler")], token);
+                "", "", "", "", "", Path.Join(output, "missing-native-compiler")], token);
         Assert.AreEqual(1, compilerFailure.ExitCode);
         Assert.Contains("missing-native-compiler", compilerFailure.StandardError);
         Assert.AreSequenceEqual(expected, await File.ReadAllBytesAsync(source, token));

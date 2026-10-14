@@ -15,20 +15,20 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "DeclaredProviders.csproj");
+        string project = Path.Join(directory, "DeclaredProviders.csproj");
         XDocument projectFile = XDocument.Load(s_project);
         projectFile.Root!.Add(new XElement("ItemGroup", new XElement("AdditionalFiles", new XAttribute("Include", "type setup/types.sql"))));
         projectFile.Save(project);
-        string source = Path.Combine(directory, "Functions.cs");
+        string source = Path.Join(directory, "Functions.cs");
         await File.WriteAllTextAsync(source, DeclaredProviderPackageSource, token);
-        string sqlDirectory = Path.Combine(directory, "type setup");
+        string sqlDirectory = Path.Join(directory, "type setup");
         Directory.CreateDirectory(sqlDirectory);
-        string sqlFile = Path.Combine(sqlDirectory, "types.sql");
-        string output = Path.Combine(directory, "published");
+        string sqlFile = Path.Join(sqlDirectory, "types.sql");
+        string output = Path.Join(directory, "published");
         await File.WriteAllTextAsync(sqlFile, DeclaredProviderPackageSql, token);
         await PublishSqlControlsAsync(project, output, token);
         PublishedExtension initialManifest = PublishedExtension.Read(output);
-        string initialSql = await File.ReadAllTextAsync(Path.Combine(output, "extension", initialManifest.Sql), token);
+        string initialSql = await File.ReadAllTextAsync(Path.Join(output, "extension", initialManifest.Sql), token);
         string[] exports = await ReadSqlControlExportsAsync(directory, token);
         string guard = DeclarationExport(exports, "_package_guard");
         AssertDeclaredProviderOrder(initialSql);
@@ -48,7 +48,7 @@ public sealed partial class ToolCommandTests
         await File.WriteAllTextAsync(sqlFile, falseClaim, token);
         await PublishSqlControlsAsync(project, output, token);
         PublishedExtension failedManifest = PublishedExtension.Read(output);
-        string failedSql = await File.ReadAllTextAsync(Path.Combine(output, "extension", failedManifest.Sql), token);
+        string failedSql = await File.ReadAllTextAsync(Path.Join(output, "extension", failedManifest.Sql), token);
         Assert.Contains("CREATE TYPE claimed_elsewhere", failedSql);
         Assert.DoesNotContain("CREATE TYPE package_code", failedSql);
         Assert.AreSequenceEqual(exports, await ReadSqlControlExportsAsync(directory, token));
@@ -80,7 +80,7 @@ public sealed partial class ToolCommandTests
         await File.WriteAllTextAsync(sqlFile, correctedFile, token);
         await PublishSqlControlsAsync(project, output, token);
         PublishedExtension manifest = PublishedExtension.Read(output);
-        string finalSql = await File.ReadAllTextAsync(Path.Combine(output, "extension", manifest.Sql), token);
+        string finalSql = await File.ReadAllTextAsync(Path.Join(output, "extension", manifest.Sql), token);
         Assert.AreEqual(DeclaredProviderPackageSource, await File.ReadAllTextAsync(source, token));
         Assert.AreNotEqual(initialSql, finalSql);
         Assert.Contains("'after'", finalSql);
@@ -88,7 +88,7 @@ public sealed partial class ToolCommandTests
         Assert.DoesNotContain("claimed_elsewhere", finalSql);
         Assert.AreSequenceEqual(exports, await ReadSqlControlExportsAsync(directory, token));
         AssertDeclaredProviderOrder(finalSql);
-        Assert.Contains("relocatable = true", await File.ReadAllTextAsync(Path.Combine(output, "extension", manifest.Control), token));
+        Assert.Contains("relocatable = true", await File.ReadAllTextAsync(Path.Join(output, "extension", manifest.Control), token));
         await using PostgresTestCluster finalCluster = await StartPublishedClusterAsync(output, token);
         await using NpgsqlConnection final = await finalCluster.OpenConnectionAsync(token);
         await ExecuteSqlPackageAsync(final, """

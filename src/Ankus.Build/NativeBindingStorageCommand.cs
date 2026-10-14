@@ -38,8 +38,8 @@ internal static class NativeBindingStorageCommand
         for (int index = 0; index < batches.Length; index++)
         {
             string suffix = batches.Length == 1 ? "" : "-" + index.ToString("D4", CultureInfo.InvariantCulture);
-            string source = Path.Combine(output, "native-storage" + suffix + ".c");
-            string ast = Path.Combine(output, "native-storage" + suffix + ".ast.json");
+            string source = Path.Join(output, "native-storage" + suffix + ".c");
+            string ast = Path.Join(output, "native-storage" + suffix + ".ast.json");
             var batch = new NativeHeaderCatalog(catalog.Target, batches[index].ToDictionary());
             await File.WriteAllTextAsync(source, NativeBindingStorageProbe.GenerateSource(batch, NativeBindingResources.ReadHeaders(major)), cancellationToken);
             await NativeBindingHeaderCommand.InspectAsync(installation, arguments, source, ast, output, cancellationToken);
@@ -51,8 +51,8 @@ internal static class NativeBindingStorageCommand
         }
 
         NativeHeaderStorage storage = NativeBindingStorageProbe.Read(catalog, observations.ToString());
-        await File.WriteAllTextAsync(Path.Combine(output, "native-storage.txt"), observations.ToString(), cancellationToken);
-        await File.WriteAllTextAsync(Path.Combine(output, "native-storage.json"),
+        await File.WriteAllTextAsync(Path.Join(output, "native-storage.txt"), observations.ToString(), cancellationToken);
+        await File.WriteAllTextAsync(Path.Join(output, "native-storage.json"),
             JsonSerializer.Serialize(storage, s_jsonOptions) + "\n", cancellationToken);
         Console.WriteLine($"PG{major}: measured {storage.Symbols.Count} native header symbol storage contracts.");
         return storage;

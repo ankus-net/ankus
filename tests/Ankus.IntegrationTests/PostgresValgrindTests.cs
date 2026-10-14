@@ -64,8 +64,8 @@ public sealed class PostgresValgrindTests(TestContext context)
     {
         CancellationToken token = context.CancellationToken;
         PostgresInstallation source = await IntegrationEnvironment.GetInstallationAsync(token);
-        await using PostgresTestInstallation owner = await PostgresTestInstallation.StageAsync(source, Path.Combine(_root, "installation's files"), token);
-        var cluster = new PostgresDevelopmentCluster(owner.Installation, Path.Combine(_root, "home"));
+        await using PostgresTestInstallation owner = await PostgresTestInstallation.StageAsync(source, Path.Join(_root, "installation's files"), token);
+        var cluster = new PostgresDevelopmentCluster(owner.Installation, Path.Join(_root, "home"));
         using PortReservation reservation = PortReservation.Create();
         int port = reservation.Port;
         reservation.Dispose();
@@ -182,12 +182,12 @@ public sealed class PostgresValgrindTests(TestContext context)
     {
         CancellationToken token = context.CancellationToken;
         PostgresInstallation source = await IntegrationEnvironment.GetInstallationAsync(token);
-        await using PostgresTestInstallation owner = await PostgresTestInstallation.StageAsync(source, Path.Combine(_root, "installation"), token);
+        await using PostgresTestInstallation owner = await PostgresTestInstallation.StageAsync(source, Path.Join(_root, "installation"), token);
         PostgresInstallation installation = owner.Installation;
         string pgxs = (await ProcessRunner.RunAsync(installation.PgConfigPath, ["--pgxs"], new Dictionary<string, string?>(), token))
             .StandardOutput.Trim();
         string pgxsSource = Path.GetDirectoryName(Path.GetDirectoryName(pgxs))!;
-        string installed = Path.Combine(pgxsSource, "tools", "valgrind.supp");
+        string installed = Path.Join(pgxsSource, "tools", "valgrind.supp");
 
         // An ankus init installation already has suppressions in PGXS; start this staged copy without them.
         if (File.Exists(installed))
@@ -195,11 +195,11 @@ public sealed class PostgresValgrindTests(TestContext context)
             File.Delete(installed);
         }
 
-        string sourceTree = Path.Combine(_root, "postgres source's tree");
-        Directory.CreateDirectory(Path.Combine(sourceTree, "src", "tools"));
-        string recorded = Path.Combine(sourceTree, "src", "tools", "valgrind.supp");
+        string sourceTree = Path.Join(_root, "postgres source's tree");
+        Directory.CreateDirectory(Path.Join(sourceTree, "src", "tools"));
+        string recorded = Path.Join(sourceTree, "src", "tools", "valgrind.supp");
         await File.WriteAllTextAsync(recorded, string.Empty, token);
-        string global = Path.Combine(pgxsSource, "Makefile.global");
+        string global = Path.Join(pgxsSource, "Makefile.global");
         string[] lines = await File.ReadAllLinesAsync(global, token);
         await File.WriteAllLinesAsync(global, lines.Select(line => line.StartsWith("abs_top_srcdir", StringComparison.Ordinal)
             ? "abs_top_srcdir = " + sourceTree : line), token);
@@ -217,7 +217,7 @@ public sealed class PostgresValgrindTests(TestContext context)
             """, token);
         Assert.AreEqual(installed, await installation.GetValgrindSuppressionsPathAsync(token));
         string library = await CompileErrorProbeAsync(installation, token);
-        var cluster = new PostgresDevelopmentCluster(installation, Path.Combine(_root, "home"));
+        var cluster = new PostgresDevelopmentCluster(installation, Path.Join(_root, "home"));
         using PortReservation reservation = PortReservation.Create();
         int port = reservation.Port;
         reservation.Dispose();
@@ -250,8 +250,8 @@ public sealed class PostgresValgrindTests(TestContext context)
     /// </summary>
     private async Task<string> CompileErrorProbeAsync(PostgresInstallation installation, CancellationToken token)
     {
-        string source = Path.Combine(_root, "memory-probe.c");
-        string library = Path.Combine(_root, "memory-probe.so");
+        string source = Path.Join(_root, "memory-probe.c");
+        string library = Path.Join(_root, "memory-probe.so");
         await File.WriteAllTextAsync(source, """
             #include "postgres.h"
             #include "fmgr.h"
@@ -297,7 +297,7 @@ public sealed class PostgresValgrindTests(TestContext context)
             InvalidOperationException error = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => cluster.StartAsync(options, token));
             Assert.Contains(cluster.LogFilePath, error.Message);
             Assert.IsFalse(await cluster.IsRunningAsync(token));
-            Assert.IsTrue(File.Exists(Path.Combine(cluster.DataDirectory, "PG_VERSION")));
+            Assert.IsTrue(File.Exists(Path.Join(cluster.DataDirectory, "PG_VERSION")));
             Assert.IsEmpty(Directory.GetDirectories(Path.GetDirectoryName(cluster.DataDirectory)!, ".init-*"));
             string log = await File.ReadAllTextAsync(cluster.LogFilePath, token);
             Assert.Contains("Memcheck, a memory error detector", log);
@@ -332,8 +332,8 @@ public sealed class PostgresValgrindTests(TestContext context)
     {
         CancellationToken token = context.CancellationToken;
         PostgresInstallation installation = await IntegrationEnvironment.GetInstallationAsync(token);
-        string source = Path.Combine(_root, "gate.c");
-        string library = Path.Combine(_root, "gate.so");
+        string source = Path.Join(_root, "gate.c");
+        string library = Path.Join(_root, "gate.so");
         await File.WriteAllTextAsync(source, """
             #include "postgres.h"
             #include "fmgr.h"
@@ -371,7 +371,7 @@ public sealed class PostgresValgrindTests(TestContext context)
             Assert.IsTrue(await cluster.StopAsync(token));
             File.Delete(cluster.LogFilePath);
             starting = cluster.StartAsync(options, cancellation.Token);
-            string witness = Path.Combine(cluster.DataDirectory, "valgrind-started");
+            string witness = Path.Join(cluster.DataDirectory, "valgrind-started");
             while (!File.Exists(witness) && !starting.IsCompleted)
             {
                 await Task.Delay(20, token);
@@ -390,7 +390,7 @@ public sealed class PostgresValgrindTests(TestContext context)
             }
 
             Assert.IsFalse(await cluster.IsRunningAsync(token));
-            Assert.IsFalse(File.Exists(Path.Combine(cluster.DataDirectory, "valgrind-release")));
+            Assert.IsFalse(File.Exists(Path.Join(cluster.DataDirectory, "valgrind-release")));
             Assert.Contains("Memcheck, a memory error detector", await File.ReadAllTextAsync(cluster.LogFilePath, token));
             Assert.IsTrue(await cluster.StartAsync(new PostgresDevelopmentOptions { Port = port }, token));
             await using NpgsqlConnection connection = await OpenAsync(port, token);
@@ -401,7 +401,7 @@ public sealed class PostgresValgrindTests(TestContext context)
         {
             if (Directory.Exists(cluster.DataDirectory))
             {
-                await File.WriteAllTextAsync(Path.Combine(cluster.DataDirectory, "valgrind-release"), "release", CancellationToken.None);
+                await File.WriteAllTextAsync(Path.Join(cluster.DataDirectory, "valgrind-release"), "release", CancellationToken.None);
             }
 
             if (starting is not null)

@@ -36,6 +36,27 @@ internal readonly struct SpiScalarResult(SpiResult? managed, SpiRawResult? raw, 
     }
 
     /// <summary>
+    /// Validates both requested types before SQL execution and selects raw transport when either needs it.
+    /// </summary>
+    internal static bool RequiresRaw<TFirst, TSecond>()
+    {
+        bool first = RequiresRaw<TFirst>();
+        bool second = RequiresRaw<TSecond>();
+        return first || second;
+    }
+
+    /// <summary>
+    /// Validates all three requested types before SQL execution and selects raw transport when any needs it.
+    /// </summary>
+    internal static bool RequiresRaw<TFirst, TSecond, TThird>()
+    {
+        bool first = RequiresRaw<TFirst>();
+        bool second = RequiresRaw<TSecond>();
+        bool third = RequiresRaw<TThird>();
+        return first || second || third;
+    }
+
+    /// <summary>
     /// Converts selected cells and releases their temporary owner, preserving both failures if necessary.
     /// </summary>
     /// <typeparam name="T">The copied scalar or tuple type.</typeparam>

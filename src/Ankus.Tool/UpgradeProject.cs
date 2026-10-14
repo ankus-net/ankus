@@ -54,10 +54,12 @@ internal sealed partial class UpgradeProject(string path, Dictionary<string, Upg
         _properties["MSBuildProjectName"] = Path.GetFileNameWithoutExtension(path);
         foreach (string name in new[] { "Directory.Build.props", "Directory.Packages.props" })
         {
-            if (FindAbove(DirectoryPath, name) is string shared)
+            if (FindAbove(DirectoryPath, name) is not string shared)
             {
-                ReadFile(shared);
+                continue;
             }
+
+            ReadFile(shared);
         }
 
         ReadFile(path);
@@ -95,7 +97,7 @@ internal sealed partial class UpgradeProject(string path, Dictionary<string, Upg
     {
         for (DirectoryInfo? current = new(directory); current is not null; current = current.Parent)
         {
-            string candidate = Path.Combine(current.FullName, name);
+            string candidate = Path.Join(current.FullName, name);
             if (File.Exists(candidate))
             {
                 return candidate;
@@ -199,16 +201,29 @@ internal sealed partial class UpgradeProject(string path, Dictionary<string, Upg
 
     private static bool RequiresEvaluation(XDocument xml)
         => xml.Descendants().Any(static element =>
-            element.Name.LocalName == "Choose" ||
-            element.Name.LocalName == "Import" && element.Attribute("Sdk") is null &&
-                (element.AncestorsAndSelf().Any(static owner => owner.Attribute("Condition") is not null) ||
-                 ((string?)element.Attribute("Project") ?? "").Contains("$([", StringComparison.Ordinal)) ||
-            element.Parent?.Name.LocalName == "PropertyGroup" &&
-                (element.Name.LocalName.StartsWith("ImportDirectory", StringComparison.OrdinalIgnoreCase) ||
-                 element.Name.LocalName.Equals("DirectoryBuildPropsPath", StringComparison.OrdinalIgnoreCase) ||
-                 element.Name.LocalName.Equals("DirectoryBuildTargetsPath", StringComparison.OrdinalIgnoreCase) ||
-                 element.Name.LocalName.Equals("DirectoryPackagesPropsPath", StringComparison.OrdinalIgnoreCase) ||
-                 s_excludedProperties.Contains(element.Name.LocalName, StringComparer.OrdinalIgnoreCase)));
+            element.Name.LocalName == "Choose" || IsEvaluatedImport(element) || IsImportLocation(element));
+
+    /// <summary>
+    /// Finds an import whose project depends on a condition or a property function, which only evaluation resolves.
+    /// </summary>
+    private static bool IsEvaluatedImport(XElement element)
+        => element.Name.LocalName == "Import" && element.Attribute("Sdk") is null &&
+            (element.AncestorsAndSelf().Any(static owner => owner.Attribute("Condition") is not null) ||
+             ((string?)element.Attribute("Project") ?? "").Contains("$([", StringComparison.Ordinal));
+
+    /// <summary>
+    /// Finds a property that moves imported build files or the folders the upgrade must leave alone.
+    /// </summary>
+    private static bool IsImportLocation(XElement element)
+    {
+        string name = element.Name.LocalName;
+        return element.Parent?.Name.LocalName == "PropertyGroup" &&
+            (name.StartsWith("ImportDirectory", StringComparison.OrdinalIgnoreCase) ||
+             name.Equals("DirectoryBuildPropsPath", StringComparison.OrdinalIgnoreCase) ||
+             name.Equals("DirectoryBuildTargetsPath", StringComparison.OrdinalIgnoreCase) ||
+             name.Equals("DirectoryPackagesPropsPath", StringComparison.OrdinalIgnoreCase) ||
+             s_excludedProperties.Contains(name, StringComparer.OrdinalIgnoreCase));
+    }
 
     private string Expand(string value, string source)
         => PropertyUse().Replace(value, match =>

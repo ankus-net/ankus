@@ -137,7 +137,7 @@ public static partial class BorrowedBufferFunctions
         {
             return exception.SqlState + ":" + exception.Message;
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is ObjectDisposedException or InvalidCastException)
         {
             return exception.GetType().Name;
         }

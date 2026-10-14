@@ -267,7 +267,7 @@ internal static partial class FrameworkUpgrade
         string updated = await versions.ResolveAsync("Ankus.Sdk", current, true, project.DirectoryPath, token);
         if (updated != current)
         {
-            document.Replace(start, length, "\"" + JsonEncodedText.Encode(updated).ToString() + "\"");
+            document.Replace(start, length, "\"" + JsonEncodedText.Encode(updated) + "\"");
         }
 
         return true;

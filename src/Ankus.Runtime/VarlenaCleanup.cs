@@ -19,6 +19,7 @@ internal static class VarlenaCleanup
                 {
                     wrapper.Dispose();
                 }
+                // codeql[cs/catch-of-all-exceptions] Every cleanup step still runs, and all of their failures are reported together.
                 catch (Exception cleanup)
                 {
                     failures ??= [primary];

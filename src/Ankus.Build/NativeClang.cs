@@ -285,6 +285,7 @@ internal sealed unsafe class NativeClang(string path) : SafeHandle(NativeLibrary
             visit.Add(cursor);
             return visit.Recursive ? 2U : 1U;
         }
+        // codeql[cs/catch-of-all-exceptions] libclang calls this visitor, so every exception is carried back to the caller instead of unwinding through libclang.
         catch (Exception error)
         {
             visit.Error = ExceptionDispatchInfo.Capture(error);
@@ -303,6 +304,7 @@ internal sealed unsafe class NativeClang(string path) : SafeHandle(NativeLibrary
             // Declarations are CXCursor_FirstDecl through CXCursor_LastDecl; their members are the only lazy content.
             return cursor.Kind is >= 1 and <= 39 ? 2U : 1U;
         }
+        // codeql[cs/catch-of-all-exceptions] libclang calls this visitor, so every exception is carried back to the caller instead of unwinding through libclang.
         catch (Exception error)
         {
             visit.Error = ExceptionDispatchInfo.Capture(error);
@@ -319,6 +321,7 @@ internal sealed unsafe class NativeClang(string path) : SafeHandle(NativeLibrary
             visit.Add(cursor);
             return 1;
         }
+        // codeql[cs/catch-of-all-exceptions] libclang calls this visitor, so every exception is carried back to the caller instead of unwinding through libclang.
         catch (Exception error)
         {
             visit.Error = ExceptionDispatchInfo.Capture(error);

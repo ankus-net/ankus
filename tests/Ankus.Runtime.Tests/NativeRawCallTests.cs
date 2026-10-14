@@ -1,5 +1,3 @@
-using System.Runtime.ExceptionServices;
-
 namespace Ankus.Runtime.Tests;
 
 /// <summary>
@@ -127,24 +125,7 @@ public sealed unsafe class NativeRawCallTests
                 NativeBackend.Exit(previous, abortCleanup: true);
             }
 
-            Exception? workerFailure = null;
-            var worker = new Thread(() =>
-            {
-                try
-                {
-                    Assert.ThrowsExactly<InvalidOperationException>(() => NativeRawCall.Invoke(1, [], 0, 0));
-                }
-                catch (Exception exception)
-                {
-                    workerFailure = exception;
-                }
-            });
-            worker.Start();
-            worker.Join();
-            if (workerFailure is not null)
-            {
-                ExceptionDispatchInfo.Capture(workerFailure).Throw();
-            }
+            DedicatedThread.Run(() => Assert.ThrowsExactly<InvalidOperationException>(() => NativeRawCall.Invoke(1, [], 0, 0)));
 
             Assert.AreSequenceEqual<nint>([4], fixture.Requests.Select(static request => request._pointer));
             using (MemoryContextTestFixture.Enter(29))

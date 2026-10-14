@@ -77,7 +77,7 @@ public sealed class GucLifetimeTests(TestContext context)
 
             await RunCyclesAsync(connection, latin1, 16);
             await AssertCollectedAsync(connection);
-            (long? GucBytes, long TemporaryContexts, long MallocBytes) = await AllocationsAsync(connection);
+            (long? GucBytes, _, long MallocBytes) = await AllocationsAsync(connection);
             long[] callsBefore = await CallsAsync(connection);
             int noticesBefore = notices;
             for (int batch = 0; batch < 3; batch++)

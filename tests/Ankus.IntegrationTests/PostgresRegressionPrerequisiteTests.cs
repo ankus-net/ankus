@@ -33,10 +33,10 @@ public sealed class PostgresRegressionPrerequisiteTests(TestContext context)
         string original = await source.GetRegressionDriverPathAsync(token);
         ProcessResult pgxs = await ProcessRunner.RunAsync(source.PgConfigPath, ["--pgxs"], new Dictionary<string, string?>(), token);
         pgxs.EnsureSuccess("pg_config", ["--pgxs"]);
-        string pgxsDriver = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(pgxs.StandardOutput.Trim())!, "..", "test", "regress",
+        string pgxsDriver = Path.GetFullPath(Path.Join(Path.GetDirectoryName(pgxs.StandardOutput.Trim())!, "..", "test", "regress",
             OperatingSystem.IsWindows() ? "pg_regress.exe" : "pg_regress"));
         Assert.AreEqual(OperatingSystem.IsWindows() && !File.Exists(pgxsDriver)
-            ? Path.Combine(source.BinDirectory, "pg_regress.exe")
+            ? Path.Join(source.BinDirectory, "pg_regress.exe")
             : pgxsDriver, original);
         ProcessResult version = await ProcessRunner.RunAsync(original, ["--version"],
             new Dictionary<string, string?> { ["PATH"] = source.BinDirectory + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH") }, token);
@@ -45,7 +45,7 @@ public sealed class PostgresRegressionPrerequisiteTests(TestContext context)
         configurationVersion.EnsureSuccess("pg_config", ["--version"]);
         Assert.AreEqual(configurationVersion.StandardOutput.Replace("PostgreSQL ", "pg_regress (PostgreSQL) ", StringComparison.Ordinal), version.StandardOutput);
 
-        await using PostgresTestInstallation owner = await PostgresTestInstallation.StageAsync(source, Path.Combine(_root, "installation"), token);
+        await using PostgresTestInstallation owner = await PostgresTestInstallation.StageAsync(source, Path.Join(_root, "installation"), token);
         string relocated = await owner.Installation.GetRegressionDriverPathAsync(token);
         string staged = Directory.GetFiles(owner.RootDirectory, Path.GetFileName(original), SearchOption.AllDirectories).Single();
         Assert.AreNotEqual(original, relocated);
@@ -62,7 +62,7 @@ public sealed class PostgresRegressionPrerequisiteTests(TestContext context)
         FileNotFoundException error = await Assert.ThrowsExactlyAsync<FileNotFoundException>(() => stillUsable.GetRegressionDriverPathAsync(token));
         ProcessResult stagedPgxs = await ProcessRunner.RunAsync(stillUsable.PgConfigPath, ["--pgxs"], new Dictionary<string, string?>(), token);
         stagedPgxs.EnsureSuccess("pg_config", ["--pgxs"]);
-        Assert.AreEqual(Path.GetFullPath(Path.Combine(Path.GetDirectoryName(stagedPgxs.StandardOutput.Trim())!, "..", "test", "regress",
+        Assert.AreEqual(Path.GetFullPath(Path.Join(Path.GetDirectoryName(stagedPgxs.StandardOutput.Trim())!, "..", "test", "regress",
             OperatingSystem.IsWindows() ? "pg_regress.exe" : "pg_regress")), error.FileName);
         Assert.Contains("regression tools", error.Message);
         Assert.IsTrue(File.Exists(original));
@@ -81,11 +81,11 @@ public sealed class PostgresRegressionPrerequisiteTests(TestContext context)
         CancellationToken token = context.CancellationToken;
         PostgresInstallation source = await IntegrationEnvironment.GetInstallationAsync(token);
         string original = await source.GetRegressionDriverPathAsync(token);
-        await using PostgresTestInstallation owner = await PostgresTestInstallation.StageAsync(source, Path.Combine(_root, "layouts"), token);
+        await using PostgresTestInstallation owner = await PostgresTestInstallation.StageAsync(source, Path.Join(_root, "layouts"), token);
         ProcessResult pgxs = await ProcessRunner.RunAsync(owner.Installation.PgConfigPath, ["--pgxs"], new Dictionary<string, string?>(), token);
         pgxs.EnsureSuccess("pg_config", ["--pgxs"]);
-        string pgxsDriver = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(pgxs.StandardOutput.Trim())!, "..", "test", "regress", "pg_regress.exe"));
-        string binaryDriver = Path.Combine(owner.Installation.BinDirectory, "pg_regress.exe");
+        string pgxsDriver = Path.GetFullPath(Path.Join(Path.GetDirectoryName(pgxs.StandardOutput.Trim())!, "..", "test", "regress", "pg_regress.exe"));
+        string binaryDriver = Path.Join(owner.Installation.BinDirectory, "pg_regress.exe");
         Assert.StartsWith(owner.RootDirectory + Path.DirectorySeparatorChar, pgxsDriver);
         Assert.StartsWith(owner.RootDirectory + Path.DirectorySeparatorChar, binaryDriver);
         Directory.CreateDirectory(Path.GetDirectoryName(pgxsDriver)!);
@@ -218,7 +218,7 @@ public sealed class PostgresRegressionPrerequisiteTests(TestContext context)
         try
         {
             await cluster.StartAsync(new PostgresDevelopmentOptions { Port = port }, token);
-            using var statusWriter = new FileStream(Path.Combine(cluster.DataDirectory, "postmaster.pid"), FileMode.Open,
+            using var statusWriter = new FileStream(Path.Join(cluster.DataDirectory, "postmaster.pid"), FileMode.Open,
                 FileAccess.ReadWrite, FileShare.ReadWrite | FileShare.Delete);
             Assert.IsTrue(await cluster.CreateDatabaseAsync("busy", token));
             await using NpgsqlConnection busy = await OpenAsync(port, "busy", token);
@@ -229,8 +229,8 @@ public sealed class PostgresRegressionPrerequisiteTests(TestContext context)
             using var canceled = new CancellationTokenSource();
             await canceled.CancelAsync();
             await Assert.ThrowsExactlyAsync<OperationCanceledException>(() => cluster.DropDatabaseAsync("busy", true, canceled.Token));
-            string operationPath = Path.Combine(_root, "clusters", installation.Label + ".lock");
-            using (var operation = new FileStream(operationPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            string operationPath = Path.Join(_root, "clusters", installation.Label + ".lock");
+            using (new FileStream(operationPath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
             {
                 await Assert.ThrowsExactlyAsync<IOException>(() => cluster.DropDatabaseAsync("busy", true, token));
             }

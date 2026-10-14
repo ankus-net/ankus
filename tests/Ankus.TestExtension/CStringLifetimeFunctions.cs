@@ -151,7 +151,7 @@ public static partial class CStringFunctions
             action();
             return "no error";
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is ObjectDisposedException or InvalidCastException)
         {
             return exception.GetType().Name;
         }

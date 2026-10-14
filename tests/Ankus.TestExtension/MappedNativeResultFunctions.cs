@@ -50,8 +50,8 @@ public static class MappedNativeResultFunctions
         ArrayValueConverter.Reset();
         return kind switch
         {
-            0 => Invoke<ArrayValue?[]?>((nint)address, 0, sql)?.Select(static item => item?.Value).ToArray(),
-            1 => Invoke<ReadMappedInt?[]?>((nint)address, 0, sql)?.Select(static item => item?.Value).ToArray(),
+            0 => Invoke<ArrayValue?[]?>((nint)address, 0, sql)?.Select(static item => item is { } present ? present.Value : (int?)null).ToArray(),
+            1 => Invoke<ReadMappedInt?[]?>((nint)address, 0, sql)?.Select(static item => item is { } present ? present.Value : (int?)null).ToArray(),
             _ => Invoke<MappedSign?[]?>((nint)address, 0, sql)?.Select(static item => (int?)item).ToArray(),
         };
     }
@@ -64,7 +64,7 @@ public static class MappedNativeResultFunctions
     {
         ArrayValueConverter.Reset();
         PgArray<ArrayValue?>? values = Invoke<PgArray<ArrayValue?>?>((nint)address, 0, sql);
-        return Describe(values, static item => item?.Value.ToString(CultureInfo.InvariantCulture) ?? "NULL");
+        return Describe(values, static item => item is { } present ? present.Value.ToString(CultureInfo.InvariantCulture) : "NULL");
     }
 
     /// <summary>
@@ -176,7 +176,7 @@ public static class MappedNativeResultFunctions
     public static string Live(long address, string sql)
     {
         PgArray<NativeLive?>? values = Invoke<PgArray<NativeLive?>?>((nint)address, 0, sql);
-        return Describe(values, static item => item?.Value.ToString(CultureInfo.InvariantCulture) ?? "NULL");
+        return Describe(values, static item => item is { } present ? present.Value.ToString(CultureInfo.InvariantCulture) : "NULL");
     }
 
     /// <summary>
@@ -256,6 +256,7 @@ public static class MappedNativeResultFunctions
                 value = PgFunctions.DangerousCall<T>(address, collation, arguments);
             }
         }
+        // codeql[cs/catch-of-all-exceptions] The caller's arguments are checked whatever the call threw, and that failure is rethrown afterwards.
         catch (Exception error)
         {
             primary = error;

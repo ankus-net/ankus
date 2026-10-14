@@ -77,7 +77,7 @@ public static unsafe partial class NativeBackend
                 throw new InvalidCastException("The datum is not PostgreSQL internal state.");
             }
 
-            return value.IsNull ? default! : (T)(object)new PgInternal(value);
+            return value.IsNull ? default! : GenericValue.As<T>(new PgInternal(value));
         }
 
         if (PgPolymorphic.Is<T>())

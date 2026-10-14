@@ -17,8 +17,8 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "VersionedProbe.csproj");
-        string source = Path.Combine(directory, "Functions.cs");
+        string project = Path.Join(directory, "VersionedProbe.csproj");
+        string source = Path.Join(directory, "Functions.cs");
         XDocument document = XDocument.Load(s_project);
         // An empty AnkusExtensionVersion follows the project's ordinary .NET Version.
         document.Root!.Add(new XElement("PropertyGroup",
@@ -29,7 +29,7 @@ public sealed partial class ToolCommandTests
             new XElement("AnkusVersionedLibrary", "true")));
         document.Save(project);
         await File.WriteAllTextAsync(source, VersionedSource(1), token);
-        string publication = Path.Combine(directory, "bin", "ankus", s_installation.Label, RuntimeInformation.RuntimeIdentifier, "Release");
+        string publication = Path.Join(directory, "bin", "ankus", s_installation.Label, RuntimeInformation.RuntimeIdentifier, "Release");
         string package = CreateDirectory();
         string stage = CreateDirectory();
         string[] packageArguments = ["package", "--home", s_home, "--pg", MajorText(), "--project", project, "--output", package];
@@ -39,11 +39,11 @@ public sealed partial class ToolCommandTests
         PublishedExtension first = PublishedExtension.Read(publication);
         string suffix = CustomLibraryNameExampleTests.LibrarySuffix(s_installation.Version.Major);
         Assert.AreEqual("Ankus.Versioned.Probe-0.1.0" + suffix, first.Library);
-        Assert.IsFalse(ExtensionControlFile.Read(Path.Combine(publication, "extension", first.Control)).ContainsKey("module_pathname"));
+        Assert.IsFalse(ExtensionControlFile.Read(Path.Join(publication, "extension", first.Control)).ContainsKey("module_pathname"));
         ProcessResult property = await InvokeAsync(["get", "module_pathname", "--from", publication], token);
         Assert.AreEqual(0, property.ExitCode, property.StandardOutput + property.StandardError);
         Assert.AreEqual("", property.StandardOutput);
-        string firstSql = await File.ReadAllTextAsync(Path.Combine(publication, "extension", first.Sql), token);
+        string firstSql = await File.ReadAllTextAsync(Path.Join(publication, "extension", first.Sql), token);
         Assert.Contains("AS 'Ankus.Versioned.Probe-0.1.0', ", firstSql);
         Assert.DoesNotContain("MODULE_PATHNAME", firstSql);
 
@@ -52,36 +52,36 @@ public sealed partial class ToolCommandTests
         await File.WriteAllTextAsync(source, VersionedSource(2), token);
         string[] publishArguments = ["publish", "--home", s_home, "--pg", MajorText(), "--project", project, "--output", publication];
         (await InvokeAsync(publishArguments, token)).EnsureSuccess(s_tool, publishArguments);
-        string secondSql = await File.ReadAllTextAsync(Path.Combine(publication, "extension", PublishedExtension.Read(publication).Sql), token);
+        string secondSql = await File.ReadAllTextAsync(Path.Join(publication, "extension", PublishedExtension.Read(publication).Sql), token);
 
         // Upgrade scripts can use MODULE_PATHNAME; each resolves to the library of the version it updates to.
-        string scripts = Path.Combine(directory, "sql");
+        string scripts = Path.Join(directory, "sql");
         Directory.CreateDirectory(scripts);
         const string Up = "ankus_versioned_probe--0.1.0--0.2.0.sql";
         const string Down = "ankus_versioned_probe--0.2.0--0.1.0.sql";
-        await File.WriteAllTextAsync(Path.Combine(scripts, Up), Replaceable(secondSql, "0.2.0"), token);
-        await File.WriteAllTextAsync(Path.Combine(scripts, Down), Replaceable(firstSql, "0.1.0"), token);
+        await File.WriteAllTextAsync(Path.Join(scripts, Up), Replaceable(secondSql, "0.2.0"), token);
+        await File.WriteAllTextAsync(Path.Join(scripts, Down), Replaceable(firstSql, "0.1.0"), token);
         (await InvokeAsync(packageArguments, token)).EnsureSuccess(s_tool, packageArguments);
         (await InvokeAsync(installArguments, token)).EnsureSuccess(s_tool, installArguments);
         PublishedExtension second = PublishedExtension.Read(publication);
         Assert.AreEqual("Ankus.Versioned.Probe-0.2.0" + suffix, second.Library);
         Assert.AreSequenceEqual<string>([Up, Down], second.UpgradeScripts);
-        string upgraded = await File.ReadAllTextAsync(Path.Combine(publication, "extension", Up), token);
+        string upgraded = await File.ReadAllTextAsync(Path.Join(publication, "extension", Up), token);
         Assert.Contains("AS 'Ankus.Versioned.Probe-0.2.0', ", upgraded);
-        Assert.Contains("AS 'Ankus.Versioned.Probe-0.1.0', ", await File.ReadAllTextAsync(Path.Combine(publication, "extension", Down), token));
+        Assert.Contains("AS 'Ankus.Versioned.Probe-0.1.0', ", await File.ReadAllTextAsync(Path.Join(publication, "extension", Down), token));
         Assert.DoesNotContain("MODULE_PATHNAME", upgraded);
         foreach (string libraryDirectory in new[] { PackageLibraryDirectory(package), StagedPath(stage, s_installation.LibraryDirectory) })
         {
-            Assert.IsTrue(File.Exists(Path.Combine(libraryDirectory, first.Library)), libraryDirectory);
-            Assert.IsTrue(File.Exists(Path.Combine(libraryDirectory, second.Library)), libraryDirectory);
+            Assert.IsTrue(File.Exists(Path.Join(libraryDirectory, first.Library)), libraryDirectory);
+            Assert.IsTrue(File.Exists(Path.Join(libraryDirectory, second.Library)), libraryDirectory);
         }
 
-        foreach (string extensionDirectory in new[] { Path.Combine(PackageSharedDirectory(package), "extension"),
-            Path.Combine(StagedPath(stage, s_installation.SharedDirectory), "extension") })
+        foreach (string extensionDirectory in new[] { Path.Join(PackageSharedDirectory(package), "extension"),
+            Path.Join(StagedPath(stage, s_installation.SharedDirectory), "extension") })
         {
-            Assert.IsTrue(File.Exists(Path.Combine(extensionDirectory, first.Sql)), extensionDirectory);
-            Assert.IsTrue(File.Exists(Path.Combine(extensionDirectory, second.Sql)), extensionDirectory);
-            IReadOnlyDictionary<string, string> control = ExtensionControlFile.Read(Path.Combine(extensionDirectory, second.Control));
+            Assert.IsTrue(File.Exists(Path.Join(extensionDirectory, first.Sql)), extensionDirectory);
+            Assert.IsTrue(File.Exists(Path.Join(extensionDirectory, second.Sql)), extensionDirectory);
+            IReadOnlyDictionary<string, string> control = ExtensionControlFile.Read(Path.Join(extensionDirectory, second.Control));
             Assert.AreEqual("0.2.0", control["default_version"]);
             Assert.IsFalse(control.ContainsKey("module_pathname"));
         }
@@ -98,8 +98,8 @@ public sealed partial class ToolCommandTests
         await using PostgresTestCluster cluster = await PostgresTestCluster.StartAsync(new PostgresTestClusterOptions
         {
             Installation = installation,
-            DataDirectoryBase = Path.Combine(s_root, "versioned-pgdata"),
-            LogDirectory = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
+            DataDirectoryBase = Path.Join(s_root, "versioned-pgdata"),
+            LogDirectory = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
             StartupTimeout = IntegrationEnvironment.StartupTimeout,
             PostgreSqlConfiguration = configuration,
         }, token);

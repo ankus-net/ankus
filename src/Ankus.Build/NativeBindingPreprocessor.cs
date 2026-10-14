@@ -23,8 +23,8 @@ internal static class NativeBindingPreprocessor
         cancellationToken.ThrowIfCancellationRequested();
         directory = NativeBuildDirectory.PhysicalPath(new DirectoryInfo(directory));
         const string Input = "native-binding-input.c";
-        await File.WriteAllTextAsync(Path.Combine(directory, Input), source, cancellationToken);
-        string output = Path.Combine(directory, "native-binding-input.i");
+        await File.WriteAllTextAsync(Path.Join(directory, Input), source, cancellationToken);
+        string output = Path.Join(directory, "native-binding-input.i");
         string[] preprocessing = OperatingSystem.IsWindows()
             ? ["/clang:-E", "/clang:-P", "/clang:-dD"] : ["-E", "-P", "-dD"];
         await NativeBindingHeaderCommand.CompileAsync(compiler, [.. options, .. preprocessing, Input], output,
@@ -54,7 +54,7 @@ internal static class NativeBindingPreprocessor
         string invocation = await NativeBindingHeaderCommand.CompileAsync(compiler,
             [.. options, "-###",
                 OperatingSystem.IsWindows() ? "/Zs" : "-fsyntax-only", Input],
-            Path.Combine(directory, "native-binding-driver.txt"), directory, cancellationToken, inspectBodies: true);
+            Path.Join(directory, "native-binding-driver.txt"), directory, cancellationToken, inspectBodies: true);
         if (!invocation.Contains("\"-cc1\"", StringComparison.Ordinal))
         {
             throw new FormatException("The selected Clang driver did not report its semantic frontend invocation.");

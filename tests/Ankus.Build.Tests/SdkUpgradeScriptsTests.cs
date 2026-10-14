@@ -33,7 +33,7 @@ public sealed class SdkUpgradeScriptsTests(TestContext context)
             string itemName = controls ? "AnkusVersionControlFile" : "AnkusUpgradeScript";
             string defaultProperty = controls ? "EnableDefaultAnkusVersionControlFiles" : "EnableDefaultAnkusUpgradeScripts";
             string name = explicitName ? "custom" : "my_extension";
-            Directory.CreateDirectory(Path.Combine(directory, "sql", "nested"));
+            Directory.CreateDirectory(Path.Join(directory, "sql", "nested"));
             string[] files = controls
                 ? ["sql/" + name + "--1.control", "sql/" + name + "--2.control", "sql/" + name + ".control",
                     "sql/other--1.control", "sql/nested/" + name + "--3.control", name + "--4.control"]
@@ -42,12 +42,12 @@ public sealed class SdkUpgradeScriptsTests(TestContext context)
                 name + "--4--5.sql"];
             foreach (string file in files)
             {
-                File.WriteAllText(Path.Combine(directory, file), "SELECT 1;");
+                File.WriteAllText(Path.Join(directory, file), "SELECT 1;");
             }
 
-            string project = Path.Combine(directory, "Items.proj");
+            string project = Path.Join(directory, "Items.proj");
             new XDocument(new XElement("Project",
-                new XElement("Import", new XAttribute("Project", Path.Combine(AppContext.BaseDirectory, "Sdk", "Ankus.props"))),
+                new XElement("Import", new XAttribute("Project", Path.Join(AppContext.BaseDirectory, "Sdk", "Ankus.props"))),
                 new XElement("PropertyGroup", new XElement("TargetName", "My.Extension"),
                     new XElement("AnkusExtensionName", explicitName ? name : ""),
                     new XElement(defaultProperty, defaults ? "true" : "false")),

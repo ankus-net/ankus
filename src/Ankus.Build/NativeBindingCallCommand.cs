@@ -37,7 +37,7 @@ internal static class NativeBindingCallCommand
         }
 
         await PublishAsync(output, source, (temporary, token) => NativeBindingHeaderCommand.InspectAsync(installation,
-            bodyArguments, temporary, Path.Combine(output, "native-call-checks.txt"),
+            bodyArguments, temporary, Path.Join(output, "native-call-checks.txt"),
             output, token, dumpAst: false, inspectBodies: true), cancellationToken);
         Console.WriteLine($"PG{major}: validated {records.Headers.Symbols.Count} fixed native call bodies for native guard integration.");
     }
@@ -53,13 +53,13 @@ internal static class NativeBindingCallCommand
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        string temporary = Path.Combine(output, "native-calls-" + Guid.NewGuid().ToString("N") + ".tmp.c");
+        string temporary = Path.Join(output, "native-calls-" + Guid.NewGuid().ToString("N") + ".tmp.c");
         try
         {
             await File.WriteAllTextAsync(temporary, source, cancellationToken);
             await inspect(temporary, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            File.Move(temporary, Path.Combine(output, "native-calls.c"), overwrite: true);
+            File.Move(temporary, Path.Join(output, "native-calls.c"), overwrite: true);
         }
         finally
         {

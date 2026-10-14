@@ -52,8 +52,8 @@ internal static class AllocatorFaultFixtureCompiler
     internal static async Task CompileAsync(PostgresInstallation installation, CancellationToken cancellationToken)
     {
         string root = IntegrationEnvironment.RepositoryRoot;
-        string suffix = Path.Combine(RuntimeInformation.RuntimeIdentifier, "native", "ankus", "bridge.c");
-        string emittedPath = Directory.EnumerateFiles(Path.Combine(root, "tests", "Ankus.TestExtension", "obj", "Release"),
+        string suffix = Path.Join(RuntimeInformation.RuntimeIdentifier, "native", "ankus", "bridge.c");
+        string emittedPath = Directory.EnumerateFiles(Path.Join(root, "tests", "Ankus.TestExtension", "obj", "Release"),
             "bridge.c", SearchOption.AllDirectories).Single(path => path.EndsWith(suffix, StringComparison.Ordinal));
         string emitted = (await File.ReadAllTextAsync(emittedPath, cancellationToken)).ReplaceLineEndings("\n");
         int preambleEnd = FindBoundary(emitted, "static inline void\nankus_read_buffer(");
@@ -69,22 +69,22 @@ internal static class AllocatorFaultFixtureCompiler
             throw new InvalidOperationException("The emitted native bridge section order changed.");
         }
 
-        string fixtures = Path.Combine(root, "tests", "Ankus.IntegrationTests", "Native");
-        string prefix = await File.ReadAllTextAsync(Path.Combine(fixtures, "allocator_fault_prefix.c"), cancellationToken);
-        string probe = await File.ReadAllTextAsync(Path.Combine(fixtures, "allocator_fault_probe.c"), cancellationToken);
-        string workerPrefix = await File.ReadAllTextAsync(Path.Combine(fixtures, "worker_fault_prefix.c"), cancellationToken);
-        string workerProbe = await File.ReadAllTextAsync(Path.Combine(fixtures, "worker_fault_probe.c"), cancellationToken);
-        string completionPrefix = await File.ReadAllTextAsync(Path.Combine(fixtures, "completion_fault_prefix.c"), cancellationToken);
-        string completionProbe = await File.ReadAllTextAsync(Path.Combine(fixtures, "completion_fault_probe.c"), cancellationToken);
+        string fixtures = Path.Join(root, "tests", "Ankus.IntegrationTests", "Native");
+        string prefix = await File.ReadAllTextAsync(Path.Join(fixtures, "allocator_fault_prefix.c"), cancellationToken);
+        string probe = await File.ReadAllTextAsync(Path.Join(fixtures, "allocator_fault_probe.c"), cancellationToken);
+        string workerPrefix = await File.ReadAllTextAsync(Path.Join(fixtures, "worker_fault_prefix.c"), cancellationToken);
+        string workerProbe = await File.ReadAllTextAsync(Path.Join(fixtures, "worker_fault_probe.c"), cancellationToken);
+        string completionPrefix = await File.ReadAllTextAsync(Path.Join(fixtures, "completion_fault_prefix.c"), cancellationToken);
+        string completionProbe = await File.ReadAllTextAsync(Path.Join(fixtures, "completion_fault_probe.c"), cancellationToken);
         // Memory callbacks retain terminal intent through their own memory capability, so its recovery entry point is required.
         // Workers and SQL must load the same compiled filename, including its explicit platform suffix.
         string source = emitted[..preambleEnd] + emitted[diagnosticsStart..memoryStart] + prefix + workerPrefix + completionPrefix +
             emitted[memoryStart..memoryEnd] + probe + $"\n#define ANKUS_WORKER_FAULT_LIBRARY \"{ModuleFileName}\"\n" + workerProbe + completionProbe;
         string output = IntegrationEnvironment.NativeOutputDirectory;
-        string sourcePath = Path.Combine(output, "allocator_fault_fixture.c");
+        string sourcePath = Path.Join(output, "allocator_fault_fixture.c");
         await File.WriteAllTextAsync(sourcePath, source, cancellationToken);
         await AllocatorFixtureCompiler.CompileModuleAsync(installation, sourcePath,
-            Path.Combine(output, ModuleFileName), cancellationToken);
+            Path.Join(output, ModuleFileName), cancellationToken);
     }
 
     /// <summary>

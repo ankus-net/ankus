@@ -142,9 +142,8 @@ public static class PgTypeRegistry
             return null;
         }
 
-        foreach (KeyValuePair<Type, CustomTypeMapping> registration in s_scalars)
+        foreach (CustomTypeMapping mapping in s_scalars.Values)
         {
-            CustomTypeMapping mapping = registration.Value;
             if (mapping.Accepts(value) && mapping.GetOid(missingOk: true) == oid)
             {
                 return mapping;
@@ -164,9 +163,8 @@ public static class PgTypeRegistry
             return null;
         }
 
-        foreach (KeyValuePair<Type, CustomTypeMapping> registration in s_scalars)
+        foreach (CustomTypeMapping mapping in s_scalars.Values)
         {
-            CustomTypeMapping mapping = registration.Value;
             if (!mapping.AcceptsArray(value))
             {
                 continue;

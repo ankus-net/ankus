@@ -12,9 +12,9 @@ internal sealed class RegressionSuite
     /// </summary>
     internal RegressionSuite(string project)
     {
-        DirectoryPath = Path.Combine(Path.GetDirectoryName(project)!, "pg_regress");
+        DirectoryPath = Path.Join(Path.GetDirectoryName(project)!, "pg_regress");
         RequireRepresentable(DirectoryPath);
-        string sql = Path.Combine(DirectoryPath, "sql");
+        string sql = Path.Join(DirectoryPath, "sql");
         Names = Directory.Exists(sql)
             ? [.. Directory.EnumerateFiles(sql).Where(static path => Path.GetExtension(path) == ".sql")
                 .Select(static path => Path.GetFileNameWithoutExtension(path)).Order(StringComparer.Ordinal)]
@@ -43,7 +43,7 @@ internal sealed class RegressionSuite
     /// Reports whether setup was changed after its expected output was recorded.
     /// </summary>
     internal bool SetupChanged => Names.Contains("setup") &&
-        (!HasExpected("setup") || File.GetLastWriteTimeUtc(Path.Combine(DirectoryPath, "sql", "setup.sql")) > File.GetLastWriteTimeUtc(Expected("setup")));
+        (!HasExpected("setup") || File.GetLastWriteTimeUtc(Path.Join(DirectoryPath, "sql", "setup.sql")) > File.GetLastWriteTimeUtc(Expected("setup")));
 
     /// <summary>
     /// Selects ordinary tests and rejects an explicit filter that has no ordinary match.
@@ -84,7 +84,7 @@ internal sealed class RegressionSuite
     internal async Task<int> BootstrapAsync(string name, PostgresInstallation installation, string driver, string connection,
         string verbosity, CancellationToken token)
     {
-        Directory.CreateDirectory(Path.Combine(DirectoryPath, "expected"));
+        Directory.CreateDirectory(Path.Join(DirectoryPath, "expected"));
         string expected = Expected(name);
         bool created = false;
         bool promoted = false;
@@ -121,7 +121,7 @@ internal sealed class RegressionSuite
     /// </summary>
     internal async Task RecordFailureAsync(IReadOnlyList<string> names, int run, int repeat, bool verbose, bool promote, CancellationToken token)
     {
-        string path = Path.Combine(DirectoryPath, "regression.diffs");
+        string path = Path.Join(DirectoryPath, "regression.diffs");
         if (!File.Exists(path))
         {
             return;
@@ -130,7 +130,7 @@ internal sealed class RegressionSuite
         string[] lines = await File.ReadAllLinesAsync(path, token);
         if (repeat > 1)
         {
-            string retained = Path.Combine(DirectoryPath, $"regression.{run}.diffs");
+            string retained = Path.Join(DirectoryPath, $"regression.{run}.diffs");
             File.Move(path, retained, overwrite: true);
             path = retained;
         }
@@ -143,19 +143,16 @@ internal sealed class RegressionSuite
 
         if (promote)
         {
-            foreach (string name in names)
+            foreach (string name in names.Where(name => lines.Any(line => line.StartsWith("diff ", StringComparison.Ordinal) &&
+                    line.EndsWith("/results/" + name + ".out", StringComparison.Ordinal))))
             {
-                if (lines.Any(line => line.StartsWith("diff ", StringComparison.Ordinal) &&
-                    line.EndsWith("/results/" + name + ".out", StringComparison.Ordinal)))
-                {
-                    await PromoteAsync(name, token);
-                    Console.WriteLine($"Updated expected output for {name}.");
-                }
+                await PromoteAsync(name, token);
+                Console.WriteLine($"Updated expected output for {name}.");
             }
         }
     }
 
-    private string Expected(string name) => Path.Combine(DirectoryPath, "expected", name + ".out");
+    private string Expected(string name) => Path.Join(DirectoryPath, "expected", name + ".out");
 
     private static void RequireRepresentable(string value)
     {
@@ -173,7 +170,7 @@ internal sealed class RegressionSuite
         string temporary = target + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
-            await using (var input = new FileStream(Path.Combine(DirectoryPath, "results", name + ".out"), FileMode.Open, FileAccess.Read, FileShare.Read))
+            await using (var input = new FileStream(Path.Join(DirectoryPath, "results", name + ".out"), FileMode.Open, FileAccess.Read, FileShare.Read))
             await using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {
                 await input.CopyToAsync(output, token);

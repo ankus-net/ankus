@@ -19,12 +19,9 @@ public static class DdlEvents
     public static void ReportTableCreation(PgEventTriggerContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
-        foreach (PgDdlCommand command in context.GetDdlCommands())
+        foreach (PgDdlCommand command in context.GetDdlCommands().Where(static command => command.ObjectType == "table"))
         {
-            if (command.ObjectType == "table")
-            {
-                PgLog.Write(PgLogLevel.Notice, $"{command.CommandTag}: {command.ObjectIdentity}");
-            }
+            PgLog.Write(PgLogLevel.Notice, $"{command.CommandTag}: {command.ObjectIdentity}");
         }
     }
 }

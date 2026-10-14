@@ -94,17 +94,15 @@ internal static unsafe class NativeSubtransaction
             invocation.Action();
             return invocation.Failure is null ? 0 : 1;
         }
+        // codeql[cs/catch-of-all-exceptions] Native code calls this, so every exception is kept for the rollback instead of unwinding through it.
         catch (Exception exception)
         {
-            if (invocation is not null)
+            // Preserve a cleanup aggregate that still contains the original
+            // native failure. An unrelated replacement cannot hide that failure.
+            if (invocation is not null && (invocation.Failure is null || exception is AggregateException aggregate &&
+                aggregate.Flatten().InnerExceptions.Any(failure => ReferenceEquals(failure, invocation.Failure))))
             {
-                if (invocation.Failure is null || exception is AggregateException aggregate &&
-                    aggregate.Flatten().InnerExceptions.Any(failure => ReferenceEquals(failure, invocation.Failure)))
-                {
-                    // Preserve a cleanup aggregate that still contains the original
-                    // native failure. An unrelated replacement cannot hide that failure.
-                    invocation.Failure = exception;
-                }
+                invocation.Failure = exception;
             }
 
             return 1;

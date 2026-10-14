@@ -22,16 +22,16 @@ public sealed class PublishedScriptDirectoryTests
     [TestMethod]
     public void ResolvesLiteralScriptDirectoriesWithoutCreatingTargets()
     {
-        string shared = Path.Combine(_root, "share");
-        string absolute = Path.Combine(_root, "absolute scripts");
+        string shared = Path.Join(_root, "share");
+        string absolute = Path.Join(_root, "absolute scripts");
         (string? Directory, string Expected)[] cases =
         [
-            (null, Path.Combine(shared, "extension")),
+            (null, Path.Join(shared, "extension")),
             ("", shared),
-            (".", Path.Combine(shared, ".")),
-            ("nested/SQL files", Path.Combine(shared, "nested", "SQL files")),
-            ("../sibling", Path.Combine(shared, "../sibling")),
-            ("missing/../scripts", Path.Combine(shared, "missing/../scripts")),
+            (".", Path.Join(shared, ".")),
+            ("nested/SQL files", Path.Join(shared, "nested", "SQL files")),
+            ("../sibling", Path.Join(shared, "../sibling")),
+            ("missing/../scripts", Path.Join(shared, "missing/../scripts")),
             (absolute, absolute),
         ];
         foreach ((string? directory, string expected) in cases)
@@ -44,7 +44,7 @@ public sealed class PublishedScriptDirectoryTests
             PublishedExtension actual = PublishedExtension.Read(_root);
             Assert.AreEqual(directory, actual.ScriptDirectory);
             Assert.AreEqual(expectedPath, actual.GetScriptDirectory(_root, shared));
-            using JsonDocument json = JsonDocument.Parse(File.ReadAllText(Path.Combine(_root, PublishedExtension.FileName)));
+            using JsonDocument json = JsonDocument.Parse(File.ReadAllText(Path.Join(_root, PublishedExtension.FileName)));
             Assert.AreEqual(directory is null ? 1 : 4, json.RootElement.GetProperty("formatVersion").GetInt32());
             if (directory is not null)
             {
@@ -116,7 +116,7 @@ public sealed class PublishedScriptDirectoryTests
     [DataRow("\"formatVersion\":4,\"scriptDirectory\":\"scripts\",\"versionControlFiles\":[]")]
     public void RejectsMalformedScriptDirectoryManifests(string fields)
     {
-        File.WriteAllText(Path.Combine(_root, PublishedExtension.FileName),
+        File.WriteAllText(Path.Join(_root, PublishedExtension.FileName),
             "{" + fields + ",\"postgresMajor\":18,\"runtimeIdentifier\":\"linux-x64\",\"library\":\"Probe.so\",\"control\":\"probe.control\",\"sql\":\"probe--2.sql\"}");
         Assert.ThrowsExactly<FormatException>(() => PublishedExtension.Read(_root));
     }
@@ -127,20 +127,20 @@ public sealed class PublishedScriptDirectoryTests
     [TestMethod]
     public void CompletePublishDoesNotWriteTheAuthoredDirectory()
     {
-        string target = Path.Combine(_root, "outside publication");
+        string target = Path.Join(_root, "outside publication");
         PublishedExtension manifest = Prepare(target);
-        File.WriteAllText(Path.Combine(_root, manifest.Library), "native payload");
-        File.WriteAllText(Path.Combine(_root, "extension", manifest.Sql), "SELECT 42;");
+        File.WriteAllText(Path.Join(_root, manifest.Library), "native payload");
+        File.WriteAllText(Path.Join(_root, "extension", manifest.Sql), "SELECT 42;");
         manifest.Write(_root);
         WriteControl("wrong");
         Assert.ThrowsExactly<FormatException>(() => manifest.CompletePublish(_root));
-        Assert.IsFalse(File.Exists(Path.Combine(_root, PublishedExtension.FileName)));
-        Assert.IsTrue(File.Exists(Path.Combine(_root, "ankus.extension.previous.json")));
+        Assert.IsFalse(File.Exists(Path.Join(_root, PublishedExtension.FileName)));
+        Assert.IsTrue(File.Exists(Path.Join(_root, "ankus.extension.previous.json")));
         WriteControl(target);
         manifest.CompletePublish(_root);
         Assert.AreEqual(target, PublishedExtension.Read(_root).ScriptDirectory);
         Assert.IsFalse(Directory.Exists(target));
-        Assert.AreEqual("SELECT 42;", File.ReadAllText(Path.Combine(_root, "extension", manifest.Sql)));
+        Assert.AreEqual("SELECT 42;", File.ReadAllText(Path.Join(_root, "extension", manifest.Sql)));
     }
 
     /// <summary>
@@ -156,9 +156,9 @@ public sealed class PublishedScriptDirectoryTests
         Assert.ThrowsExactly<ArgumentException>(() => manifest.GetScriptDirectory(_root, ""));
         if (OperatingSystem.IsWindows())
         {
-            foreach (string value in new[] { "C:relative", "\\relative", "/relative" })
+            string[] ambiguousDirectories = ["C:relative", "\\relative", "/relative"];
+            foreach (PublishedExtension ambiguous in ambiguousDirectories.Select(Prepare))
             {
-                PublishedExtension ambiguous = Prepare(value);
                 Assert.ThrowsExactly<FormatException>(() => ambiguous.GetScriptDirectory(_root, _root));
             }
         }
@@ -172,14 +172,14 @@ public sealed class PublishedScriptDirectoryTests
 
     private void WriteControl(string? directory)
     {
-        Directory.CreateDirectory(Path.Combine(_root, "extension"));
+        Directory.CreateDirectory(Path.Join(_root, "extension"));
         var settings = new Dictionary<string, string> { ["default_version"] = "2" };
         if (directory is not null)
         {
             settings.Add("directory", directory);
         }
 
-        File.WriteAllText(Path.Combine(_root, "extension", "probe.control"), ExtensionControlFile.Format(settings));
+        File.WriteAllText(Path.Join(_root, "extension", "probe.control"), ExtensionControlFile.Format(settings));
     }
 
     private static PublishedExtension Create(string? directory)

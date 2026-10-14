@@ -21,14 +21,14 @@ public sealed partial class ToolCommandTests
         const string InsertBenchmark = "Ankus.Examples.Hello.BenchmarkProbe.SuccessInsertRow(Ankus.PgBencher)";
         const string AddNumericBenchmark = "Ankus.Examples.Hello.BenchmarkProbe.SuccessAddNumeric(Ankus.PgBencher)";
         string installationSql = await File.ReadAllTextAsync(
-            Directory.GetFiles(Path.Combine(s_published, "extension"), "ankus_tool_probe--*.sql").Single(), token);
+            Directory.GetFiles(Path.Join(s_published, "extension"), "ankus_tool_probe--*.sql").Single(), token);
         Assert.DoesNotContain("CREATE SCHEMA benches", installationSql);
         Assert.DoesNotContain("ankus_bench_", installationSql);
 
         const string Group = "integration-benchmark";
         PostgresInstallation installation = await ReserveCaseInstallationAsync(token);
         string benchmarkDirectory = CreateDirectory();
-        string benchmarkProject = Path.Combine(benchmarkDirectory, "BenchmarkProbe.csproj");
+        string benchmarkProject = Path.Join(benchmarkDirectory, "BenchmarkProbe.csproj");
         XDocument definition = XDocument.Load(s_project);
         definition.Root!.Add(new XElement("PropertyGroup",
             new XElement("AnkusPostgresMajor", new XAttribute("Condition",
@@ -40,8 +40,8 @@ public sealed partial class ToolCommandTests
             new XElement("AnkusPgConfigPath", new XAttribute("Condition",
                 "'$(AnkusIncludeBenchmarks)' != 'true' or '$(BenchmarkProbe)' != 'enabled'"), string.Empty)));
         definition.Save(benchmarkProject);
-        File.Copy(Path.Combine(Path.GetDirectoryName(s_project)!, "BenchmarkProbe.cs"),
-            Path.Combine(benchmarkDirectory, "BenchmarkProbe.cs"));
+        File.Copy(Path.Join(Path.GetDirectoryName(s_project)!, "BenchmarkProbe.cs"),
+            Path.Join(benchmarkDirectory, "BenchmarkProbe.cs"));
         // The default development port can fall inside an operating-system exclusion, such as a Windows Hyper-V range.
         using PortReservation reservation = PortReservation.Create();
         int port = reservation.Port;
@@ -67,9 +67,9 @@ public sealed partial class ToolCommandTests
             Assert.IsEmpty(run.StandardError);
             if (s_installation.Version.Major >= 18)
             {
-                string benchmarkOutput = Path.Combine(benchmarkDirectory, "bin", "ankus-bench",
+                string benchmarkOutput = Path.Join(benchmarkDirectory, "bin", "ankus-bench",
                     s_installation.Label, System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier, "Release");
-                string stagedControl = Path.Combine(benchmarkOutput, ".ankus-bench", "extension", "ankus_tool_probe.control");
+                string stagedControl = Path.Join(benchmarkOutput, ".ankus-bench", "extension", "ankus_tool_probe.control");
                 Assert.IsTrue(File.Exists(stagedControl), stagedControl);
                 Assert.Contains(Path.GetDirectoryName(stagedControl)!, run.StandardOutput);
                 Assert.DoesNotContain(s_installation.LibraryDirectory, run.StandardOutput);
@@ -240,7 +240,7 @@ public sealed partial class ToolCommandTests
             try
             {
                 string[] identity = ["-c", "user.name=Ankus", "-c", "user.email=ankus@example.invalid", "-c", "commit.gpgsign=false"];
-                await File.WriteAllTextAsync(Path.Combine(benchmarkDirectory, "notes.txt"), "first", token);
+                await File.WriteAllTextAsync(Path.Join(benchmarkDirectory, "notes.txt"), "first", token);
                 (await PackageProcessRunner.RunAsync("git", ["init", "-q", "-b", "main"], git, token, workingDirectory: benchmarkDirectory))
                     .EnsureSuccess("git", ["init"]);
                 (await PackageProcessRunner.RunAsync("git", ["add", "notes.txt"], git, token, workingDirectory: benchmarkDirectory))
@@ -250,7 +250,7 @@ public sealed partial class ToolCommandTests
                 ProcessResult head = await PackageProcessRunner.RunAsync("git", ["rev-parse", "HEAD"], git, token, workingDirectory: benchmarkDirectory);
                 head.EnsureSuccess("git", ["rev-parse"]);
                 commit = head.StandardOutput.Trim();
-                await File.WriteAllTextAsync(Path.Combine(benchmarkDirectory, "notes.txt"), "changed", token);
+                await File.WriteAllTextAsync(Path.Join(benchmarkDirectory, "notes.txt"), "changed", token);
                 tunedRun = await PackageProcessRunner.RunAsync(s_tool,
                     ["bench", "SuccessAddNumeric", .. options, "--no-build", "--postgresql-conf", "random_page_cost=1.5"],
                     git, token, workingDirectory: s_root);
@@ -371,7 +371,7 @@ public sealed partial class ToolCommandTests
     /// </summary>
     private static void DeleteGitDirectory(string workTree)
     {
-        string repository = Path.Combine(workTree, ".git");
+        string repository = Path.Join(workTree, ".git");
         if (!Directory.Exists(repository))
         {
             return;

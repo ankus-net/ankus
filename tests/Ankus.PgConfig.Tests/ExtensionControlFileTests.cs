@@ -134,7 +134,7 @@ public sealed class ExtensionControlFileTests
         string directory = Directory.CreateTempSubdirectory("ankus-control-").FullName;
         try
         {
-            string path = Path.Combine(directory, "probe.control");
+            string path = Path.Join(directory, "probe.control");
             Assert.ThrowsExactly<FileNotFoundException>(() => ExtensionControlFile.Read(path));
             File.WriteAllText(path, "comment = 'file value'\r\n");
             Assert.AreEqual("file value", ExtensionControlFile.Read(path)["comment"]);

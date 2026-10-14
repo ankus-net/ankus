@@ -84,7 +84,8 @@ internal static class ProcessRunner
             }
 
             await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
-            await Task.WhenAll((Task)standardOutput, standardError).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            Task[] streams = [standardOutput, standardError];
+            await Task.WhenAll(streams).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
 
             throw;
         }

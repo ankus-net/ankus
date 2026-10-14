@@ -19,6 +19,7 @@ public static class SpiCommandFunctions
     [PgFunction]
     public static string CommandRole(int mode, bool scoped, int? number, string? text, byte[]? bytes)
     {
+        // codeql[cs/call-to-object-tostring] Spi.Sql binds each interpolated value as a parameter; nothing is formatted as text.
         SpiCommand command = Spi.Sql($"SELECT {number} AS value, {text} AS label, {bytes} AS bytes FROM generate_series(1,3)");
         return scoped ? Spi.Connect(session => ReadCommand(mode, command, session)) : ReadCommand(mode, command, null);
     }
@@ -46,7 +47,7 @@ public static class SpiCommandFunctions
         {
             Spi.Execute(Spi.Sql($"SELECT pg_sleep({10.0})"));
         }
-        catch (Exception)
+        catch (PgQueryCanceledException)
         {
             return 99;
         }
@@ -66,7 +67,9 @@ public static class SpiCommandFunctions
         CustomOperatorFunctions.Key? key = nullValues ? null : new("key☃", 42);
         MappedText? mapped = nullValues ? null : new DerivedMappedText("mapped☃");
         int?[]? numbers = nullValues ? null : [1, null, 3];
+        // codeql[cs/call-to-object-tostring] Spi.Sql binds each interpolated value as a parameter; nothing is formatted as text.
         SpiCommand values = Spi.Sql($"SELECT {key}, {mapped}, {numbers}");
+        // codeql[cs/call-to-object-tostring] Spi.Sql binds each interpolated value as a parameter; nothing is formatted as text.
         SpiCommand identities = Spi.Sql($"SELECT pg_typeof({key})::text, pg_typeof({mapped})::text, pg_typeof({numbers})::text");
         return scoped ? Spi.Connect(session => ReadTypedValues(values, identities, session)) : ReadTypedValues(values, identities, null);
     }
@@ -82,6 +85,7 @@ public static class SpiCommandFunctions
     {
         using SpiRawResult source = Spi.QueryRaw(sql);
         PgDatum datum = source[0][0];
+        // codeql[cs/call-to-object-tostring] Spi.Sql binds each interpolated value as a parameter; nothing is formatted as text.
         SpiCommand command = Spi.Sql($"SELECT {datum}");
         using SpiRawResult rebound = scoped ? Spi.Connect(session => session.QueryRaw(command)) : Spi.QueryRaw(command);
         source.Dispose();
@@ -129,6 +133,7 @@ public static class SpiCommandFunctions
         string error = "missing";
         try
         {
+            // codeql[cs/call-to-object-tostring] Spi.Sql binds each interpolated value as a parameter; nothing is formatted as text.
             ReadCommand(mode, Spi.Sql($"SELECT {42}, {"label"}, {new byte[] { 42 }}"), expired);
         }
         catch (ObjectDisposedException)
@@ -242,7 +247,7 @@ public static class SpiCommandFunctions
 
         SpiCommand state = Spi.Sql($"SELECT pg_current_xact_id_if_assigned() IS NOT NULL");
         bool assigned = (session is null ? Spi.Select(state) : session.Select(state))[0].Get<bool>(0);
-        string locking = "missing";
+        string locking;
         SpiCommand locked = Spi.Sql($"SELECT value FROM ankus_command_snapshot WHERE value = {40} FOR UPDATE");
         try
         {

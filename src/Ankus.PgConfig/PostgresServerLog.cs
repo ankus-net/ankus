@@ -74,12 +74,10 @@ public sealed class PostgresServerLog(string filePath, Guid identity)
                 WriteState(cursor, created, events.ToString());
             }
 
-            if (text.Length != 0 || File.Exists(NativeFilePath))
+            bool logged = text.Length != 0 || File.Exists(NativeFilePath);
+            if (logged && (ReadFile(_filePath) != text || !File.Exists(_filePath)))
             {
-                if (ReadFile(_filePath) != text || !File.Exists(_filePath))
-                {
-                    ReplaceFile(_filePath, text);
-                }
+                ReplaceFile(_filePath, text);
             }
 
             return text;
@@ -228,10 +226,12 @@ public sealed class PostgresServerLog(string filePath, Guid identity)
                 cancellationToken.ThrowIfCancellationRequested();
                 foreach (EventProperty property in entry.Properties)
                 {
-                    if (property.Value is string message)
+                    if (property.Value is not string message)
                     {
-                        events.Append(message);
+                        continue;
                     }
+
+                    events.Append(message);
                 }
 
                 cursor = entry.RecordId ?? throw new InvalidOperationException("A PostgreSQL event has no record identity.");

@@ -188,7 +188,12 @@ public static unsafe class ItemPointerFunctions
             return value is null ? "null" : "unexpected";
         }
 
-        PgItemPointer initial = value!.Value;
+        if (value is null)
+        {
+            throw new InvalidOperationException("The borrowed tid is SQL NULL.");
+        }
+
+        PgItemPointer initial = value.Value;
         if (mode == 1)
         {
             anchor.Reset();
@@ -242,13 +247,18 @@ public static unsafe class ItemPointerFunctions
     [PgFunction]
     public static string ItemPointerSaved()
     {
+        if (s_saved is not { } saved)
+        {
+            return "missing";
+        }
+
         try
         {
-            return s_saved is null ? "missing" : s_saved.Value.ToString();
+            return saved.Value.ToString();
         }
         catch (ObjectDisposedException)
         {
-            s_saved?.Dispose();
+            saved.Dispose();
             s_saved = null;
             return "stale";
         }

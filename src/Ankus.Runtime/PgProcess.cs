@@ -85,6 +85,7 @@ public static unsafe class PgProcess
                 {
                     callbacks[index].Run(checked((int)code));
                 }
+                // codeql[cs/catch-of-all-exceptions] Every exit callback runs, and the first failure goes back to PostgreSQL as an error.
                 catch (Exception exception)
                 {
                     failure ??= exception;

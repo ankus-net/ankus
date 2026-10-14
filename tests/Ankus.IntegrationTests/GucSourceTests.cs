@@ -24,7 +24,7 @@ public sealed class GucSourceTests(TestContext context)
         await using NpgsqlConnection administrator = await cluster.OpenConnectionAsync(context.CancellationToken);
         await ExecuteAsync(administrator, "CREATE EXTENSION ankus_configuration; CREATE ROLE source_reader LOGIN");
         var builder = new NpgsqlConnectionStringBuilder(administrator.ConnectionString) { Username = "source_reader", Pooling = false };
-        string database = new NpgsqlCommandBuilder().QuoteIdentifier(builder.Database!);
+        string database = QuoteIdentifier(builder.Database!);
         await AssertNativeSourceAsync(builder, 61, "configuration file");
         await ExecuteAsync(administrator, $"ALTER DATABASE {database} SET \"ankus_configuration.user\" = '62'");
         await AssertNativeSourceAsync(builder, 62, "database");
@@ -51,7 +51,7 @@ public sealed class GucSourceTests(TestContext context)
         await using NpgsqlConnection administrator = await cluster.OpenConnectionAsync(context.CancellationToken);
         await ExecuteAsync(administrator, "CREATE EXTENSION ankus_test; CREATE ROLE source_reader LOGIN");
         var builder = new NpgsqlConnectionStringBuilder(administrator.ConnectionString) { Username = "source_reader", Pooling = false };
-        string database = new NpgsqlCommandBuilder().QuoteIdentifier(builder.Database!);
+        string database = QuoteIdentifier(builder.Database!);
         if (sessionPreload)
         {
             await ExecuteAsync(administrator, "ALTER ROLE source_reader SET session_preload_libraries = 'Ankus.TestExtension'");
@@ -297,5 +297,14 @@ public sealed class GucSourceTests(TestContext context)
     {
         await using var command = new NpgsqlCommand(sql, connection);
         await command.ExecuteNonQueryAsync(context.CancellationToken);
+    }
+
+    /// <summary>
+    /// Quotes a database name for SQL text.
+    /// </summary>
+    private static string QuoteIdentifier(string name)
+    {
+        using var quoting = new NpgsqlCommandBuilder();
+        return quoting.QuoteIdentifier(name);
     }
 }

@@ -263,6 +263,7 @@ public sealed unsafe class PgVarlena<T> : IDisposable, IPgVarlena where T : unma
         {
             allocation.Dispose();
         }
+        // codeql[cs/catch-of-all-exceptions] A failed cleanup is reported together with the failure that required it.
         catch (Exception cleanup)
         {
             throw new AggregateException("Initializing a PostgreSQL varlena and releasing its allocation failed.", primary, cleanup);

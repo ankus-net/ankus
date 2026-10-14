@@ -26,7 +26,7 @@ public sealed partial class ToolCommandTests
         await using PostgresTestInstallation owner = await PostgresTestInstallation.StageAsync(s_installation, CreateDirectory(), token);
         string home = CreateDirectory();
         string project = PrepareRegressionProject();
-        string suite = Path.Combine(Path.GetDirectoryName(project)!, "pg_regress");
+        string suite = Path.Join(Path.GetDirectoryName(project)!, "pg_regress");
         await WriteRegressionCaseAsync(suite, "native", "SELECT add(19, 23);", "42\n", token);
         var cluster = new PostgresDevelopmentCluster(owner.Installation, home);
         using PortReservation reservation = PortReservation.Create();
@@ -80,7 +80,7 @@ public sealed partial class ToolCommandTests
 
             ProcessResult regress = await InvokeValgrindCommandAsync([.. RegressionOptions(owner.Installation, home, project, port, "ankus_tool_probe"), "--valgrind", "--no-build"], environment, token);
             Assert.AreEqual(0, regress.ExitCode, regress.StandardOutput + regress.StandardError);
-            Assert.AreEqual("\\set ECHO none\n42\n", (await File.ReadAllTextAsync(Path.Combine(suite, "results", "native.out"), token)).ReplaceLineEndings("\n"));
+            Assert.AreEqual("\\set ECHO none\n42\n", (await File.ReadAllTextAsync(Path.Join(suite, "results", "native.out"), token)).ReplaceLineEndings("\n"));
             Assert.IsTrue(await cluster.StopAsync(token));
             await AssertValgrindLogAsync(cluster.LogFilePath, token);
             Assert.AreEqual(parentRange, Environment.GetEnvironmentVariable("DOTNET_GCRegionRange"));
@@ -95,9 +95,9 @@ public sealed partial class ToolCommandTests
             {
                 if (File.Exists(cluster.LogFilePath))
                 {
-                    string logs = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs");
+                    string logs = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs");
                     Directory.CreateDirectory(logs);
-                    string retainedLog = Path.Combine(logs, "valgrind-commands-" + Guid.NewGuid().ToString("N") + ".log");
+                    string retainedLog = Path.Join(logs, "valgrind-commands-" + Guid.NewGuid().ToString("N") + ".log");
                     File.Copy(cluster.LogFilePath, retainedLog);
                     context.AddResultFile(retainedLog);
                 }
@@ -127,7 +127,7 @@ public sealed partial class ToolCommandTests
         PostgresInstallation installation = owner.Installation;
         string home = CreateDirectory();
         string project = PrepareRegressionProject();
-        string suite = Path.Combine(Path.GetDirectoryName(project)!, "pg_regress");
+        string suite = Path.Join(Path.GetDirectoryName(project)!, "pg_regress");
         await WriteRegressionCaseAsync(suite, "native", "SELECT 42;", "42\n", token);
         string executables = CreateDirectory();
         // Staging selects the installation's real pg_config binary. Distribution
@@ -142,14 +142,14 @@ public sealed partial class ToolCommandTests
         Assert.IsFalse(File.Exists(cluster.LogFilePath));
         string[] before = Directory.GetFiles(home, "*", SearchOption.AllDirectories);
         string dotnet = Environment.GetEnvironmentVariable("PATH")!.Split(Path.PathSeparator)
-            .Select(static directory => Path.Combine(directory, "dotnet")).First(File.Exists);
-        File.CreateSymbolicLink(Path.Combine(executables, "dotnet"), dotnet);
+            .Select(static directory => Path.Join(directory, "dotnet")).First(File.Exists);
+        File.CreateSymbolicLink(Path.Join(executables, "dotnet"), dotnet);
         ProcessResult dry = await PackageProcessRunner.RunAsync(s_tool, [.. RegressionOptions(installation, home, project, 12345),
             "--valgrind", "--dry-run"], environment, token, workingDirectory: s_root);
         Assert.AreEqual(0, dry.ExitCode, dry.StandardOutput + dry.StandardError);
         Assert.Contains("Would start PostgreSQL under Valgrind Memcheck", dry.StandardOutput);
         Assert.AreEquivalent(before, Directory.GetFiles(home, "*", SearchOption.AllDirectories));
-        Assert.IsFalse(Directory.Exists(Path.Combine(suite, "results")));
+        Assert.IsFalse(Directory.Exists(Path.Join(suite, "results")));
     }
 
     /// <summary>
@@ -161,9 +161,9 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string root = CreateDirectory();
-        string source = Path.Combine(root, "delay.c");
-        string launcher = Path.Combine(root, "valgrind");
-        string marker = Path.Combine(root, "launcher.pid");
+        string source = Path.Join(root, "delay.c");
+        string launcher = Path.Join(root, "valgrind");
+        string marker = Path.Join(root, "launcher.pid");
         await File.WriteAllTextAsync(source, """
             #include <stdio.h>
             #include <stdlib.h>
@@ -200,6 +200,7 @@ public sealed partial class ToolCommandTests
         using PortReservation reservation = PortReservation.Create();
         int port = reservation.Port;
         reservation.Dispose();
+        // codeql[cs/missed-using-statement] The child process is found partway through the test, and it must be ended before it is disposed.
         Process? child = null;
         Task<ProcessResult>? starting = null;
         try
@@ -217,7 +218,7 @@ public sealed partial class ToolCommandTests
             Assert.IsTrue(File.Exists(marker), "The delayed launcher must run before timeout.");
             int id = int.Parse(await File.ReadAllTextAsync(marker, token), CultureInfo.InvariantCulture);
             child = Process.GetProcessById(id);
-            Assert.IsFalse(File.Exists(Path.Combine(cluster.DataDirectory, "postmaster.pid")));
+            Assert.IsFalse(File.Exists(Path.Join(cluster.DataDirectory, "postmaster.pid")));
             ProcessResult result = await starting.WaitAsync(TimeSpan.FromSeconds(15), token);
             Assert.AreEqual(1, result.ExitCode, result.StandardOutput + result.StandardError);
             Assert.Contains("did not start within 3 seconds", result.StandardError);

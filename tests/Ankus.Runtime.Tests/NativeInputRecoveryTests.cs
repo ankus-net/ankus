@@ -19,6 +19,26 @@ public sealed unsafe class NativeInputRecoveryTests
     private static NativeErrorFlags s_flags;
 
     /// <summary>
+    /// Makes the static native SPI callback record each request and fail it with <paramref name="sqlState"/>.
+    /// </summary>
+    private static void FailWith(string sqlState, NativeErrorFlags flags)
+    {
+        s_requests = [];
+        s_sqlState = sqlState;
+        s_flags = flags;
+    }
+
+    /// <summary>
+    /// Clears the failure the static native SPI callback reports.
+    /// </summary>
+    private static void StopFailing()
+    {
+        s_requests = null;
+        s_sqlState = null;
+        s_flags = 0;
+    }
+
+    /// <summary>
     /// Rejects missing backend access before invoking conversion or entering an input recovery scope.
     /// </summary>
     [TestMethod]
@@ -44,9 +64,7 @@ public sealed unsafe class NativeInputRecoveryTests
     [DataRow("57014", true)]
     public void InputRecoveryPreservesFailureClassificationAndScope(string state, bool unrecovered)
     {
-        s_requests = [];
-        s_sqlState = state;
-        s_flags = unrecovered ? NativeErrorFlags.Unrecovered : 0;
+        FailWith(state, unrecovered ? NativeErrorFlags.Unrecovered : 0);
         nint previous = NativeBackend.Enter((nint)(delegate* unmanaged[Cdecl]<NativeSpiRequest*, NativeSpiResult*, NativeCallError*, int>)&Fail);
         try
         {
@@ -71,11 +89,11 @@ public sealed unsafe class NativeInputRecoveryTests
             Assert.IsFalse(NativeInputRecovery.IsActive);
             if (state == "57014")
             {
-                _ = Assert.ThrowsExactly<PgQueryCanceledException>(() => PgInet.Parse("invalid"));
+                Assert.ThrowsExactly<PgQueryCanceledException>(() => PgInet.Parse("invalid"));
             }
             else
             {
-                _ = Assert.ThrowsExactly<PgException>(() => PgInet.Parse("invalid"));
+                Assert.ThrowsExactly<PgException>(() => PgInet.Parse("invalid"));
             }
 
             Assert.AreSequenceEqual<byte>([1, 0], s_requests);
@@ -83,9 +101,7 @@ public sealed unsafe class NativeInputRecoveryTests
         finally
         {
             NativeBackend.Exit(previous);
-            s_requests = null;
-            s_sqlState = null;
-            s_flags = 0;
+            StopFailing();
         }
     }
 
@@ -95,8 +111,7 @@ public sealed unsafe class NativeInputRecoveryTests
     [TestMethod]
     public void NestedInputRecoveryRetainsParentAndRestoresOrdinaryCalls()
     {
-        s_requests = [];
-        s_sqlState = "22P02";
+        FailWith("22P02", 0);
         nint previous = NativeBackend.Enter((nint)(delegate* unmanaged[Cdecl]<NativeSpiRequest*, NativeSpiResult*, NativeCallError*, int>)&Fail);
         try
         {
@@ -113,8 +128,7 @@ public sealed unsafe class NativeInputRecoveryTests
         finally
         {
             NativeBackend.Exit(previous);
-            s_requests = null;
-            s_sqlState = null;
+            StopFailing();
         }
     }
 
@@ -134,6 +148,7 @@ public sealed unsafe class NativeInputRecoveryTests
             s_requests!.Add(request->_recoverInput);
             NativeError.Write(new PgException(s_sqlState!, "native input failure") { NativeFlags = s_flags }, error);
         }
+        // codeql[cs/catch-of-all-exceptions] This stands in for native code, so every exception goes back as an error instead of unwinding through it.
         catch (Exception failure)
         {
             NativeError.Write(failure, error);

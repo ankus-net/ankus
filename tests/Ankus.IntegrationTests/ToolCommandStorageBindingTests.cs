@@ -15,15 +15,15 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string helper = await ReadPackagedBuildToolAsync();
-        string output = Path.Combine(s_root, "collected header storage");
-        string selection = Path.Combine(s_root, "storage symbols.txt");
+        string output = Path.Join(s_root, "collected header storage");
+        string selection = Path.Join(s_root, "storage symbols.txt");
         string[] names = ["ConditionVariableSleep", "CreateStatistics", "ExecutorRun_hook",
             "FullTransactionIdFromU64", "pg_atomic_read_u32", "proc_exit"];
         await File.WriteAllLinesAsync(selection, names, token);
         ProcessResult result = await RunDotnetAsync(
             [helper, "binding-storage", selection, MajorText(), s_installation.PgConfigPath, output], token);
         result.EnsureSuccess("dotnet", [helper, "binding-storage"]);
-        using JsonDocument document = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(output, "native-storage.json"), token));
+        using JsonDocument document = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Join(output, "native-storage.json"), token));
         JsonElement headers = document.RootElement.GetProperty("Headers");
         JsonElement target = headers.GetProperty("Target");
         await using NpgsqlConnection connection = await PostgresFixture.Cluster.OpenConnectionAsync(token);
@@ -67,12 +67,12 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string helper = await ReadPackagedBuildToolAsync();
-        string output = Path.Combine(s_root, "mismatched storage runtime");
+        string output = Path.Join(s_root, "mismatched storage runtime");
         Directory.CreateDirectory(output);
-        string contract = Path.Combine(output, "native-storage.json");
+        string contract = Path.Join(output, "native-storage.json");
         byte[] expected = "existing storage contract\n"u8.ToArray();
         await File.WriteAllBytesAsync(contract, expected, token);
-        string selection = Path.Combine(output, "symbols.txt");
+        string selection = Path.Join(output, "symbols.txt");
         await File.WriteAllTextAsync(selection, "ExecutorRun\n", token);
         string otherRuntime = RuntimeInformation.RuntimeIdentifier == "linux-x64" ? "linux-arm64" : "linux-x64";
         ProcessResult result = await RunDotnetAsync(

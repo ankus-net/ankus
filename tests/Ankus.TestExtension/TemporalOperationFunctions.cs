@@ -144,6 +144,7 @@ public static class TemporalOperationFunctions
                 }
                 catch (PgException error) when (error.SqlState == "22012")
                 {
+                    // Each division by zero fails on purpose; the count shows what the failures leave behind.
                 }
             }
 

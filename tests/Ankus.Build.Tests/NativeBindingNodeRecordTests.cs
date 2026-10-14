@@ -89,7 +89,7 @@ public sealed partial class NativeBindingNativeTests
                 private static int Alignment<T>() where T : unmanaged, IPgNativeType => T.NativeAlignment;
             }
             """;
-        string directory = Path.Combine(Path.GetTempPath(), "ankus-node-record-values-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus-node-record-values-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
@@ -144,7 +144,7 @@ public sealed partial class NativeBindingNativeTests
     [DataRow("extra-enum")]
     public async Task NodeRecordContractsRejectContradictions(string mutation)
     {
-        string directory = Path.Combine(Path.GetTempPath(), "ankus-node-record-invalid-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus-node-record-invalid-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
@@ -429,7 +429,7 @@ public sealed partial class NativeBindingNativeTests
                 private struct AlignedPair { public byte Prefix; public Pair Value; }
             }
             """;
-        string directory = Path.Combine(Path.GetTempPath(), "ankus-node-record-packed-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus-node-record-packed-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
@@ -465,7 +465,7 @@ public sealed partial class NativeBindingNativeTests
                     NativeBinding.Identity.Length, typeof(NodeTag).GetEnumUnderlyingType() == typeof(uint) ? 1 : 0];
             }
             """;
-        string directory = Path.Combine(Path.GetTempPath(), "ankus-node-record-empty-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus-node-record-empty-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
@@ -511,7 +511,7 @@ public sealed partial class NativeBindingNativeTests
                 private static int Alignment<T>() where T : unmanaged, IPgNativeType => T.NativeAlignment;
             }
             """;
-        string directory = Path.Combine(Path.GetTempPath(), "ankus-supplemental-record-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus-supplemental-record-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
@@ -550,8 +550,8 @@ public sealed partial class NativeBindingNativeTests
         string directory, string declarations = NodeRecordDeclarations, string headers = NodeRecordHeaders, IReadOnlyList<string>? additionalTypes = null)
     {
         NativeBindingCatalog catalog = NativeBindingParser.Parse(declarations, 18);
-        string source = Path.Combine(directory, "probe.c");
-        string executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "probe.exe" : "probe");
+        string source = Path.Join(directory, "probe.c");
+        string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "probe.exe" : "probe");
         await File.WriteAllTextAsync(source, NativeBindingProbe.GenerateSource(catalog, headers), context.CancellationToken);
         string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "cc";
         string[] arguments = OperatingSystem.IsWindows()

@@ -719,9 +719,8 @@ public sealed class PgFunctionGenerator : IIncrementalGenerator
         if (gucs.Count != 0 || hasRuntimeGucs)
         {
             var definitions = new List<string>();
-            foreach (GucPipeline.Output guc in gucOutputs)
+            foreach (GucEmission emission in gucOutputs.Select(static guc => guc.Emission!))
             {
-                GucEmission emission = guc.Emission!;
                 string symbol = emission.Symbol;
                 managed.Append(emission.Managed);
                 native.Append(emission.Native);
@@ -1024,12 +1023,11 @@ public sealed class PgFunctionGenerator : IIncrementalGenerator
         foreach (AggregatePipeline.Output output in aggregateOutputs.OrderBy(static value => value.Analysis.Display, StringComparer.Ordinal))
         {
             AggregatePipeline.Analysis analysis = output.Analysis;
-            foreach (GeneratorProblem problem in analysis.Problems)
+            GeneratorProblem[] unreported = [.. analysis.Problems.Except(reportedAggregateProblems)];
+            reportedAggregateProblems.UnionWith(unreported);
+            foreach (GeneratorProblem problem in unreported)
             {
-                if (reportedAggregateProblems.Add(problem))
-                {
-                    problem.Report(compilation, context);
-                }
+                problem.Report(compilation, context);
             }
 
             if (analysis.Model is not { } aggregate || output.Sql is not { } aggregateSql)
@@ -1103,9 +1101,8 @@ public sealed class PgFunctionGenerator : IIncrementalGenerator
                 supportFunctions.Add(helper.Signature, (helperAnalysis.Identity, support));
                 entity.Dependencies.Add(support);
                 AddSchemaDependency(support, helper.Declaration.Schema);
-                foreach (AggregateType contract in helper.Types.Concat([helper.Result]))
+                foreach (FunctionType? datum in helper.Types.Concat([helper.Result]).Select(static contract => contract.Datum))
                 {
-                    FunctionType? datum = contract.Datum;
                     typeProviders.Require(support, datum);
                     EnumDeclaration? enumeration = (datum?.Element ?? datum)?.Enumeration;
                     string? typeIdentity = enumeration?.Managed ?? (datum?.Element ?? datum)?.CustomType?.Managed;

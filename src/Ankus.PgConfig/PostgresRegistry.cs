@@ -17,12 +17,12 @@ public sealed class PostgresRegistry(string? homeDirectory = null)
     /// Gets the directory that contains configuration and managed installations.
     /// </summary>
     public string HomeDirectory { get; } = Path.GetFullPath(homeDirectory ?? Environment.GetEnvironmentVariable("ANKUS_HOME") ??
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ankus"));
+        Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ankus"));
 
     /// <summary>
     /// Gets the persisted configuration path.
     /// </summary>
-    public string ConfigurationPath => Path.Combine(HomeDirectory, "config.json");
+    public string ConfigurationPath => Path.Join(HomeDirectory, "config.json");
 
     /// <summary>
     /// Gets the configured development port base plus the selected major, defaulting to 28800 plus the major.
@@ -113,13 +113,13 @@ public sealed class PostgresRegistry(string? homeDirectory = null)
             RequireFile(installation.InitDbPath);
             RequireFile(installation.PgCtlPath);
             RequireFile(installation.PsqlPath);
-            RequireFile(Path.Combine(installation.ServerIncludeDirectory, "postgres.h"));
+            RequireFile(Path.Join(installation.ServerIncludeDirectory, "postgres.h"));
             installations.Add(installation);
         }
 
         Directory.CreateDirectory(HomeDirectory);
         // Keep the lock file: deleting it would let another process lock a different inode.
-        using var configurationLock = new FileStream(Path.Combine(HomeDirectory, "config.lock"),
+        using var configurationLock = new FileStream(Path.Join(HomeDirectory, "config.lock"),
             FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
         JsonObject configuration = ReadConfiguration();
         if (ports.BasePort is int basePort)

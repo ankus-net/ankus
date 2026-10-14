@@ -270,6 +270,7 @@ internal static unsafe class NativeSharedMemoryInitializer
                 NativeMemoryContext.Exit(previousMemory);
             }
         }
+        // codeql[cs/catch-of-all-exceptions] Native code calls this, so every exception goes back to PostgreSQL as an error instead of unwinding through it.
         catch (Exception exception)
         {
             NativeError.Write(exception, (NativeCallError*)context->Error);

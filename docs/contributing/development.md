@@ -543,10 +543,15 @@ tests check keyword namespaces, path handling, and preservation of existing file
 
 ## Security checks
 
-The `CodeQL` workflow scans the C#, C, documentation-site TypeScript and workflow
-sources with the `security-and-quality` suite. Code scanning only lists results, so
-`eng/Ankus.CodeQl.cs` fails the workflow for any finding; fix the code rather than
-suppressing a query. The `Secret scan` workflow runs
+The `CodeQL` workflow scans the C#, documentation-site TypeScript and workflow
+sources with the `security-and-quality` suite on every change. On `main`, a
+dedicated Linux runner also traces the C that the integration tests compile: the
+emitted native bridge and the fixtures composed from it. Code scanning only lists
+results, so `eng/Ankus.CodeQl.cs` fails the workflow for any finding; fix the code
+rather than suppressing a query. A few findings describe code that must stay as it
+is, such as a catch that returns every exception to PostgreSQL at the native
+boundary. Mark each of those with a `// codeql[rule-id] reason` comment on the line
+before it; the check lists them and does not fail. The `Secret scan` workflow runs
 [Picket](https://github.com/willibrandon/picket) on every change. Run the same scan
 locally before pushing:
 

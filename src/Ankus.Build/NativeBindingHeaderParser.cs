@@ -322,7 +322,7 @@ internal static class NativeBindingHeaderParser
                     NativeHeaderType[] parameters = [.. inner.Skip(1).Select(child => ReadType(child, depth + 1))];
                     bool hasPrototype = kind == "FunctionProtoType";
                     bool variadic = Boolean(node, "variadic");
-                    if ((!hasPrototype && (parameters.Length != 0 || variadic)) || (variadic && parameters.Length == 0))
+                    if (!NativeHeaderFunction.IsValidPrototype(hasPrototype, parameters.Length, variadic))
                     {
                         throw Invalid("Invalid C11 function prototype.");
                     }
@@ -428,15 +428,14 @@ internal static class NativeBindingHeaderParser
     private static NativeHeaderQualifiers ReadQualifiers(string text)
     {
         NativeHeaderQualifiers qualifiers = NativeHeaderQualifiers.None;
-        foreach (string qualifier in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
-        {
-            NativeHeaderQualifiers value = qualifier switch
+        foreach (NativeHeaderQualifiers value in text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(static qualifier => qualifier switch
             {
                 "const" or "__const" or "__const__" => NativeHeaderQualifiers.Const,
                 "volatile" or "__volatile" or "__volatile__" => NativeHeaderQualifiers.Volatile,
                 "restrict" or "__restrict" or "__restrict__" => NativeHeaderQualifiers.Restrict,
                 _ => throw Invalid($"Unsupported native qualifier '{qualifier}'."),
-            };
+            }))
+        {
             if ((qualifiers & value) != 0)
             {
                 throw Invalid("Duplicate native type qualifier.");

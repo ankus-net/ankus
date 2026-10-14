@@ -27,9 +27,9 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
         string directory = Directory.CreateTempSubdirectory("ankus-sdk-importance-").FullName;
         try
         {
-            string project = Path.Combine(directory, "Probe.proj");
+            string project = Path.Join(directory, "Probe.proj");
             new XDocument(new XElement("Project",
-                new XElement("Import", new XAttribute("Project", Path.Combine(AppContext.BaseDirectory, "Sdk", "Ankus.props"))))).Save(project);
+                new XElement("Import", new XAttribute("Project", Path.Join(AppContext.BaseDirectory, "Sdk", "Ankus.props"))))).Save(project);
             string output = await NativeBindingLayoutCommand.RunProcessAsync("dotnet",
                 ["msbuild", project, "-nologo", "-nodeReuse:false", "-property:DesignTimeBuild=" + (designTime ? "true" : "false"),
                     "-getProperty:_AnkusToolOutputImportance"], directory, context.CancellationToken);
@@ -40,7 +40,7 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
             Directory.Delete(directory, recursive: true);
         }
 
-        string[] commands = [.. Directory.EnumerateFiles(Path.Combine(AppContext.BaseDirectory, "AnkusSdk", "targets"), "*.targets")
+        string[] commands = [.. Directory.EnumerateFiles(Path.Join(AppContext.BaseDirectory, "AnkusSdk", "targets"), "*.targets")
             .SelectMany(static file => XDocument.Load(file).Descendants("Exec"))
             .Where(static exec => !((string?)exec.Attribute("Command") ?? "").Contains("--version", StringComparison.Ordinal))
             .Select(static exec => (string?)exec.Attribute("StandardOutputImportance") ?? "")];
@@ -67,12 +67,12 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
             string? sdk = Assert.ContainsSingle(typeof(SdkDesignTimeBuildTests).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
                 .Where(static metadata => metadata.Key == "AnkusTestSdkVersion")).Value;
             Assert.IsNotNull(sdk);
-            await File.WriteAllTextAsync(Path.Combine(directory, "global.json"),
+            await File.WriteAllTextAsync(Path.Join(directory, "global.json"),
                 JsonSerializer.Serialize(new { sdk = new { version = sdk, rollForward = "disable", allowPrerelease = false } }), context.CancellationToken);
             string[] dependencies = ["Ankus.Runtime", "Ankus.Build", "Ankus.Generators", "Ankus.CodeFixes"];
             foreach (string name in dependencies)
             {
-                string dependency = Directory.CreateDirectory(Path.Combine(directory, name)).FullName;
+                string dependency = Directory.CreateDirectory(Path.Join(directory, name)).FullName;
                 string framework = name is "Ankus.Generators" or "Ankus.CodeFixes" ? "netstandard2.0" : "net10.0";
                 new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
                     new XElement("PropertyGroup", new XElement("TargetFramework", framework),
@@ -82,16 +82,16 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                         new XElement("Error", new XAttribute("Condition", "'$(DesignTimeBuild)' == 'true' or '$(SkipCompilerExecution)' == 'true'"),
                             new XAttribute("Text", "Dependencies must produce real assemblies."))),
                     new XElement("Target", new XAttribute("Name", "RecordBuild"), new XAttribute("AfterTargets", "Build"),
-                        new XElement("WriteLinesToFile", new XAttribute("File", Path.Combine(directory, "builds.log")),
-                            new XAttribute("Lines", "$(MSBuildProjectName)"))))).Save(Path.Combine(dependency, name + ".csproj"));
-                await File.WriteAllTextAsync(Path.Combine(dependency, "Proof.cs"),
+                        new XElement("WriteLinesToFile", new XAttribute("File", Path.Join(directory, "builds.log")),
+                            new XAttribute("Lines", "$(MSBuildProjectName)"))))).Save(Path.Join(dependency, name + ".csproj"));
+                await File.WriteAllTextAsync(Path.Join(dependency, "Proof.cs"),
                     "namespace " + name.Replace('.', '_') + " { public static class Proof { public static int Read() => 42; } }",
                     context.CancellationToken);
                 if (name == "Ankus.Build")
                 {
                     // Supply a compiled companion through the real SDK command boundary;
                     // native header generation is exercised separately by backend tests.
-                    await File.WriteAllTextAsync(Path.Combine(dependency, "Program.cs"), """
+                    await File.WriteAllTextAsync(Path.Join(dependency, "Program.cs"), """
                         public static class Program
                         {
                             public static void Main(string[] args)
@@ -100,53 +100,53 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                                 System.IO.Directory.CreateDirectory(output);
                                 string file = args[0] == "binding-sources" ? "native-binding.assembly-name" : "native-binding.assembly-path";
                                 string value = args[0] == "binding-sources" ? "Ankus.Generators" : System.Environment.GetEnvironmentVariable("ANKUS_TEST_BINDING_ASSEMBLY");
-                                System.IO.File.WriteAllText(System.IO.Path.Combine(output, file), value);
+                                System.IO.File.WriteAllText(System.IO.Path.Join(output, file), value);
                             }
                         }
                         """, context.CancellationToken);
                 }
             }
 
-            string project = Path.Combine(directory, "Extension.csproj");
+            string project = Path.Join(directory, "Extension.csproj");
             new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
                 new XElement("PropertyGroup", new XElement("TargetFramework", "net10.0"), new XElement("Nullable", nullable),
                     new XElement("AnkusPostgresMajor", "18"),
-                    new XElement("_AnkusBuildTool", Path.Combine(directory, "Ankus.Build", "bin", "$(Configuration)", "net10.0", "Ankus.Build.dll")),
+                    new XElement("_AnkusBuildTool", Path.Join(directory, "Ankus.Build", "bin", "$(Configuration)", "net10.0", "Ankus.Build.dll")),
                     new XElement("_AnkusNativeEnvironment", "ANKUS_TEST_BINDING_ASSEMBLY=" +
-                        Path.Combine(directory, "Ankus.Generators", "bin", "$(Configuration)", "netstandard2.0", "Ankus.Generators.dll"))),
+                        Path.Join(directory, "Ankus.Generators", "bin", "$(Configuration)", "netstandard2.0", "Ankus.Generators.dll"))),
                 new XElement("ItemGroup", dependencies.Select(name => new XElement("ProjectReference",
-                    new XAttribute("Include", Path.Combine(name, name + ".csproj")),
+                    new XAttribute("Include", Path.Join(name, name + ".csproj")),
                     new XAttribute("ReferenceOutputAssembly", name == "Ankus.Runtime" ? "true" : "false"),
                     new XAttribute("GlobalPropertiesToRemove", "RuntimeIdentifier;SelfContained;PublishAot")))),
-                new XElement("Import", new XAttribute("Project", Path.Combine(AppContext.BaseDirectory, "Sdk", "Ankus.Development.targets"))),
-                new XElement("Import", new XAttribute("Project", Path.Combine(AppContext.BaseDirectory, "Sdk", "Ankus.Bindings.targets"))))).Save(project);
-            string source = Path.Combine(directory, "Probe.cs");
+                new XElement("Import", new XAttribute("Project", Path.Join(AppContext.BaseDirectory, "Sdk", "Ankus.Development.targets"))),
+                new XElement("Import", new XAttribute("Project", Path.Join(AppContext.BaseDirectory, "Sdk", "Ankus.Bindings.targets"))))).Save(project);
+            string source = Path.Join(directory, "Probe.cs");
             await File.WriteAllTextAsync(source,
                 "public static class Probe { public static string? Read() => (Ankus_Runtime.Proof.Read() + Ankus_Generators.Proof.Read()).ToString(); }",
                 context.CancellationToken);
             // Default globs must not also compile the dependency sources into the consumer.
             new XDocument(new XElement("Project", new XElement("PropertyGroup",
-                new XElement("DefaultItemExcludes", "$(DefaultItemExcludes);Ankus.*/**")))).Save(Path.Combine(directory, "Directory.Build.props"));
+                new XElement("DefaultItemExcludes", "$(DefaultItemExcludes);Ankus.*/**")))).Save(Path.Join(directory, "Directory.Build.props"));
             await NativeBindingLayoutCommand.RunProcessAsync("dotnet",
-                ["restore", project, "-nologo", "-verbosity:quiet", "-bl:" + Path.Combine(directory, "restore-{}.binlog")],
+                ["restore", project, "-nologo", "-verbosity:quiet", "-bl:" + Path.Join(directory, "restore-{}.binlog")],
                 directory, context.CancellationToken);
             foreach (string name in dependencies)
             {
-                Assert.IsFalse(Directory.Exists(Path.Combine(directory, name, "bin")), "Restore must leave the dependencies unbuilt.");
+                Assert.IsFalse(Directory.Exists(Path.Join(directory, name, "bin")), "Restore must leave the dependencies unbuilt.");
             }
 
-            string builds = Path.Combine(directory, "builds.log");
+            string builds = Path.Join(directory, "builds.log");
             for (int load = 0; load < 4; load++)
             {
                 if (load == 2)
                 {
                     // An edited dependency source makes the next load build again.
-                    File.SetLastWriteTimeUtc(Path.Combine(directory, "Ankus.Generators", "Proof.cs"), DateTime.UtcNow);
+                    File.SetLastWriteTimeUtc(Path.Join(directory, "Ankus.Generators", "Proof.cs"), DateTime.UtcNow);
                 }
                 else if (load == 3)
                 {
                     // So does a missing output.
-                    File.Delete(Path.Combine(directory, "Ankus.Build", "bin", configuration, "net10.0", "Ankus.Build.dll"));
+                    File.Delete(Path.Join(directory, "Ankus.Build", "bin", configuration, "net10.0", "Ankus.Build.dll"));
                 }
 
                 string output = await NativeBindingLayoutCommand.RunProcessAsync("dotnet",
@@ -154,7 +154,7 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                         "-property:TargetFramework=net10.0", "-property:DesignTimeBuild=true", "-property:BuildProjectReferences=false",
                         "-property:BuildingProject=false", "-property:ProvideCommandLineArgs=true", "-property:SkipCompilerExecution=true",
                         "-property:ContinueOnError=ErrorAndContinue", "-getItem:CscCommandLineArgs,TargetPathWithTargetPlatformMoniker",
-                        "-bl:" + Path.Combine(directory, "editor-{}.binlog")], directory, context.CancellationToken);
+                        "-bl:" + Path.Join(directory, "editor-{}.binlog")], directory, context.CancellationToken);
                 using JsonDocument result = JsonDocument.Parse(output);
                 string[] arguments = [.. result.RootElement.GetProperty("Items").GetProperty("CscCommandLineArgs").EnumerateArray()
                     .Select(static item => item.GetProperty("Identity").GetString()!)];
@@ -169,7 +169,7 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                 foreach (string name in dependencies)
                 {
                     string framework = name is "Ankus.Generators" or "Ankus.CodeFixes" ? "netstandard2.0" : "net10.0";
-                    Assert.IsTrue(File.Exists(Path.Combine(directory, name, "bin", configuration, framework, name + ".dll")),
+                    Assert.IsTrue(File.Exists(Path.Join(directory, name, "bin", configuration, framework, name + ".dll")),
                         "The editor must receive a real dependency built for its own framework: " + name);
                 }
 
@@ -178,7 +178,7 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                         cancellationToken: context.CancellationToken)],
                     parsed.MetadataReferences.Select(reference => MetadataReference.CreateFromFile(reference.Reference)), parsed.CompilationOptions);
                 Assert.IsEmpty(compilation.GetDiagnostics(context.CancellationToken).Where(static diagnostic => diagnostic.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning));
-                Assert.IsFalse(File.Exists(Path.Combine(directory, "bin", configuration, "net10.0", "Extension.dll")),
+                Assert.IsFalse(File.Exists(Path.Join(directory, "bin", configuration, "net10.0", "Extension.dll")),
                     "The editor must compile dependencies without building the extension itself.");
                 Assert.HasCount(dependencies.Length * (load == 0 ? 1 : load), await File.ReadAllLinesAsync(builds, context.CancellationToken),
                     $"Load {load} built the dependencies an unexpected number of times.");
@@ -186,7 +186,7 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
 
             // Editors list a design-time build's high-importance messages, warnings and errors as problems. Minimal
             // verbosity shows exactly those, so a load that rebuilds every dependency must print nothing.
-            File.SetLastWriteTimeUtc(Path.Combine(directory, "Ankus.Runtime", "Proof.cs"), DateTime.UtcNow);
+            File.SetLastWriteTimeUtc(Path.Join(directory, "Ankus.Runtime", "Proof.cs"), DateTime.UtcNow);
             string visible = await NativeBindingLayoutCommand.RunProcessAsync("dotnet",
                 ["msbuild", project, "-nologo", "-nodeReuse:false", "-tl:off", "-verbosity:minimal", "-target:ResolveReferences",
                     "-property:Configuration=" + configuration, "-property:TargetFramework=net10.0", "-property:DesignTimeBuild=true",

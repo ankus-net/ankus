@@ -162,8 +162,8 @@ public sealed class VersionedLibraryTests(TestContext context)
     private static string WriteProject(string directory, string versioned, string operatingSystem, string libraryName = "",
         string extensionVersion = "1.2.3+build", bool controlTargets = true)
     {
-        string sdk = Path.Combine(AppContext.BaseDirectory, "AnkusSdk");
-        string project = Path.Combine(directory, "Versioned.proj");
+        string sdk = Path.Join(AppContext.BaseDirectory, "AnkusSdk");
+        string project = Path.Join(directory, "Versioned.proj");
         new XDocument(new XElement("Project",
             new XElement("PropertyGroup",
                 new XElement("TargetName", "My.Extension"),
@@ -175,9 +175,9 @@ public sealed class VersionedLibraryTests(TestContext context)
                 new XElement("NativeOutputPath", "native/"),
                 new XElement("NativeBinary", "native/original.so"),
                 new XElement("_targetOS", operatingSystem)),
-            new XElement("Import", new XAttribute("Project", Path.Combine(sdk, "Ankus.props"))),
-            controlTargets ? new XElement("Import", new XAttribute("Project", Path.Combine(sdk, "targets", "Ankus.Control.targets"))) : null,
-            new XElement("Import", new XAttribute("Project", Path.Combine(sdk, "targets", "Ankus.Native.targets"))),
+            new XElement("Import", new XAttribute("Project", Path.Join(sdk, "Ankus.props"))),
+            controlTargets ? new XElement("Import", new XAttribute("Project", Path.Join(sdk, "targets", "Ankus.Control.targets"))) : null,
+            new XElement("Import", new XAttribute("Project", Path.Join(sdk, "targets", "Ankus.Native.targets"))),
             // Microsoft.NET.Sdk supplies these targets; this bare project needs only their names.
             new XElement("Target", new XAttribute("Name", "ImportRuntimeIlcPackageTarget")),
             new XElement("Target", new XAttribute("Name", "_ResolveAnkusPostgresSelection")),

@@ -22,8 +22,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # C and C++ are the native probes and binding sources; JavaScript and TypeScript are the documentation site.
-        language: [actions, c-cpp, csharp, javascript-typescript]
+        # JavaScript and TypeScript are the documentation site.
+        language: [actions, csharp, javascript-typescript]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -33,7 +33,7 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      # Each language is read from source, so the scan does not need the patched runtime or PostgreSQL.
+      # These languages are read from source, so the scan does not need the patched runtime or PostgreSQL.
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
@@ -58,3 +58,82 @@ jobs:
       # Code scanning lists findings without failing anything, so a new one would go unseen.
       - name: Require zero findings
         run: dotnet run --file ./eng/Ankus.CodeQl.cs -- artifacts/codeql-results
+
+  # The C in Ankus is the native bridge each extension compiles, which the generator emits, and test fixtures composed
+  # from it. CodeQL traces those compilations as the integration tests perform them, with the patched runtime and
+  # PostgreSQL's headers that only the dedicated Linux runners hold, so pull requests do not run this job.
+  analyze-native:
+    name: Analyze c-cpp
+    if: github.event_name != 'pull_request' && github.repository == 'willibrandon/ankus'
+    runs-on: [self-hosted, Linux, X64, ankus-linux-x64]
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Read runtime identity
+        id: runtime
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- metadata
+
+      - uses: actions/cache/restore@v5
+        id: runtime-cache
+        with:
+          path: artifacts/nativeaot/linux-x64
+          key: nativeaot-v3-linux-x64-dedicated-${{ steps.runtime.outputs.commit }}
+
+      - uses: actions/checkout@v5
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
+        with:
+          repository: ${{ steps.runtime.outputs.repository }}
+          ref: ${{ steps.runtime.outputs.commit }}
+          path: runtime
+          persist-credentials: false
+
+      - name: Build runtime
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- runtime-build linux x64 linux-x64
+
+      - name: Restore NuGet packages
+        run: dotnet restore Ankus.slnx -p:Platform="Any CPU"
+
+      - name: Build PostgreSQL tests
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- runtime-test-build linux-x64 18
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: c-cpp
+          build-mode: manual
+          config-file: ./.github/codeql-config.yml
+
+      - name: Compile the native bridge and fixtures
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- native-analysis-run
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:c-cpp
+          output: artifacts/codeql-results
+          wait-for-processing: false
+
+      - name: Archive CodeQL results
+        uses: actions/upload-artifact@v7
+        with:
+          name: codeql-results-c-cpp-${{ github.run_attempt }}
+          path: artifacts/codeql-results/**/*.sarif
+          if-no-files-found: error
+
+      - name: Require zero findings
+        run: dotnet run --file ./eng/Ankus.CodeQl.cs -- artifacts/codeql-results
+
+      - name: Clean generated runner files
+        if: always()
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- runner-cleanup

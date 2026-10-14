@@ -91,7 +91,7 @@ public static class PglzInspectFunctions
         {
             averageRaw = (double)totalRaw / sampled;
             averageCompressed = (double)totalCompressed / sampled;
-            averageRatio = averageRaw == 0.0 ? 1.0 : averageCompressed / averageRaw;
+            averageRatio = totalRaw == 0 ? 1.0 : averageCompressed / averageRaw;
         }
 
         double pctAccepted = sampled > 0 ? (double)accepted / sampled : 0.0;

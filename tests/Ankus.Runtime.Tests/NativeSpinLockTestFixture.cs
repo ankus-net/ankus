@@ -11,6 +11,11 @@ internal sealed unsafe class NativeSpinLockTestFixture : IDisposable
     [ThreadStatic]
     private static NativeSpinLockTestFixture? s_current;
 
+    /// <summary>
+    /// Makes <paramref name="current"/> the NativeSpinLockTestFixture this thread's native callbacks use, or restores the enclosing one.
+    /// </summary>
+    private static void Install(NativeSpinLockTestFixture? current) => s_current = current;
+
     private readonly NativeSpinLockTestFixture? _previous = s_current;
 
     /// <summary>
@@ -18,7 +23,7 @@ internal sealed unsafe class NativeSpinLockTestFixture : IDisposable
     /// </summary>
     internal NativeSpinLockTestFixture()
     {
-        s_current = this;
+        Install(this);
         Scope = MemoryContextTestFixture.Enter();
         Memory.Handler = Respond;
     }
@@ -130,7 +135,7 @@ internal sealed unsafe class NativeSpinLockTestFixture : IDisposable
     {
         Scope.Dispose();
         Memory.Dispose();
-        s_current = _previous;
+        Install(_previous);
         Assert.IsEmpty(Held);
         Assert.IsNull(ReleaseFailure);
     }
@@ -148,6 +153,7 @@ internal sealed unsafe class NativeSpinLockTestFixture : IDisposable
             Assert.IsTrue(fixture.Held.Remove(address));
             fixture.Released.Add(address);
         }
+        // codeql[cs/catch-of-all-exceptions] This stands in for native code, so the failure is kept for the test instead of unwinding through it.
         catch (Exception failure)
         {
             fixture.ReleaseFailure = failure;

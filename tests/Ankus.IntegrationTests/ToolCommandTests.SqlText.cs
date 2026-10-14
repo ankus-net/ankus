@@ -48,13 +48,13 @@ public sealed partial class ToolCommandTests
         XDocument definition = XDocument.Load(project);
         definition.Root!.Add(new XElement("ItemGroup", new XElement("AdditionalFiles", new XAttribute("Include", "sql/*.sql"))));
         definition.Save(project);
-        await File.WriteAllTextAsync(Path.Combine(directory, "author settings.control"), "comment = 'Exact SQL text'\nrelocatable = true\n", token);
-        string sqlDirectory = Path.Combine(directory, "sql");
+        await File.WriteAllTextAsync(Path.Join(directory, "author settings.control"), "comment = 'Exact SQL text'\nrelocatable = true\n", token);
+        string sqlDirectory = Path.Join(directory, "sql");
         Directory.CreateDirectory(sqlDirectory);
-        await File.WriteAllTextAsync(Path.Combine(sqlDirectory, "values.sql"),
+        await File.WriteAllTextAsync(Path.Join(sqlDirectory, "values.sql"),
             "INSERT INTO exact_sql_values VALUES ('file-cr', 'A\rB'), ('file-crlf', 'A\r\nB');", token);
-        await File.WriteAllTextAsync(Path.Combine(sqlDirectory, "empty.sql"), string.Empty, token);
-        await File.WriteAllTextAsync(Path.Combine(sqlDirectory, "whitespace.sql"), " \t", token);
+        await File.WriteAllTextAsync(Path.Join(sqlDirectory, "empty.sql"), string.Empty, token);
+        await File.WriteAllTextAsync(Path.Join(sqlDirectory, "whitespace.sql"), " \t", token);
         string inline = "CREATE TABLE exact_sql_values(kind text PRIMARY KEY, value text);\n" +
             "INSERT INTO exact_sql_values VALUES ('inline-cr', 'A\rB'), ('inline-crlf', 'A\r\nB');";
         string replacement = "CREATE FUNCTION literal_value() RETURNS text LANGUAGE sql IMMUTABLE AS $body$SELECT 'A\r\nB'$body$;";
@@ -84,10 +84,10 @@ public sealed partial class ToolCommandTests
                 public static string LiteralValue() => "managed";
             }
             """;
-        await File.WriteAllTextAsync(Path.Combine(directory, "Functions.cs"), source, token);
-        string output = Path.Combine(directory, "published");
+        await File.WriteAllTextAsync(Path.Join(directory, "Functions.cs"), source, token);
+        string output = Path.Join(directory, "published");
         PublishedExtension publication = await PublishControlProbeAsync(project, output, token);
-        ExtensionSchema schema = ExtensionSchema.Read(Path.Combine(output, publication.Library));
+        ExtensionSchema schema = ExtensionSchema.Read(Path.Join(output, publication.Library));
         Assert.IsTrue(schema.Relocatable);
         Assert.IsNotNull(schema.Graph);
         ExtensionSchemaItem[] chain = [.. s_sqlTextDependencyNames

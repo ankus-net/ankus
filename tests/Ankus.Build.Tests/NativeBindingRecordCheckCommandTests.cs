@@ -13,14 +13,14 @@ public sealed partial class NativeBindingNativeTests
     public async Task NativeRecordChecksPublishOnlyVerifiedContracts(string failure)
     {
         const string Headers = "typedef struct Entry { int value; unsigned int flags : 3; } Entry; extern Entry current;";
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-record-publication-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-record-publication-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
             NativeHeaderRecords records = await CollectCallRecordsAsync(Headers, [new("current", "current", false)], directory);
-            string output = Path.Combine(directory, "published");
+            string output = Path.Join(directory, "published");
             Directory.CreateDirectory(output);
-            string destination = Path.Combine(output, "native-record-checks.c");
+            string destination = Path.Join(output, "native-record-checks.c");
             const string Prior = "prior verified source\n";
             await File.WriteAllTextAsync(destination, Prior, context.CancellationToken);
             string actual = failure switch
@@ -66,12 +66,12 @@ public sealed partial class NativeBindingNativeTests
 
         static async Task VerifyAsync(string file, string stage, CancellationToken token)
         {
-            string executable = Path.Combine(stage, OperatingSystem.IsWindows() ? "checks.exe" : "checks");
+            string executable = Path.Join(stage, OperatingSystem.IsWindows() ? "checks.exe" : "checks");
             string compiler = OperatingSystem.IsWindows() ? "cl.exe" : "clang";
             string[] arguments = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/O2", "/Fe" + executable, "/Fo" + Path.ChangeExtension(executable, ".obj"), file]
                 : ["-std=c11", "-Wall", "-Wextra", "-Werror", "-O2", file, "-o", executable];
-            string log = Path.Combine(stage, "compiler.txt");
+            string log = Path.Join(stage, "compiler.txt");
             await NativeBindingHeaderCommand.CompileAsync(compiler, arguments, log, stage, token, inspectBodies: true);
             await NativeBindingHeaderCommand.CompileAsync(executable, [], log, stage, token, inspectBodies: true);
         }

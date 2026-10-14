@@ -87,7 +87,7 @@ internal static partial class ToolCommand
                 installations.Add(await SelectAsync(result, home, token, TestProject(arguments), configuration, properties));
             }
 
-            string root = Path.GetFullPath(result.GetValue(reports) ?? Path.Combine("TestResults", "ankus", Guid.NewGuid().ToString("N")));
+            string root = Path.GetFullPath(result.GetValue(reports) ?? Path.Join("TestResults", "ankus", Guid.NewGuid().ToString("N")));
             int separator = Array.IndexOf(arguments, "--");
             if (separator < 0)
             {
@@ -107,7 +107,7 @@ internal static partial class ToolCommand
                     ["AnkusPgConfigPath"] = installation.PgConfigPath,
                 };
                 string propertyFile = await WriteTestPropertiesAsync(session.DirectoryPath, fixtureProperties, token);
-                string resultsDirectory = Path.Combine(root, installation.Label);
+                string resultsDirectory = Path.Join(root, installation.Label);
                 Console.WriteLine($"Testing PostgreSQL {installation.Version} ({configuration}). Results: {resultsDirectory}");
                 int code = await ToolProcess.RunAsync("dotnet",
                 [
@@ -141,6 +141,11 @@ internal static partial class ToolCommand
     }
 
     /// <summary>
+    /// The dotnet test options that name a project or solution.
+    /// </summary>
+    private static readonly string[] s_projectOptions = ["--project", "--solution"];
+
+    /// <summary>
     /// Uses a forwarded project or solution as the source of the default PostgreSQL selection.
     /// </summary>
     /// <param name="arguments">The forwarded dotnet test arguments.</param>
@@ -149,14 +154,9 @@ internal static partial class ToolCommand
     {
         for (int index = 0; index < arguments.Length && arguments[index] != "--"; index++)
         {
-            string argument = arguments[index];
-            foreach (string option in new[] { "--project", "--solution" })
+            foreach (string option in s_projectOptions)
             {
-                string? value = argument == option
-                    ? index + 1 < arguments.Length ? arguments[index + 1] : throw new ArgumentException($"{option} requires a path.")
-                    : argument.StartsWith(option + "=", StringComparison.Ordinal) || argument.StartsWith(option + ":", StringComparison.Ordinal)
-                        ? argument[(option.Length + 1)..] : null;
-                if (value is not null)
+                if (OptionValue(arguments, index, option) is string value)
                 {
                     return value;
                 }
@@ -164,6 +164,25 @@ internal static partial class ToolCommand
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Reads an option's value written as <c>--option value</c>, <c>--option=value</c> or <c>--option:value</c>.
+    /// </summary>
+    /// <param name="arguments">The forwarded dotnet test arguments.</param>
+    /// <param name="index">The position of the argument to read.</param>
+    /// <param name="option">The option's name.</param>
+    /// <returns>The value, or null when the argument is not this option.</returns>
+    private static string? OptionValue(string[] arguments, int index, string option)
+    {
+        string argument = arguments[index];
+        if (argument == option)
+        {
+            return index + 1 < arguments.Length ? arguments[index + 1] : throw new ArgumentException($"{option} requires a path.");
+        }
+
+        return argument.StartsWith(option + "=", StringComparison.Ordinal) || argument.StartsWith(option + ":", StringComparison.Ordinal)
+            ? argument[(option.Length + 1)..] : null;
     }
 
     private static (string Configuration, string[] Arguments) TestConfiguration(string configuration, bool explicitlySelected, string[] arguments,
@@ -339,7 +358,7 @@ internal static partial class ToolCommand
     private static async Task<string> WriteTestPropertiesAsync(string sessionDirectory,
         Dictionary<string, string> properties, CancellationToken token)
     {
-        string path = Path.Combine(sessionDirectory, "msbuild-properties");
+        string path = Path.Join(sessionDirectory, "msbuild-properties");
         string[] lines =
         [
             .. properties.OrderBy(static pair => pair.Key, StringComparer.OrdinalIgnoreCase)

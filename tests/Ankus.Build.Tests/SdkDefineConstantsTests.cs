@@ -58,19 +58,19 @@ public sealed class SdkDefineConstantsTests(TestContext context)
         string directory = Directory.CreateTempSubdirectory("ankus-sdk-symbols-").FullName;
         try
         {
-            string sdk = Path.Combine(AppContext.BaseDirectory, "Sdk");
-            string project = Path.Combine(directory, "Symbols.proj");
+            string sdk = Path.Join(AppContext.BaseDirectory, "Sdk");
+            string project = Path.Join(directory, "Symbols.proj");
             // Isolate the SDK default from CI's environment selection; command-line properties still win.
             new XDocument(new XElement("Project",
                 new XElement("PropertyGroup",
                     new XElement("AnkusPostgresMajor", string.Empty),
                     new XElement("AnkusPgConfigPath", string.Empty)),
-                new XElement("Import", new XAttribute("Project", Path.Combine(sdk, "Ankus.props"))),
+                new XElement("Import", new XAttribute("Project", Path.Join(sdk, "Ankus.props"))),
                 new XElement("PropertyGroup",
                     new XElement("DefineConstants", "CONSUMER;SECOND"),
                     new XElement("AnkusPostgresMajor", new XAttribute("Condition", "'" + major + "' != ''"), major)),
-                new XElement("Import", new XAttribute("Project", Path.Combine(sdk, "Ankus.Bindings.targets"))),
-                new XElement("Import", new XAttribute("Project", Path.Combine(sdk, "Ankus.PostgresSelection.targets"))),
+                new XElement("Import", new XAttribute("Project", Path.Join(sdk, "Ankus.Bindings.targets"))),
+                new XElement("Import", new XAttribute("Project", Path.Join(sdk, "Ankus.PostgresSelection.targets"))),
                 new XElement("Target", new XAttribute("Name", "PrepareForBuild")),
                 new XElement("Target", new XAttribute("Name", "BeforeCompile")),
                 new XElement("Target", new XAttribute("Name", "CoreCompile")))).Save(project);

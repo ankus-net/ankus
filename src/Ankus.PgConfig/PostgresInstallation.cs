@@ -164,11 +164,11 @@ public sealed class PostgresInstallation
             throw new FormatException("PostgreSQL's PGXS path does not identify an installed development tree.");
         }
 
-        string driver = Path.Combine(sourceDirectory, "test", "regress", OperatingSystem.IsWindows() ? "pg_regress.exe" : "pg_regress");
+        string driver = Path.Join(sourceDirectory, "test", "regress", OperatingSystem.IsWindows() ? "pg_regress.exe" : "pg_regress");
         if (!File.Exists(driver) && OperatingSystem.IsWindows())
         {
             // PostgreSQL's MSVC installer places executable projects in bin; Meson uses the PGXS tree.
-            string executable = Path.Combine(BinDirectory, "pg_regress.exe");
+            string executable = Path.Join(BinDirectory, "pg_regress.exe");
             if (File.Exists(executable))
             {
                 return executable;
@@ -202,13 +202,13 @@ public sealed class PostgresInstallation
             return null;
         }
 
-        string installed = Path.Combine(sourceDirectory, "tools", "valgrind.supp");
+        string installed = Path.Join(sourceDirectory, "tools", "valgrind.supp");
         if (File.Exists(installed))
         {
             return installed;
         }
 
-        string global = Path.Combine(sourceDirectory, "Makefile.global");
+        string global = Path.Join(sourceDirectory, "Makefile.global");
         if (!File.Exists(global))
         {
             return null;
@@ -219,7 +219,7 @@ public sealed class PostgresInstallation
             string[] assignment = line.Split('=', 2, StringSplitOptions.TrimEntries);
             if (assignment.Length == 2 && assignment[0] == "abs_top_srcdir" && assignment[1].Length != 0 && Path.IsPathRooted(assignment[1]))
             {
-                string recorded = Path.Combine(assignment[1], "src", "tools", "valgrind.supp");
+                string recorded = Path.Join(assignment[1], "src", "tools", "valgrind.supp");
                 return File.Exists(recorded) ? recorded : null;
             }
         }
@@ -262,15 +262,12 @@ public sealed class PostgresInstallation
             return await registry.GetAsync(major, cancellationToken).ConfigureAwait(false);
         }
 
-        foreach (string candidate in PostgresDiscovery.GetCandidates(major, registry.HomeDirectory).Distinct(StringComparer.Ordinal))
+        foreach (string candidate in PostgresDiscovery.GetCandidates(major, registry.HomeDirectory).Distinct(StringComparer.Ordinal).Where(static candidate => File.Exists(candidate)))
         {
-            if (File.Exists(candidate))
+            PostgresInstallation installation = await CreateAsync(candidate, cancellationToken).ConfigureAwait(false);
+            if (installation.Version.Major == major)
             {
-                PostgresInstallation installation = await CreateAsync(candidate, cancellationToken).ConfigureAwait(false);
-                if (installation.Version.Major == major)
-                {
-                    return installation;
-                }
+                return installation;
             }
         }
 
@@ -325,7 +322,7 @@ public sealed class PostgresInstallation
     {
         ThrowIfTarget();
         string executableName = OperatingSystem.IsWindows() ? $"{name}.exe" : name;
-        return Path.Combine(BinDirectory, executableName);
+        return Path.Join(BinDirectory, executableName);
     }
 
     private void ThrowIfTarget()
@@ -385,7 +382,8 @@ public sealed class PostgresInstallation
             }
 
             await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
-            await Task.WhenAll((Task)standardOutput, standardError).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            Task[] streams = [standardOutput, standardError];
+            await Task.WhenAll(streams).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
             throw;
         }
 

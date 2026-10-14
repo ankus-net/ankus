@@ -149,9 +149,9 @@ public sealed class MemoryCleanupOwnerTests(TestContext context)
                             Assert.AreEqual("SPI détail conservé", notice.Detail);
                             Assert.AreEqual("SPI hint café", notice.Hint);
                             Assert.Contains("inline_code_block line 1 at RAISE", Assert.IsInstanceOfType<string>(notice.Where));
-                            Assert.IsNotNull(nativeNotice);
-                            Assert.AreEqual(nativeNotice.File, notice.File);
-                            Assert.AreEqual(nativeNotice.Line, notice.Line);
+                            PostgresNotice raised = Assert.IsInstanceOfType<PostgresNotice>(nativeNotice);
+                            Assert.AreEqual(raised.File, notice.File);
+                            Assert.AreEqual(raised.Line, notice.Line);
                             Assert.AreEqual("exec_stmt_raise", notice.Routine);
                             Assert.IsGreaterThan(0, int.Parse(Assert.IsInstanceOfType<string>(notice.Line), System.Globalization.CultureInfo.InvariantCulture));
                         }

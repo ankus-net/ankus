@@ -219,10 +219,17 @@ public static partial class BorrowedArrayFunctions
     [PgFunction]
     public static IEnumerable<(PgArrayView<ReadMappedInt?>? Cell, int Position)> TypedArrayTable(PgArrayView<ReadMappedInt?>? value)
     {
+        if (value is null)
+        {
+            yield return (null, -1);
+            yield return (null, -1);
+            yield break;
+        }
+
         using (value)
         {
-            yield return (value, value?[0]?.Value ?? -1);
-            yield return (value, value?[2]?.Value ?? -1);
+            yield return (value, value[0]?.Value ?? -1);
+            yield return (value, value[2]?.Value ?? -1);
         }
     }
 

@@ -1,4 +1,3 @@
-using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 
 namespace Ankus.Runtime.Tests;
@@ -349,7 +348,7 @@ public sealed unsafe partial class NativeReferenceTests
             });
         }
 
-        RunWorker(() => Assert.ThrowsExactly<InvalidOperationException>(() => reference.Value));
+        DedicatedThread.Run(() => Assert.ThrowsExactly<InvalidOperationException>(() => reference.Value));
         Assert.IsEmpty(fixture.Requests);
         using (MemoryContextTestFixture.Enter())
         {
@@ -381,31 +380,6 @@ public sealed unsafe partial class NativeReferenceTests
         }
 
         return new NativeMemoryResult { _context = request._context, _pointer = request._pointer, _length = request._length };
-    }
-
-    /// <summary>
-    /// Propagates worker assertions while leaving capability setup under each test's explicit control.
-    /// </summary>
-    private static void RunWorker(Action action)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        thread.Start();
-        thread.Join();
-        if (failure is not null)
-        {
-            ExceptionDispatchInfo.Capture(failure).Throw();
-        }
     }
 
     /// <summary>

@@ -27,11 +27,11 @@ public sealed class NativeBindingSourceCommandTests(TestContext context)
     [TestMethod]
     public async Task CancelledSourceCommandPreservesExistingCompanion()
     {
-        string directory = Path.Combine(Path.GetTempPath(), "ankus-node-source-cancelled-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus-node-source-cancelled-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
-            string file = Path.Combine(directory, "native-binding.g.cs");
+            string file = Path.Join(directory, "native-binding.g.cs");
             await File.WriteAllTextAsync(file, "existing-source", context.CancellationToken);
             using var cancellation = new CancellationTokenSource();
             await cancellation.CancelAsync();

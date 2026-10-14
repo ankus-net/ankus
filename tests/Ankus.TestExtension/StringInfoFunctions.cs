@@ -63,7 +63,7 @@ public static unsafe class StringInfoFunctions
             rejected = true;
         }
 
-        return $"{before}|{buffer.ToString()}|{rejected}|{buffer.CanWrite}";
+        return $"{before}|{buffer}|{rejected}|{buffer.CanWrite}";
     }
 
     /// <summary>

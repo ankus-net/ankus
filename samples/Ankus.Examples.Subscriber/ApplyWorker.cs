@@ -175,7 +175,12 @@ internal sealed class ApplyWorker(string name, string provider, string publicati
         switch (kind)
         {
             case (byte)'B':
-                return applier is null ? true : throw new InvalidDataException("A transaction began inside another.");
+                if (applier is not null)
+                {
+                    throw new InvalidDataException("A transaction began inside another.");
+                }
+
+                return true;
             case (byte)'R':
                 RemoteRelation relation = RemoteRelation.Read(ref reader, out uint id);
                 _relations[id] = relation;

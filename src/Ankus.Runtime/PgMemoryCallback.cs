@@ -67,7 +67,7 @@ public sealed unsafe class PgMemoryCallback : IDisposable
             _other = _id,
         };
         NativeMemoryContext.Invoke(ref request, out _);
-        s_pending?.Remove(_id);
+        s_pending.Remove(_id);
         _callback = null;
     }
 
@@ -129,6 +129,7 @@ public sealed unsafe class PgMemoryCallback : IDisposable
             callback?.Invoke();
             return 0;
         }
+        // codeql[cs/catch-of-all-exceptions] Native code calls this, so every exception goes back to PostgreSQL as an error instead of unwinding through it.
         catch (Exception exception)
         {
             NativeError.Write(exception, error);

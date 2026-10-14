@@ -72,8 +72,8 @@ public sealed class ReplicationBenchmarkTests(TestContext context)
         TimeSpan sample = await RunAsync(provider, subscriber, holder, "ankus_items", rows, batch, token);
         context.WriteLine(string.Create(CultureInfo.InvariantCulture,
             $"{rows} rows in transactions of {batch}, inserted then updated, applied from a backlog: built-in " +
-            $"{builtIn.TotalSeconds:F2} s ({2 * rows / builtIn.TotalSeconds:F0} changes/s), Ankus subscriber sample " +
-            $"{sample.TotalSeconds:F2} s ({2 * rows / sample.TotalSeconds:F0} changes/s)."));
+            $"{builtIn.TotalSeconds:F2} s ({2d * rows / builtIn.TotalSeconds:F0} changes/s), Ankus subscriber sample " +
+            $"{sample.TotalSeconds:F2} s ({2d * rows / sample.TotalSeconds:F0} changes/s)."));
         Assert.AreEqual(await ScalarAsync<string>(subscriber, "SELECT md5(string_agg(id || name || amount, ',' ORDER BY id)) FROM builtin_items", token),
             await ScalarAsync<string>(subscriber, "SELECT md5(string_agg(id || name || amount, ',' ORDER BY id)) FROM ankus_items", token));
         await ExecuteAsync(subscriber, "SELECT unsubscribe('ankus')", token);

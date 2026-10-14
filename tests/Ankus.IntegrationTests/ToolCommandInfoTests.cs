@@ -65,8 +65,8 @@ public sealed partial class ToolCommandTests
         new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"), new XElement("PropertyGroup",
             new XElement("TargetFramework", "net10.0"), new XElement("AnkusPostgresMajor", MajorText()),
             new XElement("AnkusPgConfigPath", Path.GetRelativePath(directory, s_installation.PgConfigPath)))))
-            .Save(Path.Combine(directory, "Selection.csproj"));
-        string configuration = Path.Combine(home, "config.json");
+            .Save(Path.Join(directory, "Selection.csproj"));
+        string configuration = Path.Join(home, "config.json");
         string original = new JsonObject { [s_postgresKey] = "missing-scriptable-registration" }.ToJsonString();
         await File.WriteAllTextAsync(configuration, original, context.CancellationToken);
         ProcessResult result = await PackageProcessRunner.RunAsync(s_tool, ["info", command, "--home", home], s_environment,
@@ -87,7 +87,7 @@ public sealed partial class ToolCommandTests
         new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"), new XElement("PropertyGroup",
             new XElement("TargetFramework", "net10.0"), new XElement("AnkusPostgresMajor", DifferentMajor()),
             new XElement("AnkusPgConfigPath", s_installation.PgConfigPath))))
-            .Save(Path.Combine(directory, "Selection.csproj"));
+            .Save(Path.Join(directory, "Selection.csproj"));
         ProcessResult result = await PackageProcessRunner.RunAsync(s_tool, ["info", "version", "--home", s_home], s_environment,
             context.CancellationToken, workingDirectory: directory);
         Assert.AreNotEqual(0, result.ExitCode);
@@ -103,7 +103,7 @@ public sealed partial class ToolCommandTests
     public async Task InfoSubcommandsUseEnvironmentHome()
     {
         string home = CreateDirectory();
-        string configuration = Path.Combine(home, "config.json");
+        string configuration = Path.Join(home, "config.json");
         string original = new JsonObject { [s_postgresKey] = s_installation.PgConfigPath }.ToJsonString();
         await File.WriteAllTextAsync(configuration, original, context.CancellationToken);
         Dictionary<string, string?> environment = EnvironmentConfiguration(home);
@@ -122,13 +122,13 @@ public sealed partial class ToolCommandTests
     [TestMethod]
     public async Task InfoSubcommandsRejectConflictingSelection()
     {
-        string original = await File.ReadAllTextAsync(Path.Combine(s_home, "config.json"), context.CancellationToken);
+        string original = await File.ReadAllTextAsync(Path.Join(s_home, "config.json"), context.CancellationToken);
         ProcessResult result = await InvokeAsync(["info", "pg-config", MajorText(), "--pg",
             DifferentMajor().ToString(CultureInfo.InvariantCulture), "--home", s_home], context.CancellationToken);
         Assert.AreNotEqual(0, result.ExitCode);
         Assert.IsEmpty(result.StandardOutput);
         Assert.Contains("Select the same PostgreSQL major for the version argument and --pg.", result.StandardError);
-        Assert.AreEqual(original, await File.ReadAllTextAsync(Path.Combine(s_home, "config.json"), context.CancellationToken));
+        Assert.AreEqual(original, await File.ReadAllTextAsync(Path.Join(s_home, "config.json"), context.CancellationToken));
     }
 
     /// <summary>
@@ -186,7 +186,7 @@ public sealed partial class ToolCommandTests
     public async Task InfoSubcommandsRejectBrokenRegistration()
     {
         string home = CreateDirectory();
-        string configuration = Path.Combine(home, "config.json");
+        string configuration = Path.Join(home, "config.json");
         string original = new JsonObject { [s_postgresKey] = "missing-info-pg-config" }.ToJsonString();
         await File.WriteAllTextAsync(configuration, original, context.CancellationToken);
         ProcessResult result = await InvokeAsync(["info", "path", MajorText(), "--home", home], context.CancellationToken);

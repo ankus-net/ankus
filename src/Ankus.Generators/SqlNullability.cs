@@ -28,24 +28,28 @@ internal static class SqlNullability
         bool valid = true;
         foreach (IParameterSymbol parameter in parameters)
         {
-            if (FindOblivious(parameter.Type) is { } ambiguous)
+            if (FindOblivious(parameter.Type) is not { } ambiguous)
             {
-                Location? location = (parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(context.CancellationToken)
-                    as ParameterSyntax)?.Type?.GetLocation() ?? parameter.Locations.FirstOrDefault();
-                context.Report(s_oblivious, location, parameter.Name, ambiguous.ToDisplayString());
-                valid = false;
+                continue;
             }
+
+            Location? location = (parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(context.CancellationToken)
+                as ParameterSyntax)?.Type?.GetLocation() ?? parameter.Locations.FirstOrDefault();
+            context.Report(s_oblivious, location, parameter.Name, ambiguous.ToDisplayString());
+            valid = false;
         }
 
         foreach (ITypeSymbol result in results)
         {
-            if (FindOblivious(result) is { } ambiguous)
+            if (FindOblivious(result) is not { } ambiguous)
             {
-                Location? location = (method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(context.CancellationToken)
-                    as MethodDeclarationSyntax)?.ReturnType.GetLocation() ?? method.Locations.FirstOrDefault();
-                context.Report(s_oblivious, location, method.Name + " result", ambiguous.ToDisplayString());
-                valid = false;
+                continue;
             }
+
+            Location? location = (method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(context.CancellationToken)
+                as MethodDeclarationSyntax)?.ReturnType.GetLocation() ?? method.Locations.FirstOrDefault();
+            context.Report(s_oblivious, location, method.Name + " result", ambiguous.ToDisplayString());
+            valid = false;
         }
 
         return valid;

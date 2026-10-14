@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 
 namespace Ankus.Runtime.Tests;
@@ -342,24 +341,7 @@ public sealed unsafe partial class PgSharedMemoryTests
             Assert.ThrowsExactly<InvalidOperationException>(() => guard.Read(callback));
         }
 
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                Assert.ThrowsExactly<InvalidOperationException>(() => guard.Read(callback));
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        thread.Start();
-        thread.Join();
-        if (failure is not null)
-        {
-            ExceptionDispatchInfo.Capture(failure).Throw();
-        }
+        DedicatedThread.Run(() => Assert.ThrowsExactly<InvalidOperationException>(() => guard.Read(callback)));
 
         guard.Dispose();
         Assert.ThrowsExactly<ObjectDisposedException>(() => guard.Read(callback));

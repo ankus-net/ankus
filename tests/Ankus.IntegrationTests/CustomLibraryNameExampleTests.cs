@@ -20,11 +20,11 @@ public sealed class CustomLibraryNameExampleTests(TestContext context)
         int major = (await IntegrationEnvironment.GetInstallationAsync(context.CancellationToken)).Version.Major;
         string library = "other_name" + LibrarySuffix(major);
         string output = IntegrationEnvironment.NativeOutputDirectory;
-        Assert.IsTrue(File.Exists(Path.Combine(output, library)));
-        Assert.IsFalse(File.Exists(Path.Combine(output, "Ankus.Examples.CustomLibraryName" + LibrarySuffix(major))));
-        IReadOnlyDictionary<string, string> control = ExtensionControlFile.Read(Path.Combine(output, "extension", "ankus_custom_libname.control"));
+        Assert.IsTrue(File.Exists(Path.Join(output, library)));
+        Assert.IsFalse(File.Exists(Path.Join(output, "Ankus.Examples.CustomLibraryName" + LibrarySuffix(major))));
+        IReadOnlyDictionary<string, string> control = ExtensionControlFile.Read(Path.Join(output, "extension", "ankus_custom_libname.control"));
         Assert.AreEqual(library, control["module_pathname"]);
-        ExtensionSchema schema = ExtensionSchema.Read(Path.Combine(output, library));
+        ExtensionSchema schema = ExtensionSchema.Read(Path.Join(output, library));
         Assert.AreEqual("ankus_custom_libname", schema.Name);
         Assert.AreEqual(library, schema.Artifacts.Library);
         Assert.Contains("'MODULE_PATHNAME'", schema.Sql);

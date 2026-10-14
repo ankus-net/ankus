@@ -46,13 +46,8 @@ public sealed partial class ToolCommandTests
         await s_publicationLifetime.CancelAsync();
         List<Task> producers = [];
         Lazy<Task<string>>?[] publications = [s_workerCancellationPublication, s_lwLockInterruptPublication];
-        foreach (Lazy<Task<string>>? publication in publications)
-        {
-            if (publication is { IsValueCreated: true })
-            {
-                producers.Add(publication.Value);
-            }
-        }
+        producers.AddRange(publications.OfType<Lazy<Task<string>>>().Where(static publication => publication.IsValueCreated)
+            .Select(static publication => publication.Value));
 
         if (s_extensionSearchPathPublication is { IsValueCreated: true })
         {
@@ -142,7 +137,7 @@ public sealed partial class ToolCommandTests
         foreach (string file in files)
         {
             AppendText(file);
-            hash.AppendData(SHA256.HashData(File.ReadAllBytes(Path.Combine(directory, file))));
+            hash.AppendData(SHA256.HashData(File.ReadAllBytes(Path.Join(directory, file))));
         }
 
         return Convert.ToHexString(hash.GetHashAndReset());
@@ -161,7 +156,7 @@ public sealed partial class ToolCommandTests
     /// <returns>The class-owned copy.</returns>
     private static string CopySharedSnapshot(string source)
     {
-        string destination = Path.Combine(CreateSharedDirectory(), Path.GetFileName(source));
+        string destination = Path.Join(CreateSharedDirectory(), Path.GetFileName(source));
         CopyFiles(source, destination);
         return destination;
     }
@@ -176,7 +171,7 @@ public sealed partial class ToolCommandTests
         Directory.CreateDirectory(destination);
         foreach (string file in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
         {
-            string target = Path.Combine(destination, Path.GetRelativePath(source, file));
+            string target = Path.Join(destination, Path.GetRelativePath(source, file));
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             File.Copy(file, target);
         }
@@ -208,9 +203,8 @@ public sealed partial class ToolCommandTests
             }
             else
             {
-                foreach (string relative in evidence)
+                foreach (string path in evidence.Select(relative => Path.Join(project.Directory, relative)))
                 {
-                    string path = Path.Combine(project.Directory, relative);
                     DeleteCaseDirectory(path);
                     File.Delete(path);
                 }

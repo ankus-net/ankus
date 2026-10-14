@@ -30,8 +30,8 @@ public sealed partial class NativeBindingNativeTests
         string directory = Directory.CreateTempSubdirectory("ankus-native-kind-").FullName;
         try
         {
-            string file = Path.Combine(directory, "types.c");
-            string ast = Path.Combine(directory, "types.json");
+            string file = Path.Join(directory, "types.c");
+            string ast = Path.Join(directory, "types.json");
             string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang";
             string[] frontend = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/Zs", "-Xclang", "-ast-dump=json", file]
@@ -57,7 +57,7 @@ public sealed partial class NativeBindingNativeTests
                 (dispatch
                     ? "int (*native_count)(unsigned int) = implementation;\nint (*native_dispatch)(unsigned int) = implementation;\n"
                     : "int native_count(unsigned int word) { return implementation(word); }\nint native_dispatch(unsigned int word) { return implementation(word); }\n");
-            string executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "types.exe" : "types");
+            string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "types.exe" : "types");
             string source = NativeBindingHeaderParser.GenerateChecks(headers, symbols) + definitions +
                 "int main(void) { return native_count(0xffffffffU) == 32 && native_dispatch(0U) == 0 ? 0 : 1; }\n";
             await File.WriteAllTextAsync(file, source, context.CancellationToken);
@@ -117,19 +117,19 @@ public sealed partial class NativeBindingNativeTests
             new("current", "current", false), new("hook", "hook", false), new("fixed_value", "fixed_value", false),
             new("open_array", "open_array", false), new("thread_value", "thread_value", false),
         ];
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-header-types-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-header-types-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
-            string file = Path.Combine(directory, "types.c");
-            string executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "types.exe" : "types");
+            string file = Path.Join(directory, "types.c");
+            string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "types.exe" : "types");
             string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang";
             string[] frontend = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/Zs", "-Xclang", "-ast-dump=json", file]
                 : ["-std=c11", "-Wall", "-Wextra", "-Werror", "-fsyntax-only", "-Xclang", "-ast-dump=json", file];
             string targetHeaders = NativeBindingHeaderTarget.GenerateSource("#define PG_VERSION_NUM 180006\n" + Headers, 18);
             await File.WriteAllTextAsync(file, NativeBindingHeaderParser.GenerateSource(targetHeaders, requests), context.CancellationToken);
-            string ast = Path.Combine(directory, "types.ast.json");
+            string ast = Path.Join(directory, "types.ast.json");
             await NativeBindingHeaderCommand.CompileAsync(compiler, frontend, ast, directory, context.CancellationToken);
             string json = await File.ReadAllTextAsync(ast, context.CancellationToken);
             using JsonDocument document = JsonDocument.Parse(json);

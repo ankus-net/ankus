@@ -22,7 +22,7 @@ public sealed partial class PgFunctionGeneratorTests
     [DataRow(true, "-- anchor only")]
     public void EmptyCustomSqlPreservesDependencies(bool file, string sql)
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "sql-anchor-contracts");
+        string project = Path.Join(AppContext.BaseDirectory, "sql-anchor-contracts");
         string source = """
             [assembly: Ankus.PgSql("a-consumer", "SELECT 'consumer';", Requires = new[] { "m-anchor" }, Relocatable = true)]
             [assembly: Ankus.PgSql("z-producer", "SELECT 'producer';", Relocatable = true)]
@@ -30,7 +30,7 @@ public sealed partial class PgFunctionGeneratorTests
             Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(file ? "anchor.sql" : sql, quote: true) +
             ", Requires = new[] { \"z-producer\" }, Relocatable = true)]";
         (Compilation output, ImmutableArray<Diagnostic> errors) = Generate(source,
-            file ? [new SqlInput(Path.Combine(project, "anchor.sql"), sql)] : [], new SqlOptions(project));
+            file ? [new SqlInput(Path.Join(project, "anchor.sql"), sql)] : [], new SqlOptions(project));
         Assert.IsEmpty(errors);
         Assert.IsEmpty(output.GetDiagnostics(context.CancellationToken).Where(static error => error.Severity >= DiagnosticSeverity.Warning));
         ExtensionSchemaGraph graph = ExtensionSchemaGraph.Parse(ManifestValue(output, "Ankus.SqlGraph"));
@@ -69,12 +69,12 @@ public sealed partial class PgFunctionGeneratorTests
     [DataRow("Before = new[] { \"consumer\" }, Order = Ankus.PgSqlOrder.Finalize", true, "\"consumer\"", 0, "anchor -> consumer -> anchor")]
     public void EmptyCustomSqlStillRejectsCycles(string options, bool file, string span, int occurrence, string cycle)
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "sql-anchor-contracts");
+        string project = Path.Join(AppContext.BaseDirectory, "sql-anchor-contracts");
         string source = "[assembly: Ankus." + (file ? "PgSqlFile" : "PgSql") + "(\"anchor\", " +
             (file ? "\"anchor.sql\"" : "\"\"") + ", " + options + ")]" +
             "[assembly: Ankus.PgSql(\"consumer\", \"SELECT 1;\")]";
         (Compilation output, ImmutableArray<Diagnostic> errors) = Generate(source,
-            file ? [new SqlInput(Path.Combine(project, "anchor.sql"), string.Empty)] : [], new SqlOptions(project));
+            file ? [new SqlInput(Path.Join(project, "anchor.sql"), string.Empty)] : [], new SqlOptions(project));
         AssertSqlControlGraphError(output, errors, "ANKUS499", span, cycle);
         AssertDiagnosticOccurrence(errors[0], span, occurrence);
     }

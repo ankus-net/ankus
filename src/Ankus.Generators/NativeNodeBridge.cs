@@ -24,9 +24,8 @@ internal static class NativeNodeBridge
         var cases = new StringBuilder();
         var tags = new HashSet<uint>();
         bool valid = !string.IsNullOrEmpty(encoded);
-        foreach (string record in (encoded ?? "").Split(';'))
+        foreach (string[] fields in (encoded ?? "").Split(';').Select(static record => record.Split(':')))
         {
-            string[] fields = record.Split(':');
             if (fields.Length != 3 || !uint.TryParse(fields[0], NumberStyles.None, CultureInfo.InvariantCulture, out uint tag) ||
                 !int.TryParse(fields[1], NumberStyles.None, CultureInfo.InvariantCulture, out int size) || size < 4 ||
                 !int.TryParse(fields[2], NumberStyles.None, CultureInfo.InvariantCulture, out int alignment) || alignment <= 0 ||

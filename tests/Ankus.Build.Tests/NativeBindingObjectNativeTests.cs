@@ -72,8 +72,8 @@ public sealed partial class NativeBindingNativeTests
         string directory = Directory.CreateTempSubdirectory("ankus-object-").FullName;
         try
         {
-            string file = Path.Combine(directory, "symbols.c");
-            string output = Path.Combine(directory, "symbols.o");
+            string file = Path.Join(directory, "symbols.c");
+            string output = Path.Join(directory, "symbols.o");
             await File.WriteAllTextAsync(file, source, context.CancellationToken);
             string[] targetArguments = target is null ? [] : ["--target=" + target];
             // These freestanding object fixtures use no platform headers. An explicit

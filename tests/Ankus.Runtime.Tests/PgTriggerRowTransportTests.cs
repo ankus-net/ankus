@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 
 namespace Ankus.Runtime.Tests;
 
@@ -65,7 +64,8 @@ public sealed unsafe class PgTriggerRowTransportTests
         var oldRow = new PgHeapTuple(s_pets, [4, null, "old", null]);
         var newRow = new PgHeapTuple(s_pets, [5, null, "new", null]);
         var context = new PgTriggerContext(14, 8100, 8200, "trim", "pets", "public", null, null, [], oldRow, newRow, s_pets);
-        foreach (PgHeapTuple row in (PgHeapTuple[])[oldRow, newRow.Clone()])
+        PgHeapTuple[] rows = [oldRow, newRow.Clone()];
+        foreach (PgHeapTuple row in rows)
         {
             NativeValue result = NativeValue.FromTriggerRow(context, row);
             try
@@ -141,14 +141,11 @@ public sealed unsafe class PgTriggerRowTransportTests
         Assert.Contains(defect == "kept" ? "cell does not match" : "does not match its relation's columns", error.Message);
     }
 
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary1")]
-    private static extern ref int Kind(ref NativeValue value);
+    private static ref int Kind(ref NativeValue value) => ref value._auxiliary1;
 
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_length")]
-    private static extern ref int Length(ref NativeValue value);
+    private static ref int Length(ref NativeValue value) => ref value._length;
 
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_data")]
-    private static extern ref byte* Data(ref NativeValue value);
+    private static ref byte* Data(ref NativeValue value) => ref value._data;
 
     /// <summary>
     /// Owns a BEFORE INSERT invocation over <see cref="s_totals"/> whose NEW slot holds a given transport.

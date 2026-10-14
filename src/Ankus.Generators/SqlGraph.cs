@@ -225,12 +225,9 @@ internal sealed partial class SqlGraph
 
         foreach (SqlEntity entity in _entities)
         {
-            foreach (SqlEntity provider in entity.TypeDependencies)
+            foreach (SqlEntity provider in entity.TypeDependencies.Where(provider => !ExplicitlyFollows(provider, entity)))
             {
-                if (!ExplicitlyFollows(provider, entity))
-                {
-                    entity.Dependencies.Add(provider);
-                }
+                entity.Dependencies.Add(provider);
             }
         }
 
@@ -280,7 +277,8 @@ internal sealed partial class SqlGraph
             emitted++;
             foreach (SqlEntity dependent in dependents[entity])
             {
-                if (--remaining[dependent] == 0)
+                remaining[dependent]--;
+                if (remaining[dependent] == 0)
                 {
                     ready.Add(dependent);
                 }
@@ -379,17 +377,17 @@ internal sealed partial class SqlGraph
     private void ReportCycle(Dictionary<SqlEntity, int> remaining)
     {
         var path = new List<SqlEntity>();
-        var positions = new Dictionary<SqlEntity, int>();
         SqlEntity current = _entities.Where(entity => remaining[entity] != 0).OrderBy(static entity => entity.Key, StringComparer.Ordinal).First();
-        while (!positions.ContainsKey(current))
+        int repeated = path.IndexOf(current);
+        while (repeated < 0)
         {
-            positions.Add(current, path.Count);
             path.Add(current);
             current = current.Dependencies.Where(dependency => remaining[dependency] != 0)
                 .OrderBy(static dependency => dependency.Key, StringComparer.Ordinal).First();
+            repeated = path.IndexOf(current);
         }
 
-        SqlEntity[] members = [.. path.Skip(positions[current])];
+        SqlEntity[] members = [.. path.Skip(repeated)];
         SqlEntity first = members.OrderBy(static entity => entity.Key, StringComparer.Ordinal).First();
         int start = Array.IndexOf(members, first);
         SqlEntity[] cycle = [.. members.Skip(start), .. members.Take(start), first];
@@ -399,14 +397,9 @@ internal sealed partial class SqlGraph
             _edges.TryGetValue((cycle[index], cycle[index + 1]), out location);
         }
 
-        var names = new List<string>();
-        foreach (SqlEntity member in cycle.Take(cycle.Length - 1))
-        {
-            if (names.Count == 0 || names[names.Count - 1] != member.DiagnosticName)
-            {
-                names.Add(member.DiagnosticName);
-            }
-        }
+        List<string> names = [.. cycle.Take(cycle.Length - 1)
+            .Where((member, index) => index == 0 || cycle[index - 1].DiagnosticName != member.DiagnosticName)
+            .Select(static member => member.DiagnosticName)];
 
         if (names.Count > 1 && names[names.Count - 1] == names[0])
         {

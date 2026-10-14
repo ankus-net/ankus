@@ -16,9 +16,9 @@ public sealed class NativeBindingCompilerInputsTests(TestContext context)
         string root = Directory.CreateTempSubdirectory("ankus-compiler-inventory-").FullName;
         try
         {
-            string first = Path.Combine(root, "alpha input.dll");
-            string last = Path.Combine(root, "zeta café.dll");
-            string inventory = Path.Combine(root, "compiler-inputs.txt");
+            string first = Path.Join(root, "alpha input.dll");
+            string last = Path.Join(root, "zeta café.dll");
+            string inventory = Path.Join(root, "compiler-inputs.txt");
             await File.WriteAllBytesAsync(first, "abc"u8.ToArray(), context.CancellationToken);
             await File.WriteAllBytesAsync(last, [], context.CancellationToken);
             await File.WriteAllLinesAsync(inventory, [last, first, last, first], context.CancellationToken);
@@ -44,8 +44,8 @@ public sealed class NativeBindingCompilerInputsTests(TestContext context)
         string root = Directory.CreateTempSubdirectory("ankus-compiler-content-").FullName;
         try
         {
-            string input = Path.Combine(root, "selected.dll");
-            string inventory = Path.Combine(root, "compiler-inputs.txt");
+            string input = Path.Join(root, "selected.dll");
+            string inventory = Path.Join(root, "compiler-inputs.txt");
             await File.WriteAllBytesAsync(input, "abc"u8.ToArray(), context.CancellationToken);
             await File.WriteAllLinesAsync(inventory, [input], context.CancellationToken);
             DateTime timestamp = File.GetLastWriteTimeUtc(input);
@@ -78,7 +78,7 @@ public sealed class NativeBindingCompilerInputsTests(TestContext context)
         string root = Directory.CreateTempSubdirectory("ankus-compiler-invalid-").FullName;
         try
         {
-            string inventory = Path.Combine(root, "compiler-inputs.txt");
+            string inventory = Path.Join(root, "compiler-inputs.txt");
             await File.WriteAllTextAsync(inventory, invalid, context.CancellationToken);
 
             FormatException error = await Assert.ThrowsExactlyAsync<FormatException>(() =>
@@ -101,8 +101,8 @@ public sealed class NativeBindingCompilerInputsTests(TestContext context)
         string root = Directory.CreateTempSubdirectory("ankus-compiler-missing-").FullName;
         try
         {
-            string input = Path.Combine(root, "missing.dll");
-            string inventory = Path.Combine(root, "compiler-inputs.txt");
+            string input = Path.Join(root, "missing.dll");
+            string inventory = Path.Join(root, "compiler-inputs.txt");
             await File.WriteAllLinesAsync(inventory, [input], context.CancellationToken);
 
             await Assert.ThrowsExactlyAsync<FileNotFoundException>(() => NativeBindingCompilerInputs.ReadAsync(inventory, context.CancellationToken));

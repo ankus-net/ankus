@@ -58,7 +58,7 @@ public sealed partial class ToolCommandTests
                 Assert.AreEqual(0, stopped.ExitCode, stopped.StandardError);
                 Assert.Contains(expected, stopped.StandardOutput);
                 Assert.IsFalse(await cluster.IsRunningAsync(token));
-                Assert.IsTrue(File.Exists(Path.Combine(cluster.DataDirectory, "PG_VERSION")));
+                Assert.IsTrue(File.Exists(Path.Join(cluster.DataDirectory, "PG_VERSION")));
             }
 
             ProcessResult restarted = await InvokeAsync(start, token).WaitAsync(TimeSpan.FromMinutes(2), token);
@@ -89,7 +89,7 @@ public sealed partial class ToolCommandTests
             InvalidOperationException error = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => cluster.StartAsync(options, token));
             Assert.Contains(cluster.LogFilePath, error.Message);
             Assert.IsFalse(await cluster.IsRunningAsync(token));
-            Assert.IsTrue(File.Exists(Path.Combine(cluster.DataDirectory, "PG_VERSION")));
+            Assert.IsTrue(File.Exists(Path.Join(cluster.DataDirectory, "PG_VERSION")));
             Assert.IsEmpty(Directory.GetDirectories(Path.GetDirectoryName(cluster.DataDirectory)!, ".init-*"));
             reservation.Dispose();
             // The deliberate failure ends at once; the recovered start is an ordinary startup with the suite's budget.
@@ -121,10 +121,10 @@ public sealed partial class ToolCommandTests
         await canceled.CancelAsync();
         await Assert.ThrowsExactlyAsync<OperationCanceledException>(() => cluster.StartAsync(cancellationToken: canceled.Token));
         Assert.IsEmpty(Directory.GetFileSystemEntries(home));
-        string root = Path.Combine(home, "clusters");
+        string root = Path.Join(home, "clusters");
         Directory.CreateDirectory(root);
-        string lockPath = Path.Combine(root, s_installation.Label + ".lock");
-        using (var operationLock = new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None))
+        string lockPath = Path.Join(root, s_installation.Label + ".lock");
+        using (new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None))
         {
             await Assert.ThrowsExactlyAsync<IOException>(() => cluster.StartAsync(cancellationToken: token));
             Assert.IsFalse(Directory.Exists(cluster.DataDirectory));
@@ -144,12 +144,12 @@ public sealed partial class ToolCommandTests
         string home = CreateDirectory();
         var cluster = new PostgresDevelopmentCluster(s_installation, home);
         Directory.CreateDirectory(cluster.DataDirectory);
-        string sentinel = Path.Combine(cluster.DataDirectory, "keep.txt");
+        string sentinel = Path.Join(cluster.DataDirectory, "keep.txt");
         await File.WriteAllTextAsync(sentinel, "user data", context.CancellationToken);
         if (owned)
         {
-            await File.WriteAllTextAsync(Path.Combine(cluster.DataDirectory, ".ankus-cluster"), s_installation.Label, context.CancellationToken);
-            await File.WriteAllTextAsync(Path.Combine(cluster.DataDirectory, "PG_VERSION"), DifferentMajor().ToString(CultureInfo.InvariantCulture), context.CancellationToken);
+            await File.WriteAllTextAsync(Path.Join(cluster.DataDirectory, ".ankus-cluster"), s_installation.Label, context.CancellationToken);
+            await File.WriteAllTextAsync(Path.Join(cluster.DataDirectory, "PG_VERSION"), DifferentMajor().ToString(CultureInfo.InvariantCulture), context.CancellationToken);
         }
 
         string[] entries = Directory.GetFileSystemEntries(cluster.DataDirectory);
@@ -184,7 +184,7 @@ public sealed partial class ToolCommandTests
         ProcessResult malformed = await InvokeAsync(["start", "--pg", MajorText(), "--home", home, "--postgresql-conf", "work_mem"], token);
         Assert.AreEqual(1, malformed.ExitCode);
         Assert.Contains("name=value", malformed.StandardError);
-        Assert.IsFalse(Directory.Exists(Path.Combine(home, "clusters")));
+        Assert.IsFalse(Directory.Exists(Path.Join(home, "clusters")));
     }
 
     private static async Task<NpgsqlConnection> OpenDevelopmentConnectionAsync(int port, CancellationToken token)

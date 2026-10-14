@@ -214,7 +214,8 @@ public sealed class PgIntervalOrderingTests
         Assert.AreEqual(expectedComparison == 0, left.Equals((object)right));
         Assert.AreEqual(expectedComparison == 0, left == right);
         Assert.AreEqual(expectedComparison != 0, left != right);
-        Assert.IsFalse(left.Equals(null));
+        object? missing = null;
+        Assert.IsFalse(left.Equals(missing));
         Assert.IsFalse(left.Equals("interval"));
         HashSet<PgInterval> hashed = [left, right];
         SortedSet<PgInterval> ordered = [left, right];

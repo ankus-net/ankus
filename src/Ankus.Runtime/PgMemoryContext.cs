@@ -124,6 +124,7 @@ public sealed unsafe partial class PgMemoryContext : IDisposable
         {
             result = context.Run(() => func(context));
         }
+        // codeql[cs/catch-of-all-exceptions] The context is deleted whatever the work threw, and that failure is rethrown afterwards.
         catch (Exception exception)
         {
             primary = exception;
@@ -391,6 +392,7 @@ public sealed unsafe partial class PgMemoryContext : IDisposable
             {
                 allocation.Dispose();
             }
+            // codeql[cs/catch-of-all-exceptions] A failed cleanup is reported together with the failure that required it.
             catch (Exception cleanupError)
             {
                 throw new AggregateException("Copying PostgreSQL allocation data and releasing its storage failed.", primary, cleanupError);
@@ -707,6 +709,7 @@ public sealed unsafe partial class PgMemoryContext : IDisposable
         {
             value = callback(callbackValue);
         }
+        // codeql[cs/catch-of-all-exceptions] The previous context is restored whatever the callback threw, and that failure is rethrown afterwards.
         catch (Exception exception)
         {
             primary = exception;
@@ -722,6 +725,7 @@ public sealed unsafe partial class PgMemoryContext : IDisposable
         {
             NativeMemoryContext.Invoke(ref restore, out _);
         }
+        // codeql[cs/catch-of-all-exceptions] A failed restore is reported together with the callback's failure.
         catch (Exception exception)
         {
             restoreError = exception;

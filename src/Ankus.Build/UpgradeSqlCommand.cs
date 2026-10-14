@@ -66,7 +66,7 @@ internal static class UpgradeSqlCommand
                 string target = name[versionPrefix.Length..^".sql".Length].Split("--")[1];
                 string control = versionPrefix + target + ".control";
                 if (!original.VersionControlFiles.Contains(control, StringComparer.Ordinal) ||
-                    !ExtensionControlFile.Read(Path.Combine(artifacts, "extension", control)).ContainsKey("module_pathname"))
+                    !ExtensionControlFile.Read(Path.Join(artifacts, "extension", control)).ContainsKey("module_pathname"))
                 {
                     content = VersionedLibrary.Substitute(content, VersionedLibrary.GetModulePath(libraryBase, target));
                 }
@@ -79,14 +79,14 @@ internal static class UpgradeSqlCommand
         string[] artifactFiles = [original.Control, original.Sql, .. original.VersionControlFiles];
         foreach (string name in artifactFiles)
         {
-            contents.Add(name, await File.ReadAllBytesAsync(Path.Combine(artifacts, "extension", name), cancellationToken));
+            contents.Add(name, await File.ReadAllBytesAsync(Path.Join(artifacts, "extension", name), cancellationToken));
         }
 
-        string extensionDirectory = Path.Combine(output, "extension");
+        string extensionDirectory = Path.Join(output, "extension");
         Directory.CreateDirectory(extensionDirectory);
         foreach ((string name, byte[] content) in contents)
         {
-            await File.WriteAllBytesAsync(Path.Combine(extensionDirectory, name), content, cancellationToken);
+            await File.WriteAllBytesAsync(Path.Join(extensionDirectory, name), content, cancellationToken);
         }
 
         manifest.CompletePublish(output);
@@ -94,7 +94,7 @@ internal static class UpgradeSqlCommand
         {
             try
             {
-                SchemaSnapshot.Commit(Path.Combine(artifacts, "schema.generated.json"), arguments[5]);
+                SchemaSnapshot.Commit(Path.Join(artifacts, "schema.generated.json"), arguments[5]);
             }
             catch
             {

@@ -110,7 +110,7 @@ public sealed partial class PgFunctionGeneratorTests
             CSharpSyntaxTree.ParseText("[Ankus.PgEnum] public enum Color { Blue }", path: "Color.cs", cancellationToken: context.CancellationToken));
         GeneratorDriver driver = RunModule(ModuleDriver(), initial, out Compilation first);
         Assert.Contains("CREATE TYPE \"mood\"", InstallationBody(first));
-        driver = RunModule(driver, initial.RemoveSyntaxTrees(initial.SyntaxTrees.First()), out Compilation second);
+        _ = RunModule(driver, initial.RemoveSyntaxTrees(initial.SyntaxTrees.First()), out Compilation second);
 
         Assert.AreEqual("CREATE TYPE \"color\" AS ENUM (E'Blue');\n", InstallationBody(second));
         Assert.DoesNotContain("global::Mood", string.Join("\n", second.SyntaxTrees.Select(tree => tree.GetText(context.CancellationToken).ToString())));

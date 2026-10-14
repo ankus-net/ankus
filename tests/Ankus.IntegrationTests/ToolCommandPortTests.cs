@@ -18,21 +18,21 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         string home = CreateDirectory();
         string extensionRoot = CreateDirectory();
-        string extensionProject = Path.Combine(extensionRoot, "PortProbe.csproj");
+        string extensionProject = Path.Join(extensionRoot, "PortProbe.csproj");
         XDocument.Load(s_project).Save(extensionProject);
-        File.Copy(Path.Combine(Path.GetDirectoryName(s_project)!, "Hello.cs"), Path.Combine(extensionRoot, "Hello.cs"));
+        File.Copy(Path.Join(Path.GetDirectoryName(s_project)!, "Hello.cs"), Path.Join(extensionRoot, "Hello.cs"));
         using PortReservation reservation = ReserveConfigurablePort();
         ProcessResult init = await InvokeAsync(["init", "--home", home, s_postgresOption, s_installation.PgConfigPath,
             "--base-testing-port", (reservation.Port - s_installation.Version.Major).ToString(CultureInfo.InvariantCulture)], token);
         Assert.AreEqual(0, init.ExitCode, init.StandardError);
         string consumerRoot = CreateDirectory();
-        string consumerProject = Path.Combine(consumerRoot, "Consumer.csproj");
+        string consumerProject = Path.Join(consumerRoot, "Consumer.csproj");
         new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
             new XElement("PropertyGroup", new XElement("TargetFramework", "net10.0"),
                 new XElement("OutputType", "Exe"), new XElement("ImplicitUsings", "enable"), new XElement("Nullable", "enable")),
             new XElement("ItemGroup", new XElement("PackageReference", new XAttribute("Include", "Ankus.Testing"),
                 new XAttribute("Version", s_version))))).Save(consumerProject);
-        await File.WriteAllTextAsync(Path.Combine(consumerRoot, "Program.cs"), """
+        await File.WriteAllTextAsync(Path.Join(consumerRoot, "Program.cs"), """
             using Ankus.PgConfig;
             using Ankus.Testing;
             using Npgsql;
@@ -84,7 +84,7 @@ public sealed partial class ToolCommandTests
             ["ABANDONED:".Length..].Trim().Split('|');
         Assert.IsFalse(Directory.Exists(abandoned[0]), "A cluster the host never disposed kept its data directory after exit.");
         Assert.IsFalse(Directory.Exists(abandoned[1]), "A cluster the host never disposed kept its socket directory after exit.");
-        Assert.IsEmpty(Directory.GetDirectories(Path.Combine(extensionRoot, "bin", "ankus-test-publish")));
+        Assert.IsEmpty(Directory.GetDirectories(Path.Join(extensionRoot, "bin", "ankus-test-publish")));
         using PortReservation released = PortReservation.Create(reservation.Port);
         Assert.AreEqual(reservation.Port, released.Port);
     }

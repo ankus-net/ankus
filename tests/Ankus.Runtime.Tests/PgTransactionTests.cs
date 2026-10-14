@@ -272,21 +272,7 @@ public sealed unsafe class PgTransactionTests
         using PgTransactionCallback registration = PgTransaction.RegisterCallback(PgTransactionEvent.Commit, static () =>
         {
         });
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                registration.Dispose();
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        thread.Start();
-        thread.Join();
-        Assert.IsInstanceOfType<InvalidOperationException>(failure);
+        Assert.Throws<InvalidOperationException>(() => DedicatedThread.Run(registration.Dispose));
         Assert.IsTrue(registration.IsPending);
     }
 
@@ -342,9 +328,7 @@ public sealed unsafe class PgTransactionTests
 
     private static void Collect()
     {
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
+        GarbageCollection.Collect();
     }
 
     /// <summary>

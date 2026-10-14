@@ -16,16 +16,16 @@ public sealed partial class ToolCommandTests
     public async Task NewBackgroundWorkerSolutionRunsManagedAndBackendTests()
     {
         CancellationToken token = context.CancellationToken;
-        string output = Path.Combine(CreateDirectory(), "worker solution");
+        string output = Path.Join(CreateDirectory(), "worker solution");
         ProcessResult created = await InvokeAsync(["new", "Acme.WorkerProbe", "--background-worker", "-o", output], token);
         created.EnsureSuccess(s_tool, ["new", "--background-worker"]);
-        Assert.IsTrue(File.Exists(Path.Combine(output, "src", "Acme.WorkerProbe", "Workers.cs")));
-        Assert.IsFalse(File.Exists(Path.Combine(output, ".editorconfig")));
-        string suite = Path.Combine(output, "src", "Acme.WorkerProbe", "pg_regress");
+        Assert.IsTrue(File.Exists(Path.Join(output, "src", "Acme.WorkerProbe", "Workers.cs")));
+        Assert.IsFalse(File.Exists(Path.Join(output, ".editorconfig")));
+        string suite = Path.Join(output, "src", "Acme.WorkerProbe", "pg_regress");
         string setup = "-- This setup file runs when the regression database is created or recreated.\n" +
             "-- Create the extension before running the ordinary SQL tests.\nCREATE EXTENSION acme_worker_probe;\n";
-        Assert.AreEqual(setup, (await File.ReadAllTextAsync(Path.Combine(suite, "sql", "setup.sql"), token)).ReplaceLineEndings("\n"));
-        Assert.AreEqual(setup, (await File.ReadAllTextAsync(Path.Combine(suite, "expected", "setup.out"), token)).ReplaceLineEndings("\n"));
+        Assert.AreEqual(setup, (await File.ReadAllTextAsync(Path.Join(suite, "sql", "setup.sql"), token)).ReplaceLineEndings("\n"));
+        Assert.AreEqual(setup, (await File.ReadAllTextAsync(Path.Join(suite, "expected", "setup.out"), token)).ReplaceLineEndings("\n"));
         ProcessResult tests = await PackageProcessRunner.RunAsync("dotnet",
             ["test", "--report-trx", "-p:AnkusPostgresMajor=" + MajorText()], s_environment, token, workingDirectory: output);
         tests.EnsureSuccess("dotnet", ["test"]);
@@ -38,9 +38,9 @@ public sealed partial class ToolCommandTests
         Assert.AreEqual("0", counters.Attribute("failed")!.Value);
         Assert.Contains("WorkerRunsInAnotherPostgresProcess",
             report.Descendants(ns + "UnitTestResult").Select(element => element.Attribute("testName")!.Value));
-        string project = Path.Combine(output, "src", "Acme.WorkerProbe");
-        Assert.IsEmpty(Directory.GetDirectories(Path.Combine(project, "bin", "ankus-test-publish")));
-        Assert.IsNotEmpty(Directory.GetFiles(Path.Combine(project, "bin", "ankus-test-logs"), "*.log"));
+        string project = Path.Join(output, "src", "Acme.WorkerProbe");
+        Assert.IsEmpty(Directory.GetDirectories(Path.Join(project, "bin", "ankus-test-publish")));
+        Assert.IsNotEmpty(Directory.GetFiles(Path.Join(project, "bin", "ankus-test-logs"), "*.log"));
     }
 
     /// <summary>
@@ -50,7 +50,7 @@ public sealed partial class ToolCommandTests
     public async Task BackgroundWorkerSamplePublishesSharedObservations()
     {
         CancellationToken token = context.CancellationToken;
-        string source = await File.ReadAllTextAsync(Path.Combine(IntegrationEnvironment.RepositoryRoot,
+        string source = await File.ReadAllTextAsync(Path.Join(IntegrationEnvironment.RepositoryRoot,
             "samples", "Ankus.Examples.BackgroundWorkers", "DatabaseObserver.cs"), token);
         string output = await PublishPackageConsumerAsync("Ankus.Examples.BackgroundWorkers", "ankus_background_workers",
             "using Ankus;\n" + source, token);
@@ -89,9 +89,9 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string output = await PublishPackageConsumerAsync("BackgroundWorkers", "ankus_worker_probe", BackgroundWorkerSource, token);
-        string signalFixture = Path.Combine(output, "Ankus.WorkerSignals" + Path.GetExtension(PublishedExtension.Read(output).Library));
+        string signalFixture = Path.Join(output, "Ankus.WorkerSignals" + Path.GetExtension(PublishedExtension.Read(output).Library));
         await AllocatorFixtureCompiler.CompileModuleAsync(s_installation,
-            Path.Combine(IntegrationEnvironment.RepositoryRoot, "tests", "Ankus.IntegrationTests", "Native", "worker_signal_fixture.c"),
+            Path.Join(IntegrationEnvironment.RepositoryRoot, "tests", "Ankus.IntegrationTests", "Native", "worker_signal_fixture.c"),
             signalFixture, true, token);
         await using PostgresTestCluster cluster = await StartPublishedClusterAsync(output, token, sharedPreload: true,
             additionalConfiguration: ["max_worker_processes = 4", "max_parallel_workers = 0", "max_logical_replication_workers = 0", "log_error_verbosity = verbose"]);

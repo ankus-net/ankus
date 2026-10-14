@@ -24,7 +24,7 @@ public sealed partial class PgFunctionGeneratorTests
         CSharpCompilation edited = initial.ReplaceSyntaxTree(initial.SyntaxTrees.Single(),
             CSharpSyntaxTree.ParseText(source.Replace("= " + zero, "= " + negativeZero, StringComparison.Ordinal),
                 path: "Module.cs", cancellationToken: context.CancellationToken));
-        driver = RunModule(driver, edited, out Compilation second);
+        _ = RunModule(driver, edited, out Compilation second);
 
         Assert.AreNotEqual(DefaultParameter(initial), DefaultParameter(edited));
         Assert.Contains("DEFAULT (E'0'::" + sql + ")", InstallationBody(first));

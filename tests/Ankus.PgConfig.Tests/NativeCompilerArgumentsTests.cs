@@ -83,7 +83,7 @@ public sealed class NativeCompilerArgumentsTests(TestContext context)
         try
         {
             await Assert.ThrowsExactlyAsync<DirectoryNotFoundException>(() => NativeCompilerArguments.ResolveMacOsSdkAsync(
-                Path.Combine(directory, "missing"), context.CancellationToken));
+                Path.Join(directory, "missing"), context.CancellationToken));
             await Assert.ThrowsExactlyAsync<DirectoryNotFoundException>(() => NativeCompilerArguments.ResolveMacOsSdkAsync(
                 "relative.sdk", context.CancellationToken));
         }

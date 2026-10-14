@@ -435,8 +435,7 @@ public static class CompositeFunctions
                 ARRAY[NULL,ROW('nested',9)::tuple_values.dog],repeat('tag',20000))::tuple_values.pack
             """));
         Spi.Execute("SELECT array_agg(repeat('replacement',1000)) FROM generate_series(1,100)");
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
+        GarbageCollection.Collect();
         return value;
     }
 
@@ -449,7 +448,7 @@ public static class CompositeFunctions
     {
         PgHeapTuple value = Spi.ExecuteScalar<PgHeapTuple>("SELECT value FROM tuple_toast");
         Spi.Execute("DELETE FROM tuple_toast; SELECT repeat('overwritten',10000)");
-        GC.Collect();
+        GarbageCollection.Collect();
         return value;
     }
 
@@ -621,9 +620,8 @@ public static class CompositeFunctions
         SpiResult rows = Spi.Query(Spi.Sql($"SELECT d FROM tuple_values.tuple_many_dogs({count}) d"));
         var names = new HashSet<string>(StringComparer.Ordinal);
         long ages = 0;
-        foreach (SpiRow row in rows)
+        foreach (PgHeapTuple dog in rows.Select(static row => row.Get<PgHeapTuple>(0)))
         {
-            PgHeapTuple dog = row.Get<PgHeapTuple>(0);
             names.Add(dog.Get<string>("name"));
             ages += dog.Get<int>("age");
         }

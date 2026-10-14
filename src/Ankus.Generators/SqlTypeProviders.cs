@@ -112,9 +112,10 @@ internal sealed class SqlTypeProviders(SqlGraph graph)
                 continue;
             }
 
-            if ((!managed && !namedClaims.Add((schema, name!))) ||
-                _providers.TryGetValue((schema, name!), out (SqlEntity Entity, bool Custom) existing) &&
-                (!existing.Custom || existing.Entity != block))
+            bool claimedName = !managed && !namedClaims.Add((schema, name!));
+            bool otherProvider = _providers.TryGetValue((schema, name!), out (SqlEntity Entity, bool Custom) existing) &&
+                (!existing.Custom || existing.Entity != block);
+            if (claimedName || otherProvider)
             {
                 string identity = new SqlTypeReference(name!, schema).Sql;
                 graph.Error(nameLocation, SqlTypeProviderDiagnostics.s_duplicateCatalog, identity);

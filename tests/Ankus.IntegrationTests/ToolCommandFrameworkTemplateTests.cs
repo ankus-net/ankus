@@ -16,12 +16,12 @@ public sealed partial class ToolCommandTests
     public async Task UnknownTestFrameworkCreatesNoOutput(bool template)
     {
         CancellationToken token = context.CancellationToken;
-        string output = Path.Combine(CreateDirectory(), "invalid framework output");
+        string output = Path.Join(CreateDirectory(), "invalid framework output");
         ProcessResult result;
         if (template)
         {
-            string hive = Path.Combine(CreateDirectory(), "isolated invalid template hive");
-            string package = Path.Combine(s_root, "feed", "Ankus.Templates." + s_version + ".nupkg");
+            string hive = Path.Join(CreateDirectory(), "isolated invalid template hive");
+            string package = Path.Join(s_root, "feed", "Ankus.Templates." + s_version + ".nupkg");
             (await PackageProcessRunner.RunAsync("dotnet", ["new", "install", package, "--debug:custom-hive", hive],
                 s_environment, token, workingDirectory: s_root)).EnsureSuccess("dotnet", ["new", "install"]);
             result = await PackageProcessRunner.RunAsync("dotnet", ["new", "ankus", "--name", "UnknownFramework", "--output", output,
@@ -56,11 +56,11 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         const string Name = "Acme.Probe";
-        string output = Path.Combine(CreateDirectory(), "framework with spaces");
+        string output = Path.Join(CreateDirectory(), "framework with spaces");
         if (template)
         {
-            string hive = Path.Combine(CreateDirectory(), "isolated template hive");
-            string package = Path.Combine(s_root, "feed", "Ankus.Templates." + s_version + ".nupkg");
+            string hive = Path.Join(CreateDirectory(), "isolated template hive");
+            string package = Path.Join(s_root, "feed", "Ankus.Templates." + s_version + ".nupkg");
             (await PackageProcessRunner.RunAsync("dotnet", ["new", "install", package, "--debug:custom-hive", hive],
                 s_environment, token, workingDirectory: s_root)).EnsureSuccess("dotnet", ["new", "install"]);
             (await PackageProcessRunner.RunAsync("dotnet", ["new", worker ? "ankus-worker" : "ankus", "--name", Name,
@@ -74,24 +74,24 @@ public sealed partial class ToolCommandTests
                 .EnsureSuccess(s_tool, ["new"]);
         }
 
-        using JsonDocument global = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(output, "global.json"), token));
+        using JsonDocument global = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Join(output, "global.json"), token));
         Assert.AreEqual("Microsoft.Testing.Platform", global.RootElement.GetProperty("test").GetProperty("runner").GetString());
         Assert.IsFalse(global.RootElement.GetProperty("msbuild-sdks").TryGetProperty("MSTest.Sdk", out _));
-        XDocument project = XDocument.Load(Path.Combine(output, "tests", Name + ".Tests", Name + ".Tests.csproj"));
+        XDocument project = XDocument.Load(Path.Join(output, "tests", Name + ".Tests", Name + ".Tests.csproj"));
         Assert.AreEqual("Microsoft.NET.Sdk", (string?)project.Root!.Attribute("Sdk"));
         Assert.AreEqual("Exe", project.Descendants("OutputType").Single().Value);
         string[] selected = [.. project.Descendants("PackageReference").Select(static reference => (string)reference.Attribute("Include")!)];
         Assert.Contains(framework == "xunit" ? "xunit.v3.mtp-v2" : "NUnit", selected);
         Assert.Contains("Microsoft.Testing.Extensions.TrxReport", selected);
         Assert.DoesNotContain(framework == "xunit" ? "NUnit" : "xunit.v3.mtp-v2", selected);
-        Assert.IsFalse(Directory.Exists(Path.Combine(output, "Frameworks")));
+        Assert.IsFalse(Directory.Exists(Path.Join(output, "Frameworks")));
         string[] references = [.. project.Descendants("ProjectReference").Select(static reference => (string)reference.Attribute("Include")!)];
         Assert.AreSequenceEqual(["../../src/" + Name + "/" + Name + ".csproj"], references);
         (await PackageProcessRunner.RunAsync("dotnet", ["sln", Name + ".slnx", "list"], s_environment, token,
             workingDirectory: output)).EnsureSuccess("dotnet", ["sln", "list"]);
-        string extensionDirectory = Path.Combine(output, "src", Name);
+        string extensionDirectory = Path.Join(output, "src", Name);
         Dictionary<string, string?> environment = CreateConsumerEnvironment();
-        await File.AppendAllTextAsync(Path.Combine(extensionDirectory, "BackendChecks.cs"), """
+        await File.AppendAllTextAsync(Path.Join(extensionDirectory, "BackendChecks.cs"), """
 
             public static partial class BackendChecks
             {
@@ -135,10 +135,10 @@ public sealed partial class ToolCommandTests
             Assert.ContainsSingle(names.Where(static name => name.Contains("WorkerRunsInAnotherPostgresProcess", StringComparison.Ordinal)));
         }
 
-        string testedExtension = Path.Combine(solution, "src", Name);
-        Assert.IsFalse(Directory.Exists(Path.Combine(testedExtension, "bin", "ankus-test-pgdata")));
-        Assert.IsEmpty(Directory.GetDirectories(Path.Combine(testedExtension, "bin", "ankus-test-publish")));
-        Assert.IsNotEmpty(Directory.GetFiles(Path.Combine(testedExtension, "bin", "ankus-test-logs"), "*.log"));
+        string testedExtension = Path.Join(solution, "src", Name);
+        Assert.IsFalse(Directory.Exists(Path.Join(testedExtension, "bin", "ankus-test-pgdata")));
+        Assert.IsEmpty(Directory.GetDirectories(Path.Join(testedExtension, "bin", "ankus-test-publish")));
+        Assert.IsNotEmpty(Directory.GetFiles(Path.Join(testedExtension, "bin", "ankus-test-logs"), "*.log"));
     }
 
     /// <summary>
@@ -157,7 +157,7 @@ public sealed partial class ToolCommandTests
         ProcessResult listing = await PackageProcessRunner.RunAsync("dotnet",
             ["test", "--list-tests", .. arguments.Where(static argument => argument.StartsWith("-p:", StringComparison.Ordinal))],
             environment, token, workingDirectory: solution);
-        string publish = Path.Combine(solution, "src", name, "bin", "ankus-test-publish");
+        string publish = Path.Join(solution, "src", name, "bin", "ankus-test-publish");
         bool published = Directory.Exists(publish) && Directory.EnumerateFileSystemEntries(publish).Any();
         ProcessResult result = await PackageProcessRunner.RunAsync("dotnet", arguments, environment, token, workingDirectory: solution);
         return new SharedOutput(solution, result, listing, published);

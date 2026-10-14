@@ -42,11 +42,11 @@ public sealed partial class NativeBindingNativeTests
                 [new("provided_value", "provided_value", true), new("absent_value", "absent_value", true)], directory);
             byte[] consumer = await CompileNativeObjectAsync(Consumer);
             string source = NativeBindingCallImports.Generate(records, "#define PG_VERSION_NUM 180006\n" + Headers, consumer);
-            string native = Path.Combine(directory, "bodies.obj");
-            string caller = Path.Combine(directory, "caller.obj");
-            string provider = Path.Combine(directory, "provider with spaces.obj");
-            string main = Path.Combine(directory, "main.c");
-            string executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "main.exe" : "main");
+            string native = Path.Join(directory, "bodies.obj");
+            string caller = Path.Join(directory, "caller.obj");
+            string provider = Path.Join(directory, "provider with spaces.obj");
+            string main = Path.Join(directory, "main.c");
+            string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "main.exe" : "main");
             await File.WriteAllBytesAsync(native, await CompileNativeObjectAsync(source), context.CancellationToken);
             await File.WriteAllBytesAsync(caller, consumer, context.CancellationToken);
             await File.WriteAllBytesAsync(provider, await CompileNativeObjectAsync(
@@ -60,7 +60,7 @@ public sealed partial class NativeBindingNativeTests
             Assert.Contains("provided_value", failed);
             if (archive)
             {
-                string library = Path.Combine(directory, OperatingSystem.IsWindows() ? "provider with spaces.lib" : "libprovider with spaces.a");
+                string library = Path.Join(directory, OperatingSystem.IsWindows() ? "provider with spaces.lib" : "libprovider with spaces.a");
                 string archiver = OperatingSystem.IsWindows() ? "lib.exe" : "ar";
                 string[] options = OperatingSystem.IsWindows() ? ["/nologo", "/OUT:" + library, provider] : ["rcs", library, provider];
                 await RunAsync(archiver, options, directory);

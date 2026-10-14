@@ -51,17 +51,19 @@ public sealed class SynchronousEntryCodeFixProvider : CodeFixProvider
 
         foreach (Diagnostic diagnostic in context.Diagnostics)
         {
-            if (root.FindToken(diagnostic.Location.SourceSpan.Start).Parent?.FirstAncestorOrSelf<MethodDeclarationSyntax>() is { } method &&
+            if (!(root.FindToken(diagnostic.Location.SourceSpan.Start).Parent?.FirstAncestorOrSelf<MethodDeclarationSyntax>() is { } method &&
                 method.Modifiers.Any(SyntaxKind.AsyncKeyword) && !method.Modifiers.Any(SyntaxKind.PartialKeyword) &&
                 (method.Body ?? (SyntaxNode?)method.ExpressionBody) is { } body && !Awaits(body) &&
                 model.GetDeclaredSymbol(method, cancellationToken) is { } symbol && !UsesEnumeratorCancellation(symbol) &&
-                Synchronous(method.ReturnType, symbol.ReturnType, model.Compilation) is { } result)
+                Synchronous(method.ReturnType, symbol.ReturnType, model.Compilation) is { } result))
             {
-                MethodDeclarationSyntax typed = method.WithReturnType(result);
-                MemberDeclarationSyntax edited = DeclarationModifiers.Remove(typed, typed.Modifiers.IndexOf(SyntaxKind.AsyncKeyword));
-                context.RegisterCodeFix(CompilerErrorComparison.CreateAction(context.Document, root.ReplaceNode(method, edited),
-                    $"Make '{method.Identifier.ValueText}' synchronous", "Ankus.MakeSynchronous"), diagnostic);
+                continue;
             }
+
+            MethodDeclarationSyntax typed = method.WithReturnType(result);
+            MemberDeclarationSyntax edited = DeclarationModifiers.Remove(typed, typed.Modifiers.IndexOf(SyntaxKind.AsyncKeyword));
+            context.RegisterCodeFix(CompilerErrorComparison.CreateAction(context.Document, root.ReplaceNode(method, edited),
+                $"Make '{method.Identifier.ValueText}' synchronous", "Ankus.MakeSynchronous"), diagnostic);
         }
     }
 

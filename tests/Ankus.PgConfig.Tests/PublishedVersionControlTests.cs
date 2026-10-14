@@ -33,7 +33,7 @@ public sealed class PublishedVersionControlTests
         IList<string> list = Assert.IsInstanceOfType<IList<string>>(manifest.VersionControlFiles);
         Assert.ThrowsExactly<NotSupportedException>(() => list[0] = "changed");
         manifest.Write(_directory);
-        using JsonDocument json = JsonDocument.Parse(File.ReadAllText(Path.Combine(_directory, PublishedExtension.FileName)));
+        using JsonDocument json = JsonDocument.Parse(File.ReadAllText(Path.Join(_directory, PublishedExtension.FileName)));
         Assert.AreEqual(3, json.RootElement.GetProperty("formatVersion").GetInt32());
         PublishedExtension actual = PublishedExtension.Read(_directory);
         Assert.AreSequenceEqual<string>(["probe--base.control", "probe--stable+one.control"], actual.VersionControlFiles);
@@ -94,7 +94,7 @@ public sealed class PublishedVersionControlTests
     [DataRow("\"formatVersion\":3,\"upgradeScripts\":[],\"versionControlFiles\":[],\"versionControlFiles\":[]")]
     public void RejectsMalformedVersionControlManifests(string fragment)
     {
-        File.WriteAllText(Path.Combine(_directory, PublishedExtension.FileName),
+        File.WriteAllText(Path.Join(_directory, PublishedExtension.FileName),
             "{" + fragment + ",\"postgresMajor\":18,\"runtimeIdentifier\":\"linux-x64\",\"library\":\"Probe.so\",\"control\":\"probe.control\",\"sql\":\"probe--2.sql\"}");
         Assert.ThrowsExactly<FormatException>(() => PublishedExtension.Read(_directory));
     }
@@ -107,28 +107,28 @@ public sealed class PublishedVersionControlTests
     {
         PublishedExtension previous = Create(["probe--1.control"]);
         previous.Write(_directory);
-        string extension = Path.Combine(_directory, "extension");
+        string extension = Path.Join(_directory, "extension");
         Directory.CreateDirectory(extension);
-        File.WriteAllText(Path.Combine(_directory, previous.Library), "native");
+        File.WriteAllText(Path.Join(_directory, previous.Library), "native");
         foreach (string file in new[] { previous.Control, previous.Sql, "probe--1.control", "unlisted.control" })
         {
-            File.WriteAllText(Path.Combine(extension, file), "retained");
+            File.WriteAllText(Path.Join(extension, file), "retained");
         }
 
         PublishedExtension next = Create(["probe--2.control"]);
         FileNotFoundException error = Assert.ThrowsExactly<FileNotFoundException>(() => next.CompletePublish(_directory));
-        Assert.AreEqual(Path.Combine(extension, "probe--2.control"), error.FileName);
-        Assert.IsFalse(File.Exists(Path.Combine(_directory, PublishedExtension.FileName)));
-        Assert.AreEqual("retained", File.ReadAllText(Path.Combine(extension, "probe--1.control")));
-        File.WriteAllText(Path.Combine(extension, "probe--2.control"), "next");
+        Assert.AreEqual(Path.Join(extension, "probe--2.control"), error.FileName);
+        Assert.IsFalse(File.Exists(Path.Join(_directory, PublishedExtension.FileName)));
+        Assert.AreEqual("retained", File.ReadAllText(Path.Join(extension, "probe--1.control")));
+        File.WriteAllText(Path.Join(extension, "probe--2.control"), "next");
         next.CompletePublish(_directory);
         Assert.AreSequenceEqual<string>(["probe--2.control"], PublishedExtension.Read(_directory).VersionControlFiles);
-        Assert.IsFalse(File.Exists(Path.Combine(extension, "probe--1.control")));
-        Assert.AreEqual("retained", File.ReadAllText(Path.Combine(extension, "unlisted.control")));
+        Assert.IsFalse(File.Exists(Path.Join(extension, "probe--1.control")));
+        Assert.AreEqual("retained", File.ReadAllText(Path.Join(extension, "unlisted.control")));
         Create([]).CompletePublish(_directory);
         Assert.IsEmpty(PublishedExtension.Read(_directory).VersionControlFiles);
-        Assert.IsFalse(File.Exists(Path.Combine(extension, "probe--2.control")));
-        Assert.AreEqual("retained", File.ReadAllText(Path.Combine(extension, "unlisted.control")));
+        Assert.IsFalse(File.Exists(Path.Join(extension, "probe--2.control")));
+        Assert.AreEqual("retained", File.ReadAllText(Path.Join(extension, "unlisted.control")));
     }
 
     private static PublishedExtension Create(IReadOnlyList<string> controls)

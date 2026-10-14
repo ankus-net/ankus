@@ -15,7 +15,7 @@ internal static class PostgresExtensionFiles
     internal static void Stage(string publishDirectory, string baseDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(publishDirectory);
-        string source = Path.Combine(Path.GetFullPath(publishDirectory), "extension");
+        string source = Path.Join(Path.GetFullPath(publishDirectory), "extension");
         if (!Directory.Exists(source))
         {
             throw new DirectoryNotFoundException($"The published extension directory was not found: {source}");
@@ -24,23 +24,22 @@ internal static class PostgresExtensionFiles
         PublishedExtension manifest = PublishedExtension.Read(publishDirectory);
         _ = manifest.GetScriptDirectory(publishDirectory, baseDirectory);
         string[] scripts = [manifest.Sql, .. manifest.UpgradeScripts, .. manifest.VersionControlFiles];
-        foreach (string file in scripts.Prepend(manifest.Control))
+        foreach (string path in scripts.Prepend(manifest.Control).Select(file => Path.Join(source, file)))
         {
-            string path = Path.Combine(source, file);
             if (!File.Exists(path))
             {
                 throw new FileNotFoundException("The published extension is incomplete.", path);
             }
         }
 
-        string controls = Path.Combine(baseDirectory, "extension");
+        string controls = Path.Join(baseDirectory, "extension");
         string scriptDirectory = controls;
         string? stagedControl = null;
         if (manifest.ScriptDirectory is not null)
         {
             string relative = "ankus-test-scripts/" + Path.GetFileNameWithoutExtension(manifest.Control) + "-scripts";
-            scriptDirectory = Path.Combine(baseDirectory, relative);
-            var settings = new Dictionary<string, string>(ExtensionControlFile.Read(Path.Combine(source, manifest.Control)), StringComparer.Ordinal)
+            scriptDirectory = Path.Join(baseDirectory, relative);
+            var settings = new Dictionary<string, string>(ExtensionControlFile.Read(Path.Join(source, manifest.Control)), StringComparer.Ordinal)
             {
                 ["directory"] = relative,
             };
@@ -51,13 +50,13 @@ internal static class PostgresExtensionFiles
         Directory.CreateDirectory(scriptDirectory);
         foreach (string file in scripts)
         {
-            File.Copy(Path.Combine(source, file), Path.Combine(scriptDirectory, file), overwrite: true);
+            File.Copy(Path.Join(source, file), Path.Join(scriptDirectory, file), overwrite: true);
         }
 
-        string destination = Path.Combine(controls, manifest.Control);
+        string destination = Path.Join(controls, manifest.Control);
         if (stagedControl is null)
         {
-            File.Copy(Path.Combine(source, manifest.Control), destination, overwrite: true);
+            File.Copy(Path.Join(source, manifest.Control), destination, overwrite: true);
         }
         else
         {

@@ -20,18 +20,18 @@ public sealed class ExtensionDependencyTests(TestContext context)
     {
         CancellationToken token = context.CancellationToken;
         PostgresInstallation installation = await IntegrationEnvironment.GetInstallationAsync(token);
-        string root = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "cascade-" + Guid.NewGuid().ToString("N")[..8]);
+        string root = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "cascade-" + Guid.NewGuid().ToString("N")[..8]);
         await using PostgresTestInstallation staged = await PostgresTestInstallation.StageAsync(installation, root, token);
-        string extensions = Path.Combine(staged.Installation.SharedDirectory, "extension");
-        await File.WriteAllTextAsync(Path.Combine(extensions, "ankus_cascade_dependency.control"),
+        string extensions = Path.Join(staged.Installation.SharedDirectory, "extension");
+        await File.WriteAllTextAsync(Path.Join(extensions, "ankus_cascade_dependency.control"),
             "default_version = '1.0'\nrelocatable = true\n", token);
-        await File.WriteAllTextAsync(Path.Combine(extensions, "ankus_cascade_dependency--1.0.sql"),
+        await File.WriteAllTextAsync(Path.Join(extensions, "ankus_cascade_dependency--1.0.sql"),
             "CREATE FUNCTION ankus_cascade_dependency() RETURNS integer LANGUAGE sql AS 'SELECT 41';\n", token);
         await using PostgresExtensionTest fixture = await PostgresExtensionTest.StartAsync(new PostgresExtensionTestOptions
         {
-            ProjectPath = Path.Combine(IntegrationEnvironment.RepositoryRoot, "tests", "Ankus.CascadeExtension", "Ankus.CascadeExtension.csproj"),
+            ProjectPath = Path.Join(IntegrationEnvironment.RepositoryRoot, "tests", "Ankus.CascadeExtension", "Ankus.CascadeExtension.csproj"),
             Installation = staged.Installation,
-            DataDirectoryBase = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-pgdata"),
+            DataDirectoryBase = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-pgdata"),
         }, token);
         await using NpgsqlConnection connection = await fixture.Cluster.OpenConnectionAsync(token);
         await using var command = new NpgsqlCommand("""

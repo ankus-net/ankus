@@ -52,23 +52,23 @@ internal static class NativeRawCallFixtureCompiler
     internal static async Task CompileAsync(PostgresInstallation installation, CancellationToken cancellationToken)
     {
         string output = IntegrationEnvironment.NativeOutputDirectory;
-        string temporary = Path.Combine(output, "raw-call-" + Guid.NewGuid().ToString("N"));
+        string temporary = Path.Join(output, "raw-call-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(temporary);
         try
         {
-            string symbols = Path.Combine(temporary, "symbols.txt");
+            string symbols = Path.Join(temporary, "symbols.txt");
             await File.WriteAllTextAsync(symbols, "FullTransactionIdFromU64\npg_strtoint32\nOidFunctionCall1Coll\nProcessInterrupts\npfree\n", cancellationToken);
-            string helper = Path.Combine(IntegrationEnvironment.RepositoryRoot, "src", "Ankus.Build", "bin", "Release", "net10.0", "Ankus.Build.dll");
+            string helper = Path.Join(IntegrationEnvironment.RepositoryRoot, "src", "Ankus.Build", "bin", "Release", "net10.0", "Ankus.Build.dll");
             await ProcessRunner.RunCheckedAsync("dotnet",
                 [helper, "binding-call-sources", symbols, installation.Version.Major.ToString(CultureInfo.InvariantCulture), installation.PgConfigPath, temporary],
                 new Dictionary<string, string?>(), cancellationToken);
-            string fixture = await File.ReadAllTextAsync(Path.Combine(IntegrationEnvironment.RepositoryRoot,
+            string fixture = await File.ReadAllTextAsync(Path.Join(IntegrationEnvironment.RepositoryRoot,
                 "tests", "Ankus.IntegrationTests", "Native", "raw_call_fixture.c"), cancellationToken);
-            string generated = await File.ReadAllTextAsync(Path.Combine(temporary, "native-calls.c"), cancellationToken);
-            string source = Path.Combine(output, "raw_call_fixture.c");
+            string generated = await File.ReadAllTextAsync(Path.Join(temporary, "native-calls.c"), cancellationToken);
+            string source = Path.Join(output, "raw_call_fixture.c");
             await File.WriteAllTextAsync(source, generated + "\n" + fixture, cancellationToken);
             await AllocatorFixtureCompiler.CompileModuleAsync(installation, source,
-                Path.Combine(output, ModuleFileName), true, cancellationToken);
+                Path.Join(output, ModuleFileName), true, cancellationToken);
         }
         finally
         {

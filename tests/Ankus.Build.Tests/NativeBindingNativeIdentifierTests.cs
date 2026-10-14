@@ -41,8 +41,8 @@ public sealed partial class NativeBindingNativeTests
         try
         {
             NativeBindingCatalog catalog = NativeBindingParser.Parse(Declarations, 19);
-            string source = Path.Combine(directory, "probe.c");
-            string executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "probe.exe" : "probe");
+            string source = Path.Join(directory, "probe.c");
+            string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "probe.exe" : "probe");
             await File.WriteAllTextAsync(source, NativeBindingProbe.GenerateSource(catalog, Headers), context.CancellationToken);
             string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "cc";
             string[] arguments = OperatingSystem.IsWindows()

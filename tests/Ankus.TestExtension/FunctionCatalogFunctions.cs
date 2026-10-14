@@ -115,6 +115,7 @@ public static class FunctionCatalogFunctions
         }
         catch (ObjectDisposedException)
         {
+            // Resetting the owner disposed the copied defaults.
         }
 
         return values;

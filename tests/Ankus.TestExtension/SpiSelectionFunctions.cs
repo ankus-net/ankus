@@ -229,7 +229,7 @@ public static class SpiSelectionFunctions
         {
             Spi.Select("SELECT pg_sleep(5)");
         }
-        catch (Exception)
+        catch (PgQueryCanceledException)
         {
             // Deliberately swallowed: the integration test requires PostgreSQL to re-raise cancellation.
         }

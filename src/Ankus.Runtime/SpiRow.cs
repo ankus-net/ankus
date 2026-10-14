@@ -117,7 +117,7 @@ public sealed class SpiRow
     {
         if (typeof(T) == typeof(PgDatum))
         {
-            return (T)(object)ReadRaw(_values[ordinal], GetTypeOid(ordinal));
+            return GenericValue.As<T>(ReadRaw(_values[ordinal], GetTypeOid(ordinal)));
         }
 
         // A scalar cell that already has the requested type came from a built-in or generated conversion; mapped types
@@ -233,27 +233,27 @@ public sealed class SpiRow
 
         if (value is PgNumeric numeric && (typeof(T) == typeof(decimal) || typeof(T) == typeof(decimal?)))
         {
-            return (T)(object)numeric.ToDecimal();
+            return GenericValue.As<T>(numeric.ToDecimal());
         }
 
         if (value is string characters && (typeof(T) == typeof(System.Text.Rune) || typeof(T) == typeof(System.Text.Rune?)))
         {
-            return (T)(object)PgRuneText.Parse(characters);
+            return GenericValue.As<T>(PgRuneText.Parse(characters));
         }
 
         if (value is System.Text.Rune rune && typeof(T) == typeof(string))
         {
-            return (T)(object)rune.ToString();
+            return GenericValue.As<T>(rune.ToString());
         }
 
         if (value is PgRelationIdentity relation && typeof(T) == typeof(PgRelation))
         {
-            return (T)(object)PgRelation.Open(relation.Oid);
+            return GenericValue.As<T>(PgRelation.Open(relation.Oid));
         }
 
         if (value is decimal number && (typeof(T) == typeof(PgNumeric) || typeof(T) == typeof(PgNumeric?)))
         {
-            return (T)(object)PgNumeric.FromDecimal(number);
+            return GenericValue.As<T>(PgNumeric.FromDecimal(number));
         }
 
         if (value is IPgArray array)
@@ -273,22 +273,22 @@ public sealed class SpiRow
 
         if (value is PgInet address && typeof(T) == typeof(System.Net.IPAddress))
         {
-            return (T)(object)address.ToIPAddress();
+            return GenericValue.As<T>(address.ToIPAddress());
         }
 
         if (value is System.Net.IPAddress ip && (typeof(T) == typeof(PgInet) || typeof(T) == typeof(PgInet?)))
         {
-            return (T)(object)new PgInet(ip);
+            return GenericValue.As<T>(new PgInet(ip));
         }
 
         if (value is PgCidr network && (typeof(T) == typeof(System.Net.IPNetwork) || typeof(T) == typeof(System.Net.IPNetwork?)))
         {
-            return (T)(object)network.ToIPNetwork();
+            return GenericValue.As<T>(network.ToIPNetwork());
         }
 
         if (value is System.Net.IPNetwork ipNetwork && (typeof(T) == typeof(PgCidr) || typeof(T) == typeof(PgCidr?)))
         {
-            return (T)(object)new PgCidr(ipNetwork);
+            return GenericValue.As<T>(new PgCidr(ipNetwork));
         }
 
         if (value is Array vector && value.GetType() != typeof(byte[]))

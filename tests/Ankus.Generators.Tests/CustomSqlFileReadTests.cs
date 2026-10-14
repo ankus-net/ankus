@@ -16,9 +16,9 @@ public sealed partial class PgFunctionGeneratorTests
     [DataRow(true)]
     public void CustomSqlReadsOnlySelectedAdditionalFiles(bool file)
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "sql-read-project");
-        var used = new CountedSqlInput(Path.Combine(project, "seed.sql"), "SELECT 42;");
-        var unused = new CountedSqlInput(Path.Combine(project, "unused.data"), "Unrelated content");
+        string project = Path.Join(AppContext.BaseDirectory, "sql-read-project");
+        var used = new CountedSqlInput(Path.Join(project, "seed.sql"), "SELECT 42;");
+        var unused = new CountedSqlInput(Path.Join(project, "unused.data"), "Unrelated content");
         CSharpCompilation compilation = ModuleCompilation(file
             ? "[assembly: Ankus.PgSqlFile(\"seed\", \"seed.sql\")]"
             : "[assembly: Ankus.PgSql(\"seed\", \"SELECT 42;\")]");
@@ -41,9 +41,9 @@ public sealed partial class PgFunctionGeneratorTests
     [TestMethod]
     public void CustomSqlReadsNewSelectionAfterDeclarationChanges()
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "sql-read-project");
-        var firstFile = new CountedSqlInput(Path.Combine(project, "first.sql"), "SELECT 1;");
-        var secondFile = new CountedSqlInput(Path.Combine(project, "second.sql"), "SELECT 2;");
+        string project = Path.Join(AppContext.BaseDirectory, "sql-read-project");
+        var firstFile = new CountedSqlInput(Path.Join(project, "first.sql"), "SELECT 1;");
+        var secondFile = new CountedSqlInput(Path.Join(project, "second.sql"), "SELECT 2;");
         const string Source = "[assembly: Ankus.PgSqlFile(\"seed\", \"first.sql\")]";
         CSharpCompilation compilation = ModuleCompilation(Source);
         GeneratorDriver driver = RunModule(CustomSqlDriver(project, [firstFile, secondFile]), compilation, out Compilation first);
@@ -53,7 +53,7 @@ public sealed partial class PgFunctionGeneratorTests
 
         SyntaxTree changed = CSharpSyntaxTree.ParseText(Source.Replace("first.sql", "second.sql", StringComparison.Ordinal),
             path: "Module.cs", cancellationToken: context.CancellationToken);
-        driver = RunModule(driver, compilation.ReplaceSyntaxTree(compilation.SyntaxTrees.Single(), changed), out Compilation second);
+        _ = RunModule(driver, compilation.ReplaceSyntaxTree(compilation.SyntaxTrees.Single(), changed), out Compilation second);
         Assert.AreEqual(1, firstFile.Reads);
         Assert.AreEqual(1, secondFile.Reads);
         Assert.AreEqual("SELECT 2;\n", InstallationBody(second));
@@ -65,9 +65,9 @@ public sealed partial class PgFunctionGeneratorTests
     [TestMethod]
     public void CustomSqlReadsPreserveTheCompletePathCatalog()
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "sql-read-project");
-        var firstFile = new CountedSqlInput(Path.Combine(project, "one", "seed.sql"), "SELECT 1;");
-        var secondFile = new CountedSqlInput(Path.Combine(project, "two", "seed.sql"), "SELECT 2;");
+        string project = Path.Join(AppContext.BaseDirectory, "sql-read-project");
+        var firstFile = new CountedSqlInput(Path.Join(project, "one", "seed.sql"), "SELECT 1;");
+        var secondFile = new CountedSqlInput(Path.Join(project, "two", "seed.sql"), "SELECT 2;");
         CSharpCompilation compilation = ModuleCompilation("""
             [assembly: Ankus.PgSqlFile("ambiguous", "seed.sql")]
             [assembly: Ankus.PgSqlFile("exact", "one/seed.sql")]

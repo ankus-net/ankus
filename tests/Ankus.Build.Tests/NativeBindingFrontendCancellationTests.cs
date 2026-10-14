@@ -53,29 +53,29 @@ public sealed partial class NativeBindingNativeTests
                 for (;;) { WAIT(); }
             }
             """;
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-frontend-cancel-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-frontend-cancel-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
         Task? frontend = null;
         try
         {
-            string file = Path.Combine(directory, "frontend.c");
+            string file = Path.Join(directory, "frontend.c");
             await File.WriteAllTextAsync(file, Source, context.CancellationToken);
-            string executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "frontend.exe" : "frontend");
+            string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "frontend.exe" : "frontend");
             string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang";
             string[] options = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/Fe" + executable, "/Fo" + Path.ChangeExtension(executable, ".obj"), file]
                 : ["-std=c11", "-Wall", "-Wextra", "-Werror", file, "-o", executable];
             await RunAsync(compiler, options, directory);
             InvalidOperationException diagnostic = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
-                NativeBindingHeaderCommand.CompileAsync(executable, ["fail"], Path.Combine(directory, "failure.txt"),
+                NativeBindingHeaderCommand.CompileAsync(executable, ["fail"], Path.Join(directory, "failure.txt"),
                     directory, context.CancellationToken, inspectBodies: true));
             Assert.Contains("exited with 3", diagnostic.Message);
             Assert.Contains("native stdout diagnostic", diagnostic.Message);
             Assert.Contains("native stderr diagnostic", diagnostic.Message);
-            string identity = Path.Combine(directory, "identity.txt");
-            string ready = Path.Combine(directory, "ready.txt");
-            string output = Path.Combine(directory, "output.txt");
+            string identity = Path.Join(directory, "identity.txt");
+            string ready = Path.Join(directory, "ready.txt");
+            string output = Path.Join(directory, "output.txt");
             frontend = NativeBindingHeaderCommand.CompileAsync(executable, [identity, ready], output, directory, cancellation.Token, inspectBodies: true);
             while (!File.Exists(ready))
             {

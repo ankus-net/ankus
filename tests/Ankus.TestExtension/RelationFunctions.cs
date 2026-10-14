@@ -126,10 +126,7 @@ public static class RelationFunctions
         }
         finally
         {
-            foreach (PgRelation item in indexes)
-            {
-                item.Dispose();
-            }
+            Disposal.DisposeAll(indexes);
         }
     }
 
@@ -176,22 +173,18 @@ public static class RelationFunctions
     public static string Expired()
     {
         PgRelation relation = s_retained ?? throw new InvalidOperationException("No retained relation.");
-        string state;
-        try
+        s_retained = null;
+        using (relation)
         {
-            state = relation.Oid.ToString(CultureInfo.InvariantCulture);
+            try
+            {
+                return relation.Oid.ToString(CultureInfo.InvariantCulture);
+            }
+            catch (PgException error)
+            {
+                return error.SqlState;
+            }
         }
-        catch (PgException error)
-        {
-            state = error.SqlState;
-        }
-        finally
-        {
-            relation.Dispose();
-            s_retained = null;
-        }
-
-        return state;
     }
 
     /// <summary>
@@ -217,10 +210,7 @@ public static class RelationFunctions
         }
         finally
         {
-            foreach (PgRelation? item in array)
-            {
-                item?.Dispose();
-            }
+            Disposal.DisposeAll(array);
         }
     }
 
@@ -253,10 +243,7 @@ public static class RelationFunctions
         }
         finally
         {
-            foreach (PgRelation? relation in array)
-            {
-                relation?.Dispose();
-            }
+            Disposal.DisposeAll(array);
         }
     }
 

@@ -25,7 +25,7 @@ public sealed unsafe class PgErrorContextTests
             return new NativeMemoryResult { _value = request._flags == 1 ? 0x4242 : 0 };
         };
         using MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter();
-        PgErrorContext context = PgErrorContext.Push("applying café 😀");
+        using PgErrorContext context = PgErrorContext.Push("applying café 😀");
         Assert.AreEqual("applying café 😀", context.Text);
         context.Text = "";
         Assert.AreEqual("", context.Text);
@@ -56,7 +56,7 @@ public sealed unsafe class PgErrorContextTests
             return new NativeMemoryResult { _value = request._flags == 1 ? next++ : 0 };
         };
         InvalidOperationException thrown;
-        using (MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter())
+        using (MemoryContextTestFixture.Enter())
         {
             _ = PgErrorContext.Push("importing batch 3");
             PgErrorContext inner = PgErrorContext.Push("validating row 6");

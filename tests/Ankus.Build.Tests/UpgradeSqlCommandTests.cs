@@ -42,18 +42,18 @@ public sealed class UpgradeSqlCommandTests(TestContext context)
     public async Task PublishesExactUtf8AndVersionWithoutGit(bool bom)
     {
         string[] arguments = Prepare();
-        string script = Path.Combine(_root, "probe--base--release.sql");
+        string script = Path.Join(_root, "probe--base--release.sql");
         string prefix = bom ? "\uFEFF" : "";
         File.WriteAllText(script, prefix + "SELECT 'café 🐘', '@EXTENSION_VERSION@', 'MODULE_PATHNAME';\r\n");
         File.WriteAllLines(arguments[2], [script]);
         await UpgradeSqlCommand.RunAsync(arguments, context.CancellationToken);
-        string actual = Path.Combine(arguments[1], "extension", "probe--base--release.sql");
+        string actual = Path.Join(arguments[1], "extension", "probe--base--release.sql");
         Assert.AreSequenceEqual(Encoding.UTF8.GetBytes(prefix + "SELECT 'café 🐘', 'release', 'MODULE_PATHNAME';\r\n"),
             File.ReadAllBytes(actual));
         Assert.AreEqual(prefix + "SELECT 'café 🐘', '@EXTENSION_VERSION@', 'MODULE_PATHNAME';\r\n", Encoding.UTF8.GetString(File.ReadAllBytes(script)));
         Assert.AreSequenceEqual<string>(["probe--base--release.sql"], PublishedExtension.Read(arguments[1]).UpgradeScripts);
-        Assert.AreEqual("installation SQL", File.ReadAllText(Path.Combine(arguments[1], "extension", "probe--release.sql")));
-        Assert.AreEqual("control content", File.ReadAllText(Path.Combine(arguments[1], "extension", "probe.control")));
+        Assert.AreEqual("installation SQL", File.ReadAllText(Path.Join(arguments[1], "extension", "probe--release.sql")));
+        Assert.AreEqual("control content", File.ReadAllText(Path.Join(arguments[1], "extension", "probe.control")));
     }
 
     /// <summary>
@@ -63,16 +63,16 @@ public sealed class UpgradeSqlCommandTests(TestContext context)
     public async Task EmptySelectionRemovesOnlyPreviouslyPublishedUpgrade()
     {
         string[] arguments = Prepare();
-        string script = Path.Combine(_root, "probe--base--release.sql");
+        string script = Path.Join(_root, "probe--base--release.sql");
         File.WriteAllText(script, "SELECT 1;");
         File.WriteAllLines(arguments[2], [script]);
         await UpgradeSqlCommand.RunAsync(arguments, context.CancellationToken);
-        string unrelated = Path.Combine(arguments[1], "extension", "unrelated.sql");
+        string unrelated = Path.Join(arguments[1], "extension", "unrelated.sql");
         File.WriteAllText(unrelated, "preserved");
         File.WriteAllText(arguments[2], "");
         await UpgradeSqlCommand.RunAsync(arguments, context.CancellationToken);
         Assert.IsEmpty(PublishedExtension.Read(arguments[1]).UpgradeScripts);
-        Assert.IsFalse(File.Exists(Path.Combine(arguments[1], "extension", "probe--base--release.sql")));
+        Assert.IsFalse(File.Exists(Path.Join(arguments[1], "extension", "probe--base--release.sql")));
         Assert.AreEqual("preserved", File.ReadAllText(unrelated));
     }
 
@@ -87,12 +87,12 @@ public sealed class UpgradeSqlCommandTests(TestContext context)
         await GitAsync("-C", _root, "-c", "user.name=Ankus Tests", "-c", "user.email=tests@example.invalid",
             "-c", "commit.gpgsign=false", "commit", "--allow-empty", "--quiet", "-m", "test identity");
         string expectedHash = (await GitAsync("-C", _root, "rev-parse", "HEAD")).Trim();
-        string script = Path.Combine(_root, "probe--base--release.sql");
+        string script = Path.Join(_root, "probe--base--release.sql");
         File.WriteAllText(script, "SELECT '@GIT_HASH@', '@EXTENSION_VERSION@', '@GIT_HASH@';");
         File.WriteAllLines(arguments[2], [script]);
         await UpgradeSqlCommand.RunAsync(arguments, context.CancellationToken);
         Assert.AreEqual($"SELECT '{expectedHash}', 'release', '{expectedHash}';",
-            File.ReadAllText(Path.Combine(arguments[1], "extension", "probe--base--release.sql")));
+            File.ReadAllText(Path.Join(arguments[1], "extension", "probe--base--release.sql")));
     }
 
     /// <summary>
@@ -108,14 +108,14 @@ public sealed class UpgradeSqlCommandTests(TestContext context)
     public async Task InvalidScriptLeavesSqlIntactAndPublicationUninstallable(string failure)
     {
         string[] arguments = Prepare();
-        string extension = Path.Combine(arguments[1], "extension");
+        string extension = Path.Join(arguments[1], "extension");
         Directory.CreateDirectory(extension);
-        string original = Path.Combine(extension, "probe--release.sql");
+        string original = Path.Join(extension, "probe--release.sql");
         File.WriteAllText(original, "previous SQL");
         PublishedExtension.Read(arguments[0]).Write(arguments[1]);
-        string valid = Path.Combine(_root, "probe--base--middle.sql");
+        string valid = Path.Join(_root, "probe--base--middle.sql");
         File.WriteAllText(valid, "SELECT 1;");
-        string invalid = Path.Combine(_root, failure == "name" ? "wrong.sql" : "probe--middle--release.sql");
+        string invalid = Path.Join(_root, failure == "name" ? "wrong.sql" : "probe--middle--release.sql");
         File.WriteAllText(invalid, failure == "git" ? "SELECT '@GIT_HASH@';" : "SELECT 2;");
         if (failure == "missing")
         {
@@ -146,7 +146,7 @@ public sealed class UpgradeSqlCommandTests(TestContext context)
 
         Assert.AreEqual("previous SQL", File.ReadAllText(original));
         Assert.AreEqual(original, Assert.ContainsSingle(Directory.GetFiles(extension)));
-        Assert.IsFalse(File.Exists(Path.Combine(arguments[1], PublishedExtension.FileName)));
+        Assert.IsFalse(File.Exists(Path.Join(arguments[1], PublishedExtension.FileName)));
     }
 
     /// <summary>
@@ -172,8 +172,8 @@ public sealed class UpgradeSqlCommandTests(TestContext context)
     public async Task SuccessfulPublicationCommitsSchemaAndFailuresPreserveIt()
     {
         string[] original = Prepare();
-        string saved = Path.Combine(original[0], "schema-pg18-tests.json");
-        string prepared = Path.Combine(original[0], "schema.generated.json");
+        string saved = Path.Join(original[0], "schema-pg18-tests.json");
+        string prepared = Path.Join(original[0], "schema.generated.json");
         string[] arguments = [.. original, saved];
         File.WriteAllText(prepared, "first schema");
         await UpgradeSqlCommand.RunAsync(arguments, context.CancellationToken);
@@ -181,11 +181,11 @@ public sealed class UpgradeSqlCommandTests(TestContext context)
         Assert.AreEqual("probe.control", PublishedExtension.Read(original[1]).Control);
 
         File.WriteAllText(prepared, "second schema");
-        string missing = Path.Combine(_root, "probe--base--release.sql");
+        string missing = Path.Join(_root, "probe--base--release.sql");
         File.WriteAllLines(original[2], [missing]);
         await Assert.ThrowsExactlyAsync<FileNotFoundException>(() => UpgradeSqlCommand.RunAsync(arguments, context.CancellationToken));
         Assert.AreEqual("first schema", File.ReadAllText(saved));
-        Assert.IsFalse(File.Exists(Path.Combine(original[1], PublishedExtension.FileName)));
+        Assert.IsFalse(File.Exists(Path.Join(original[1], PublishedExtension.FileName)));
         File.WriteAllText(original[2], "");
         using var cancelled = new CancellationTokenSource();
         cancelled.Cancel();
@@ -207,12 +207,12 @@ public sealed class UpgradeSqlCommandTests(TestContext context)
     public async Task SchemaCommitFailureInvalidatesPublication()
     {
         string[] original = Prepare();
-        string saved = Path.Combine(original[0], "schema-pg18-tests.json");
+        string saved = Path.Join(original[0], "schema-pg18-tests.json");
         File.WriteAllText(saved, "preserved schema");
         await Assert.ThrowsExactlyAsync<FileNotFoundException>(() =>
             UpgradeSqlCommand.RunAsync([.. original, saved], context.CancellationToken));
         Assert.AreEqual("preserved schema", File.ReadAllText(saved));
-        Assert.IsFalse(File.Exists(Path.Combine(original[1], PublishedExtension.FileName)));
+        Assert.IsFalse(File.Exists(Path.Join(original[1], PublishedExtension.FileName)));
         Assert.IsEmpty(Directory.GetFiles(original[0], "*.tmp"));
     }
 
@@ -226,22 +226,22 @@ public sealed class UpgradeSqlCommandTests(TestContext context)
         var manifest = new PublishedExtension(18, "linux-x64", "Probe.so", "probe.control", "probe--release.sql", [],
             ["probe--base.control", "probe--release.control"]);
         manifest.Write(arguments[0]);
-        string extension = Path.Combine(arguments[0], "extension");
-        string first = Path.Combine(extension, "probe--base.control");
-        string second = Path.Combine(extension, "probe--release.control");
+        string extension = Path.Join(arguments[0], "extension");
+        string first = Path.Join(extension, "probe--base.control");
+        string second = Path.Join(extension, "probe--release.control");
         File.WriteAllText(first, "module_pathname='Old.so'\r\n");
         File.WriteAllText(second, "requires='helper'\n");
         await UpgradeSqlCommand.RunAsync(arguments, context.CancellationToken);
         Assert.AreSequenceEqual(manifest.VersionControlFiles, PublishedExtension.Read(arguments[1]).VersionControlFiles);
-        Assert.AreSequenceEqual(File.ReadAllBytes(first), File.ReadAllBytes(Path.Combine(arguments[1], "extension", "probe--base.control")));
-        Assert.AreSequenceEqual(File.ReadAllBytes(second), File.ReadAllBytes(Path.Combine(arguments[1], "extension", "probe--release.control")));
+        Assert.AreSequenceEqual(File.ReadAllBytes(first), File.ReadAllBytes(Path.Join(arguments[1], "extension", "probe--base.control")));
+        Assert.AreSequenceEqual(File.ReadAllBytes(second), File.ReadAllBytes(Path.Join(arguments[1], "extension", "probe--release.control")));
         File.WriteAllText(first, "changed");
         File.Delete(second);
         FileNotFoundException error = await Assert.ThrowsExactlyAsync<FileNotFoundException>(() => UpgradeSqlCommand.RunAsync(arguments, context.CancellationToken));
         Assert.AreEqual(second, error.FileName);
-        Assert.AreEqual("module_pathname='Old.so'\r\n", File.ReadAllText(Path.Combine(arguments[1], "extension", "probe--base.control")));
-        Assert.AreEqual("requires='helper'\n", File.ReadAllText(Path.Combine(arguments[1], "extension", "probe--release.control")));
-        Assert.IsFalse(File.Exists(Path.Combine(arguments[1], PublishedExtension.FileName)));
+        Assert.AreEqual("module_pathname='Old.so'\r\n", File.ReadAllText(Path.Join(arguments[1], "extension", "probe--base.control")));
+        Assert.AreEqual("requires='helper'\n", File.ReadAllText(Path.Join(arguments[1], "extension", "probe--release.control")));
+        Assert.IsFalse(File.Exists(Path.Join(arguments[1], PublishedExtension.FileName)));
     }
 
     /// <summary>
@@ -254,31 +254,31 @@ public sealed class UpgradeSqlCommandTests(TestContext context)
         var manifest = new PublishedExtension(18, "linux-x64", "Probe-release.so", "probe.control", "probe--release.sql", [],
             ["probe--legacy.control"]);
         manifest.Write(arguments[0]);
-        File.WriteAllText(Path.Combine(arguments[0], "extension", "probe--legacy.control"), "module_pathname='Legacy.so'\n");
-        File.WriteAllText(Path.Combine(arguments[1], "Probe-release.so"), "native payload");
+        File.WriteAllText(Path.Join(arguments[0], "extension", "probe--legacy.control"), "module_pathname='Legacy.so'\n");
+        File.WriteAllText(Path.Join(arguments[1], "Probe-release.so"), "native payload");
         const string Script = "CREATE OR REPLACE FUNCTION f() RETURNS int AS 'MODULE_PATHNAME', 'f' LANGUAGE c; -- MODULE_PATHNAME @EXTENSION_VERSION@\n";
         string[] names = ["probe--base--release.sql", "probe--release--base.sql", "probe--older--legacy.sql"];
         foreach (string name in names)
         {
-            File.WriteAllText(Path.Combine(_root, name), Script);
+            File.WriteAllText(Path.Join(_root, name), Script);
         }
 
-        File.WriteAllLines(arguments[2], names.Select(name => Path.Combine(_root, name)));
+        File.WriteAllLines(arguments[2], names.Select(name => Path.Join(_root, name)));
         await UpgradeSqlCommand.RunAsync([.. arguments, "", "true"], context.CancellationToken);
-        string extension = Path.Combine(arguments[1], "extension");
+        string extension = Path.Join(arguments[1], "extension");
         Assert.AreEqual(Script.Replace("MODULE_PATHNAME", "Probe-release", StringComparison.Ordinal).Replace("@EXTENSION_VERSION@", "release",
-            StringComparison.Ordinal), File.ReadAllText(Path.Combine(extension, names[0])));
+            StringComparison.Ordinal), File.ReadAllText(Path.Join(extension, names[0])));
         Assert.AreEqual(Script.Replace("MODULE_PATHNAME", "Probe-base", StringComparison.Ordinal).Replace("@EXTENSION_VERSION@", "release",
-            StringComparison.Ordinal), File.ReadAllText(Path.Combine(extension, names[1])));
-        Assert.AreEqual(Script.Replace("@EXTENSION_VERSION@", "release", StringComparison.Ordinal), File.ReadAllText(Path.Combine(extension, names[2])));
-        Assert.AreEqual("module_pathname='Legacy.so'\n", File.ReadAllText(Path.Combine(extension, "probe--legacy.control")));
+            StringComparison.Ordinal), File.ReadAllText(Path.Join(extension, names[1])));
+        Assert.AreEqual(Script.Replace("@EXTENSION_VERSION@", "release", StringComparison.Ordinal), File.ReadAllText(Path.Join(extension, names[2])));
+        Assert.AreEqual("module_pathname='Legacy.so'\n", File.ReadAllText(Path.Join(extension, "probe--legacy.control")));
 
         await UpgradeSqlCommand.RunAsync([.. arguments, "", "false"], context.CancellationToken);
-        Assert.AreEqual(Script.Replace("@EXTENSION_VERSION@", "release", StringComparison.Ordinal), File.ReadAllText(Path.Combine(extension, names[0])));
+        Assert.AreEqual(Script.Replace("@EXTENSION_VERSION@", "release", StringComparison.Ordinal), File.ReadAllText(Path.Join(extension, names[0])));
 
         new PublishedExtension(18, "linux-x64", "Probe.so", "probe.control", "probe--release.sql").Write(arguments[0]);
         await Assert.ThrowsExactlyAsync<ArgumentException>(() => UpgradeSqlCommand.RunAsync([.. arguments, "", "true"], context.CancellationToken));
-        Assert.IsFalse(File.Exists(Path.Combine(arguments[1], PublishedExtension.FileName)));
+        Assert.IsFalse(File.Exists(Path.Join(arguments[1], PublishedExtension.FileName)));
     }
 
     /// <summary>
@@ -291,16 +291,16 @@ public sealed class UpgradeSqlCommandTests(TestContext context)
     public async Task PublishesAuthoredScriptDirectoryWithoutInstallingIt(bool empty)
     {
         string[] arguments = Prepare();
-        string directory = empty ? "" : Path.Combine(_root, "external SQL");
+        string directory = empty ? "" : Path.Join(_root, "external SQL");
         var manifest = new PublishedExtension(18, "linux-x64", "Probe.so", "probe.control", "probe--release.sql", [], [], directory);
         manifest.Write(arguments[0]);
         string control = ExtensionControlFile.Format(new Dictionary<string, string> { ["directory"] = directory });
-        File.WriteAllText(Path.Combine(arguments[0], "extension", manifest.Control), control);
+        File.WriteAllText(Path.Join(arguments[0], "extension", manifest.Control), control);
         await UpgradeSqlCommand.RunAsync(arguments, context.CancellationToken);
         Assert.AreEqual(directory, PublishedExtension.Read(arguments[1]).ScriptDirectory);
-        Assert.AreEqual(control, File.ReadAllText(Path.Combine(arguments[1], "extension", manifest.Control)));
-        Assert.AreEqual("installation SQL", File.ReadAllText(Path.Combine(arguments[1], "extension", manifest.Sql)));
-        Assert.IsFalse(Directory.Exists(Path.Combine(_root, "external SQL")));
+        Assert.AreEqual(control, File.ReadAllText(Path.Join(arguments[1], "extension", manifest.Control)));
+        Assert.AreEqual("installation SQL", File.ReadAllText(Path.Join(arguments[1], "extension", manifest.Sql)));
+        Assert.IsFalse(Directory.Exists(Path.Join(_root, "external SQL")));
     }
 
     /// <summary>
@@ -311,14 +311,14 @@ public sealed class UpgradeSqlCommandTests(TestContext context)
     [TestMethod]
     public async Task PublishesOutputPluginModulesBesideTheLibrary()
     {
-        string[] arguments = [.. Prepare(), "", "false", Path.Combine(_root, "plugin-libraries.txt")];
+        string[] arguments = [.. Prepare(), "", "false", Path.Join(_root, "plugin-libraries.txt")];
         await UpgradeSqlCommand.RunAsync(arguments, context.CancellationToken);
         Assert.IsEmpty(PublishedExtension.Read(arguments[1]).PluginLibraries);
 
         File.WriteAllLines(arguments[7], ["probe_output.so", ""]);
         await Assert.ThrowsExactlyAsync<FileNotFoundException>(() => UpgradeSqlCommand.RunAsync(arguments, context.CancellationToken));
-        Assert.IsFalse(File.Exists(Path.Combine(arguments[1], PublishedExtension.FileName)));
-        string module = Path.Combine(arguments[1], "probe_output.so");
+        Assert.IsFalse(File.Exists(Path.Join(arguments[1], PublishedExtension.FileName)));
+        string module = Path.Join(arguments[1], "probe_output.so");
         File.WriteAllText(module, "module payload");
         await UpgradeSqlCommand.RunAsync(arguments, context.CancellationToken);
         Assert.AreSequenceEqual<string>(["probe_output.so"], PublishedExtension.Read(arguments[1]).PluginLibraries);
@@ -327,21 +327,21 @@ public sealed class UpgradeSqlCommandTests(TestContext context)
         await UpgradeSqlCommand.RunAsync(arguments, context.CancellationToken);
         Assert.IsEmpty(PublishedExtension.Read(arguments[1]).PluginLibraries);
         Assert.IsFalse(File.Exists(module));
-        Assert.AreEqual("native payload", File.ReadAllText(Path.Combine(arguments[1], "Probe.so")));
+        Assert.AreEqual("native payload", File.ReadAllText(Path.Join(arguments[1], "Probe.so")));
     }
 
     private string[] Prepare()
     {
-        string artifacts = Path.Combine(_root, "artifacts");
-        string output = Path.Combine(_root, "publication");
-        string extension = Path.Combine(artifacts, "extension");
+        string artifacts = Path.Join(_root, "artifacts");
+        string output = Path.Join(_root, "publication");
+        string extension = Path.Join(artifacts, "extension");
         Directory.CreateDirectory(extension);
         Directory.CreateDirectory(output);
         new PublishedExtension(18, "linux-x64", "Probe.so", "probe.control", "probe--release.sql").Write(artifacts);
-        File.WriteAllText(Path.Combine(extension, "probe.control"), "control content");
-        File.WriteAllText(Path.Combine(extension, "probe--release.sql"), "installation SQL");
-        File.WriteAllText(Path.Combine(output, "Probe.so"), "native payload");
-        string list = Path.Combine(_root, "scripts.txt");
+        File.WriteAllText(Path.Join(extension, "probe.control"), "control content");
+        File.WriteAllText(Path.Join(extension, "probe--release.sql"), "installation SQL");
+        File.WriteAllText(Path.Join(output, "Probe.so"), "native payload");
+        string list = Path.Join(_root, "scripts.txt");
         File.WriteAllText(list, "");
         return [artifacts, output, list, _root, "release"];
     }

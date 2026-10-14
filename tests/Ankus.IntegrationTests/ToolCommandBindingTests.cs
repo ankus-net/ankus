@@ -14,12 +14,12 @@ public sealed partial class ToolCommandTests
     public async Task PackagedBuildToolMeasuresSelectedNativeHeaders()
     {
         string helper = await ReadPackagedBuildToolAsync();
-        string output = Path.Combine(s_root, "native binding layouts");
+        string output = Path.Join(s_root, "native binding layouts");
         ProcessResult result = await RunDotnetAsync(
             [helper, "binding-layouts", MajorText(), s_installation.PgConfigPath, output], context.CancellationToken);
         result.EnsureSuccess("dotnet", [helper, "binding-layouts"]);
         using JsonDocument document = JsonDocument.Parse(await File.ReadAllTextAsync(
-            Path.Combine(output, "native-layout.json"), context.CancellationToken));
+            Path.Join(output, "native-layout.json"), context.CancellationToken));
         JsonElement layout = document.RootElement;
         await using NpgsqlConnection connection = await PostgresFixture.Cluster.OpenConnectionAsync(context.CancellationToken);
         await using var command = new NpgsqlCommand("SELECT current_setting('server_version_num')::integer", connection);
@@ -45,7 +45,7 @@ public sealed partial class ToolCommandTests
     public async Task PackagedBuildToolRejectsMismatchedBindingMajor()
     {
         string helper = await ReadPackagedBuildToolAsync();
-        string output = Path.Combine(s_root, "mismatched binding layouts");
+        string output = Path.Join(s_root, "mismatched binding layouts");
         int otherMajor = s_installation.Version.Major == 18 ? 17 : 18;
         ProcessResult result = await RunDotnetAsync(
             [helper, "binding-layouts", otherMajor.ToString(CultureInfo.InvariantCulture), s_installation.PgConfigPath, output],
@@ -71,7 +71,7 @@ public sealed partial class ToolCommandTests
         Assert.IsNotNull(path);
         string helper = Path.GetFullPath(path);
         Assert.StartsWith(s_environment["NUGET_PACKAGES"]!, helper);
-        string license = await File.ReadAllTextAsync(Path.Combine(Path.GetDirectoryName(helper)!, "Bindings", "LICENSE.pgrx"), context.CancellationToken);
+        string license = await File.ReadAllTextAsync(Path.Join(Path.GetDirectoryName(helper)!, "Bindings", "LICENSE.pgrx"), context.CancellationToken);
         Assert.Contains("Permission is hereby granted", license);
         return helper;
     }

@@ -41,6 +41,11 @@ internal sealed class PgFunctionStateScope(nint provider, nint identity, nint ow
     }
 
     /// <summary>
+    /// Gets this thread's function states, creating the map on first use.
+    /// </summary>
+    private static Dictionary<(nint Provider, nint Identity), PgFunctionStateEntry> States() => s_states ??= [];
+
+    /// <summary>
     /// Roots a state entry before user code runs and reuses it until its PostgreSQL owner resets.
     /// </summary>
     /// <typeparam name="T">The exact cached type.</typeparam>
@@ -50,7 +55,7 @@ internal sealed class PgFunctionStateScope(nint provider, nint identity, nint ow
     {
         PgMemoryContext memory = GetMemoryContext();
         (nint Provider, nint Identity) key = (provider, identity);
-        Dictionary<(nint Provider, nint Identity), PgFunctionStateEntry> states = s_states ??= [];
+        Dictionary<(nint Provider, nint Identity), PgFunctionStateEntry> states = States();
         if (!states.TryGetValue(key, out PgFunctionStateEntry? entry))
         {
             NativeBackend.CheckAccess();

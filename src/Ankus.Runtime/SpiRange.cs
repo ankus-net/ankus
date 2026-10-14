@@ -6,6 +6,23 @@ namespace Ankus;
 internal static class SpiRange
 {
     /// <summary>
+    /// Maps each managed range with a built-in PostgreSQL range type to that type's OID.
+    /// </summary>
+    private static readonly Dictionary<Type, uint> s_builtInOids = new()
+    {
+        [typeof(PgRange<int>)] = 3904,
+        [typeof(PgRange<long>)] = 3926,
+        [typeof(PgRange<PgNumeric>)] = 3906,
+        [typeof(PgRange<decimal>)] = 3906,
+        [typeof(PgRange<PgDate>)] = 3912,
+        [typeof(PgRange<DateOnly>)] = 3912,
+        [typeof(PgRange<PgTimestamp>)] = 3908,
+        [typeof(PgRange<DateTime>)] = 3908,
+        [typeof(PgRange<PgTimestampTz>)] = 3910,
+        [typeof(PgRange<DateTimeOffset>)] = 3910,
+    };
+
+    /// <summary>
     /// Resolves the built-in range associated with a supported scalar subtype.
     /// </summary>
     /// <param name="subtype">The scalar OID.</param>
@@ -42,12 +59,7 @@ internal static class SpiRange
     /// <summary>
     /// Resolves only built-in range identities, without consulting backend-dependent registrations.
     /// </summary>
-    private static uint BuiltInOid(Type type) =>
-        type == typeof(PgRange<int>) ? 3904u : type == typeof(PgRange<long>) ? 3926u :
-        type == typeof(PgRange<PgNumeric>) || type == typeof(PgRange<decimal>) ? 3906u :
-        type == typeof(PgRange<PgDate>) || type == typeof(PgRange<DateOnly>) ? 3912u :
-        type == typeof(PgRange<PgTimestamp>) || type == typeof(PgRange<DateTime>) ? 3908u :
-        type == typeof(PgRange<PgTimestampTz>) || type == typeof(PgRange<DateTimeOffset>) ? 3910u : 0;
+    private static uint BuiltInOid(Type type) => s_builtInOids.GetValueOrDefault(type);
 
     /// <summary>
     /// Converts range bounds into a statically known managed representation, preserving inclusion and empty state.

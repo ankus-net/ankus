@@ -77,8 +77,6 @@ public sealed class PgJsonTests
         Assert.AreEqual(new PgJsonb("null").GetHashCode(), default(PgJsonb).GetHashCode());
         Assert.AreNotEqual(new PgJson("1"), new PgJson("1.0"));
         Assert.AreNotEqual(new PgJsonb("{}"), new PgJsonb("{ }"));
-        Assert.IsNotNull((PgJson?)default(PgJson));
-        Assert.IsNotNull((PgJsonb?)default(PgJsonb));
         Assert.AreEqual("null", default(PgJson).ToString());
         Assert.AreEqual("null", default(PgJsonb).ToString());
     }

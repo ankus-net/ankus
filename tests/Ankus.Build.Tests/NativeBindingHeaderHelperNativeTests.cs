@@ -255,7 +255,7 @@ public sealed partial class NativeBindingNativeTests
         try
         {
             NativeHeaderRecords records = await CollectCallRecordsAsync(headers, requests, directory);
-            string file = Path.Combine(directory, "incompatible.c");
+            string file = Path.Join(directory, "incompatible.c");
             string source = NativeBindingCallSource.Generate(records, "#define PG_VERSION_NUM 180006\n" + incompatible);
             await File.WriteAllTextAsync(file, source, context.CancellationToken);
             string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang";
@@ -263,7 +263,7 @@ public sealed partial class NativeBindingNativeTests
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/Zs", file]
                 : ["-std=c11", "-Wall", "-Wextra", "-Werror", "-fsyntax-only", file];
             InvalidOperationException failure = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
-                NativeBindingHeaderCommand.CompileAsync(compiler, options, Path.Combine(directory, "checks.txt"), directory,
+                NativeBindingHeaderCommand.CompileAsync(compiler, options, Path.Join(directory, "checks.txt"), directory,
                     context.CancellationToken, inspectBodies: true));
             Assert.Contains("incompatible reconstructed native type", failure.Message);
         }

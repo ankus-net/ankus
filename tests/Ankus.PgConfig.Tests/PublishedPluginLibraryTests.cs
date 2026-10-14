@@ -33,7 +33,7 @@ public sealed class PublishedPluginLibraryTests
         IList<string> list = Assert.IsInstanceOfType<IList<string>>(manifest.PluginLibraries);
         Assert.ThrowsExactly<NotSupportedException>(() => list[0] = "changed");
         manifest.Write(_directory);
-        using (JsonDocument json = JsonDocument.Parse(File.ReadAllText(Path.Combine(_directory, PublishedExtension.FileName))))
+        using (JsonDocument json = JsonDocument.Parse(File.ReadAllText(Path.Join(_directory, PublishedExtension.FileName))))
         {
             Assert.AreEqual(5, json.RootElement.GetProperty("formatVersion").GetInt32());
             Assert.AreEqual(0, json.RootElement.GetProperty("upgradeScripts").GetArrayLength());
@@ -104,7 +104,7 @@ public sealed class PublishedPluginLibraryTests
     [DataRow("\"formatVersion\":5,\"upgradeScripts\":[],\"versionControlFiles\":[],\"pluginLibraries\":[],\"scriptDirectory\":null")]
     public void RejectsMalformedPluginManifests(string fragment)
     {
-        File.WriteAllText(Path.Combine(_directory, PublishedExtension.FileName),
+        File.WriteAllText(Path.Join(_directory, PublishedExtension.FileName),
             "{" + fragment + ",\"postgresMajor\":18,\"runtimeIdentifier\":\"linux-x64\",\"library\":\"Probe.so\",\"control\":\"probe.control\",\"sql\":\"probe--2.sql\"}");
         Assert.ThrowsExactly<FormatException>(() => PublishedExtension.Read(_directory));
     }
@@ -117,35 +117,35 @@ public sealed class PublishedPluginLibraryTests
     public void MissingModulePreservesPreviousFilesUntilRepair()
     {
         PublishedExtension previous = Create(["probe_output.so", "probe_decoder.so"]);
-        string extension = Path.Combine(_directory, "extension");
+        string extension = Path.Join(_directory, "extension");
         Directory.CreateDirectory(extension);
-        File.WriteAllText(Path.Combine(extension, previous.Control), "control");
-        File.WriteAllText(Path.Combine(extension, previous.Sql), "sql");
+        File.WriteAllText(Path.Join(extension, previous.Control), "control");
+        File.WriteAllText(Path.Join(extension, previous.Sql), "sql");
         foreach (string file in new[] { previous.Library, "probe_output.so", "probe_decoder.so", "unlisted.so" })
         {
-            File.WriteAllText(Path.Combine(_directory, file), "retained");
+            File.WriteAllText(Path.Join(_directory, file), "retained");
         }
 
         previous.CompletePublish(_directory);
         PublishedExtension next = Create(["probe_output.so", "probe_logical.so"]);
         FileNotFoundException error = Assert.ThrowsExactly<FileNotFoundException>(() => next.CompletePublish(_directory));
-        Assert.AreEqual(Path.Combine(_directory, "probe_logical.so"), error.FileName);
-        Assert.IsFalse(File.Exists(Path.Combine(_directory, PublishedExtension.FileName)));
-        Assert.AreEqual("retained", File.ReadAllText(Path.Combine(_directory, "probe_decoder.so")));
-        File.WriteAllText(Path.Combine(_directory, "probe_logical.so"), "next");
+        Assert.AreEqual(Path.Join(_directory, "probe_logical.so"), error.FileName);
+        Assert.IsFalse(File.Exists(Path.Join(_directory, PublishedExtension.FileName)));
+        Assert.AreEqual("retained", File.ReadAllText(Path.Join(_directory, "probe_decoder.so")));
+        File.WriteAllText(Path.Join(_directory, "probe_logical.so"), "next");
         next.CompletePublish(_directory);
         Assert.AreSequenceEqual<string>(["probe_logical.so", "probe_output.so"], PublishedExtension.Read(_directory).PluginLibraries);
-        Assert.IsFalse(File.Exists(Path.Combine(_directory, "probe_decoder.so")));
-        Assert.AreEqual("retained", File.ReadAllText(Path.Combine(_directory, "probe_output.so")));
-        Assert.AreEqual("retained", File.ReadAllText(Path.Combine(_directory, "unlisted.so")));
+        Assert.IsFalse(File.Exists(Path.Join(_directory, "probe_decoder.so")));
+        Assert.AreEqual("retained", File.ReadAllText(Path.Join(_directory, "probe_output.so")));
+        Assert.AreEqual("retained", File.ReadAllText(Path.Join(_directory, "unlisted.so")));
 
         // The library takes a former module's name, so that file is now the library and stays.
-        File.WriteAllText(Path.Combine(extension, "probe--3.sql"), "sql");
+        File.WriteAllText(Path.Join(extension, "probe--3.sql"), "sql");
         new PublishedExtension(18, "linux-x64", "probe_output.so", "probe.control", "probe--3.sql", [], [], null, []).CompletePublish(_directory);
         Assert.IsEmpty(PublishedExtension.Read(_directory).PluginLibraries);
-        Assert.AreEqual("retained", File.ReadAllText(Path.Combine(_directory, "probe_output.so")));
-        Assert.IsFalse(File.Exists(Path.Combine(_directory, "probe_logical.so")));
-        Assert.AreEqual("retained", File.ReadAllText(Path.Combine(_directory, "Probe.so")));
+        Assert.AreEqual("retained", File.ReadAllText(Path.Join(_directory, "probe_output.so")));
+        Assert.IsFalse(File.Exists(Path.Join(_directory, "probe_logical.so")));
+        Assert.AreEqual("retained", File.ReadAllText(Path.Join(_directory, "Probe.so")));
     }
 
     private static PublishedExtension Create(IReadOnlyList<string> modules, string? scriptDirectory = null)
