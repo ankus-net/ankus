@@ -184,6 +184,12 @@ release tag alone can lack those fixes: shipped 10.0.12 changed 13 files beyond
 its tag (HttpListener requests, WebSocket compression and EventPipe's diagnostic
 socket), and `10.0.12-ankus.5`, built from the tag, did not have them.
 
+A pinned runtime can also stop building after its release: the runtime build
+treats NuGet's audit warnings as errors, so a new advisory against a package its
+build tools restore fails a cold build. Reference the patched package from those
+tools in the fork, as `f97c4de` did for `System.Security.Cryptography.Pkcs`,
+rather than turning the audit off; the payloads they build do not change.
+
 For each update, rebase the minimal patch, rebuild the native payloads and update
 the pinned compiler/runtime identities together. Use immutable package versions
 and new cache identities. Review the upstream changes and record exact platform,
