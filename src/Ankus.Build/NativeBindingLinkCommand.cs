@@ -53,18 +53,18 @@ internal static class NativeBindingLinkCommand
         }
 
         string cache = arguments.Length == 8 && arguments[7].Length != 0 ? Path.GetFullPath(arguments[7])
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Ankus", "bindings");
-        await PublishAsync(output, Path.Combine(cache, "native"), source, async (file, artifact, token) =>
+            : Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Ankus", "bindings");
+        await PublishAsync(output, Path.Join(cache, "native"), source, async (file, artifact, token) =>
         {
             string compiler = arguments[4];
             var options = new List<string>();
             if (OperatingSystem.IsWindows())
             {
-                compiler = Path.Combine(Path.GetDirectoryName(compiler) ?? "", "cl.exe");
+                compiler = Path.Join(Path.GetDirectoryName(compiler) ?? "", "cl.exe");
                 options.AddRange(["/nologo", "/std:c11", "/c", "/O2", "/MT", "/WX", "/Fo" + artifact]);
                 options.AddRange(["/I" + installation.ServerIncludeDirectory, "/I" + installation.IncludeDirectory,
-                    "/I" + Path.Combine(installation.ServerIncludeDirectory, "port", "win32"),
-                    "/I" + Path.Combine(installation.ServerIncludeDirectory, "port", "win32_msvc")]);
+                    "/I" + Path.Join(installation.ServerIncludeDirectory, "port", "win32"),
+                    "/I" + Path.Join(installation.ServerIncludeDirectory, "port", "win32_msvc")]);
                 options.AddRange(WindowsToolchain.GetIncludeDirectories(arguments[5]).Select(static path => "/I" + path));
             }
             else
@@ -98,8 +98,8 @@ internal static class NativeBindingLinkCommand
         string stage = Directory.CreateTempSubdirectory("ankus-native-call-").FullName;
         try
         {
-            string file = Path.Combine(stage, "native-calls.c");
-            string artifact = Path.Combine(stage, OperatingSystem.IsWindows() ? "native-calls.obj" : "native-calls.o");
+            string file = Path.Join(stage, "native-calls.c");
+            string artifact = Path.Join(stage, OperatingSystem.IsWindows() ? "native-calls.obj" : "native-calls.o");
             await File.WriteAllTextAsync(file, source, cancellationToken);
             await compile(file, artifact, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
@@ -111,11 +111,11 @@ internal static class NativeBindingLinkCommand
                 (destination, token) =>
                 {
                     token.ThrowIfCancellationRequested();
-                    File.Copy(file, Path.Combine(destination, Path.GetFileName(file)));
-                    File.Copy(artifact, Path.Combine(destination, Path.GetFileName(artifact)));
+                    File.Copy(file, Path.Join(destination, Path.GetFileName(file)));
+                    File.Copy(artifact, Path.Join(destination, Path.GetFileName(artifact)));
                     return Task.FromResult<IReadOnlyList<NativeBindingCacheFile>>([]);
                 }, cancellationToken, copyBeforeRelease: false);
-            await PublishManifestAsync(output, Path.Combine(lease.Directory, Path.GetFileName(artifact)) + "\n", cancellationToken);
+            await PublishManifestAsync(output, Path.Join(lease.Directory, Path.GetFileName(artifact)) + "\n", cancellationToken);
         }
         finally
         {
@@ -135,7 +135,7 @@ internal static class NativeBindingLinkCommand
 
     private static async Task PublishManifestAsync(string output, string content, CancellationToken cancellationToken)
     {
-        string destination = Path.Combine(output, "native-call-libraries.txt");
+        string destination = Path.Join(output, "native-call-libraries.txt");
         if (File.Exists(destination) && await File.ReadAllTextAsync(destination, cancellationToken) == content)
         {
             return;
@@ -143,7 +143,7 @@ internal static class NativeBindingLinkCommand
 
         // The candidate must share the destination filesystem even when compilation
         // uses a short system-temporary path on another volume.
-        string candidate = Path.Combine(output, "native-call-manifest-" + Guid.NewGuid().ToString("N"));
+        string candidate = Path.Join(output, "native-call-manifest-" + Guid.NewGuid().ToString("N"));
         try
         {
             await File.WriteAllTextAsync(candidate, content, cancellationToken);

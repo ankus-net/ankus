@@ -1,4 +1,3 @@
-using System.Runtime.ExceptionServices;
 using System.Text;
 
 namespace Ankus.Runtime.Tests;
@@ -70,24 +69,7 @@ public sealed unsafe class NativeBindingContractTests
                 NativeMemoryContext.Exit(previous);
             }
 
-            Exception? workerFailure = null;
-            var worker = new Thread(() =>
-            {
-                try
-                {
-                    Assert.ThrowsExactly<InvalidOperationException>(Validate);
-                }
-                catch (Exception exception)
-                {
-                    workerFailure = exception;
-                }
-            });
-            worker.Start();
-            worker.Join();
-            if (workerFailure is not null)
-            {
-                ExceptionDispatchInfo.Capture(workerFailure).Throw();
-            }
+            DedicatedThread.Run(() => Assert.ThrowsExactly<InvalidOperationException>(Validate));
 
             using (MemoryContextTestFixture.Enter(29))
             {

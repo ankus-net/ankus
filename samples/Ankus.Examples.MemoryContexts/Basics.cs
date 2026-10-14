@@ -25,10 +25,12 @@ public static class Basics
             long sum = 0;
             foreach (int? value in arr)
             {
-                if (value is int present)
+                if (value is not int present)
                 {
-                    sum = checked(sum + present);
+                    continue;
                 }
+
+                sum = checked(sum + present);
             }
 
             return sum;

@@ -26,8 +26,8 @@ public sealed partial class NativeBindingNativeTests
             Assert.IsNull(aligned.Size);
             Assert.AreEqual(64L, aligned.Alignment);
             string source = NativeBindingRecordChecks.Generate(records, "#define PG_VERSION_NUM 180006\n" + Headers) + NativeBindingRecordChecks.ExecutableEntryPoint;
-            string file = Path.Combine(directory, "checks.c");
-            string executable = Path.Combine(directory, "checks");
+            string file = Path.Join(directory, "checks.c");
+            string executable = Path.Join(directory, "checks");
             string[] arguments = ["-std=c11", "-Wall", "-Wextra", "-Werror", file, "-o", executable];
             await File.WriteAllTextAsync(file, source, context.CancellationToken);
             await RunAsync("gcc", arguments, directory);

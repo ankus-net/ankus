@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Ankus.Build;
@@ -36,16 +37,19 @@ internal static partial class NativeBindingSelection
         {
             string resolved = ResolveAlias(catalog, representation);
             var visited = new HashSet<string>(StringComparer.Ordinal);
+            var indexed = new StringBuilder(path);
             while (ArrayElement(resolved) is string element)
             {
                 if (!visited.Add(resolved))
                 {
-                    throw new FormatException($"Cyclic native array representation at {root}.{path}.");
+                    throw new FormatException($"Cyclic native array representation at {root}.{indexed}.");
                 }
 
                 resolved = ResolveAlias(catalog, element);
-                path += "[0]";
+                indexed.Append("[0]");
             }
+
+            path = indexed.ToString();
 
             if (catalog.Types.TryGetValue(resolved, out NativeBindingType? type))
             {

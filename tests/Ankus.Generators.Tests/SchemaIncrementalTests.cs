@@ -115,7 +115,7 @@ public sealed partial class PgFunctionGeneratorTests
         GeneratorDriver driver = RunModule(ModuleDriver(), initial, out Compilation first);
         CSharpCompilation edited = initial.ReplaceSyntaxTree(initial.SyntaxTrees.Single(),
             CSharpSyntaxTree.ParseText(Source.Replace("Create = true", "Create = false", StringComparison.Ordinal), path: "Module.cs", cancellationToken: context.CancellationToken));
-        driver = RunModule(driver, edited, out Compilation second);
+        _ = RunModule(driver, edited, out Compilation second);
 
         Assert.AreEqual("CREATE SCHEMA IF NOT EXISTS \"s\";\nSELECT 42;\n", InstallationBody(first));
         Assert.AreEqual("SELECT 42;\n", InstallationBody(second));

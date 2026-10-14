@@ -18,18 +18,18 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
         string project = await CreateControlProjectAsync(directory, token, "ankus_selection_probe");
-        await File.WriteAllTextAsync(Path.Combine(directory, "Functions.cs"), SchemaSelectionSource, token);
-        await File.WriteAllTextAsync(Path.Combine(directory, "author settings.control"), fixedSchema ? "schema = 'Case Schema'" : "comment = 'selection'", token);
+        await File.WriteAllTextAsync(Path.Join(directory, "Functions.cs"), SchemaSelectionSource, token);
+        await File.WriteAllTextAsync(Path.Join(directory, "author settings.control"), fixedSchema ? "schema = 'Case Schema'" : "comment = 'selection'", token);
         string output = CreateDirectory();
         PublishedExtension publication = await PublishControlProbeAsync(project, output, token);
-        string library = Path.Combine(output, publication.Library);
+        string library = Path.Join(output, publication.Library);
         ExtensionSchema schema = ExtensionSchema.Read(library);
         Assert.AreEqual(fixedSchema ? "Case Schema" : null, schema.DefaultSchema);
         Assert.IsNotNull(schema.Graph);
         Assert.AreEqual(schema.Sql, schema.Graph.Sql);
 
-        string sqlPath = Path.Combine(directory, "selected.sql");
-        string graphPath = Path.Combine(directory, "selected.dot");
+        string sqlPath = Path.Join(directory, "selected.sql");
+        string graphPath = Path.Join(directory, "selected.dot");
         string[] names = ["read_value", "make_value", "Choice.ordering", "Choice.hashing", "Total", "CountRows", "CountArguments", "OrderedTotal",
             "manual.raw_function(integer)", "touch", "public_value", "own_value"];
         ProcessResult selected = await InvokeAsync(["schema", "--from", library, "--output", sqlPath, "--dot", graphPath, .. names], token);
@@ -57,15 +57,15 @@ public sealed partial class ToolCommandTests
         Assert.AreEqual(sql, schema.Select(names).Sql);
 
         // Keep the extension itself installed while replaying only its selected objects.
-        await File.WriteAllTextAsync(Path.Combine(output, "extension", publication.Sql), "-- Empty initial extension for selection.\n", token);
-        await using PostgresTestInstallation owner = await PostgresTestInstallation.StageAsync(s_installation, Path.Combine(directory, "server"), token);
+        await File.WriteAllTextAsync(Path.Join(output, "extension", publication.Sql), "-- Empty initial extension for selection.\n", token);
+        await using PostgresTestInstallation owner = await PostgresTestInstallation.StageAsync(s_installation, Path.Join(directory, "server"), token);
         owner.InstallExtensionFiles(output);
-        File.Copy(library, Path.Combine(owner.Installation.LibraryDirectory, publication.Library));
+        File.Copy(library, Path.Join(owner.Installation.LibraryDirectory, publication.Library));
         await using PostgresTestCluster cluster = await PostgresTestCluster.StartAsync(new PostgresTestClusterOptions
         {
             Installation = owner.Installation,
-            DataDirectoryBase = Path.Combine(s_root, "pgdata"),
-            LogDirectory = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
+            DataDirectoryBase = Path.Join(s_root, "pgdata"),
+            LogDirectory = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
         }, token);
         await using NpgsqlConnection connection = await cluster.OpenConnectionAsync(token);
         int backend = connection.ProcessID;
@@ -161,11 +161,11 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
         PublishedExtension publication = PublishedExtension.Read(s_published);
-        string library = Path.Combine(directory, publication.Library);
-        File.Copy(Path.Combine(s_published, publication.Library), library);
+        string library = Path.Join(directory, publication.Library);
+        File.Copy(Path.Join(s_published, publication.Library), library);
         byte[] original = await File.ReadAllBytesAsync(library, token);
-        string sql = Path.Combine(directory, "selected.sql");
-        string dot = Path.Combine(directory, "selected.dot");
+        string sql = Path.Join(directory, "selected.sql");
+        string dot = Path.Join(directory, "selected.dot");
         await File.WriteAllTextAsync(sql, "old SQL", token);
         await File.WriteAllTextAsync(dot, "old graph", token);
         string graphOutput = failure switch

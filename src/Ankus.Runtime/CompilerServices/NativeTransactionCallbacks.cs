@@ -111,6 +111,7 @@ internal static unsafe class NativeTransactionCallbacks
 
             return 0;
         }
+        // codeql[cs/catch-of-all-exceptions] Native code calls this, so every exception goes back to PostgreSQL as an error instead of unwinding through it.
         catch (Exception exception)
         {
             NativeError.Write(exception, error);
@@ -225,17 +226,20 @@ internal static unsafe class NativeTransactionCallbacks
 
     private static void ReleaseUnused(TransactionCallbackRegistry registry, List<PgTransactionCallback>? selected)
     {
-        foreach (List<PgTransactionCallback>? callbacks in registry.TransactionCallbacks)
+        // The registry's fixed slots are indexed, so transaction end allocates no enumerator.
+        List<PgTransactionCallback>?[] transactionCallbacks = registry.TransactionCallbacks;
+        for (int index = 0; index < transactionCallbacks.Length; index++)
         {
-            if (!ReferenceEquals(callbacks, selected))
+            if (!ReferenceEquals(transactionCallbacks[index], selected))
             {
-                Release(callbacks);
+                Release(transactionCallbacks[index]);
             }
         }
 
-        foreach (List<PgSubtransactionCallback>? callbacks in registry.SubtransactionCallbacks)
+        List<PgSubtransactionCallback>?[] subtransactionCallbacks = registry.SubtransactionCallbacks;
+        for (int index = 0; index < subtransactionCallbacks.Length; index++)
         {
-            if (callbacks is not null)
+            if (subtransactionCallbacks[index] is { } callbacks)
             {
                 foreach (PgSubtransactionCallback registration in callbacks)
                 {

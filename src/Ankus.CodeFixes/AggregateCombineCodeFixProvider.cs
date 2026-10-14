@@ -137,10 +137,12 @@ public sealed class AggregateCombineCodeFixProvider : CodeFixProvider
 
             foreach (Diagnostic diagnostic in values.Where(static diagnostic => diagnostic.Id == "ANKUS111"))
             {
-                if (FindCallback(root, model, diagnostic.Location.SourceSpan, cancellationToken) is { } method)
+                if (FindCallback(root, model, diagnostic.Location.SourceSpan, cancellationToken) is not { } method)
                 {
-                    methods.Add(method);
+                    continue;
                 }
+
+                methods.Add(method);
             }
         }
 

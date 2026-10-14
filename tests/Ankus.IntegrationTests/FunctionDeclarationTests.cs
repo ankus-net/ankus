@@ -134,7 +134,7 @@ public sealed class FunctionDeclarationTests(TestContext context)
                 const string function = "\"ankus café \"\"schema\".declaration_override";
                 await using var command = new NpgsqlCommand($"CREATE TEMP VIEW declaration_dependent AS SELECT {function}(17) AS value; SELECT '{function}(int)'::regprocedure::oid", connection, transaction);
                 uint original = Assert.IsInstanceOfType<uint>(await command.ExecuteScalarAsync(token));
-                string sql = await File.ReadAllTextAsync(Path.Combine(IntegrationEnvironment.NativeOutputDirectory, "extension", "ankus_test--0.1.0.sql"), token);
+                string sql = await File.ReadAllTextAsync(Path.Join(IntegrationEnvironment.NativeOutputDirectory, "extension", "ankus_test--0.1.0.sql"), token);
                 int start = sql.IndexOf("CREATE OR REPLACE FUNCTION", StringComparison.Ordinal);
                 Assert.IsGreaterThanOrEqualTo(0, start);
                 int end = sql.IndexOf(';', start);

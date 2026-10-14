@@ -173,8 +173,7 @@ public static class TemporalParityFunctions
             _ = Spi.ExecuteScalar<string>("SELECT repeat('temporal ownership', 4096)");
         }
 
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
+        GarbageCollection.Collect();
         return owned;
     }
 

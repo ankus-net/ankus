@@ -79,7 +79,7 @@ internal static partial class ToolCommand
             string benchmarkDatabase = result.GetValue(database) ?? BenchmarkDatabaseName(extension);
             bool jsonOutput = result.GetValue(json);
             var cluster = new PostgresDevelopmentCluster(installation, result.GetValue(home));
-            string output = Path.GetFullPath(Path.Combine(Path.GetDirectoryName(selection.Project)!, "bin", "ankus-bench",
+            string output = Path.GetFullPath(Path.Join(Path.GetDirectoryName(selection.Project)!, "bin", "ankus-bench",
                 installation.Label, RuntimeInformation.RuntimeIdentifier, selection.Configuration));
             Dictionary<string, string> serverSettings = ParseServerSettings(result.GetValue(settings) ?? []);
             if (!result.GetValue(report))
@@ -247,17 +247,17 @@ internal static partial class ToolCommand
         out IReadOnlyList<string> installed)
     {
         PublishedExtension manifest = PublishedExtension.Read(output);
-        string source = Path.Combine(output, "extension");
-        string stage = Path.Combine(output, ".ankus-bench");
+        string source = Path.Join(output, "extension");
+        string stage = Path.Join(output, ".ankus-bench");
         string temporary = stage + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        string controls = Path.Combine(temporary, "extension");
-        string scripts = manifest.ScriptDirectory is null ? controls : Path.Combine(temporary, "scripts");
+        string controls = Path.Join(temporary, "extension");
+        string scripts = manifest.ScriptDirectory is null ? controls : Path.Join(temporary, "scripts");
         string[] scriptNames = [manifest.Sql, .. manifest.UpgradeScripts, .. manifest.VersionControlFiles];
         string[] sourceFiles =
         [
-            Path.Combine(output, manifest.Library),
-            Path.Combine(source, manifest.Control),
-            .. scriptNames.Select(name => Path.Combine(source, name)),
+            Path.Join(output, manifest.Library),
+            Path.Join(source, manifest.Control),
+            .. scriptNames.Select(name => Path.Join(source, name)),
         ];
         foreach (string path in sourceFiles)
         {
@@ -287,12 +287,12 @@ internal static partial class ToolCommand
             foreach (string name in scriptNames)
             {
                 token.ThrowIfCancellationRequested();
-                string destination = Path.Combine(scripts, name);
-                File.Copy(Path.Combine(source, name), destination);
+                string destination = Path.Join(scripts, name);
+                File.Copy(Path.Join(source, name), destination);
                 destinations.Add(destination);
             }
 
-            string control = Path.Combine(controls, manifest.Control);
+            string control = Path.Join(controls, manifest.Control);
             if (stagedControl is null)
             {
                 File.Copy(sourceFiles[1], control);
@@ -310,7 +310,7 @@ internal static partial class ToolCommand
             }
 
             Directory.Move(temporary, stage);
-            installed = [.. destinations.Select(path => Path.Combine(stage, Path.GetRelativePath(temporary, path)))];
+            installed = [.. destinations.Select(path => Path.Join(stage, Path.GetRelativePath(temporary, path)))];
             return stage;
         }
         finally
@@ -511,20 +511,8 @@ internal static partial class ToolCommand
             "FROM ankus_bench.benchmark_run AS r JOIN ankus_bench.run_group AS g ON g.id = r.group_id " +
             "WHERE g.extension_name = " + TextExpression(extension) + condition +
             " ORDER BY r.benchmark_name, g.created_at, r.id;\n", token);
-        var runs = new List<BenchmarkHistoryRun>();
-        foreach (string line in history.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
-        {
-            using JsonDocument document = JsonDocument.Parse(line);
-            JsonElement root = document.RootElement;
-            JsonElement point = root.GetProperty("point");
-            JsonElement settings = root.GetProperty("settings");
-            runs.Add(new BenchmarkHistoryRun(root.GetProperty("benchmark").GetString()!, root.GetProperty("group_id").GetInt64(),
-                root.GetProperty("group_name").GetString()!, root.GetProperty("succeeded").GetBoolean(),
-                point.ValueKind == JsonValueKind.Number ? point.GetDouble() : null, root.GetProperty("configuration").GetString()!,
-                root.GetProperty("major").GetString()!, root.GetProperty("runtime").GetString()!,
-                settings.ValueKind == JsonValueKind.String ? settings.GetString() : null));
-        }
-
+        List<BenchmarkHistoryRun> runs = [.. history.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(ParseHistoryRun)];
         if (runs.Count == 0)
         {
             throw NoHistory(filter);
@@ -532,6 +520,22 @@ internal static partial class ToolCommand
 
         Console.Write(BenchmarkHistoryReport.Format(database, filter, runs));
         return 0;
+    }
+
+    /// <summary>
+    /// Reads one retained run from the JSON line the history query returns.
+    /// </summary>
+    private static BenchmarkHistoryRun ParseHistoryRun(string line)
+    {
+        using JsonDocument document = JsonDocument.Parse(line);
+        JsonElement root = document.RootElement;
+        JsonElement point = root.GetProperty("point");
+        JsonElement settings = root.GetProperty("settings");
+        return new BenchmarkHistoryRun(root.GetProperty("benchmark").GetString()!, root.GetProperty("group_id").GetInt64(),
+            root.GetProperty("group_name").GetString()!, root.GetProperty("succeeded").GetBoolean(),
+            point.ValueKind == JsonValueKind.Number ? point.GetDouble() : null, root.GetProperty("configuration").GetString()!,
+            root.GetProperty("major").GetString()!, root.GetProperty("runtime").GetString()!,
+            settings.ValueKind == JsonValueKind.String ? settings.GetString() : null);
     }
 
     private static InvalidOperationException NoHistory(string? filter)
@@ -601,16 +605,10 @@ internal static partial class ToolCommand
         string configuration,
         CancellationToken token)
     {
-        string condition;
-        if (requested is not null)
-        {
-            condition = "group_name = " + TextExpression(requested);
-        }
-        else
-        {
-            condition = "status IN ('completed', 'partial') AND configuration = " + TextExpression(configuration) +
+        string condition = requested is not null
+            ? "group_name = " + TextExpression(requested)
+            : "status IN ('completed', 'partial') AND configuration = " + TextExpression(configuration) +
                 " AND group_name <> " + TextExpression(currentGroup);
-        }
 
         string resolved = (await sql.ExecuteAsync(
             "SELECT group_name FROM ankus_bench.run_group WHERE " + condition +
@@ -699,18 +697,15 @@ internal static partial class ToolCommand
             string connection,
             CancellationToken token)
         {
-            var process = new Process
+            var startInfo = new ProcessStartInfo(executable)
             {
-                StartInfo = new ProcessStartInfo(executable)
-                {
-                    UseShellExecute = false,
-                    RedirectStandardInput = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    StandardInputEncoding = Encoding.UTF8,
-                    StandardOutputEncoding = Encoding.UTF8,
-                    StandardErrorEncoding = Encoding.UTF8,
-                },
+                UseShellExecute = false,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                StandardInputEncoding = Encoding.UTF8,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding = Encoding.UTF8,
             };
             string[] arguments =
             [
@@ -719,22 +714,18 @@ internal static partial class ToolCommand
             ];
             foreach (string argument in arguments)
             {
-                process.StartInfo.ArgumentList.Add(argument);
+                startInfo.ArgumentList.Add(argument);
             }
 
-            foreach (string key in process.StartInfo.Environment.Keys
+            foreach (string key in startInfo.Environment.Keys
                 .Where(static key => key.StartsWith("PG", StringComparison.OrdinalIgnoreCase)).ToArray())
             {
-                process.StartInfo.Environment.Remove(key);
+                startInfo.Environment.Remove(key);
             }
 
-            process.StartInfo.Environment["PGCLIENTENCODING"] = "UTF8";
-            if (!process.Start())
-            {
-                process.Dispose();
-                throw new InvalidOperationException("Failed to start the PostgreSQL benchmark session.");
-            }
-
+            startInfo.Environment["PGCLIENTENCODING"] = "UTF8";
+            Process process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException("Failed to start the PostgreSQL benchmark session.");
             var session = new BenchmarkSqlSession(process);
             try
             {

@@ -357,6 +357,11 @@ public sealed partial class PgBufferViewTests
     {
         [ThreadStatic]
         private static BufferScript? s_current;
+
+        /// <summary>
+        /// Makes <paramref name="current"/> the BufferScript this thread's native callbacks use, or restores the enclosing one.
+        /// </summary>
+        private static void Install(BufferScript? current) => s_current = current;
         private readonly BufferScript? _previousScript = s_current;
         private readonly nint _previous = NativeBackend.Enter((nint)(delegate* unmanaged[Cdecl]<NativeSpiRequest*, NativeSpiResult*, NativeCallError*, int>)&Invoke);
         private readonly byte* _data;
@@ -372,7 +377,7 @@ public sealed partial class PgBufferViewTests
             _data = (byte*)NativeMemory.Alloc((nuint)bytes.Length + 1);
             bytes.CopyTo(new Span<byte>(_data, bytes.Length));
             _data[bytes.Length] = 0;
-            s_current = this;
+            Install(this);
             fixture.Handler = request =>
             {
                 if (request._operation == NativeMemoryOperation.Create)
@@ -426,7 +431,7 @@ public sealed partial class PgBufferViewTests
         {
             NativeBackend.Exit(_previous);
             NativeMemory.Free(_data);
-            s_current = _previousScript;
+            Install(_previousScript);
         }
 
         /// <summary>
@@ -445,6 +450,7 @@ public sealed partial class PgBufferViewTests
                 result->_rowCount = script.InvalidMetadata == 2 ? -1 : script._length;
                 return 0;
             }
+            // codeql[cs/catch-of-all-exceptions] This stands in for native code, so every exception goes back as an error instead of unwinding through it.
             catch (Exception exception)
             {
                 NativeError.Write(exception, error);

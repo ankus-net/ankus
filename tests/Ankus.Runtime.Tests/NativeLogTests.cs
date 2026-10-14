@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -187,7 +186,7 @@ public sealed partial class NativeLogTests
         using var fixture = new LogFixture();
         using var scope = new LogScope(LogPointer);
         Assert.IsTrue(PgLog.IsEnabled(PgLogLevel.Notice));
-        RunWorker(static () =>
+        DedicatedThread.Run(static () =>
         {
             using var worker = new LogFixture();
             Assert.ThrowsExactly<InvalidOperationException>(() => PgLog.IsEnabled(PgLogLevel.Notice));
@@ -298,7 +297,7 @@ public sealed partial class NativeLogTests
         Assert.AreEqual(14, fixture.ReportReleases);
         Assert.HasCount(restricted ? 2 : 0, fixture.Calls);
         Assert.HasCount(restricted ? 0 : 2, fixture.BackendOperations);
-        GC.Collect();
+        GarbageCollection.Collect();
         Assert.AreEqual(message, fixture.Fields[(int)NativeDiagnosticField.Message]);
     }
 
@@ -596,6 +595,7 @@ public sealed partial class NativeLogTests
 
             return 0;
         }
+        // codeql[cs/catch-of-all-exceptions] This stands in for native code, so every exception goes back as an error instead of unwinding through it.
         catch (Exception exception)
         {
             NativeError.Write(exception, error);
@@ -632,6 +632,7 @@ public sealed partial class NativeLogTests
 
             return 0;
         }
+        // codeql[cs/catch-of-all-exceptions] This stands in for native code, so every exception goes back as an error instead of unwinding through it.
         catch (Exception exception)
         {
             NativeError.Write(exception, error);
@@ -697,33 +698,7 @@ public sealed partial class NativeLogTests
     /// <summary>
     /// Accesses only the release callback for controlled allocator ownership assertions.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_release")]
-    private static extern unsafe ref delegate* unmanaged[Cdecl]<void*, void> ReleaseCallback(ref NativeValue value);
-
-    /// <summary>
-    /// Runs thread-affinity assertions while preserving the owning thread's active scope.
-    /// </summary>
-    private static void RunWorker(Action action)
-    {
-        Exception? failure = null;
-        var worker = new Thread(() =>
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        worker.Start();
-        worker.Join();
-        if (failure is not null)
-        {
-            ExceptionDispatchInfo.Capture(failure).Throw();
-        }
-    }
+    private static unsafe ref delegate* unmanaged[Cdecl]<void*, void> ReleaseCallback(ref NativeValue value) => ref value._release;
 
     /// <summary>
     /// Isolates controlled callback values and ownership counters to each test thread.

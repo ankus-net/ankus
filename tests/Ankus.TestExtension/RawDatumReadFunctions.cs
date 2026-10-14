@@ -176,7 +176,7 @@ public static class RawDatumReadFunctions
         {
             PgArray<RawReadNumber?>? array = datum.Read<PgArray<RawReadNumber?>?>();
             return array is null ? "NULL" : string.Create(CultureInfo.InvariantCulture,
-                $"{array.ElementTypeOid}|{array.Rank}|{(array.Rank == 0 ? 0 : array.LowerBounds[0])}|{string.Join(',', array.Select(static cell => cell?.Value.ToString(CultureInfo.InvariantCulture) ?? "NULL"))}");
+                $"{array.ElementTypeOid}|{array.Rank}|{(array.Rank == 0 ? 0 : array.LowerBounds[0])}|{string.Join(',', array.Select(static cell => cell is { } present ? present.Value.ToString(CultureInfo.InvariantCulture) : "NULL"))}");
         }
 
         PgAnyArray? values = datum.Read<PgAnyArray?>();

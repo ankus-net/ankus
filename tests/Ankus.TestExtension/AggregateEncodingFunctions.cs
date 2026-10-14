@@ -20,7 +20,7 @@ public static class AggregateEncodingFunctions
         {
             state ??= new PgAggregateState<List<string>>([]);
             state.Value.Add(value == 1 ? "café" : "🐘");
-            GC.Collect();
+            GarbageCollection.Collect();
             Spi.Execute("SELECT repeat('churn',1000)");
             return state;
         }

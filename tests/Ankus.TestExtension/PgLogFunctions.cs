@@ -330,7 +330,7 @@ public static class PgLogFunctions
                     throw new ArgumentOutOfRangeException(nameof(mode));
             }
         }
-        catch (Exception error)
+        catch (Exception error) when (error is ArgumentException or PgException)
         {
             string kind = error is PgException postgres ? postgres.SqlState : error.GetType().Name;
             return kind + "|" + Spi.ExecuteScalar<int>("SELECT 42");

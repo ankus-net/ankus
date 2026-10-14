@@ -141,7 +141,7 @@ public sealed class PgMemoryContextTests
     {
         using var fixture = new MemoryContextTestFixture();
         using MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter();
-        PgMemoryContext context = PgMemoryContext.Create("owned");
+        using PgMemoryContext context = PgMemoryContext.Create("owned");
         int deletes = 0;
         fixture.Handler = request =>
         {

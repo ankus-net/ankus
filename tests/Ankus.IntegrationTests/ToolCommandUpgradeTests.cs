@@ -16,8 +16,8 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "UpgradeProbe.csproj");
-        string source = Path.Combine(directory, "Functions.cs");
+        string project = Path.Join(directory, "UpgradeProbe.csproj");
+        string source = Path.Join(directory, "Functions.cs");
         XDocument document = XDocument.Load(s_project);
         document.Root!.Add(new XElement("PropertyGroup",
             new XElement("AssemblyName", "Ankus.Upgrade.Base"),
@@ -25,7 +25,7 @@ public sealed partial class ToolCommandTests
             new XElement("AnkusExtensionVersion", "base")));
         document.Save(project);
         await File.WriteAllTextAsync(source, UpgradeSource(1), token);
-        string publication = Path.Combine(directory, "bin", "ankus", s_installation.Label,
+        string publication = Path.Join(directory, "bin", "ankus", s_installation.Label,
             RuntimeInformation.RuntimeIdentifier, "Release");
         string package = CreateDirectory();
         string[] arguments = ["package", "--home", s_home, "--pg", MajorText(), "--project", project, "--output", package];
@@ -42,8 +42,8 @@ public sealed partial class ToolCommandTests
         await using PostgresTestCluster cluster = await PostgresTestCluster.StartAsync(new PostgresTestClusterOptions
         {
             Installation = installation,
-            DataDirectoryBase = Path.Combine(s_root, "upgrade-pgdata"),
-            LogDirectory = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
+            DataDirectoryBase = Path.Join(s_root, "upgrade-pgdata"),
+            LogDirectory = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
             PostgreSqlConfiguration = configuration,
         }, token);
         await using NpgsqlConnection connection = await cluster.OpenConnectionAsync(token);
@@ -63,15 +63,15 @@ public sealed partial class ToolCommandTests
         string[] publishArguments = ["publish", "--home", s_home, "--pg", MajorText(), "--project", project, "--output", publication];
         (await InvokeAsync(publishArguments, token)).EnsureSuccess(s_tool, publishArguments);
         PublishedExtension replacement = PublishedExtension.Read(publication);
-        string upgradeSql = (await File.ReadAllTextAsync(Path.Combine(publication, "extension", replacement.Sql), token))
+        string upgradeSql = (await File.ReadAllTextAsync(Path.Join(publication, "extension", replacement.Sql), token))
             .Replace("CREATE FUNCTION", "CREATE OR REPLACE FUNCTION", StringComparison.Ordinal);
-        string scripts = Path.Combine(directory, "sql");
+        string scripts = Path.Join(directory, "sql");
         Directory.CreateDirectory(scripts);
         const string First = "ankus_upgrade_probe--base--middle.sql";
         const string Second = "ankus_upgrade_probe--middle--release.sql";
-        await File.WriteAllTextAsync(Path.Combine(scripts, First), "ALTER TABLE upgrade_rows ADD COLUMN marker text;", token);
+        await File.WriteAllTextAsync(Path.Join(scripts, First), "ALTER TABLE upgrade_rows ADD COLUMN marker text;", token);
         string secondSql = upgradeSql + "\nSELECT upgrade_value();\nUPDATE upgrade_rows SET marker = '@EXTENSION_VERSION@';\n";
-        await File.WriteAllTextAsync(Path.Combine(scripts, Second), secondSql + "SELECT 1/0;\n", token);
+        await File.WriteAllTextAsync(Path.Join(scripts, Second), secondSql + "SELECT 1/0;\n", token);
         (await InvokeAsync(arguments, token)).EnsureSuccess(s_tool, arguments);
         PublishedExtension updated = PublishedExtension.Read(publication);
         Assert.AreSequenceEqual<string>([First, Second], updated.UpgradeScripts);
@@ -89,7 +89,7 @@ public sealed partial class ToolCommandTests
         Assert.AreEqual(1, await SqlPackageScalarAsync<int>(connection, "SELECT upgrade_value()"));
 
         // Repair only the failing SQL in the installed package; loaded native libraries remain versioned and intact.
-        string packagedUpgrade = Path.Combine(PackageSharedDirectory(package), "extension", Second);
+        string packagedUpgrade = Path.Join(PackageSharedDirectory(package), "extension", Second);
         string corrected = (await File.ReadAllTextAsync(packagedUpgrade, token)).Replace("SELECT 1/0;\n", "", StringComparison.Ordinal);
         await File.WriteAllTextAsync(packagedUpgrade, corrected, token);
         CopyUpgradePackageToCaseInstallation(package, updated);
@@ -116,27 +116,27 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         PublishedExtension original = PublishedExtension.Read(s_published);
         string source = CreateDirectory();
-        string extension = Path.Combine(source, "extension");
+        string extension = Path.Join(source, "extension");
         Directory.CreateDirectory(extension);
         string[] scripts = ["ankus_tool_probe--base--middle.sql", "ankus_tool_probe--middle--0.1.0.sql"];
         var manifest = new PublishedExtension(original.PostgresMajor, original.RuntimeIdentifier, original.Library,
             original.Control, original.Sql, scripts, ["ankus_tool_probe--base.control"]);
         manifest.Write(source);
-        File.Copy(Path.Combine(s_published, original.Library), Path.Combine(source, original.Library));
+        File.Copy(Path.Join(s_published, original.Library), Path.Join(source, original.Library));
         foreach (string file in new[] { original.Control, original.Sql })
         {
-            File.Copy(Path.Combine(s_published, "extension", file), Path.Combine(extension, file));
+            File.Copy(Path.Join(s_published, "extension", file), Path.Join(extension, file));
         }
 
         foreach (string script in scripts.Concat(manifest.VersionControlFiles))
         {
             string content = script.EndsWith(".control", StringComparison.Ordinal)
                 ? "comment='version # control'\r\nrequires=''\r\n" : "-- " + script + "\r\nSELECT 'café 🐘';\r\n";
-            await File.WriteAllTextAsync(Path.Combine(extension, script), content, token);
+            await File.WriteAllTextAsync(Path.Join(extension, script), content, token);
         }
 
-        await File.WriteAllTextAsync(Path.Combine(extension, "unlisted.sql"), "do not distribute", token);
-        await File.WriteAllTextAsync(Path.Combine(extension, "unlisted.control"), "do not distribute", token);
+        await File.WriteAllTextAsync(Path.Join(extension, "unlisted.sql"), "do not distribute", token);
+        await File.WriteAllTextAsync(Path.Join(extension, "unlisted.control"), "do not distribute", token);
         string stage = CreateDirectory();
         ProcessResult result = await InvokeAsync([operation, "--home", s_home, "--pg", MajorText(), "--from", source,
             operation == "package" ? "--output" : "--destdir", stage], token);
@@ -144,13 +144,13 @@ public sealed partial class ToolCommandTests
         string shared = operation == "package" ? PackageSharedDirectory(stage) : StagedPath(stage, s_installation.SharedDirectory);
         foreach (string script in scripts.Concat(manifest.VersionControlFiles))
         {
-            Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Combine(extension, script), token),
-                await File.ReadAllBytesAsync(Path.Combine(shared, "extension", script), token));
+            Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Join(extension, script), token),
+                await File.ReadAllBytesAsync(Path.Join(shared, "extension", script), token));
         }
 
         Assert.HasCount(6, Directory.GetFiles(stage, "*", SearchOption.AllDirectories));
-        Assert.IsFalse(File.Exists(Path.Combine(shared, "extension", "unlisted.control")));
-        Assert.IsFalse(File.Exists(Path.Combine(shared, "extension", "unlisted.sql")));
+        Assert.IsFalse(File.Exists(Path.Join(shared, "extension", "unlisted.control")));
+        Assert.IsFalse(File.Exists(Path.Join(shared, "extension", "unlisted.sql")));
     }
 
     /// <summary>
@@ -162,7 +162,7 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "VersionProbe.csproj");
+        string project = Path.Join(directory, "VersionProbe.csproj");
         XDocument document = XDocument.Load(s_project);
         document.Root!.Add(new XElement("PropertyGroup",
             new XElement("AssemblyName", "Ankus.Version.Probe"),
@@ -170,7 +170,7 @@ public sealed partial class ToolCommandTests
             new XElement("Version", "1.0.0"),
             new XElement("AnkusExtensionVersion", "1.0.0")));
         document.Save(project);
-        await File.WriteAllTextAsync(Path.Combine(directory, "Functions.cs"), """
+        await File.WriteAllTextAsync(Path.Join(directory, "Functions.cs"), """
             using Ankus;
             public static class VersionFunctions
             {
@@ -178,7 +178,7 @@ public sealed partial class ToolCommandTests
                 public static int Stable() => 42;
             }
             """, token);
-        string publication = Path.Combine(directory, "bin", "ankus", s_installation.Label,
+        string publication = Path.Join(directory, "bin", "ankus", s_installation.Label,
             RuntimeInformation.RuntimeIdentifier, "Release");
         string package = CreateDirectory();
         string[] arguments = ["package", "--home", s_home, "--pg", MajorText(), "--project", project, "--output", package];
@@ -195,8 +195,8 @@ public sealed partial class ToolCommandTests
         await using PostgresTestCluster cluster = await PostgresTestCluster.StartAsync(new PostgresTestClusterOptions
         {
             Installation = installation,
-            DataDirectoryBase = Path.Combine(s_root, "version-upgrade-pgdata"),
-            LogDirectory = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
+            DataDirectoryBase = Path.Join(s_root, "version-upgrade-pgdata"),
+            LogDirectory = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
             PostgreSqlConfiguration = configuration,
         }, token);
         await using (NpgsqlConnection connection = await cluster.OpenConnectionAsync(token))
@@ -211,9 +211,9 @@ public sealed partial class ToolCommandTests
         properties.Element("Version")!.Value = "2.0.0";
         properties.Element("AnkusExtensionVersion")!.Value = "2.0.0";
         document.Save(project);
-        string scripts = Path.Combine(directory, "sql");
+        string scripts = Path.Join(directory, "sql");
         Directory.CreateDirectory(scripts);
-        await File.WriteAllTextAsync(Path.Combine(scripts, "ankus_version_probe--1.0.0--2.0.0.sql"), "SELECT 1;\n", token);
+        await File.WriteAllTextAsync(Path.Join(scripts, "ankus_version_probe--1.0.0--2.0.0.sql"), "SELECT 1;\n", token);
         (await InvokeAsync(arguments, token)).EnsureSuccess(s_tool, arguments);
         PublishedExtension updated = PublishedExtension.Read(publication);
         Assert.AreEqual(original.Library, updated.Library);
@@ -234,8 +234,8 @@ public sealed partial class ToolCommandTests
         string[] files = [manifest.Sql, .. manifest.UpgradeScripts, .. manifest.VersionControlFiles, manifest.Control];
         foreach (string file in files)
         {
-            File.Copy(Path.Combine(PackageSharedDirectory(package), "extension", file),
-                Path.Combine(_caseInstallation.Installation.SharedDirectory, "extension", file), overwrite: true);
+            File.Copy(Path.Join(PackageSharedDirectory(package), "extension", file),
+                Path.Join(_caseInstallation.Installation.SharedDirectory, "extension", file), overwrite: true);
         }
     }
 
@@ -247,19 +247,19 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "Broken.csproj");
+        string project = Path.Join(directory, "Broken.csproj");
         File.Copy(s_project, project);
-        await File.WriteAllTextAsync(Path.Combine(directory, "Broken.cs"), "#error broken direct publication", token);
+        await File.WriteAllTextAsync(Path.Join(directory, "Broken.cs"), "#error broken direct publication", token);
         string output = CreateDirectory();
-        File.Copy(Path.Combine(s_published, PublishedExtension.FileName), Path.Combine(output, PublishedExtension.FileName));
+        File.Copy(Path.Join(s_published, PublishedExtension.FileName), Path.Join(output, PublishedExtension.FileName));
         ProcessResult result = await PackageProcessRunner.RunAsync("dotnet",
             ["publish", project, "--configuration", "Release", "--output", output,
                 "-p:AnkusPostgresMajor=" + MajorText(),
                 "-p:AnkusPgConfigPath=" + s_installation.PgConfigPath], s_environment, token, workingDirectory: directory);
         Assert.AreNotEqual(0, result.ExitCode);
         Assert.Contains("broken direct publication", result.StandardOutput + result.StandardError);
-        Assert.IsFalse(File.Exists(Path.Combine(output, PublishedExtension.FileName)));
-        Assert.IsTrue(File.Exists(Path.Combine(output, "ankus.extension.previous.json")));
+        Assert.IsFalse(File.Exists(Path.Join(output, PublishedExtension.FileName)));
+        Assert.IsTrue(File.Exists(Path.Join(output, "ankus.extension.previous.json")));
     }
 
     private static string UpgradeSource(int value) => $$"""

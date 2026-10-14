@@ -121,6 +121,26 @@ public sealed class RelationWriterTests(TestContext context)
         });
 
     /// <summary>
+    /// A change's <c>AFTER</c> triggers fire when the change completes, as the built-in apply worker fires them, not
+    /// when the writer is disposed.
+    /// </summary>
+    [TestMethod]
+    public async Task AfterTriggersFireAsEachChangeCompletes()
+        => await WithTableAsync("id integer PRIMARY KEY, name text", async (connection, table, token) =>
+        {
+            string log = table + "_log";
+            await ExecuteAsync(connection, $"""
+                CREATE TABLE {log}(id integer);
+                CREATE FUNCTION {log}_after() RETURNS trigger LANGUAGE plpgsql AS
+                    $$BEGIN INSERT INTO {log} VALUES (NEW.id); RETURN NULL; END$$;
+                CREATE TRIGGER after_row AFTER INSERT ON {table} FOR EACH ROW EXECUTE FUNCTION {log}_after();
+                """, token);
+            Assert.AreEqual("1|2|2", await ScalarAsync<string>(connection,
+                $"SELECT datatype.writer_after_each_change('{table}'::regclass::oid, '{log}'::regclass::oid)", token));
+            await ExecuteAsync(connection, $"DROP TABLE {log}; DROP FUNCTION {log}_after() CASCADE;", token);
+        });
+
+    /// <summary>
     /// A writer checks the role's table privilege and, as the built-in apply worker does, refuses a table whose
     /// row-level security applies to the role, because the executor's replication helpers do not apply policies.
     /// </summary>
@@ -156,8 +176,7 @@ public sealed class RelationWriterTests(TestContext context)
         });
 
     /// <summary>
-    /// A transaction cannot commit while a writer is open, because its <c>AFTER</c> triggers have not run; the
-    /// transaction rolls back and the session keeps working.
+    /// A transaction cannot commit while a writer is open; the transaction rolls back and the session keeps working.
     /// </summary>
     [TestMethod]
     public async Task OpenWritersBlockCommit()

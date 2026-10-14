@@ -90,7 +90,7 @@ internal static partial class ToolCommand
                 string project = await ExtensionBuilder.ResolveProjectAsync(result.GetValue<string?>("--project"),
                     configuration, token, BuildProperties(result));
                 int major = await SelectMajorAsync(result, token, project);
-                string directory = Path.Combine(Path.GetDirectoryName(project)!, "bin", "ankus",
+                string directory = Path.Join(Path.GetDirectoryName(project)!, "bin", "ankus",
                     "pg" + major.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     RuntimeInformation.RuntimeIdentifier, configuration);
                 if (!result.GetValue(skipBuild))
@@ -110,7 +110,7 @@ internal static partial class ToolCommand
                     throw new FormatException("The published extension does not match the selected PostgreSQL target.");
                 }
 
-                library = Path.Combine(directory, publication.Library);
+                library = Path.Join(directory, publication.Library);
                 ExtensionSchema existing = ExtensionSchema.Read(library, RuntimeInformation.RuntimeIdentifier);
                 if (existing.Artifacts.PostgresMajor != major || existing.Artifacts.Library != publication.Library ||
                     existing.Artifacts.Control != publication.Control || existing.Artifacts.Sql != publication.Sql)
@@ -187,7 +187,7 @@ internal static partial class ToolCommand
         string current = Path.GetPathRoot(full)!;
         foreach (string component in full[current.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
         {
-            current = Path.Combine(current, component);
+            current = Path.Join(current, component);
             FileSystemInfo entry = Directory.Exists(current) ? new DirectoryInfo(current) : new FileInfo(current);
             if (entry.LinkTarget is not null)
             {
@@ -254,6 +254,7 @@ internal static partial class ToolCommand
                         File.Move(backup, path, overwrite: true);
                     }
                 }
+                // codeql[cs/catch-of-all-exceptions] Every file is restored even when another fails, and each failure is reported.
                 catch (Exception rollback)
                 {
                     failures.Add(new IOException($"Could not restore schema output '{path}'; its previous content remains at '{backup}'.", rollback));

@@ -114,7 +114,7 @@ public sealed partial class NativeBindingNativeTests
                 }
             }
             """;
-        string directory = Path.Combine(Path.GetTempPath(), "ankus-pointer-storage-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus-pointer-storage-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {
@@ -152,7 +152,7 @@ public sealed partial class NativeBindingNativeTests
             typedef struct Links { int *first; int *items[2]; Arithmetic callback; Opaque *opaque; } Links;
             extern Links observed;
             """;
-        string directory = Path.Combine(Path.GetTempPath(), "ankus-pointer-compiler-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus-pointer-compiler-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(directory);
         try
         {

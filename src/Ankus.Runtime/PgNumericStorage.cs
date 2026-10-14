@@ -109,11 +109,15 @@ internal sealed class PgNumericStorage(byte[] buffer, int rawLength)
         int scale = (bits[3] >> 16) & 0xFF;
         UInt128 coefficient = unchecked((uint)bits[0]) | ((UInt128)unchecked((uint)bits[1]) << 32)
             | ((UInt128)unchecked((uint)bits[2]) << 64);
+        // Pad the fraction to whole base-10000 groups.
         int fractionalGroups = (scale + 3) / 4;
-        for (int padding = fractionalGroups * 4 - scale; padding > 0; padding--)
+        coefficient *= (fractionalGroups * 4 - scale) switch
         {
-            coefficient *= 10;
-        }
+            0 => 1u,
+            1 => 10u,
+            2 => 100u,
+            _ => 1000u,
+        };
 
         Span<ushort> groups = stackalloc ushort[8];
         int count = 0;
@@ -173,12 +177,10 @@ internal sealed class PgNumericStorage(byte[] buffer, int rawLength)
             throw new ArgumentException("Invalid canonical numeric text.", nameof(text));
         }
 
-        for (int index = 0; index < digits.Length; index++)
+        ReadOnlySpan<char> fraction = point < 0 ? [] : digits[(point + 1)..];
+        if (digits[..integerLength].ContainsAnyExceptInRange('0', '9') || fraction.ContainsAnyExceptInRange('0', '9'))
         {
-            if (index != point && !char.IsAsciiDigit(digits[index]))
-            {
-                throw new ArgumentException("Invalid canonical numeric digit.", nameof(text));
-            }
+            throw new ArgumentException("Invalid canonical numeric digit.", nameof(text));
         }
 
         int integerGroups = (integerLength + 3) / 4;

@@ -94,7 +94,7 @@ public sealed class NativeSchemaSectionTests
     {
         string runtime = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
         string name = OperatingSystem.IsWindows() ? "coreclr.dll" : OperatingSystem.IsMacOS() ? "libcoreclr.dylib" : "libcoreclr.so";
-        using FileStream library = File.OpenRead(Path.Combine(runtime, name));
+        using FileStream library = File.OpenRead(Path.Join(runtime, name));
         Assert.ThrowsExactly<FormatException>(() => NativeSchemaSection.Read(library));
     }
 

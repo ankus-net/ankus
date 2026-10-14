@@ -743,8 +743,8 @@ public sealed partial class PgFunctionGeneratorTests
     [TestMethod]
     public void DatumMappingFilesAndMetadataInvalidateIncrementalOutput()
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "mapping-project");
-        var original = new SqlInput(Path.Combine(project, "types.sql"), "SELECT 'original';");
+        string project = Path.Join(AppContext.BaseDirectory, "mapping-project");
+        var original = new SqlInput(Path.Join(project, "types.sql"), "SELECT 'original';");
         var changed = new SqlInput(original.Path, "SELECT 'changed';");
         string Source(string name, string? schema) => "[assembly: Ankus.PgSqlFile(\"types\", \"types.sql\", Relocatable=true)]" +
             "[assembly: Ankus.PgSqlTypeProvider(\"types\", typeof(Value))]" + DatumMappingSource(external: false, name: name, schema: schema) +
@@ -902,9 +902,9 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.IsEmpty(compilation.GetDiagnostics(context.CancellationToken).Where(static error => error.Severity == DiagnosticSeverity.Error));
         if (aggregateRole is not null)
         {
-            Assert.IsTrue(diagnostics.Any(error => error.Location.SourceTree?.GetRoot(context.CancellationToken)
+            Assert.IsTrue(diagnostics.Any(error => error.Location.SourceTree is { } tree && tree.GetRoot(context.CancellationToken)
                 .FindNode(error.Location.SourceSpan).AncestorsAndSelf().OfType<Microsoft.CodeAnalysis.CSharp.Syntax.MethodDeclarationSyntax>()
-                .Any(method => method.Identifier.ValueText == aggregateRole) == true), string.Join(Environment.NewLine, diagnostics));
+                .Any(method => method.Identifier.ValueText == aggregateRole)), string.Join(Environment.NewLine, diagnostics));
         }
     }
 

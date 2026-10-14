@@ -204,7 +204,8 @@ internal sealed class PostgresServerAccount
                 WorkingDirectory = "/",
             },
         };
-        foreach (string argument in (string[])["-u", Name!, "--", .. arguments])
+        string[] command = ["-u", Name!, "--", .. arguments];
+        foreach (string argument in command)
         {
             process.StartInfo.ArgumentList.Add(argument);
         }

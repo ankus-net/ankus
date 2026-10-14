@@ -396,9 +396,10 @@ public static class CustomOperatorFunctions
         /// <inheritdoc />
         public int GetPostgresHashCode() => PgHash.Compute(unchecked((ulong)Key));
         /// <inheritdoc />
-        public override bool Equals(object? obj) => obj is Tagged other && Equals(other);
+        // codeql[cs/equals-uses-is] Variants compare by their shared key on purpose, and no variant can override this.
+        public sealed override bool Equals(object? obj) => obj is Tagged other && Equals(other);
         /// <inheritdoc />
-        public override int GetHashCode() => GetPostgresHashCode();
+        public sealed override int GetHashCode() => GetPostgresHashCode();
         /// <summary>
         /// Compares keys across variant kinds.
         /// </summary>

@@ -57,7 +57,7 @@ internal static class NativeBindingSourceCache
             NativeBindingCacheFile helper = tools.Single(input => input.Path == helperPath);
             NativeBindingCacheFile[] nativeTools = [.. tools.Where(input => input.Path != helperPath)];
             (NativeHeaderCatalogs catalogs, string catalogHash) = await DeriveCatalogsAsync(major, installation, compiler, library, options,
-                Path.Combine(cache, "catalogs"), Key(new { Manifest = manifest, Tools = nativeTools, Generator = helper.Hash, Compiler = compiler,
+                Path.Join(cache, "catalogs"), Key(new { Manifest = manifest, Tools = nativeTools, Generator = helper.Hash, Compiler = compiler,
                     Library = library, Options = options, Runtime = Environment.Version.ToString() }), directory, cancellationToken);
             NativeBindingCatalog catalog = catalogs.Types;
             NativeBindingNodeRoots roots = NativeBindingNodeRecords.CreateRoots(catalog, NativeBindingResources.ReadHeaders(major),
@@ -77,9 +77,9 @@ internal static class NativeBindingSourceCache
                 Runtime = Environment.Version.ToString(),
             }))));
             bool produced = false;
-            string snapshot = Path.Combine(directory, "sources");
+            string snapshot = Path.Join(directory, "sources");
             Directory.CreateDirectory(snapshot);
-            await using (NativeBindingCacheLease lease = await NativeBindingCache.GetAsync(Path.Combine(cache, "sources"), key, async (stage, token) =>
+            await using (NativeBindingCacheLease lease = await NativeBindingCache.GetAsync(Path.Join(cache, "sources"), key, async (stage, token) =>
             {
                 produced = true;
                 string[] selected = [arguments[0], arguments[1], stage,
@@ -93,11 +93,11 @@ internal static class NativeBindingSourceCache
                     .Select(static pair => pair.Key)];
                 string[] globals = [.. collection.Availability.Available.Where(static request => !request.IsFunction).Select(static request => request.Name)];
                 NativeBindingSource binding = NativeBindingRecordCSharp.Generate(records, nodes.Catalog, layout, calls, globals);
-                await File.WriteAllTextAsync(Path.Combine(stage, Artifacts[0]), JsonSerializer.Serialize(records, NativeBindingRecordWorker.JsonOptions) + "\n", token);
-                await File.WriteAllTextAsync(Path.Combine(stage, Artifacts[1]), JsonSerializer.Serialize(collection.Availability) + "\n", token);
-                await File.WriteAllTextAsync(Path.Combine(stage, Artifacts[2]), binding.Source, token);
-                await File.WriteAllTextAsync(Path.Combine(stage, Artifacts[3]), binding.AssemblyName + "\n", token);
-                await File.WriteAllTextAsync(Path.Combine(stage, Artifacts[4]), binding.AbiIdentity + "\n", token);
+                await File.WriteAllTextAsync(Path.Join(stage, Artifacts[0]), JsonSerializer.Serialize(records, NativeBindingRecordWorker.JsonOptions) + "\n", token);
+                await File.WriteAllTextAsync(Path.Join(stage, Artifacts[1]), JsonSerializer.Serialize(collection.Availability) + "\n", token);
+                await File.WriteAllTextAsync(Path.Join(stage, Artifacts[2]), binding.Source, token);
+                await File.WriteAllTextAsync(Path.Join(stage, Artifacts[3]), binding.AssemblyName + "\n", token);
+                await File.WriteAllTextAsync(Path.Join(stage, Artifacts[4]), binding.AbiIdentity + "\n", token);
                 await VerifyObservationAsync(token);
                 // Every tool's current bytes are bound into the key and verified again
                 // before publishing or consuming the artifacts. Recording them as additional
@@ -110,13 +110,13 @@ internal static class NativeBindingSourceCache
                 foreach (string artifact in Artifacts)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    File.Copy(Path.Combine(lease.Directory, artifact), Path.Combine(snapshot, artifact));
+                    File.Copy(Path.Join(lease.Directory, artifact), Path.Join(snapshot, artifact));
                 }
             }
 
             if (!produced)
             {
-                await using FileStream stream = File.OpenRead(Path.Combine(snapshot, Artifacts[0]));
+                await using FileStream stream = File.OpenRead(Path.Join(snapshot, Artifacts[0]));
                 NativeHeaderRecords records = await JsonSerializer.DeserializeAsync<NativeHeaderRecords>(stream,
                     NativeBindingRecordWorker.JsonOptions, cancellationToken) ?? throw new FormatException("Missing cached native declarations.");
                 NativeBindingSelectedNodes nodes = NativeBindingNodeAvailability.Read(catalog, records.Graph);
@@ -129,8 +129,8 @@ internal static class NativeBindingSourceCache
                 _ = NativeBindingNodeRecords.Create(records.Graph, nodes.Catalog, layout);
                 foreach (string artifact in Artifacts.Skip(5))
                 {
-                    if (await NativeBindingCache.HashAsync(Path.Combine(directory, artifact), cancellationToken) !=
-                        await NativeBindingCache.HashAsync(Path.Combine(snapshot, artifact), cancellationToken))
+                    if (await NativeBindingCache.HashAsync(Path.Join(directory, artifact), cancellationToken) !=
+                        await NativeBindingCache.HashAsync(Path.Join(snapshot, artifact), cancellationToken))
                     {
                         throw new IOException("Current native node observations disagree with the cached companion contract.");
                     }
@@ -143,8 +143,8 @@ internal static class NativeBindingSourceCache
             Directory.CreateDirectory(output);
             foreach (string name in Artifacts)
             {
-                string source = Path.Combine(snapshot, name);
-                string destination = Path.Combine(output, name);
+                string source = Path.Join(snapshot, name);
+                string destination = Path.Join(output, name);
                 if (!File.Exists(destination) || await NativeBindingCache.HashAsync(destination, cancellationToken) !=
                     await NativeBindingCache.HashAsync(source, cancellationToken))
                 {
@@ -185,15 +185,15 @@ internal static class NativeBindingSourceCache
         byte[] bytes;
         await using (NativeBindingCacheLease lease = await NativeBindingCache.GetAsync(cache, key, async (stage, token) =>
         {
-            string work = Directory.CreateDirectory(Path.Combine(directory, "catalogs")).FullName;
+            string work = Directory.CreateDirectory(Path.Join(directory, "catalogs")).FullName;
             NativeHeaderCatalogs derived = await NativeBindingHeaderCatalogCommand.BuildAsync(compiler,
                 [.. options, OperatingSystem.IsWindows() ? "/Zs" : "-fsyntax-only"], NativeBindingResources.ReadManifest(major), major,
                 installation.ServerIncludeDirectory, library, work, token);
-            await File.WriteAllTextAsync(Path.Combine(stage, Artifact), JsonSerializer.Serialize(derived) + "\n", token);
+            await File.WriteAllTextAsync(Path.Join(stage, Artifact), JsonSerializer.Serialize(derived) + "\n", token);
             return [];
         }, cancellationToken))
         {
-            bytes = await File.ReadAllBytesAsync(Path.Combine(lease.Directory, Artifact), cancellationToken);
+            bytes = await File.ReadAllBytesAsync(Path.Join(lease.Directory, Artifact), cancellationToken);
         }
 
         NativeHeaderCatalogs catalogs = JsonSerializer.Deserialize<NativeHeaderCatalogs>(bytes)

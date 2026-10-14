@@ -205,7 +205,7 @@ public static class CustomTypeFunctions
         /// Adds each present input to independent group state.
         /// </summary>
         public static Number? Transition(PgAggregateContext context, Number? state, Number? value)
-            => value is null ? state : new(checked((state?.Value ?? 0) + value.Value.Value));
+            => value is null ? state : new(checked((state is { } current ? current.Value : 0) + value.Value.Value));
 
         /// <summary>
         /// Combines ordinary states without internal serialization callbacks.

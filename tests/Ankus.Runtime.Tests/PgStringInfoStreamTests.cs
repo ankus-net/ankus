@@ -205,37 +205,27 @@ public sealed unsafe class PgStringInfoStreamTests
     {
         using var fixture = new MemoryContextTestFixture();
         fixture.Handler = request => Respond(fixture, request);
-        PgStringInfoStream buffer;
-        using (MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter())
-        {
-            buffer = PgStringInfoStream.Create();
-            using (MemoryContextTestFixture.Scope foreign = MemoryContextTestFixture.Enter(99))
-            {
-                Assert.ThrowsExactly<InvalidOperationException>(() => buffer.Write([]));
-                Assert.ThrowsExactly<InvalidOperationException>(() => buffer.DangerousDetach());
-            }
-
-            Exception? failure = null;
-            var thread = new Thread(() =>
-            {
-                try
-                {
-                    buffer.Flush();
-                }
-                catch (Exception exception)
-                {
-                    failure = exception;
-                }
-            });
-            thread.Start();
-            thread.Join();
-            Assert.IsInstanceOfType<InvalidOperationException>(failure);
-        }
-
+        using PgStringInfoStream buffer = CreateInCallback();
         Assert.ThrowsExactly<InvalidOperationException>(() => buffer.CopyTo([]));
         Assert.IsNull(PgStringInfoStream.DangerousBorrow(null, null!));
         using MemoryContextTestFixture.Scope replacement = MemoryContextTestFixture.Enter();
         buffer.Dispose();
+
+        static PgStringInfoStream CreateInCallback()
+        {
+            using (MemoryContextTestFixture.Enter())
+            {
+                PgStringInfoStream created = PgStringInfoStream.Create();
+                using (MemoryContextTestFixture.Enter(99))
+                {
+                    Assert.ThrowsExactly<InvalidOperationException>(() => created.Write([]));
+                    Assert.ThrowsExactly<InvalidOperationException>(() => created.DangerousDetach());
+                }
+
+                Assert.Throws<InvalidOperationException>(() => DedicatedThread.Run(created.Flush));
+                return created;
+            }
+        }
     }
 
     /// <summary>

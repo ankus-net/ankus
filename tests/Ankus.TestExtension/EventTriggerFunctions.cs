@@ -286,7 +286,7 @@ public static class EventTriggerFunctions
     {
         PgEventTriggerContext context = s_retainedContext ?? throw new InvalidOperationException("No retained event context.");
         Spi.Query("SELECT repeat('overwrite',100000)");
-        GC.Collect();
+        GarbageCollection.Collect();
         string snapshot = context.Kind switch
         {
             PgEventTriggerKind.DdlCommandEnd => string.Join('|', s_retainedCommands!.Select(static command =>

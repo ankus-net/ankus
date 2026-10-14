@@ -233,7 +233,7 @@ public sealed class PublishedExtension
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(publishDirectory);
         ArgumentException.ThrowIfNullOrWhiteSpace(baseDirectory);
-        IReadOnlyDictionary<string, string> settings = ExtensionControlFile.Read(Path.Combine(publishDirectory, "extension", Control));
+        IReadOnlyDictionary<string, string> settings = ExtensionControlFile.Read(Path.Join(publishDirectory, "extension", Control));
         settings.TryGetValue("directory", out string? authored);
         if (authored != ScriptDirectory)
         {
@@ -246,7 +246,8 @@ public sealed class PublishedExtension
             throw new FormatException("SQL directories must be relative or fully qualified, not drive-relative or rooted without a drive.");
         }
 
-        string path = Path.Combine(Path.GetFullPath(baseDirectory), directory);
+        // A fully qualified directory stands alone; PostgreSQL resolves any other one under the shared directory.
+        string path = Path.IsPathFullyQualified(directory) ? directory : Path.Join(Path.GetFullPath(baseDirectory), directory);
         return OperatingSystem.IsWindows() ? Path.GetFullPath(path) : path;
     }
 
@@ -256,7 +257,7 @@ public sealed class PublishedExtension
     /// <param name="directory">The publish directory.</param>
     /// <returns>The validated manifest.</returns>
     public static PublishedExtension Read(string directory)
-        => ReadFile(Path.Combine(directory, FileName));
+        => ReadFile(Path.Join(directory, FileName));
 
     private static PublishedExtension ReadFile(string path)
     {
@@ -326,7 +327,7 @@ public sealed class PublishedExtension
     /// <param name="directory">The artifact directory.</param>
     public void Write(string directory)
     {
-        using FileStream stream = File.Create(Path.Combine(directory, FileName));
+        using FileStream stream = File.Create(Path.Join(directory, FileName));
         using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
         writer.WriteStartObject();
         writer.WriteNumber("formatVersion", PluginLibraries.Count > 0 ? 5 : ScriptDirectory is not null ? 4 :
@@ -383,10 +384,10 @@ public sealed class PublishedExtension
     /// <param name="directory">The publish directory.</param>
     public static void Invalidate(string directory)
     {
-        string manifest = Path.Combine(directory, FileName);
+        string manifest = Path.Join(directory, FileName);
         if (File.Exists(manifest))
         {
-            File.Move(manifest, Path.Combine(directory, "ankus.extension.previous.json"), overwrite: true);
+            File.Move(manifest, Path.Join(directory, "ankus.extension.previous.json"), overwrite: true);
         }
     }
 
@@ -399,9 +400,9 @@ public sealed class PublishedExtension
     {
         Invalidate(directory);
         string[] files = [Control, Sql, .. UpgradeScripts, .. VersionControlFiles];
-        foreach (string path in files.Select(file => Path.Combine(directory, "extension", file))
-                     .Concat(PluginLibraries.Select(file => Path.Combine(directory, file)))
-                     .Prepend(Path.Combine(directory, Library)))
+        foreach (string path in files.Select(file => Path.Join(directory, "extension", file))
+                     .Concat(PluginLibraries.Select(file => Path.Join(directory, file)))
+                     .Prepend(Path.Join(directory, Library)))
         {
             if (!File.Exists(path))
             {
@@ -414,20 +415,20 @@ public sealed class PublishedExtension
             _ = GetScriptDirectory(directory, directory);
         }
 
-        string previousPath = Path.Combine(directory, "ankus.extension.previous.json");
+        string previousPath = Path.Join(directory, "ankus.extension.previous.json");
         if (File.Exists(previousPath))
         {
             PublishedExtension previous = ReadFile(previousPath);
             string[] previousFiles = [previous.Control, previous.Sql, .. previous.UpgradeScripts, .. previous.VersionControlFiles];
             foreach (string file in previousFiles.Except(files, s_fileComparer))
             {
-                File.Delete(Path.Combine(directory, "extension", file));
+                File.Delete(Path.Join(directory, "extension", file));
             }
 
             // A module that became the library's own name stays.
             foreach (string file in previous.PluginLibraries.Except([.. PluginLibraries, Library], s_fileComparer))
             {
-                File.Delete(Path.Combine(directory, file));
+                File.Delete(Path.Join(directory, file));
             }
         }
 

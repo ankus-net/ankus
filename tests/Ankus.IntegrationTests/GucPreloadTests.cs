@@ -252,7 +252,7 @@ public sealed class GucPreloadTests(TestContext context)
         await ExecuteAsync(connection, "ALTER SYSTEM SET ankus_configuration.connection = '35'");
         await ExecuteAsync(connection, "ALTER SYSTEM SET ankus_configuration.startup = '15'");
         string? execParameters = OperatingSystem.IsWindows()
-            ? Path.Combine(cluster.DataDirectory, "global", "config_exec_params")
+            ? Path.Join(cluster.DataDirectory, "global", "config_exec_params")
             : null;
         Assert.IsTrue(Assert.IsInstanceOfType<bool>(await ScalarAsync(connection, "SELECT pg_reload_conf()")));
         await WaitForSettingAsync(connection, "ankus_configuration.reload", "25");

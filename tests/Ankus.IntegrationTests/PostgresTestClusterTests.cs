@@ -272,7 +272,7 @@ public sealed class PostgresTestClusterTests(TestContext context)
                 ProcessResult owner = await ProcessRunner.RunAsync("ps", ["-o", "user=", "-p",
                     backend.ToString(System.Globalization.CultureInfo.InvariantCulture)], new Dictionary<string, string?>(), token);
                 Assert.AreEqual(account, owner.StandardOutput.Trim());
-                Assert.IsFalse(File.Exists(Path.Combine(cluster.DataDirectory, "PG_VERSION")), "The data directory is private to the account.");
+                Assert.IsFalse(File.Exists(Path.Join(cluster.DataDirectory, "PG_VERSION")), "The data directory is private to the account.");
                 Assert.Contains("database system is ready to accept connections", cluster.ReadServerLog());
             }
 
@@ -345,7 +345,7 @@ public sealed class PostgresTestClusterTests(TestContext context)
     public async Task FailedStartupCleansDataAndRetainsDiagnostic()
     {
         PostgresTestClusterOptions defaults = await IntegrationEnvironment.CreateOptionsAsync(context.CancellationToken);
-        string root = Path.Combine(defaults.DataDirectoryBase, $"failure-{Guid.NewGuid():N}");
+        string root = Path.Join(defaults.DataDirectoryBase, $"failure-{Guid.NewGuid():N}");
         var options = new PostgresTestClusterOptions
         {
             Installation = defaults.Installation,

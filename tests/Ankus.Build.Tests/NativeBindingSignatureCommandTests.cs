@@ -28,10 +28,10 @@ public sealed class NativeBindingSignatureCommandTests(TestContext context)
     [DataRow("ExecutorRun\nExecutorRun\n")]
     public async Task InvalidFunctionListsPreserveExistingOutput(string names)
     {
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-signature-command-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-signature-command-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
-        string list = Path.Combine(directory, "functions.txt");
-        string artifact = Path.Combine(directory, "native-signatures.json");
+        string list = Path.Join(directory, "functions.txt");
+        string artifact = Path.Join(directory, "native-signatures.json");
         try
         {
             await File.WriteAllTextAsync(list, names, context.CancellationToken);

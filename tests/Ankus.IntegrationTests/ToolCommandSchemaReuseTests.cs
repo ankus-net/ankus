@@ -19,12 +19,12 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         string output = await CreateSchemaReuseProjectAsync(direct, token);
         await RunSchemaReuseProbeAsync(output, direct, reuse: false, expectedSql: 11, expectedNative: 42, "first", token);
-        string extension = Path.Combine(output, "src", "TestCommandProbe");
-        string snapshot = Assert.ContainsSingle(Directory.GetFiles(Path.Combine(extension, "obj"), "schema-pg" + MajorText() + "-tests.json", SearchOption.AllDirectories));
+        string extension = Path.Join(output, "src", "TestCommandProbe");
+        string snapshot = Assert.ContainsSingle(Directory.GetFiles(Path.Join(extension, "obj"), "schema-pg" + MajorText() + "-tests.json", SearchOption.AllDirectories));
         byte[] original = await File.ReadAllBytesAsync(snapshot, token);
         File.SetLastWriteTimeUtc(snapshot, new DateTime(2011, 2, 3, 4, 5, 6, DateTimeKind.Utc));
         DateTime savedTime = File.GetLastWriteTimeUtc(snapshot);
-        string functions = Path.Combine(extension, "Functions.cs");
+        string functions = Path.Join(extension, "Functions.cs");
         string source = await File.ReadAllTextAsync(functions, token);
         await File.WriteAllTextAsync(functions, source.Replace("checked(left + right)", "checked(left + right + 100)", StringComparison.Ordinal), token);
         await WriteSchemaReuseSqlAsync(output, 22, token);
@@ -34,7 +34,7 @@ public sealed partial class ToolCommandTests
 
         if (!direct)
         {
-            string changedContract = Path.Combine(extension, "ChangedContract.cs");
+            string changedContract = Path.Join(extension, "ChangedContract.cs");
             await File.WriteAllTextAsync(changedContract,
                 "using Ankus; namespace TestCommandProbe; public static class ChangedContract { [PgFunction] public static int NewEntry() => 7; }", token);
             ProcessResult rejected = await InvokeSchemaReuseProbeAsync(output, direct: false, reuse: true, 11, 142, "incompatible", token);
@@ -49,13 +49,13 @@ public sealed partial class ToolCommandTests
         Assert.AreNotEqual(savedTime, File.GetLastWriteTimeUtc(snapshot));
         Assert.AreNotEqual(Convert.ToBase64String(original), Convert.ToBase64String(await File.ReadAllBytesAsync(snapshot, token)));
 
-        string sentinel = Path.Combine(Path.GetDirectoryName(snapshot)!, "preserve-user-file.txt");
+        string sentinel = Path.Join(Path.GetDirectoryName(snapshot)!, "preserve-user-file.txt");
         await File.WriteAllTextAsync(sentinel, "unrelated content", token);
         ProcessResult cleaned = await PackageProcessRunner.RunAsync("dotnet",
-            ["clean", Path.Combine(extension, "TestCommandProbe.csproj"), "-c", "Debug",
+            ["clean", Path.Join(extension, "TestCommandProbe.csproj"), "-c", "Debug",
                 "-r", RuntimeInformation.RuntimeIdentifier,
-                "--artifacts-path", Path.Combine(extension, "obj", "ankus-test-build"),
-                "-bl:" + Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs", "schema-reuse", "clean-{}.binlog")],
+                "--artifacts-path", Path.Join(extension, "obj", "ankus-test-build"),
+                "-bl:" + Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs", "schema-reuse", "clean-{}.binlog")],
             s_environment, token, workingDirectory: output);
         Assert.AreEqual(0, cleaned.ExitCode, cleaned.StandardOutput + cleaned.StandardError);
         Assert.IsFalse(File.Exists(snapshot));
@@ -73,19 +73,19 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string output = await CreateSchemaReuseProjectAsync(direct: false, token);
-        string extension = Path.Combine(output, "src", "TestCommandProbe");
+        string extension = Path.Join(output, "src", "TestCommandProbe");
         string? normal = null;
         byte[]? normalBytes = null;
-        string project = Path.Combine(extension, "TestCommandProbe.csproj");
+        string project = Path.Join(extension, "TestCommandProbe.csproj");
         if (ordinaryPublication)
         {
-            string publication = Path.Combine(output, "ordinary publication");
+            string publication = Path.Join(output, "ordinary publication");
             ProcessResult published = await PackageProcessRunner.RunAsync("dotnet",
                 ["publish", project, "-c", "Debug", "-o", publication, "-p:AnkusIncludeTests=false",
                     "-p:AnkusPostgresMajor=" + MajorText(), "-p:AnkusPgConfigPath=" + s_installation.PgConfigPath],
                 s_environment, token, workingDirectory: output);
             Assert.AreEqual(0, published.ExitCode, published.StandardOutput + published.StandardError);
-            normal = Assert.ContainsSingle(Directory.GetFiles(Path.Combine(extension, "obj"), "schema-pg" + MajorText() + "-normal.json", SearchOption.AllDirectories));
+            normal = Assert.ContainsSingle(Directory.GetFiles(Path.Join(extension, "obj"), "schema-pg" + MajorText() + "-normal.json", SearchOption.AllDirectories));
             normalBytes = await File.ReadAllBytesAsync(normal, token);
         }
         else
@@ -99,8 +99,8 @@ public sealed partial class ToolCommandTests
         ProcessResult result = await InvokeSchemaReuseProbeAsync(output, direct: false, reuse: true, 11, 42, "missing", token);
         Assert.AreNotEqual(0, result.ExitCode);
         Assert.Contains("No saved schema exists for this build", result.StandardOutput + result.StandardError);
-        Assert.IsEmpty(Directory.GetFiles(Path.Combine(extension, "obj"), "schema-pg" + MajorText() + "-tests.json", SearchOption.AllDirectories));
-        Assert.IsEmpty(Directory.GetFiles(Path.Combine(extension, "bin", "ankus-test-logs"), "*.log"));
+        Assert.IsEmpty(Directory.GetFiles(Path.Join(extension, "obj"), "schema-pg" + MajorText() + "-tests.json", SearchOption.AllDirectories));
+        Assert.IsEmpty(Directory.GetFiles(Path.Join(extension, "bin", "ankus-test-logs"), "*.log"));
         if (normal is not null)
         {
             Assert.AreSequenceEqual(normalBytes!, await File.ReadAllBytesAsync(normal, token));
@@ -110,8 +110,8 @@ public sealed partial class ToolCommandTests
     private async Task<string> CreateSchemaReuseProjectAsync(bool direct, CancellationToken token)
     {
         string output = await CreateTestCommandProjectAsync(token);
-        string hostRoot = Path.Combine(output, "tests", "TestCommandProbe.Tests");
-        string file = Path.Combine(hostRoot, "BackendTests.cs");
+        string hostRoot = Path.Join(output, "tests", "TestCommandProbe.Tests");
+        string file = Path.Join(hostRoot, "BackendTests.cs");
         string source = await File.ReadAllTextAsync(file, token);
         source = source.Replace("PostgresExtensionTest.StartAsync(", "StartSchemaFixtureAsync(", StringComparison.Ordinal);
         if (direct)
@@ -121,7 +121,7 @@ public sealed partial class ToolCommandTests
 
         await File.WriteAllTextAsync(file, source, token);
         await WriteSchemaReuseSqlAsync(output, 11, token);
-        await File.WriteAllTextAsync(Path.Combine(hostRoot, "SchemaReuseTests.cs"), """
+        await File.WriteAllTextAsync(Path.Join(hostRoot, "SchemaReuseTests.cs"), """
             using System.Globalization;
             using Ankus.PgConfig;
             using Ankus.Testing;
@@ -132,7 +132,7 @@ public sealed partial class ToolCommandTests
             {
                 private static async Task<PostgresExtensionTest> StartSchemaFixtureAsync(PostgresExtensionTestOptions options, CancellationToken token)
                 {
-                    string intermediate = Path.Combine(Path.GetDirectoryName(options.ProjectPath)!, "obj", "Debug");
+                    string intermediate = Path.Join(Path.GetDirectoryName(options.ProjectPath)!, "obj", "Debug");
                     Dictionary<string, byte[]> originals = Directory.GetFiles(intermediate, "*", SearchOption.AllDirectories)
                         .Where(path => Path.GetExtension(path) is ".dll" or ".pdb" || path.EndsWith(".FileListAbsolute.txt", StringComparison.Ordinal))
                         .ToDictionary(path => path, File.ReadAllBytes);
@@ -168,8 +168,8 @@ public sealed partial class ToolCommandTests
                     Assert.AreEqual(expectedNative, reader.GetInt32(1));
                     string publication = reader.GetString(2).Split(OperatingSystem.IsWindows() ? ';' : ':')[0];
                     PublishedExtension artifacts = PublishedExtension.Read(publication);
-                    ExtensionSchema schema = ExtensionSchema.Read(Path.Combine(publication, artifacts.Library));
-                    Assert.AreEqual(await File.ReadAllTextAsync(Path.Combine(publication, "extension", artifacts.Sql), context.CancellationToken), schema.Sql);
+                    ExtensionSchema schema = ExtensionSchema.Read(Path.Join(publication, artifacts.Library));
+                    Assert.AreEqual(await File.ReadAllTextAsync(Path.Join(publication, "extension", artifacts.Sql), context.CancellationToken), schema.Sql);
                     Assert.IsNotNull(schema.Graph);
                     Assert.AreEqual(schema.Sql, schema.Graph.Sql);
                     string expectedFragment = "SELECT " + expectedSql.ToString(CultureInfo.InvariantCulture);
@@ -184,7 +184,7 @@ public sealed partial class ToolCommandTests
     }
 
     private static Task WriteSchemaReuseSqlAsync(string output, int value, CancellationToken token)
-        => File.WriteAllTextAsync(Path.Combine(output, "src", "TestCommandProbe", "SchemaValue.cs"),
+        => File.WriteAllTextAsync(Path.Join(output, "src", "TestCommandProbe", "SchemaValue.cs"),
             "using Ankus;\n[assembly: PgSql(\"schema-value\", \"CREATE FUNCTION public.schema_value() RETURNS integer LANGUAGE sql AS 'SELECT " +
             value.ToString(CultureInfo.InvariantCulture) + "';\")]\n", token);
 
@@ -194,20 +194,20 @@ public sealed partial class ToolCommandTests
         ProcessResult result = await InvokeSchemaReuseProbeAsync(output, direct, reuse, expectedSql, expectedNative, label, token);
         if (result.ExitCode != 0)
         {
-            string diagnostics = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs", "schema-reuse");
+            string diagnostics = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs", "schema-reuse");
             Directory.CreateDirectory(diagnostics);
-            System.IO.Compression.ZipFile.CreateFromDirectory(Path.Combine(output, "src", "TestCommandProbe"),
-                Path.Combine(diagnostics, label + "-" + Guid.NewGuid().ToString("N") + ".zip"));
+            System.IO.Compression.ZipFile.CreateFromDirectory(Path.Join(output, "src", "TestCommandProbe"),
+                Path.Join(diagnostics, label + "-" + Guid.NewGuid().ToString("N") + ".zip"));
         }
 
         Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
-        string reports = Path.Combine(output, "reports " + label);
+        string reports = Path.Join(output, "reports " + label);
         XNamespace ns = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010";
         string report = Assert.ContainsSingle(Directory.GetFiles(reports, "schema.trx", SearchOption.AllDirectories));
         XElement outcome = Assert.ContainsSingle(XDocument.Load(report).Descendants(ns + "UnitTestResult"));
         Assert.AreEqual("RetainedSchemaMatchesBackend", outcome.Attribute("testName")!.Value);
         Assert.AreEqual("Passed", outcome.Attribute("outcome")!.Value);
-        string[] storage = await File.ReadAllLinesAsync(Path.Combine(TestCommandHostDirectory(output, "Debug"), "schema-storage.txt"), token);
+        string[] storage = await File.ReadAllLinesAsync(Path.Join(TestCommandHostDirectory(output, "Debug"), "schema-storage.txt"), token);
         Assert.IsFalse(Directory.Exists(storage[0]));
         if (storage[1].Length != 0)
         {
@@ -227,12 +227,12 @@ public sealed partial class ToolCommandTests
             ["ANKUS_TEST_REUSE_SCHEMA"] = "true",
             ["ANKUS_TEST_PG_CONFIG"] = s_installation.PgConfigPath,
         };
-        string reports = Path.Combine(output, "reports " + label);
-        string project = Path.Combine(output, "tests", "TestCommandProbe.Tests", "TestCommandProbe.Tests.csproj");
-        string diagnostics = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs", "schema-reuse");
+        string reports = Path.Join(output, "reports " + label);
+        string project = Path.Join(output, "tests", "TestCommandProbe.Tests", "TestCommandProbe.Tests.csproj");
+        string diagnostics = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs", "schema-reuse");
         Directory.CreateDirectory(diagnostics);
         string[] runner = ["--project", project, "--filter", "FullyQualifiedName~RetainedSchemaMatchesBackend", "--report-trx", "--report-trx-filename", "schema.trx",
-            "-bl:" + Path.Combine(diagnostics, label + "-{}.binlog")];
+            "-bl:" + Path.Join(diagnostics, label + "-{}.binlog")];
         string[] arguments = direct
             ? ["test", .. runner, "--results-directory", reports, "-p:AnkusPostgresMajor=" + MajorText(), "-p:AnkusPgConfigPath=" + s_installation.PgConfigPath]
             : ["test", "--home", s_home, .. reuse ? new[] { "--all", "--no-schema" } : ["--pg", MajorText()], "--results-directory", reports, "--", .. runner];

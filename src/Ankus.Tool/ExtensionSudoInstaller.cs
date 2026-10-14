@@ -37,7 +37,7 @@ internal static class ExtensionSudoInstaller
             Console.Error.WriteLine($"Using sudo to copy extension files from {staging}");
             foreach (string file in staged)
             {
-                string destination = Path.Combine(root, Path.GetRelativePath(staging, file));
+                string destination = Path.Join(root, Path.GetRelativePath(staging, file));
                 string directory = Path.GetDirectoryName(destination)!;
                 string temporary = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";
                 int code;

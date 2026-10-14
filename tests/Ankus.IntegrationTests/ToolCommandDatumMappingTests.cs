@@ -14,14 +14,14 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "DatumMappings.csproj");
+        string project = Path.Join(directory, "DatumMappings.csproj");
         File.Copy(s_project, project);
-        await File.WriteAllTextAsync(Path.Combine(directory, "Mappings.cs"), DatumMappingPackageSource, token);
-        string output = Path.Combine(directory, "published");
+        await File.WriteAllTextAsync(Path.Join(directory, "Mappings.cs"), DatumMappingPackageSource, token);
+        string output = Path.Join(directory, "published");
         await PublishSqlControlsAsync(project, output, token);
         PublishedExtension manifest = PublishedExtension.Read(output);
-        string sql = await File.ReadAllTextAsync(Path.Combine(output, "extension", manifest.Sql), token);
-        Assert.Contains("relocatable = true", await File.ReadAllTextAsync(Path.Combine(output, "extension", manifest.Control), token));
+        string sql = await File.ReadAllTextAsync(Path.Join(output, "extension", manifest.Sql), token);
+        Assert.Contains("relocatable = true", await File.ReadAllTextAsync(Path.Join(output, "extension", manifest.Control), token));
         int provider = sql.IndexOf("CREATE DOMAIN package_key", StringComparison.Ordinal);
         int consumer = sql.IndexOf("CREATE FUNCTION \"package_echo\"", StringComparison.Ordinal);
         int arrayConsumer = sql.IndexOf("CREATE FUNCTION \"package_array_echo\"", StringComparison.Ordinal);

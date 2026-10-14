@@ -444,6 +444,7 @@ public sealed unsafe class FunctionCatalogTests
 
                 return 0;
             }
+            // codeql[cs/catch-of-all-exceptions] This stands in for native code, so every exception goes back as an error instead of unwinding through it.
             catch (Exception exception)
             {
                 NativeError.Write(exception, error);

@@ -39,8 +39,6 @@ public static class CustomScanProbeFunctions
     [PgFunction]
     public static void CustomScanCollect()
     {
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
+        GarbageCollection.Collect();
     }
 }

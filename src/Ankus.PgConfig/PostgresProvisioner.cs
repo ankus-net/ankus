@@ -50,18 +50,18 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
         }
 
         IReadOnlyDictionary<int, PostgresVersion> releases = await _distributions.GetLatestAsync(majors, cancellationToken).ConfigureAwait(false);
-        string root = Path.Combine(_home, "postgres");
+        string root = Path.Join(_home, "postgres");
         Directory.CreateDirectory(root);
         // Leave the lock inode in place, including after a failed build.
-        using var installationLock = new FileStream(Path.Combine(root, "install.lock"), FileMode.OpenOrCreate,
+        using var installationLock = new FileStream(Path.Join(root, "install.lock"), FileMode.OpenOrCreate,
             FileAccess.ReadWrite, FileShare.None);
         var installations = new List<PostgresInstallation>();
         foreach (PostgresVersion version in releases.OrderBy(static pair => pair.Key).Select(static pair => pair.Value))
         {
             cancellationToken.ThrowIfCancellationRequested();
             string identity = GetBuildIdentity(options);
-            string destination = Path.Combine(root, $"{version}-{identity}");
-            string marker = Path.Combine(destination, ".ankus-installation");
+            string destination = Path.Join(root, $"{version}-{identity}");
+            string marker = Path.Join(destination, ".ankus-installation");
             if (Directory.Exists(destination))
             {
                 if (!File.Exists(marker) || await File.ReadAllTextAsync(marker, cancellationToken).ConfigureAwait(false) != version.ToString())
@@ -74,20 +74,20 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
                 continue;
             }
 
-            string scratch = Path.Combine(root, ".build-" + Guid.NewGuid().ToString("N"));
+            string scratch = Path.Join(root, ".build-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(scratch);
             bool moved = false;
             try
             {
                 progress?.Report($"Downloading PostgreSQL {version}.");
-                string distribution = Path.Combine(scratch, "distribution");
+                string distribution = Path.Join(scratch, "distribution");
                 await _distributions.DownloadAsync(version, distribution, OperatingSystem.IsWindows(), cancellationToken, progress).ConfigureAwait(false);
                 string staged = distribution;
                 if (!OperatingSystem.IsWindows())
                 {
                     progress?.Report($"Building PostgreSQL {version} with {options.Jobs} jobs.");
-                    string stagingRoot = Path.Combine(scratch, "install");
-                    staged = Path.Combine(stagingRoot, Path.GetRelativePath(Path.GetPathRoot(destination)!, destination));
+                    string stagingRoot = Path.Join(scratch, "install");
+                    staged = Path.Join(stagingRoot, Path.GetRelativePath(Path.GetPathRoot(destination)!, destination));
                     await BuildAsync(distribution, destination, stagingRoot, options, cancellationToken).ConfigureAwait(false);
                 }
 
@@ -127,16 +127,16 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
     /// </summary>
     internal static async Task InstallValgrindSuppressionsAsync(string source, PostgresInstallation installation, CancellationToken cancellationToken)
     {
-        string suppressions = Path.Combine(source, "src", "tools", "valgrind.supp");
+        string suppressions = Path.Join(source, "src", "tools", "valgrind.supp");
         if (!File.Exists(suppressions))
         {
             return;
         }
 
         string pgxs = Path.GetFullPath(await PostgresInstallation.QueryAsync(installation.PgConfigPath, ["--pgxs"], cancellationToken).ConfigureAwait(false));
-        string tools = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(pgxs)!)!, "tools");
+        string tools = Path.Join(Path.GetDirectoryName(Path.GetDirectoryName(pgxs)!)!, "tools");
         Directory.CreateDirectory(tools);
-        File.Copy(suppressions, Path.Combine(tools, "valgrind.supp"), overwrite: true);
+        File.Copy(suppressions, Path.Join(tools, "valgrind.supp"), overwrite: true);
     }
 
     /// <summary>
@@ -185,7 +185,7 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
             ExecutableLocator.Find("brew") is string brew)
         {
             string prefix = (await RunAsync(brew, ["--prefix", "icu4c"], source, flags, pkgConfigPath, cancellationToken).ConfigureAwait(false)).Trim();
-            string path = Path.Combine(prefix, "lib", "pkgconfig");
+            string path = Path.Join(prefix, "lib", "pkgconfig");
             if (Path.IsPathRooted(prefix) && Directory.Exists(path))
             {
                 pkgConfigPath = string.IsNullOrEmpty(pkgConfigPath) ? path : pkgConfigPath + Path.PathSeparator + path;
@@ -193,7 +193,7 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
         }
 
         string[] configure = [$"--prefix={destination}", "--enable-debug", "--enable-cassert", .. options.ConfigureFlags];
-        await RunAsync(Path.Combine(source, "configure"), configure, source, flags, pkgConfigPath, cancellationToken).ConfigureAwait(false);
+        await RunAsync(Path.Join(source, "configure"), configure, source, flags, pkgConfigPath, cancellationToken).ConfigureAwait(false);
         string jobs = options.Jobs.ToString(CultureInfo.InvariantCulture);
         await RunAsync("make", ["-j", jobs, "world-bin"], source, flags, pkgConfigPath, cancellationToken).ConfigureAwait(false);
         await RunAsync("make", ["-j", jobs, "install-world-bin", $"DESTDIR={stagingRoot}"], source, flags, pkgConfigPath, cancellationToken).ConfigureAwait(false);
@@ -281,7 +281,7 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
         CancellationToken cancellationToken)
     {
         string executable = OperatingSystem.IsWindows() ? "pg_config.exe" : "pg_config";
-        PostgresInstallation installation = await PostgresInstallation.CreateAsync(Path.Combine(directory, "bin", executable),
+        PostgresInstallation installation = await PostgresInstallation.CreateAsync(Path.Join(directory, "bin", executable),
             cancellationToken).ConfigureAwait(false);
         if (installation.Version != version)
         {
@@ -298,8 +298,8 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
         }
 
         foreach (string path in new[] { installation.InitDbPath, installation.PgCtlPath, installation.PsqlPath,
-            Path.Combine(installation.BinDirectory, OperatingSystem.IsWindows() ? "postgres.exe" : "postgres"),
-            Path.Combine(installation.ServerIncludeDirectory, "postgres.h") })
+            Path.Join(installation.BinDirectory, OperatingSystem.IsWindows() ? "postgres.exe" : "postgres"),
+            Path.Join(installation.ServerIncludeDirectory, "postgres.h") })
         {
             RequireOwnedPath(directory, path);
             if (!File.Exists(path))

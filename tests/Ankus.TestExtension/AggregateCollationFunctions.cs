@@ -33,9 +33,8 @@ public static class AggregateCollationFunctions
             long after = 0;
             if (state is not null)
             {
-                foreach (string? value in state.Value)
+                foreach (int comparison in state.Value.Select(value => context.Compare(value, target)))
                 {
-                    int comparison = context.Compare(value, target);
                     if (comparison < 0)
                     {
                         before++;

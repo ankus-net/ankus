@@ -126,7 +126,7 @@ public sealed unsafe class NativeItemPointerTests
         fixture.Handler = request => Respond(fixture, request);
         using PgNativeItemPointer owner = PgNativeItemPointer.Create(default);
         int before = fixture.Requests.Count;
-        using (MemoryContextTestFixture.Scope foreign = MemoryContextTestFixture.Enter(18))
+        using (MemoryContextTestFixture.Enter(18))
         {
             Assert.ThrowsExactly<InvalidOperationException>(() => _ = owner.Value);
             Assert.ThrowsExactly<InvalidOperationException>(owner.Dispose);

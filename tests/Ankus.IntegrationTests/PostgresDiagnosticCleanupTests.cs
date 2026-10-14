@@ -25,7 +25,7 @@ public sealed class PostgresDiagnosticCleanupTests(TestContext context)
         PostgresTestClusterOptions options = await IntegrationEnvironment.CreateOptionsAsync(context.CancellationToken);
         PostgresTestCluster cluster = await PostgresTestCluster.StartAsync(options, context.CancellationToken);
         UnixFileMode original = File.GetUnixFileMode(cluster.LogFilePath);
-        string unrelated = Path.Combine(options.DataDirectoryBase, "unrelated-" + Guid.NewGuid().ToString("N"));
+        string unrelated = Path.Join(options.DataDirectoryBase, "unrelated-" + Guid.NewGuid().ToString("N"));
         try
         {
             await File.WriteAllTextAsync(unrelated, "preserved", context.CancellationToken);
@@ -120,7 +120,7 @@ public sealed class PostgresDiagnosticCleanupTests(TestContext context)
                 PostgresTestCluster.StartAsync(options, (cluster, _) =>
                 {
                     failed = cluster;
-                    File.AppendAllText(Path.Combine(cluster.DataDirectory, "postgresql.auto.conf"),
+                    File.AppendAllText(Path.Join(cluster.DataDirectory, "postgresql.auto.conf"),
                         "shared_preload_libraries = 'ankus_diagnostic_cleanup_missing_library'\n");
                     Directory.CreateDirectory(cluster.LogFilePath + ".events.lock");
                 }, context.CancellationToken));

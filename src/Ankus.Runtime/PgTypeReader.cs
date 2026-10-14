@@ -197,7 +197,7 @@ public ref struct PgTypeReader
         }
 
         float value = _json.GetSingle();
-        if (!float.IsFinite(value) || (value == 0 && HasNonzeroJsonSignificand()))
+        if (!float.IsFinite(value) || (value is 0 && HasNonzeroJsonSignificand()))
         {
             throw new FormatException("JSON number exceeds the Single range.");
         }
@@ -242,7 +242,7 @@ public ref struct PgTypeReader
         }
 
         double value = _json.GetDouble();
-        if (!double.IsFinite(value) || (value == 0 && HasNonzeroJsonSignificand()))
+        if (!double.IsFinite(value) || (value is 0 && HasNonzeroJsonSignificand()))
         {
             throw new FormatException("JSON number exceeds the Double range.");
         }

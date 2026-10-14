@@ -33,7 +33,7 @@ public sealed class SchemaSnapshotTests(TestContext context)
     public void ReuseRetainsExactSqlGraphAndRelocation(bool withGraph)
     {
         string sql = withGraph ? "SELECT 42;\n" : "SELECT 'café 🐘', 'MODULE_PATHNAME';\r\n";
-        string path = Path.Combine(_root, "schema.json");
+        string path = Path.Join(_root, "schema.json");
         ExtensionManifest first = Compile(sql, withGraph ? Graph : null, relocatable: false);
         Select(null, first).Write(path);
         byte[] before = File.ReadAllBytes(path);
@@ -72,7 +72,7 @@ public sealed class SchemaSnapshotTests(TestContext context)
     public void ReuseRejectsChangedIdentityAndNativeContract(string property)
     {
         ExtensionManifest manifest = Compile("SELECT 42;\n", Graph);
-        string path = Path.Combine(_root, "schema.json");
+        string path = Path.Join(_root, "schema.json");
         Select(null, manifest).Write(path);
         if (property is "nativeSource" or "exports")
         {
@@ -113,7 +113,7 @@ public sealed class SchemaSnapshotTests(TestContext context)
     public void ReuseRejectsInvalidSnapshot(string partition)
     {
         ExtensionManifest manifest = Compile("SELECT 42;\n", Graph);
-        string path = Path.Combine(_root, "schema.json");
+        string path = Path.Join(_root, "schema.json");
         Select(null, manifest).Write(path);
         JsonNode document = JsonNode.Parse(File.ReadAllText(path))!;
         switch (partition)
@@ -177,15 +177,15 @@ public sealed class SchemaSnapshotTests(TestContext context)
     public void MissingInputAndFailedCommitPreserveSuccessfulSnapshot()
     {
         ExtensionManifest manifest = Compile("SELECT 42;\n", Graph);
-        string path = Path.Combine(_root, "schema.json");
+        string path = Path.Join(_root, "schema.json");
         FileNotFoundException missing = Assert.ThrowsExactly<FileNotFoundException>(() => Select(path, manifest));
         Assert.Contains("Run without schema reuse first", missing.Message);
         Select(null, manifest).Write(path);
         byte[] before = File.ReadAllBytes(path);
-        Assert.ThrowsExactly<FileNotFoundException>(() => SchemaSnapshot.Commit(Path.Combine(_root, "missing"), path));
+        Assert.ThrowsExactly<FileNotFoundException>(() => SchemaSnapshot.Commit(Path.Join(_root, "missing"), path));
         Assert.AreSequenceEqual(before, File.ReadAllBytes(path));
         Assert.IsEmpty(Directory.GetFiles(_root, "*.tmp"));
-        string prepared = Path.Combine(_root, "prepared.json");
+        string prepared = Path.Join(_root, "prepared.json");
         Select(null, Compile("SELECT 99;\n", null)).Write(prepared);
         SchemaSnapshot.Commit(prepared, path);
         Assert.AreEqual("SELECT 99;\n", Select(path, manifest).Sql);
@@ -268,7 +268,7 @@ public sealed class SchemaSnapshotTests(TestContext context)
             [CSharpSyntaxTree.ParseText(source, cancellationToken: context.CancellationToken)],
             platformAssemblies.Split(Path.PathSeparator).Select(static path => MetadataReference.CreateFromFile(path)),
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
-        string assembly = Path.Combine(_root, Guid.NewGuid().ToString("N") + ".dll");
+        string assembly = Path.Join(_root, Guid.NewGuid().ToString("N") + ".dll");
         using (FileStream stream = File.Create(assembly))
         {
             EmitResult emitted = compilation.Emit(stream, cancellationToken: context.CancellationToken);

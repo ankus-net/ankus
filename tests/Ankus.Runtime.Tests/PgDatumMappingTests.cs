@@ -451,8 +451,7 @@ public sealed unsafe class PgDatumMappingTests
     /// <summary>
     /// Sets the independently specified incoming native type envelope.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary2")]
-    private static extern ref int Auxiliary2(ref NativeValue value);
+    private static ref int Auxiliary2(ref NativeValue value) => ref value._auxiliary2;
 
     /// <summary>
     /// Adapts deterministic test readers without runtime code generation.
@@ -492,13 +491,18 @@ public sealed unsafe class PgDatumMappingTests
     {
         [ThreadStatic]
         private static BackendScope? s_current;
+
+        /// <summary>
+        /// Makes <paramref name="current"/> the BackendScope this thread's native callbacks use, or restores the enclosing one.
+        /// </summary>
+        private static void Install(BackendScope? current) => s_current = current;
         private readonly BackendScope? _previousScope = s_current;
         private readonly nint _previous = NativeBackend.Enter((nint)(delegate* unmanaged[Cdecl]<NativeSpiRequest*, NativeSpiResult*, NativeCallError*, int>)&Invoke);
 
         /// <summary>
         /// Installs this scope's deterministic response state.
         /// </summary>
-        internal BackendScope() => s_current = this;
+        internal BackendScope() => Install(this);
 
         /// <summary>
         /// Gets or sets the current catalog identity returned on the next lookup.
@@ -532,7 +536,7 @@ public sealed unsafe class PgDatumMappingTests
         public void Dispose()
         {
             NativeBackend.Exit(_previous);
-            s_current = _previousScope;
+            Install(_previousScope);
         }
 
         /// <summary>
@@ -563,6 +567,7 @@ public sealed unsafe class PgDatumMappingTests
 
                 throw new InvalidOperationException("Unexpected test backend operation.");
             }
+            // codeql[cs/catch-of-all-exceptions] This stands in for native code, so every exception goes back as an error instead of unwinding through it.
             catch (Exception exception)
             {
                 NativeError.Write(exception, error);

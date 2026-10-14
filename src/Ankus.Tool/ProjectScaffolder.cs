@@ -85,8 +85,8 @@ internal static partial class ProjectScaffolder
             throw new IOException($"The destination already exists: {destination}. Choose a new directory.");
         }
 
-        string templateRoot = Path.Combine(AppContext.BaseDirectory, "Templates", "Extension");
-        string version = (await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "ankus-tool.version"), token)).Trim();
+        string templateRoot = Path.Join(AppContext.BaseDirectory, "Templates", "Extension");
+        string version = (await File.ReadAllTextAsync(Path.Join(AppContext.BaseDirectory, "ankus-tool.version"), token)).Trim();
         var replacements = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["__PROJECT__"] = name,
@@ -100,22 +100,22 @@ internal static partial class ProjectScaffolder
         };
         string parent = Path.GetDirectoryName(destination)!;
         Directory.CreateDirectory(parent);
-        string staging = Path.Combine(parent, ".ankus-new-" + Guid.NewGuid().ToString("N"));
+        string staging = Path.Join(parent, ".ankus-new-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(staging);
         try
         {
             var roots = new List<string> { templateRoot };
             if (backgroundWorker)
             {
-                roots.Add(Path.Combine(AppContext.BaseDirectory, "Templates", "BackgroundWorker"));
+                roots.Add(Path.Join(AppContext.BaseDirectory, "Templates", "BackgroundWorker"));
             }
 
             if (frameworkDirectory is not null)
             {
-                roots.Add(Path.Combine(AppContext.BaseDirectory, "Templates", "Frameworks", frameworkDirectory));
+                roots.Add(Path.Join(AppContext.BaseDirectory, "Templates", "Frameworks", frameworkDirectory));
                 if (backgroundWorker)
                 {
-                    roots.Add(Path.Combine(AppContext.BaseDirectory, "Templates", "Frameworks", frameworkDirectory + "Worker"));
+                    roots.Add(Path.Join(AppContext.BaseDirectory, "Templates", "Frameworks", frameworkDirectory + "Worker"));
                 }
             }
 
@@ -127,7 +127,7 @@ internal static partial class ProjectScaffolder
                     .ThenBy(static path => path, StringComparer.Ordinal))
                 {
                     string relative = Replace(Path.GetRelativePath(root, source)[..^".template".Length], replacements);
-                    string target = Path.Combine(staging, relative);
+                    string target = Path.Join(staging, relative);
                     Directory.CreateDirectory(Path.GetDirectoryName(target)!);
                     string text = Replace(await File.ReadAllTextAsync(source, token), replacements);
                     await File.WriteAllTextAsync(target, text, new UTF8Encoding(false), token);

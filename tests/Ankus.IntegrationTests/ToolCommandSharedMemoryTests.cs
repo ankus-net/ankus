@@ -141,9 +141,9 @@ public sealed partial class ToolCommandTests
     /// </summary>
     private async Task AssertSharedPostmasterReloadAsync(PostgresTestCluster cluster, NpgsqlConnection connection, CancellationToken token)
     {
-        string[] identity = await File.ReadAllLinesAsync(Path.Combine(cluster.DataDirectory, "postmaster.pid"), token);
+        string[] identity = await File.ReadAllLinesAsync(Path.Join(cluster.DataDirectory, "postmaster.pid"), token);
         int process = int.Parse(identity[0], CultureInfo.InvariantCulture);
-        string configurationPath = Path.Combine(cluster.DataDirectory, "postgresql.conf");
+        string configurationPath = Path.Join(cluster.DataDirectory, "postgresql.conf");
         string configuration = await File.ReadAllTextAsync(configurationPath, token);
         await File.WriteAllTextAsync(configurationPath, configuration + "\nankus_shared_probe.checked = 13\n", token);
         Assert.IsTrue(Assert.IsInstanceOfType<bool>(await PackageGucScalarAsync(connection, "SELECT pg_reload_conf()")));

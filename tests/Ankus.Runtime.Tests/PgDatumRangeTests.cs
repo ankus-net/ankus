@@ -68,28 +68,8 @@ public sealed class PgDatumRangeTests
         Register();
         PgDatum source = PgDatum.DangerousCreate(501, 9002, PgMemoryContext.Current);
         PgRange<Bound> value = source.Read<PgRange<Bound>>();
-        Bound? actualLower = value.Lower;
-        if (lower.HasValue)
-        {
-            Assert.IsNotNull(actualLower);
-            Assert.AreEqual(lower.Value, actualLower.Value.Number);
-        }
-        else
-        {
-            Assert.IsNull(actualLower);
-        }
-
-        Bound? actualUpper = value.Upper;
-        if (upper.HasValue)
-        {
-            Assert.IsNotNull(actualUpper);
-            Assert.AreEqual(upper.Value, actualUpper.Value.Number);
-        }
-        else
-        {
-            Assert.IsNull(actualUpper);
-        }
-
+        Assert.AreEqual(Expected(lower), value.Lower);
+        Assert.AreEqual(Expected(upper), value.Upper);
         Assert.AreEqual(flags == 1, value.IsEmpty);
         Assert.AreEqual((flags & 2) != 0, value.LowerInclusive);
         Assert.AreEqual((flags & 4) != 0, value.UpperInclusive);
@@ -101,6 +81,8 @@ public sealed class PgDatumRangeTests
         {
             Assert.ThrowsExactly<ObjectDisposedException>(() => captured.DangerousGetBits());
         }
+
+        static Bound? Expected(int? number) => number is int present ? new Bound(present) : null;
     }
 
     /// <summary>
@@ -263,13 +245,18 @@ public sealed class PgDatumRangeTests
     {
         [ThreadStatic]
         private static BackendScope? s_current;
+
+        /// <summary>
+        /// Makes <paramref name="current"/> the BackendScope this thread's native callbacks use, or restores the enclosing one.
+        /// </summary>
+        private static void Install(BackendScope? current) => s_current = current;
         private readonly BackendScope? _previousScope = s_current;
         private readonly nint _previous = NativeBackend.Enter((nint)(delegate* unmanaged[Cdecl]<NativeSpiRequest*, NativeSpiResult*, NativeCallError*, int>)&Invoke);
 
         /// <summary>
         /// Installs this case's isolated native response state.
         /// </summary>
-        internal BackendScope() => s_current = this;
+        internal BackendScope() => Install(this);
 
         /// <summary>
         /// Gets the thread's active observation scope.
@@ -366,7 +353,7 @@ public sealed class PgDatumRangeTests
         public void Dispose()
         {
             NativeBackend.Exit(_previous);
-            s_current = _previousScope;
+            Install(_previousScope);
         }
 
         /// <summary>
@@ -419,6 +406,7 @@ public sealed class PgDatumRangeTests
 
                 return 0;
             }
+            // codeql[cs/catch-of-all-exceptions] This stands in for native code, so every exception goes back as an error instead of unwinding through it.
             catch (Exception exception)
             {
                 NativeError.Write(exception, error);

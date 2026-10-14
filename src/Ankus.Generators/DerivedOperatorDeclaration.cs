@@ -56,8 +56,7 @@ internal static class DerivedOperatorDeclaration
         string managedType = model.Managed;
         FunctionType? value = model.Value;
         types.TryGetValue(managedType, out SqlEntity? typeEntity);
-        if (value is null || sql is null || value.DatumType is null &&
-            (value.CustomType is null && value.Enumeration is null || typeEntity is null))
+        if (value is null || sql is null || !HasSqlType(value, typeEntity))
         {
             return Invalid(s_root);
         }
@@ -211,4 +210,10 @@ internal static class DerivedOperatorDeclaration
             return entity;
         }
     }
+
+    /// <summary>
+    /// Checks that the operand has a SQL type: a datum, or a custom or enum type that this extension declares.
+    /// </summary>
+    private static bool HasSqlType(FunctionType value, SqlEntity? typeEntity)
+        => value.DatumType is not null || typeEntity is not null && (value.CustomType is not null || value.Enumeration is not null);
 }

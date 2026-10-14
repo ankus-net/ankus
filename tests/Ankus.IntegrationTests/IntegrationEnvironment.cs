@@ -46,7 +46,7 @@ internal static class IntegrationEnvironment
         {
             for (DirectoryInfo? directory = new(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
             {
-                if (File.Exists(Path.Combine(directory.FullName, "Ankus.slnx")))
+                if (File.Exists(Path.Join(directory.FullName, "Ankus.slnx")))
                 {
                     return directory.FullName;
                 }
@@ -60,7 +60,7 @@ internal static class IntegrationEnvironment
     /// Gets the host-native publish directory containing the sample library and its extension installation files.
     /// </summary>
     internal static string NativeOutputDirectory
-        => Path.Combine(RepositoryRoot, "artifacts", "native", RuntimeInformation.RuntimeIdentifier);
+        => Path.Join(RepositoryRoot, "artifacts", "native", RuntimeInformation.RuntimeIdentifier);
 
     /// <summary>
     /// Resolves ancestor aliases before comparing ownership, including macOS's temporary-directory aliases.
@@ -76,7 +76,7 @@ internal static class IntegrationEnvironment
 
         DirectoryInfo resolved = (DirectoryInfo?)directory.ResolveLinkTarget(returnFinalTarget: true) ?? directory;
         return resolved.Parent is DirectoryInfo parent
-            ? Path.Combine(PhysicalDirectory(parent), resolved.Name)
+            ? Path.Join(PhysicalDirectory(parent), resolved.Name)
             : resolved.FullName;
     }
 
@@ -103,8 +103,8 @@ internal static class IntegrationEnvironment
         return new PostgresTestClusterOptions
         {
             Installation = installation,
-            DataDirectoryBase = Path.Combine(RepositoryRoot, "artifacts", "test-pgdata"),
-            LogDirectory = Path.Combine(RepositoryRoot, "artifacts", "test-logs"),
+            DataDirectoryBase = Path.Join(RepositoryRoot, "artifacts", "test-pgdata"),
+            LogDirectory = Path.Join(RepositoryRoot, "artifacts", "test-logs"),
             StartupTimeout = StartupTimeout,
             PostgreSqlConfiguration = configuration,
         };
@@ -131,7 +131,7 @@ internal static class IntegrationEnvironment
         {
             if (s_stagedInstallation is null)
             {
-                string stageRoot = Path.Combine(RepositoryRoot, "artifacts", "test-postgresql", Guid.NewGuid().ToString("N"));
+                string stageRoot = Path.Join(RepositoryRoot, "artifacts", "test-postgresql", Guid.NewGuid().ToString("N"));
                 s_stagedInstallation = await PostgresTestInstallation.StageAsync(installation, stageRoot, cancellationToken);
             }
 
@@ -201,7 +201,7 @@ internal static class IntegrationEnvironment
     /// <returns>The directory's absolute path.</returns>
     internal static async Task<string> CreateAccountDirectoryAsync(string account, CancellationToken cancellationToken)
     {
-        string path = Path.Combine("/tmp", "ankus-runas-" + Guid.NewGuid().ToString("N"));
+        string path = Path.Join("/tmp", "ankus-runas-" + Guid.NewGuid().ToString("N"));
         ProcessResult result = await ProcessRunner.RunAsync("sudo", ["-n", "-u", account, "--", "mkdir", "--", path],
             new Dictionary<string, string?>(), cancellationToken, workingDirectory: "/");
         Assert.AreEqual(0, result.ExitCode, result.StandardError);
@@ -281,7 +281,7 @@ internal static class IntegrationEnvironment
             ("tests", "Ankus.GucShowExtension"),
             ("samples", "Ankus.Examples.Hello"),
         ];
-        string publishRoot = Path.Combine(RepositoryRoot, "artifacts", "native-publish", RuntimeInformation.RuntimeIdentifier);
+        string publishRoot = Path.Join(RepositoryRoot, "artifacts", "native-publish", RuntimeInformation.RuntimeIdentifier);
         if (Directory.Exists(publishRoot))
         {
             Directory.Delete(publishRoot, true);
@@ -289,14 +289,14 @@ internal static class IntegrationEnvironment
 
         Directory.CreateDirectory(publishRoot);
         (string Directory, string Name) first = extensions[0];
-        string firstProject = Path.Combine(RepositoryRoot, first.Directory, first.Name, first.Name + ".csproj");
+        string firstProject = Path.Join(RepositoryRoot, first.Directory, first.Name, first.Name + ".csproj");
         await ProcessRunner.RunCheckedAsync("dotnet",
             ["msbuild", firstProject, "-target:ResolveProjectReferences", "-property:Configuration=Release",
                 "-property:RuntimeIdentifier=" + RuntimeInformation.RuntimeIdentifier, "-property:SelfContained=true",
                 "-property:BuildProjectReferences=true",
                 "-property:AnkusPostgresMajor=" + installation.Version.Major.ToString(CultureInfo.InvariantCulture),
                 "-property:AnkusPgConfigPath=" + installation.PgConfigPath, "-m", "-nr:false",
-                "-bl:" + Path.Combine(publishRoot, "references-{}.binlog")],
+                "-bl:" + Path.Join(publishRoot, "references-{}.binlog")],
             new Dictionary<string, string?> { ["MSBUILDDISABLENODEREUSE"] = "1" }, cancellationToken);
         ParallelOptions options = new()
         {
@@ -305,7 +305,7 @@ internal static class IntegrationEnvironment
         };
         await Parallel.ForEachAsync(extensions, options, async (extension, token) =>
         {
-            await PublishExtensionAsync(extension.Directory, extension.Name, Path.Combine(publishRoot, extension.Name),
+            await PublishExtensionAsync(extension.Directory, extension.Name, Path.Join(publishRoot, extension.Name),
                 installation, token);
         });
 
@@ -314,9 +314,8 @@ internal static class IntegrationEnvironment
             Directory.Delete(NativeOutputDirectory, true);
         }
 
-        foreach ((string Directory, string Name) extension in extensions)
+        foreach (string publication in extensions.Select(extension => Path.Join(publishRoot, extension.Name)))
         {
-            string publication = Path.Combine(publishRoot, extension.Name);
             if (installation.Version.Major < 18)
             {
                 // Each publication owns a separate manifest; the combined native folder retains only the last one.
@@ -328,7 +327,7 @@ internal static class IntegrationEnvironment
 
         s_nativeExtensionFilesInstalled = installation.Version.Major < 18;
         Directory.Delete(publishRoot, true);
-        return RequireFile(Path.Combine(NativeOutputDirectory, PublishedExtension.Read(NativeOutputDirectory).Library));
+        return RequireFile(Path.Join(NativeOutputDirectory, PublishedExtension.Read(NativeOutputDirectory).Library));
     }
 
     private static int ReadPackageTestConcurrency()
@@ -351,8 +350,8 @@ internal static class IntegrationEnvironment
     private static async Task PublishExtensionAsync(string directory, string name, string output,
         PostgresInstallation installation, CancellationToken cancellationToken)
     {
-        string project = Path.Combine(RepositoryRoot, directory, name, name + ".csproj");
-        string logs = Path.Combine(RepositoryRoot, "artifacts", "test-logs", "publish");
+        string project = Path.Join(RepositoryRoot, directory, name, name + ".csproj");
+        string logs = Path.Join(RepositoryRoot, "artifacts", "test-logs", "publish");
         Directory.CreateDirectory(logs);
         // Parallel.ForEachAsync owns publication concurrency; nested MSBuild nodes would multiply it.
         List<string> arguments = ["publish", project, "--configuration", "Release", "--runtime", RuntimeInformation.RuntimeIdentifier,
@@ -363,7 +362,7 @@ internal static class IntegrationEnvironment
             "-p:BuildProjectReferences=false",
             "-p:AnkusPostgresMajor=" + installation.Version.Major.ToString(CultureInfo.InvariantCulture),
             "-p:AnkusPgConfigPath=" + installation.PgConfigPath,
-            "-bl:" + Path.Combine(logs, name + "-{}.binlog")];
+            "-bl:" + Path.Join(logs, name + "-{}.binlog")];
 
         await PackageProcessRunner.RunCheckedAsync(
             "dotnet",
@@ -374,14 +373,14 @@ internal static class IntegrationEnvironment
             },
             cancellationToken);
 
-        RequireFile(Path.Combine(output, PublishedExtension.Read(output).Library));
+        RequireFile(Path.Join(output, PublishedExtension.Read(output).Library));
     }
 
     private static void CopyDirectory(string source, string destination)
     {
         foreach (string sourceFile in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
         {
-            string destinationFile = Path.Combine(destination, Path.GetRelativePath(source, sourceFile));
+            string destinationFile = Path.Join(destination, Path.GetRelativePath(source, sourceFile));
             Directory.CreateDirectory(Path.GetDirectoryName(destinationFile)!);
             File.Copy(sourceFile, destinationFile, true);
         }

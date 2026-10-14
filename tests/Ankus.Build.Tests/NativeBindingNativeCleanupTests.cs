@@ -9,11 +9,11 @@ public sealed partial class NativeBindingNativeTests
     public async Task NativeProbeCleanupWaitsForReleasedFile()
     {
         string directory = Directory.CreateTempSubdirectory("ankus-probe-cleanup-").FullName;
-        string file = Path.Combine(directory, "held.bin");
+        string file = Path.Join(directory, "held.bin");
         Task? cleanup = null;
         try
         {
-            using (FileStream held = File.Open(file, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.Read))
+            using (File.Open(file, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.Read))
             {
                 cleanup = DeleteDirectoryAsync(directory);
                 if (OperatingSystem.IsWindows())
@@ -46,7 +46,7 @@ public sealed partial class NativeBindingNativeTests
     public async Task NativeProbeCleanupDoesNotHideAccessDenial()
     {
         string directory = Directory.CreateTempSubdirectory("ankus-probe-cleanup-").FullName;
-        string file = Path.Combine(directory, "readonly.bin");
+        string file = Path.Join(directory, "readonly.bin");
         try
         {
             await File.WriteAllTextAsync(file, "retained", context.CancellationToken);
@@ -69,7 +69,7 @@ public sealed partial class NativeBindingNativeTests
     [TestMethod]
     public async Task NativeProbeCleanupRejectsMissingDirectory()
     {
-        string directory = Path.Combine(Path.GetTempPath(), "ankus-probe-missing-" + Guid.NewGuid().ToString("N"));
+        string directory = Path.Join(Path.GetTempPath(), "ankus-probe-missing-" + Guid.NewGuid().ToString("N"));
         await Assert.ThrowsExactlyAsync<DirectoryNotFoundException>(() => DeleteDirectoryAsync(directory));
     }
 

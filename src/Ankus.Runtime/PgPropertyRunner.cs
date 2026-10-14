@@ -152,6 +152,7 @@ public sealed class PgPropertyRunner(PgPropertyOptions? options = null)
             // Class 57, operator intervention, includes query cancellation; it ends the run rather than an input.
             throw;
         }
+        // codeql[cs/catch-of-all-exceptions] A property test records whatever the code under test throws for each input.
         catch (Exception error)
         {
             return new(value, choices, error, Rejected: false);
@@ -184,11 +185,12 @@ public sealed class PgPropertyRunner(PgPropertyOptions? options = null)
             return true;
         }
 
+        ReadOnlySpan<int> sizes = [8, 4, 2, 1];
         bool improved = true;
         while (improved && runs < _options.MaxShrinkRuns)
         {
             improved = false;
-            foreach (int size in (ReadOnlySpan<int>)[8, 4, 2, 1])
+            foreach (int size in sizes)
             {
                 for (int start = best.Choices.Length - size; start >= 0; start--)
                 {
@@ -198,7 +200,7 @@ public sealed class PgPropertyRunner(PgPropertyOptions? options = null)
                 }
             }
 
-            foreach (int size in (ReadOnlySpan<int>)[8, 4, 2, 1])
+            foreach (int size in sizes)
             {
                 for (int start = 0; start + size <= best.Choices.Length; start++)
                 {

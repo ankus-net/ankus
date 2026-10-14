@@ -43,7 +43,7 @@ public sealed partial class NativeBindingNativeTests
             Assert.AreSequenceEqual<NativeBindingChangedNodeTag>([new("T_Leaf", 7, 99), new("T_Parent", 4, 41)], selected.Declarations.ChangedTags);
             Assert.IsEmpty(selected.AbsentFields);
             Assert.IsFalse(selected.Catalog.Types.ContainsKey("Removed"));
-            using JsonDocument ast = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(directory, "records.ast.json"), context.CancellationToken));
+            using JsonDocument ast = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Join(directory, "records.ast.json"), context.CancellationToken));
             IReadOnlyDictionary<string, uint> observed = NativeBindingNodeTags.Read(ast.RootElement);
             Assert.AreSequenceEqual(selected.Catalog.Tags.OrderBy(static pair => pair.Key, StringComparer.Ordinal),
                 observed.OrderBy(static pair => pair.Key, StringComparer.Ordinal));

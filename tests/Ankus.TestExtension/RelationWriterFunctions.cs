@@ -29,6 +29,33 @@ public static class RelationWriterFunctions
     }
 
     /// <summary>
+    /// Inserts two rows and counts what the table's <c>AFTER</c> trigger logged after each, and after disposal.
+    /// </summary>
+    /// <param name="table">The table's OID.</param>
+    /// <param name="log">The OID of the table the trigger writes to.</param>
+    /// <returns>The three counts.</returns>
+    [PgFunction]
+    public static string WriterAfterEachChange(uint table, uint log)
+    {
+        (string schema, string name) = Spi.ExecuteScalars<string, string>(
+            "SELECT n.nspname::text, c.relname::text FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.oid = $1",
+            SpiParameter.Create(log));
+        var seen = new List<long>();
+        using (PgRelationWriter writer = PgRelationWriter.Open(table))
+        {
+            writer.Insert(Row(writer, 1, "one"));
+            seen.Add(Logged());
+            writer.Insert(Row(writer, 2, "two"));
+            seen.Add(Logged());
+        }
+
+        seen.Add(Logged());
+        return string.Join('|', seen);
+
+        long Logged() => Spi.ExecuteScalar<long>($"SELECT count(*) FROM {Spi.QuoteQualifiedIdentifier(schema, name)}");
+    }
+
+    /// <summary>
     /// Inserts one row and returns without disposing the writer, so the transaction commits with it still open.
     /// </summary>
     /// <param name="table">The table's OID.</param>

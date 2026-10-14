@@ -28,7 +28,7 @@ internal static class PgBufferViews
                 throw new InvalidCastException("The datum is not a PostgreSQL C string.");
             }
 
-            return value.IsNull || value.DangerousGetBits() == 0 ? default! : (T)(object)new PgCStringView(value);
+            return value.IsNull || value.DangerousGetBits() == 0 ? default! : GenericValue.As<T>(new PgCStringView(value));
         }
 
         if (value.IsNull)

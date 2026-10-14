@@ -205,9 +205,9 @@ public sealed partial class PgFunctionGeneratorTests
     [TestMethod]
     public void SqlFilesUseTrackedProjectRelativeInputs()
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "virtual-project");
+        string project = Path.Join(AppContext.BaseDirectory, "virtual-project");
         var options = new SqlOptions(project);
-        var file = new SqlInput(Path.Combine(project, "sql", "seed.sql"), "SELECT 'file'; -- exact\n");
+        var file = new SqlInput(Path.Join(project, "sql", "seed.sql"), "SELECT 'file'; -- exact\n");
         (Compilation compilation, ImmutableArray<Diagnostic> diagnostics) = Generate("""
             [assembly: Ankus.PgSqlFile("seed", "sql\\nested/../seed.sql", Relocatable = true)]
             """, [file], options);
@@ -223,8 +223,8 @@ public sealed partial class PgFunctionGeneratorTests
     public void SqlFilesUseUniqueRelativeInputAcrossProjectRootAliases()
     {
         string root = Path.GetPathRoot(AppContext.BaseDirectory)!;
-        string project = Path.Combine(root, "declared-root", "project alias");
-        string resolved = Path.Combine(root, "resolved-root", "project alias", "sql setup", "seed.sql");
+        string project = Path.Join(root, "declared-root", "project alias");
+        string resolved = Path.Join(root, "resolved-root", "project alias", "sql setup", "seed.sql");
         var options = new SqlOptions(project);
         var file = new SqlInput(resolved, "SELECT 'aliased';\n");
         (Compilation compilation, ImmutableArray<Diagnostic> diagnostics) = Generate("""
@@ -245,10 +245,10 @@ public sealed partial class PgFunctionGeneratorTests
     [DataRow("no project directory")]
     public void InvalidSqlFilesAreDiagnosed(string kind)
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "virtual-project");
-        var file = new SqlInput(Path.Combine(project, "seed.sql"), kind == "unreadable" ? null : "SELECT 1;");
+        string project = Path.Join(AppContext.BaseDirectory, "virtual-project");
+        var file = new SqlInput(Path.Join(project, "seed.sql"), kind == "unreadable" ? null : "SELECT 1;");
         AdditionalText[] files = kind == "missing" ? [] : kind == "duplicate"
-            ? [file, new SqlInput(Path.Combine(project, "nested", "..", "seed.sql"), "SELECT 2;")] : [file];
+            ? [file, new SqlInput(Path.Join(project, "nested", "..", "seed.sql"), "SELECT 2;")] : [file];
         (_, ImmutableArray<Diagnostic> diagnostics) = Generate("""[assembly: Ankus.PgSqlFile("seed", "seed.sql")]""",
             files, kind == "no project directory" ? null : new SqlOptions(project));
         Assert.AreEqual(kind switch
@@ -266,8 +266,8 @@ public sealed partial class PgFunctionGeneratorTests
     [TestMethod]
     public void SqlFileChangesInvalidateIncrementalOutput()
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "virtual-project");
-        var original = new SqlInput(Path.Combine(project, "seed.sql"), "SELECT 1;");
+        string project = Path.Join(AppContext.BaseDirectory, "virtual-project");
+        var original = new SqlInput(Path.Join(project, "seed.sql"), "SELECT 1;");
         var replacement = new SqlInput(original.Path, "SELECT 2;");
         CSharpCompilation input = CSharpCompilation.Create("SqlFileTest",
             [CSharpSyntaxTree.ParseText("""[assembly: Ankus.PgSqlFile("seed", "seed.sql")]""", cancellationToken: context.CancellationToken)],

@@ -24,19 +24,19 @@ public sealed class SdkPublishInvalidationTests(TestContext context)
         string directory = Directory.CreateTempSubdirectory("ankus publish invalidation ").FullName;
         try
         {
-            string output = Path.Combine(directory, "publication");
+            string output = Path.Join(directory, "publication");
             Directory.CreateDirectory(output);
-            string manifest = Path.Combine(output, "ankus.extension.json");
-            string previous = Path.Combine(output, "ankus.extension.previous.json");
+            string manifest = Path.Join(output, "ankus.extension.json");
+            string previous = Path.Join(output, "ankus.extension.previous.json");
             File.WriteAllText(manifest, "current inventory");
             File.WriteAllText(previous, "older inventory");
-            string project = Path.Combine(directory, "Publish.proj");
+            string project = Path.Join(directory, "Publish.proj");
             new XDocument(new XElement("Project",
                 new XElement("PropertyGroup",
                     new XElement("AnkusReuseSchema", "false"),
                     new XElement("_IsPublishing", publishing ? "true" : "false"),
                     new XElement("PublishDir", output + (trailingSeparator ? Path.DirectorySeparatorChar.ToString() : ""))),
-                new XElement("Import", new XAttribute("Project", Path.Combine(AppContext.BaseDirectory, "Sdk", "Ankus.Native.targets"))),
+                new XElement("Import", new XAttribute("Project", Path.Join(AppContext.BaseDirectory, "Sdk", "Ankus.Native.targets"))),
                 new XElement("Target", new XAttribute("Name", "PrepareForBuild")))).Save(project);
             await NativeBindingLayoutCommand.RunProcessAsync("dotnet",
                 ["msbuild", project, "-nologo", "-nodeReuse:false", "-target:PrepareForBuild"], directory, context.CancellationToken);

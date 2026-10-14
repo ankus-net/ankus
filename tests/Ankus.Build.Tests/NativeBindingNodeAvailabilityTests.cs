@@ -307,10 +307,10 @@ public sealed partial class NativeBindingNativeTests
             Assert.DoesNotContain("added", selected.Catalog.Types["Nested"].Fields.Select(static field => field.NativeName));
             NativeBindingNodeRoots changed = NativeBindingNodeRecords.CreateRoots(selected.Catalog,
                 headers.Replace("int32_t added;", "float added;", StringComparison.Ordinal));
-            string source = Path.Combine(directory, "changed.c");
+            string source = Path.Join(directory, "changed.c");
             await File.WriteAllTextAsync(source, NativeBindingRecordChecks.Generate(records, changed.Source) +
                 NativeBindingRecordChecks.ExecutableEntryPoint, context.CancellationToken);
-            string executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "changed.exe" : "changed");
+            string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "changed.exe" : "changed");
             string errors = await CompileSelectedNodeFixtureAsync(source, executable, directory, expectSuccess: false);
             Assert.Contains("added", errors);
         }
@@ -409,13 +409,13 @@ public sealed partial class NativeBindingNativeTests
         NativeBindingNodeRoots roots = NativeBindingNodeRecords.CreateRoots(NativeBindingNodeTags.Select(catalog, tags.Graph), headers);
         NativeHeaderRecords records = await CollectCallRecordsAsync(roots.Source, [.. roots.Requests], directory);
         NativeBindingSelectedNodes selected = NativeBindingNodeAvailability.Read(catalog, records.Graph);
-        string source = Path.Combine(directory, "selected-probe.c");
-        string executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "selected-probe.exe" : "selected-probe");
+        string source = Path.Join(directory, "selected-probe.c");
+        string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "selected-probe.exe" : "selected-probe");
         await File.WriteAllTextAsync(source, NativeBindingProbe.GenerateSource(selected.Catalog, headers), context.CancellationToken);
         await CompileSelectedNodeFixtureAsync(source, executable, directory);
         NativeBindingLayout layout = NativeBindingProbe.Read(selected.Catalog, await RunAsync(executable, [], directory));
-        string checks = Path.Combine(directory, "selected-checks.c");
-        string checker = Path.Combine(directory, OperatingSystem.IsWindows() ? "selected-checks.exe" : "selected-checks");
+        string checks = Path.Join(directory, "selected-checks.c");
+        string checker = Path.Join(directory, OperatingSystem.IsWindows() ? "selected-checks.exe" : "selected-checks");
         await File.WriteAllTextAsync(checks, NativeBindingRecordChecks.Generate(records, roots.Source) +
             NativeBindingRecordChecks.ExecutableEntryPoint, context.CancellationToken);
         await CompileSelectedNodeFixtureAsync(checks, checker, directory);

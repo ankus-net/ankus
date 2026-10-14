@@ -67,20 +67,17 @@ public static partial class NativeRawCallFunctions
         {
             action();
         }
-        catch (Exception exception)
+        catch (PgException original)
         {
-            if (exception is PgException original)
+            s_errorObservations |= 1;
+            try
             {
-                s_errorObservations |= 1;
-                try
-                {
-                    Spi.Execute("SELECT 1");
-                }
-                catch (PgException pending) when (pending.SqlState == original.SqlState && pending.Message == original.Message &&
-                    pending.Detail == original.Detail && pending.Hint == original.Hint)
-                {
-                    s_errorObservations |= 2;
-                }
+                Spi.Execute("SELECT 1");
+            }
+            catch (PgException pending) when (pending.SqlState == original.SqlState && pending.Message == original.Message &&
+                pending.Detail == original.Detail && pending.Hint == original.Hint)
+            {
+                s_errorObservations |= 2;
             }
 
             if (replace)

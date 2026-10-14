@@ -21,9 +21,8 @@ internal static class NativeBindingGlobalImports
     {
         NativeObjectImports imports = NativeObjectSymbols.Read(image, Prefix);
         var accesses = new List<NativeBindingGlobalAccess>(imports.Symbols.Count);
-        foreach (string symbol in imports.Symbols)
+        foreach (string suffix in imports.Symbols.Select(static symbol => symbol[Prefix.Length..]))
         {
-            string suffix = symbol[Prefix.Length..];
             int separator = suffix.IndexOf('_', StringComparison.Ordinal);
             if (separator < 0)
             {

@@ -23,20 +23,20 @@ public sealed class PgTemporalTests
         Assert.IsGreaterThan(0, PgTime.EndOfDay.CompareTo(default));
         Assert.IsTrue(new PgTime(0) < PgTime.EndOfDay);
         Assert.IsTrue(PgTime.EndOfDay > new PgTime(0));
-        Assert.IsTrue(new PgTime(1) <= new PgTime(1));
-        Assert.IsTrue(new PgTime(1) >= new PgTime(1));
+        Assert.IsTrue(default(PgTime) <= new PgTime(0));
+        Assert.IsTrue(default(PgTime) >= new PgTime(0));
 
         Assert.IsLessThan(0, PgTimestamp.NegativeInfinity.CompareTo(new PgTimestamp(-211813488000000000)));
         Assert.IsTrue(new PgTimestamp(9223371331199999999) < PgTimestamp.PositiveInfinity);
         Assert.IsTrue(new PgTimestamp(0) > new PgTimestamp(-1));
-        Assert.IsTrue(new PgTimestamp(1) <= new PgTimestamp(1));
-        Assert.IsTrue(new PgTimestamp(1) >= new PgTimestamp(1));
+        Assert.IsTrue(default(PgTimestamp) <= new PgTimestamp(0));
+        Assert.IsTrue(default(PgTimestamp) >= new PgTimestamp(0));
 
         Assert.IsLessThan(0, PgTimestampTz.NegativeInfinity.CompareTo(new PgTimestampTz(-211813488000000000)));
         Assert.IsTrue(new PgTimestampTz(9223371331199999999) < PgTimestampTz.PositiveInfinity);
         Assert.IsTrue(new PgTimestampTz(0) > new PgTimestampTz(-1));
-        Assert.IsTrue(new PgTimestampTz(1) <= new PgTimestampTz(1));
-        Assert.IsTrue(new PgTimestampTz(1) >= new PgTimestampTz(1));
+        Assert.IsTrue(default(PgTimestampTz) <= new PgTimestampTz(0));
+        Assert.IsTrue(default(PgTimestampTz) >= new PgTimestampTz(0));
     }
 
     /// <summary>

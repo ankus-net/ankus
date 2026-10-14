@@ -232,7 +232,7 @@ public sealed partial class NativeBindingNativeTests
     private async Task<long[]> ExecuteManagedCallsAsync(string headers, string[] names, string harness, bool nativeCompiler = true,
         string[]? globalNames = null, bool checkOverflow = false)
     {
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-managed-native-call-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-managed-native-call-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
@@ -282,9 +282,9 @@ public sealed partial class NativeBindingNativeTests
                     .Append("(void) { return ").Append(NativeBindingIndirectSource.BodyName(signature)).AppendLine("; }");
             }
 
-            string file = Path.Combine(directory, "calls.c");
+            string file = Path.Join(directory, "calls.c");
             await File.WriteAllTextAsync(file, native.ToString(), context.CancellationToken);
-            string library = Path.Combine(directory, OperatingSystem.IsWindows() ? "calls.dll" : OperatingSystem.IsMacOS() ? "calls.dylib" : "calls.so");
+            string library = Path.Join(directory, OperatingSystem.IsWindows() ? "calls.dll" : OperatingSystem.IsMacOS() ? "calls.dylib" : "calls.so");
             string compiler = OperatingSystem.IsWindows() ? nativeCompiler ? "cl.exe" : "clang-cl.exe" : "clang";
             string[] arguments = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/O2", "/LD", "/Fe" + library, "/Fo" + Path.ChangeExtension(library, ".obj"), file]

@@ -229,13 +229,10 @@ internal static partial class NativeBindingRecordChecks
                 int count = _anchors.Count;
                 foreach ((int index, string parent) in _anchors.ToArray())
                 {
-                    foreach (NativeBindingRecordMember member in _members.Get(index))
+                    foreach (NativeRecordField field in _members.Get(index).Select(static member => member.Field)
+                        .Where(static field => field.Name.Length != 0 && field.BitWidth is null))
                     {
-                        NativeRecordField field = member.Field;
-                        if (field.Name.Length != 0 && field.BitWidth is null)
-                        {
-                            Anchor(field.Type, "((" + parent + " *)0)->" + field.Name);
-                        }
+                        Anchor(field.Type, "((" + parent + " *)0)->" + field.Name);
                     }
                 }
 
@@ -245,6 +242,7 @@ internal static partial class NativeBindingRecordChecks
 
         private void Anchor(int index, string expression)
         {
+            var lvalue = new StringBuilder(expression);
             var seen = new HashSet<int>();
             while (seen.Add(index))
             {
@@ -257,17 +255,17 @@ internal static partial class NativeBindingRecordChecks
                         return;
                     }
 
-                    AddAnchor(declaration, "ANKUS_RECORD_UNQUAL(" + expression + ")");
+                    AddAnchor(declaration, "ANKUS_RECORD_UNQUAL(" + lvalue + ")");
                     return;
                 }
 
                 if (type.Kind == "pointer")
                 {
-                    expression = "*(" + expression + ")";
+                    lvalue.Insert(0, "*(").Append(')');
                 }
                 else if (type.Kind == "array")
                 {
-                    expression = "(" + expression + ")[0]";
+                    lvalue.Insert(0, '(').Append(")[0]");
                 }
                 else
                 {

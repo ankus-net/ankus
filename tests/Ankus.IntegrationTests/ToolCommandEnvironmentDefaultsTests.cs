@@ -19,12 +19,12 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string home = Path.Combine(directory, "home");
+        string home = Path.Join(directory, "home");
         await RegisterEnvironmentInstallationAsync(home, token);
         new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
             new XElement("PropertyGroup", new XElement("TargetFramework", "net10.0"),
                 new XElement("UsingAnkusSdk", "true"), new XElement("AnkusPostgresMajor", DifferentMajor()))))
-            .Save(Path.Combine(directory, "Selection.csproj"));
+            .Save(Path.Join(directory, "Selection.csproj"));
         Dictionary<string, string?> environment = EnvironmentDefaultsConfiguration(home);
         environment["PG_VERSION"] = (prefix ? "pg" : "") + MajorText();
         ProcessResult result = await PackageProcessRunner.RunAsync(s_tool, ["status"], environment, token, workingDirectory: directory);
@@ -47,15 +47,15 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string home = Directory.CreateDirectory(Path.Combine(directory, "home")).FullName;
-        string configuration = Path.Combine(home, "config.json");
+        string home = Directory.CreateDirectory(Path.Join(directory, "home")).FullName;
+        string configuration = Path.Join(home, "config.json");
         string original = JsonSerializer.Serialize(new Dictionary<string, string> { ["pg" + MajorText()] = "missing/bin/pg_config" });
         await File.WriteAllTextAsync(configuration, original, token);
         new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
             new XElement("PropertyGroup", new XElement("TargetFramework", "net10.0"),
                 new XElement("UsingAnkusSdk", "true"), new XElement("AnkusPostgresMajor", MajorText()),
                 new XElement("AnkusPgConfigPath", s_installation.PgConfigPath))))
-            .Save(Path.Combine(directory, "Selection.csproj"));
+            .Save(Path.Join(directory, "Selection.csproj"));
         Dictionary<string, string?> environment = EnvironmentDefaultsConfiguration(home);
         environment["PG_VERSION"] = value;
         ProcessResult result = await PackageProcessRunner.RunAsync(s_tool, ["info", "version"], environment, token, workingDirectory: directory);
@@ -84,7 +84,7 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         string home = CreateDirectory();
         await RegisterEnvironmentInstallationAsync(home, token);
-        string configuration = Path.Combine(home, "config.json");
+        string configuration = Path.Join(home, "config.json");
         string original = await File.ReadAllTextAsync(configuration, token);
         Dictionary<string, string?> environment = EnvironmentDefaultsConfiguration(home);
         environment["PG_VERSION"] = value;
@@ -163,14 +163,14 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string home = Path.Combine(directory, "home");
+        string home = Path.Join(directory, "home");
         await RegisterEnvironmentInstallationAsync(home, token);
         new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
             new XElement("PropertyGroup", new XElement("TargetFramework", "net10.0"),
                 new XElement("UsingAnkusSdk", "true"), new XElement("AnkusPostgresMajor", MajorText()),
                 new XElement("AnkusPgConfigPath", s_installation.PgConfigPath))))
-            .Save(Path.Combine(directory, "Selection.csproj"));
-        string configuration = Path.Combine(home, "config.json");
+            .Save(Path.Join(directory, "Selection.csproj"));
+        string configuration = Path.Join(home, "config.json");
         string original = await File.ReadAllTextAsync(configuration, token);
         Dictionary<string, string?> environment = EnvironmentDefaultsConfiguration(home);
         environment["PG_VERSION"] = dockerValue ? "18.6-1.pgdg13+1" : "pg" + DifferentMajor().ToString(CultureInfo.InvariantCulture);
@@ -199,24 +199,24 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string home = Path.Combine(directory, "home");
+        string home = Path.Join(directory, "home");
         await RegisterEnvironmentInstallationAsync(home, token);
-        string configuration = Path.Combine(home, "config.json");
+        string configuration = Path.Join(home, "config.json");
         string original = await File.ReadAllTextAsync(configuration, token);
-        string project = Path.Combine(directory, "Environment.csproj");
+        string project = Path.Join(directory, "Environment.csproj");
         new XDocument(new XElement("Project", new XAttribute("Sdk", "Ankus.Sdk/" + s_version),
             new XElement("PropertyGroup", new XElement("TargetFramework", "net10.0"),
                 new XElement("Nullable", "enable"), new XElement("ImplicitUsings", "enable"),
                 new XElement("AnkusExtensionName", "ankus_environment"), new XElement("AnkusExtensionVersion", "0.1.0"),
                 new XElement("AnkusPostgresMajor", MajorText()), new XElement("AnkusPgConfigPath", s_installation.PgConfigPath))))
             .Save(project);
-        File.Copy(Path.Combine(Path.GetDirectoryName(s_project)!, "Hello.cs"), Path.Combine(directory, "Hello.cs"));
+        File.Copy(Path.Join(Path.GetDirectoryName(s_project)!, "Hello.cs"), Path.Join(directory, "Hello.cs"));
         Dictionary<string, string?> environment = EnvironmentDefaultsConfiguration(home);
         environment["PG_VERSION"] = "18.6-1.pgdg13+1";
-        string publication = Path.Combine(directory, "bin", "ankus", "pg" + MajorText(),
+        string publication = Path.Join(directory, "bin", "ankus", "pg" + MajorText(),
             System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier, "Release");
-        string stagedInstallation = Path.Combine(directory, "staged installation");
-        string stagedPackage = Path.Combine(directory, "staged package");
+        string stagedInstallation = Path.Join(directory, "staged installation");
+        string stagedPackage = Path.Join(directory, "staged package");
         (string Name, string[] Arguments)[] commands =
         [
             ("build", ["build", "--project", project]),
@@ -234,7 +234,7 @@ public sealed partial class ToolCommandTests
             Assert.AreEqual(s_installation.Version.Major, manifest.PostgresMajor, name);
             Assert.AreEqual(System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier, manifest.RuntimeIdentifier, name);
             Assert.AreEqual("ankus_environment.control", manifest.Control, name);
-            ExtensionSchema schema = ExtensionSchema.Read(Path.Combine(publication, manifest.Library), manifest.RuntimeIdentifier);
+            ExtensionSchema schema = ExtensionSchema.Read(Path.Join(publication, manifest.Library), manifest.RuntimeIdentifier);
             Assert.AreEqual(s_installation.Version.Major, schema.Artifacts.PostgresMajor, name);
             if (name == "schema")
             {
@@ -248,9 +248,9 @@ public sealed partial class ToolCommandTests
             if (name is "install" or "package")
             {
                 string stagedLibrary = name == "install"
-                    ? Path.Combine(StagedPath(stagedInstallation, s_installation.LibraryDirectory), manifest.Library)
-                    : Path.Combine(stagedPackage, OperatingSystem.IsWindows() ? "lib" : "flat", manifest.Library);
-                Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Combine(publication, manifest.Library), token),
+                    ? Path.Join(StagedPath(stagedInstallation, s_installation.LibraryDirectory), manifest.Library)
+                    : Path.Join(stagedPackage, OperatingSystem.IsWindows() ? "lib" : "flat", manifest.Library);
+                Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Join(publication, manifest.Library), token),
                     await File.ReadAllBytesAsync(stagedLibrary, token), name);
             }
         }
@@ -313,7 +313,7 @@ public sealed partial class ToolCommandTests
     public async Task InvalidClientEnvironmentDoesNotStartServer(string command)
     {
         string directory = CreateDirectory();
-        string home = Path.Combine(directory, "unused home");
+        string home = Path.Join(directory, "unused home");
         Dictionary<string, string?> environment = EnvironmentDefaultsConfiguration(home);
         environment["ANKUS_PGCLI"] = "invalid";
         ProcessResult result = await PackageProcessRunner.RunAsync(s_tool,
@@ -337,8 +337,8 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string home = Path.Combine(directory, "home");
-        string clientDirectory = Directory.CreateDirectory(Path.Combine(directory, "empty client path")).FullName;
+        string home = Path.Join(directory, "home");
+        string clientDirectory = Directory.CreateDirectory(Path.Join(directory, "empty client path")).FullName;
         var cluster = new PostgresDevelopmentCluster(s_installation, home);
         using PortReservation reservation = PortReservation.Create();
         int port = reservation.Port;
@@ -389,13 +389,13 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string home = Path.Combine(directory, "home");
+        string home = Path.Join(directory, "home");
         await RegisterEnvironmentInstallationAsync(home, token);
-        string configuration = Path.Combine(home, "config.json");
+        string configuration = Path.Join(home, "config.json");
         string original = await File.ReadAllTextAsync(configuration, token);
         PublishedExtension manifest = PublishedExtension.Read(s_published);
         Assert.AreEqual(s_installation.Version.Major, manifest.PostgresMajor);
-        string output = Path.Combine(directory, "staged assets");
+        string output = Path.Join(directory, "staged assets");
         Dictionary<string, string?> environment = EnvironmentDefaultsConfiguration(home);
         environment["PG_VERSION"] = invalid ? "invalid" : "pg" + DifferentMajor().ToString(CultureInfo.InvariantCulture);
         string[] staging = operation == "package" ? ["--output", output, "--prefix-dir", "flat"] : ["--destdir", output];
@@ -404,14 +404,14 @@ public sealed partial class ToolCommandTests
 
         Assert.AreEqual(0, result.ExitCode, result.StandardError);
         string libraries = operation == "install" ? StagedPath(output, s_installation.LibraryDirectory)
-            : Path.Combine(output, OperatingSystem.IsWindows() ? "lib" : "flat");
-        string scripts = operation == "install" ? StagedPath(output, Path.Combine(s_installation.SharedDirectory, "extension"))
-            : OperatingSystem.IsWindows() ? Path.Combine(output, "share", "extension") : Path.Combine(output, "flat");
+            : Path.Join(output, OperatingSystem.IsWindows() ? "lib" : "flat");
+        string scripts = operation == "install" ? StagedPath(output, Path.Join(s_installation.SharedDirectory, "extension"))
+            : OperatingSystem.IsWindows() ? Path.Join(output, "share", "extension") : Path.Join(output, "flat");
         (string Source, string Destination)[] assets =
         [
-            (Path.Combine(s_published, manifest.Library), Path.Combine(libraries, manifest.Library)),
-            (Path.Combine(s_published, "extension", manifest.Control), Path.Combine(scripts, manifest.Control)),
-            (Path.Combine(s_published, "extension", manifest.Sql), Path.Combine(scripts, manifest.Sql)),
+            (Path.Join(s_published, manifest.Library), Path.Join(libraries, manifest.Library)),
+            (Path.Join(s_published, "extension", manifest.Control), Path.Join(scripts, manifest.Control)),
+            (Path.Join(s_published, "extension", manifest.Sql), Path.Join(scripts, manifest.Sql)),
         ];
         foreach ((string source, string destination) in assets)
         {
@@ -445,7 +445,7 @@ public sealed partial class ToolCommandTests
     private static async Task RegisterEnvironmentInstallationAsync(string home, CancellationToken token)
     {
         Directory.CreateDirectory(home);
-        await File.WriteAllTextAsync(Path.Combine(home, "config.json"),
+        await File.WriteAllTextAsync(Path.Join(home, "config.json"),
             JsonSerializer.Serialize(new Dictionary<string, string> { ["pg" + MajorText()] = s_installation.PgConfigPath }), token);
     }
 }

@@ -52,12 +52,9 @@ public sealed partial class SpiInterpolationAnalyzer : DiagnosticAnalyzer
                         return;
                     }
 
-                    foreach (IArgumentOperation argument in invocation.Arguments)
+                    foreach (IArgumentOperation argument in invocation.Arguments.Where(static argument => argument.Parameter is { Name: "commandText", Type.SpecialType: SpecialType.System_String }))
                     {
-                        if (argument.Parameter is { Name: "commandText", Type.SpecialType: SpecialType.System_String })
-                        {
-                            commands.Add(argument);
-                        }
+                        commands.Add(argument);
                     }
                 }, OperationKind.Invocation);
                 block.RegisterOperationBlockEndAction(end =>

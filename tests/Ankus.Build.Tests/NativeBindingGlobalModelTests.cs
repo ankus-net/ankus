@@ -36,7 +36,7 @@ public sealed partial class NativeBindingNativeTests
         string[] names = ["native_value", "native_constant", "native_notification", "native_address", "native_fixed_address",
             "native_array", "native_constant_array", "native_observed_array", "native_immutable", "native_observed",
             "native_pointers", "native_union", "native_unbounded", "native_opaque", "native_callback", "native_thread_value"];
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-global-model-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-global-model-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
@@ -77,7 +77,7 @@ public sealed partial class NativeBindingNativeTests
     [TestMethod]
     public async Task NativeGlobalSelectionsRejectInvalidContractsAndRecover()
     {
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-global-validation-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-global-validation-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {

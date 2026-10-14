@@ -150,8 +150,8 @@ internal static partial class ToolCommand
         if (path.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
         {
             string cache = properties?.GetValueOrDefault("AnkusBindingCacheDirectory") is string bindings && bindings.Length != 0
-                ? Path.Combine(Path.GetFullPath(bindings), "targets")
-                : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Ankus", "targets");
+                ? Path.Join(Path.GetFullPath(bindings), "targets")
+                : Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Ankus", "targets");
             target = await PostgresTargetInfo.ExtractAsync(path, cache, token);
         }
         else

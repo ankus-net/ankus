@@ -104,7 +104,7 @@ public sealed partial class ToolCommandTests
             Assert.AreEqual(0, second.ExitCode, second.StandardError);
             Assert.Contains("Reusing database " + Database, second.StandardOutput);
             Assert.EndsWith("42" + Environment.NewLine, second.StandardOutput);
-            string script = Path.Combine(home, "error.sql");
+            string script = Path.Join(home, "error.sql");
             await File.WriteAllTextAsync(script, "SELECT 1 / 0;", token);
             ProcessResult failure = await InvokeAsync([.. options, "--", "-X", "-v", "ON_ERROR_STOP=1", "-f", script], token);
             Assert.AreEqual(3, failure.ExitCode, failure.StandardError);
@@ -132,13 +132,13 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         string home = CreateDirectory();
         string projectRoot = CreateDirectory();
-        string project = Path.Combine(projectRoot, "NameProbe.csproj");
+        string project = Path.Join(projectRoot, "NameProbe.csproj");
         new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
             new XElement("PropertyGroup", new XElement("TargetFramework", "net10.0"), new XElement("AssemblyName", "Wrong.Target")),
             new XElement("Import", new XAttribute("Project", "name.props")))).Save(project);
         new XDocument(new XElement("Project", new XElement("PropertyGroup", new XAttribute("Condition", $"'$(Configuration)' == '{configuration}'"),
             new XElement("AssemblyName", "Different.Target"),
-            new XElement("AnkusExtensionName", explicitName ? "imported_name" : "")))).Save(Path.Combine(projectRoot, "name.props"));
+            new XElement("AnkusExtensionName", explicitName ? "imported_name" : "")))).Save(Path.Join(projectRoot, "name.props"));
         string expected = explicitName ? "imported_name" : "different_target";
         var cluster = new PostgresDevelopmentCluster(s_installation, home);
         using PortReservation reservation = PortReservation.Create();
@@ -152,7 +152,7 @@ public sealed partial class ToolCommandTests
             Assert.AreEqual(0, result.ExitCode, result.StandardError);
             Assert.Contains("Created database " + expected, result.StandardOutput);
             Assert.EndsWith(expected + Environment.NewLine, result.StandardOutput);
-            Assert.IsFalse(Directory.Exists(Path.Combine(projectRoot, "bin")));
+            Assert.IsFalse(Directory.Exists(Path.Join(projectRoot, "bin")));
         }
         finally
         {
@@ -175,13 +175,13 @@ public sealed partial class ToolCommandTests
         PostgresInstallation installation = owner.Installation;
         string home = CreateDirectory();
         string projectRoot = CreateDirectory();
-        string project = Path.Combine(projectRoot, "RunProbe.csproj");
+        string project = Path.Join(projectRoot, "RunProbe.csproj");
         XDocument definition = XDocument.Load(s_project);
         definition.Descendants("AnkusExtensionName").Single().Value = "ankus_run_probe";
         definition.Root!.Add(new XElement("PropertyGroup", new XAttribute("Condition", "'$(Configuration)' == 'Staging'"),
             new XElement("AnkusExtensionVersion", "7.8.9")));
         definition.Save(project);
-        File.Copy(Path.Combine(Path.GetDirectoryName(s_project)!, "Hello.cs"), Path.Combine(projectRoot, "Hello.cs"));
+        File.Copy(Path.Join(Path.GetDirectoryName(s_project)!, "Hello.cs"), Path.Join(projectRoot, "Hello.cs"));
         var cluster = new PostgresDevelopmentCluster(installation, home);
         using PortReservation reservation = PortReservation.Create();
         int port = reservation.Port;
@@ -194,12 +194,12 @@ public sealed partial class ToolCommandTests
             Assert.AreEqual(0, install.ExitCode, install.StandardOutput + install.StandardError);
             Assert.IsFalse(await cluster.IsRunningAsync(token));
             Assert.IsFalse(Directory.Exists(cluster.DataDirectory));
-            string control = Path.Combine(installation.SharedDirectory, "extension", "ankus_run_probe.control");
+            string control = Path.Join(installation.SharedDirectory, "extension", "ankus_run_probe.control");
             Assert.IsTrue(File.Exists(control));
-            string publication = Path.Combine(projectRoot, "bin", "ankus", s_postgresKey, RuntimeInformation.RuntimeIdentifier, configuration ?? "Release");
+            string publication = Path.Join(projectRoot, "bin", "ankus", s_postgresKey, RuntimeInformation.RuntimeIdentifier, configuration ?? "Release");
             PublishedExtension manifest = PublishedExtension.Read(publication);
             Assert.AreEqual("ankus_run_probe--" + version + ".sql", manifest.Sql);
-            Assert.IsTrue(File.Exists(Path.Combine(installation.LibraryDirectory, manifest.Library)));
+            Assert.IsTrue(File.Exists(Path.Join(installation.LibraryDirectory, manifest.Library)));
             ProcessResult run = await InvokeAsync([.. options, "--port", port.ToString(CultureInfo.InvariantCulture), "--",
                 "-X", "-A", "-t", "-v", "ON_ERROR_STOP=1", "-c", "CREATE EXTENSION ankus_run_probe; SELECT add(19, 23)"], token);
             Assert.AreEqual(0, run.ExitCode, run.StandardOutput + run.StandardError);
@@ -210,7 +210,7 @@ public sealed partial class ToolCommandTests
             Assert.AreEqual(0, repeated.ExitCode, repeated.StandardError);
             Assert.IsFalse(await cluster.IsRunningAsync(token));
             Assert.IsTrue(Directory.Exists(cluster.DataDirectory));
-            await File.WriteAllTextAsync(Path.Combine(projectRoot, "Broken.cs"), "this is not C#;", token);
+            await File.WriteAllTextAsync(Path.Join(projectRoot, "Broken.cs"), "this is not C#;", token);
             ProcessResult existing = await InvokeAsync([.. options, "--no-build", "--port", port.ToString(CultureInfo.InvariantCulture), "--",
                 "-X", "-A", "-t", "-c", "SELECT add(19, 23)"], token);
             Assert.AreEqual(0, existing.ExitCode, existing.StandardError);
@@ -219,7 +219,7 @@ public sealed partial class ToolCommandTests
             ProcessResult failed = await InvokeAsync([.. options, "--install-only"], token);
             Assert.AreNotEqual(0, failed.ExitCode);
             Assert.IsFalse(await cluster.IsRunningAsync(token));
-            Assert.IsFalse(File.Exists(Path.Combine(publication, PublishedExtension.FileName)));
+            Assert.IsFalse(File.Exists(Path.Join(publication, PublishedExtension.FileName)));
             Assert.IsTrue(File.Exists(control));
             ProcessResult missing = await InvokeAsync([.. options, "--no-build"], token);
             Assert.AreEqual(1, missing.ExitCode);

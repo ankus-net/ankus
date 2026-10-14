@@ -175,6 +175,7 @@ public static unsafe class NativeAggregate
             {
                 ReleaseState(state);
             }
+            // codeql[cs/catch-of-all-exceptions] A failed cleanup is reported together with the failure that required it.
             catch (Exception cleanupError)
             {
                 throw new AggregateException("Aggregate state registration and payload cleanup both failed.", adoptionError, cleanupError);
@@ -395,6 +396,7 @@ public static unsafe class NativeAggregate
             ReleaseState(state);
             return 0;
         }
+        // codeql[cs/catch-of-all-exceptions] Native code calls this, so every exception goes back to PostgreSQL as an error instead of unwinding through it.
         catch (Exception exception)
         {
             NativeError.Write(exception, error);

@@ -20,12 +20,12 @@ public sealed class PostgresDiscoveryHomeTests(TestContext context)
         {
             const string Missing = "missing/bin/pg_config";
             string configuration = JsonSerializer.Serialize(new Dictionary<string, string> { ["pg18"] = Missing });
-            await File.WriteAllTextAsync(Path.Combine(home, "config.json"), configuration, context.CancellationToken);
+            await File.WriteAllTextAsync(Path.Join(home, "config.json"), configuration, context.CancellationToken);
             FileNotFoundException error = await Assert.ThrowsExactlyAsync<FileNotFoundException>(() =>
                 PostgresInstallation.DiscoverAsync(18, home, context.CancellationToken));
             Assert.AreEqual(Path.GetFullPath(Missing, home), error.FileName);
             Assert.Contains(Path.GetFullPath(Missing, home), error.Message);
-            Assert.AreEqual(configuration, await File.ReadAllTextAsync(Path.Combine(home, "config.json"), context.CancellationToken));
+            Assert.AreEqual(configuration, await File.ReadAllTextAsync(Path.Join(home, "config.json"), context.CancellationToken));
         }
         finally
         {
@@ -42,14 +42,14 @@ public sealed class PostgresDiscoveryHomeTests(TestContext context)
         string home = Directory.CreateTempSubdirectory("ankus discovery ").FullName;
         try
         {
-            string first = Path.Combine(home, "postgres", "18.6");
-            string second = Path.Combine(home, "postgres", "18.5");
+            string first = Path.Join(home, "postgres", "18.6");
+            string second = Path.Join(home, "postgres", "18.5");
             Directory.CreateDirectory(first);
             Directory.CreateDirectory(second);
             string executable = OperatingSystem.IsWindows() ? "pg_config.exe" : "pg_config";
             string[] candidates = [.. PostgresDiscovery.GetCandidates(18, home)];
-            Assert.AreSequenceEqual([Path.Combine(first, "bin", executable), Path.Combine(second, "bin", executable)], candidates.Take(2));
-            Assert.IsFalse(File.Exists(Path.Combine(home, "config.json")));
+            Assert.AreSequenceEqual([Path.Join(first, "bin", executable), Path.Join(second, "bin", executable)], candidates.Take(2));
+            Assert.IsFalse(File.Exists(Path.Join(home, "config.json")));
         }
         finally
         {

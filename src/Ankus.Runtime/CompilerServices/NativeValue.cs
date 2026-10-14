@@ -18,8 +18,11 @@ public unsafe partial struct NativeValue
     [ThreadStatic]
     private static byte* s_resultText;
 
+    /// <summary>
+    /// The capacity of this thread's reusable buffer for result text; tests shrink it to exercise reallocation.
+    /// </summary>
     [ThreadStatic]
-    private static int s_resultTextCapacity;
+    internal static int s_resultTextCapacity;
 
     /// <summary>
     /// Gets whether the native value carries an enum label and its exact PostgreSQL type identity.
@@ -27,13 +30,38 @@ public unsafe partial struct NativeValue
     internal readonly bool IsEnum => _auxiliary1 == -3 && _data != null;
 
     private long _integer;
-    private int _auxiliary1;
-    private int _auxiliary2;
-    private int _temporalInfinity;
-    private byte* _data;
-    private int _length;
+
+    /// <summary>
+    /// The first transport discriminator, such as the value's kind or an array, range or tuple flag.
+    /// </summary>
+    internal int _auxiliary1;
+
+    /// <summary>
+    /// The second transport discriminator, such as a type OID or array element kind.
+    /// </summary>
+    internal int _auxiliary2;
+
+    /// <summary>
+    /// The temporal infinity marker, or a buffer's writability for byte payloads.
+    /// </summary>
+    internal int _temporalInfinity;
+
+    /// <summary>
+    /// The payload's native address.
+    /// </summary>
+    internal byte* _data;
+
+    /// <summary>
+    /// The payload's length in bytes.
+    /// </summary>
+    internal int _length;
+
     private byte _isNull;
-    private delegate* unmanaged[Cdecl]<void*, void> _release;
+
+    /// <summary>
+    /// Frees the payload with the allocator that produced it, or null when the value owns no allocation.
+    /// </summary>
+    internal delegate* unmanaged[Cdecl]<void*, void> _release;
 
     /// <summary>
     /// Gets or sets the integer, Boolean, OID, floating-point bits, or opaque numeric datum length.

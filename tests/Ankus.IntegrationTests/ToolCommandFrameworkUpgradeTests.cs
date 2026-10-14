@@ -19,10 +19,10 @@ public sealed partial class ToolCommandTests
     public async Task UpgradeUpdatesScaffoldAndPublishesNativeExtension()
     {
         CancellationToken token = context.CancellationToken;
-        string root = Path.Combine(CreateDirectory(), "upgraded solution");
+        string root = Path.Join(CreateDirectory(), "upgraded solution");
         (await InvokeAsync(["new", "UpgradeProbe", "-o", root], token)).EnsureSuccess(s_tool, ["new"]);
-        string global = Path.Combine(root, "global.json");
-        string central = Path.Combine(root, "Directory.Packages.props");
+        string global = Path.Join(root, "global.json");
+        string central = Path.Join(root, "Directory.Packages.props");
         foreach (string path in new[] { global, central })
         {
             string current = await File.ReadAllTextAsync(path, token);
@@ -30,7 +30,7 @@ public sealed partial class ToolCommandTests
         }
 
         Dictionary<string, byte[]> before = SnapshotUpgradeFiles(root);
-        ProcessResult dry = await InvokeAsync(["upgrade", "--solution", Path.Combine(root, "UpgradeProbe.slnx"), "--to", s_version, "--dry-run"], token);
+        ProcessResult dry = await InvokeAsync(["upgrade", "--solution", Path.Join(root, "UpgradeProbe.slnx"), "--to", s_version, "--dry-run"], token);
         Assert.AreEqual(0, dry.ExitCode, dry.StandardOutput + dry.StandardError);
         Assert.Contains(s_version, dry.StandardOutput);
         AssertUpgradeFilesUnchanged(root, before);
@@ -54,15 +54,15 @@ public sealed partial class ToolCommandTests
         Assert.Contains("already current", unchanged.StandardOutput);
         Assert.AreEqual(timestamp, File.GetLastWriteTimeUtc(global));
 
-        string solution = Path.Combine(root, "UpgradeProbe.slnx");
+        string solution = Path.Join(root, "UpgradeProbe.slnx");
         (await RunDotnetAsync(["restore", solution, "-p:AnkusPostgresMajor=" + MajorText()], token)).EnsureSuccess("dotnet", ["restore"]);
-        string assets = Path.Combine(root, "tests", "UpgradeProbe.Tests", "obj", "project.assets.json");
+        string assets = Path.Join(root, "tests", "UpgradeProbe.Tests", "obj", "project.assets.json");
         using (JsonDocument restored = JsonDocument.Parse(await File.ReadAllTextAsync(assets, token)))
         {
             Assert.AreEqual("package", restored.RootElement.GetProperty("libraries").GetProperty("Ankus.Testing/" + s_version).GetProperty("type").GetString());
         }
 
-        string project = Path.Combine(root, "src", "UpgradeProbe", "UpgradeProbe.csproj");
+        string project = Path.Join(root, "src", "UpgradeProbe", "UpgradeProbe.csproj");
         string output = CreateDirectory();
         (await InvokeAsync(["publish", "--project", project, "--home", s_home, "--pg", MajorText(), "--output", output], token))
             .EnsureSuccess(s_tool, ["publish"]);
@@ -88,7 +88,7 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string root = CreateDirectory();
-        string project = Path.Combine(root, "Probe.csproj");
+        string project = Path.Join(root, "Probe.csproj");
         string original = "<Project Sdk='Microsoft.NET.Sdk'>\r\n" +
             "  <!-- café -->\r\n  <PropertyGroup><Own>0.1.0</Own><Shared>0.1.0</Shared><Empty /></PropertyGroup>\r\n" +
             "  <ItemGroup><PackageReference Include='Ankus.Runtime' Version='$(Own)' />" +
@@ -164,9 +164,9 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         string root = CreateDirectory();
         string first = await WriteUpgradeProjectAsync(root, "0.1.0", token);
-        string sibling = Path.Combine(root, "Other.csproj");
+        string sibling = Path.Join(root, "Other.csproj");
         File.Copy(first, sibling);
-        string imported = Path.Combine(root, "Versions.props");
+        string imported = Path.Join(root, "Versions.props");
         await File.WriteAllTextAsync(imported, """
             <Project>
               <PropertyGroup><FrameworkVersion Condition="'$(Configuration)' == 'Debug'">0.1.0</FrameworkVersion><FrameworkVersion Condition="'$(Configuration)' != 'Debug'">0.1.1</FrameworkVersion></PropertyGroup>
@@ -180,7 +180,7 @@ public sealed partial class ToolCommandTests
               <Import Project="Sdk.targets" Sdk="Ankus.Sdk" Version="0.1.0" />
             </Project>
             """, token);
-        string solution = Path.Combine(root, legacy ? "Selection.sln" : "Selection.slnx");
+        string solution = Path.Join(root, legacy ? "Selection.sln" : "Selection.slnx");
         string solutionText = legacy
             ? "Microsoft Visual Studio Solution File, Format Version 12.00\nProject(\"{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}\") = \"Probe\", \"Probe.csproj\", \"{12345678-1234-1234-1234-123456789ABC}\"\nEndProject\nProject(\"{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}\") = \"Other\", \"Other.csproj\", \"{22345678-1234-1234-1234-123456789ABC}\"\nEndProject\nGlobal\nEndGlobal\n"
             : "<Solution><Project Path=\"Probe.csproj\"/><Project Path=\"Other.csproj\"/></Solution>";
@@ -203,7 +203,7 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string root = CreateDirectory();
-        string project = Path.Combine(root, "Probe.csproj");
+        string project = Path.Join(root, "Probe.csproj");
         await File.WriteAllTextAsync(project, """
             <Project Sdk="Microsoft.NET.Sdk">
               <PropertyGroup>
@@ -224,19 +224,19 @@ public sealed partial class ToolCommandTests
         {
             foreach (string framework in new[] { "net10.0", "net9.0" })
             {
-                string directory = Path.Combine(root, "imports", configuration, framework);
+                string directory = Path.Join(root, "imports", configuration, framework);
                 Directory.CreateDirectory(directory);
-                string file = Path.Combine(directory, "Versions.props");
+                string file = Path.Join(directory, "Versions.props");
                 await File.WriteAllTextAsync(file,
                     "<Project><ItemGroup><PackageReference Include='Ankus.Testing' Version='0.1.0'/></ItemGroup></Project>", token);
                 selected.Add(file);
             }
         }
 
-        string inactive = Path.Combine(root, "Inactive.props");
+        string inactive = Path.Join(root, "Inactive.props");
         await File.WriteAllTextAsync(inactive,
             "<Project><ItemGroup><PackageReference Include='Ankus.Testing' Version='9.9.9'/></ItemGroup></Project>", token);
-        await File.WriteAllTextAsync(Path.Combine(root, "Directory.Build.rsp"), "-target:ShouldNotRun", token);
+        await File.WriteAllTextAsync(Path.Join(root, "Directory.Build.rsp"), "-target:ShouldNotRun", token);
         Dictionary<string, byte[]> before = SnapshotUpgradeFiles(root);
         ProcessResult dry = await InvokeAsync(["upgrade", "--project", project, "--to", "0.2.0", "--dry-run"], token);
         Assert.AreEqual(0, dry.ExitCode, dry.StandardOutput + dry.StandardError);
@@ -262,7 +262,7 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string root = CreateDirectory();
-        string project = Path.Combine(root, "Probe.csproj");
+        string project = Path.Join(root, "Probe.csproj");
         var settings = new StringBuilder();
         var selected = new List<string>();
         foreach ((string kind, string conventional) in new[]
@@ -273,8 +273,8 @@ public sealed partial class ToolCommandTests
         })
         {
             string content = "<Project><ItemGroup><PackageReference Include='Ankus.Testing' Version='0.1.0'/></ItemGroup></Project>";
-            await File.WriteAllTextAsync(Path.Combine(root, conventional), "Unused file is deliberately not valid XML.", token);
-            string replacement = Path.Combine(root, "Selected" + conventional);
+            await File.WriteAllTextAsync(Path.Join(root, conventional), "Unused file is deliberately not valid XML.", token);
+            string replacement = Path.Join(root, "Selected" + conventional);
             await File.WriteAllTextAsync(replacement, content, token);
             if (replace)
             {
@@ -320,12 +320,12 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string root = CreateDirectory();
-        string directory = Path.Combine(root, selection == "escaped" ? "versions;data" : "versions");
+        string directory = Path.Join(root, selection == "escaped" ? "versions;data" : "versions");
         Directory.CreateDirectory(directory);
-        string imported = Path.Combine(directory, "Versions.props");
+        string imported = Path.Join(directory, "Versions.props");
         string content = "<Project><ItemGroup><PackageReference Include='Ankus.Testing' Version='0.1.0'/></ItemGroup></Project>";
         await File.WriteAllTextAsync(imported, content, token);
-        await File.WriteAllTextAsync(Path.Combine(root, "Unused.props"), content, token);
+        await File.WriteAllTextAsync(Path.Join(root, "Unused.props"), content, token);
         string definition = selection == "computed"
             ? "<PropertyGroup><Selected>Unused.props</Selected><Selected>$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', 'versions', 'Versions.props'))</Selected></PropertyGroup>"
             : "";
@@ -336,7 +336,7 @@ public sealed partial class ToolCommandTests
             "glob" => "version*/*.props",
             _ => throw new InvalidOperationException("Unknown import partition."),
         };
-        string project = Path.Combine(root, "Probe.csproj");
+        string project = Path.Join(root, "Probe.csproj");
         await File.WriteAllTextAsync(project, $"<Project Sdk='Microsoft.NET.Sdk'><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>{definition}<Import Project='{import}'/></Project>", token);
         Dictionary<string, byte[]> before = SnapshotUpgradeFiles(root);
         ProcessResult result = await InvokeAsync(["upgrade", "--project", project, "--to", "0.2.0"], token);
@@ -353,11 +353,11 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string root = CreateDirectory();
-        string shared = Path.Combine(root, "Shared.props");
+        string shared = Path.Join(root, "Shared.props");
         await File.WriteAllTextAsync(shared, "<Project><PropertyGroup><SharedVersion>0.1.0</SharedVersion></PropertyGroup></Project>", token);
-        string project = Path.Combine(root, "Probe.csproj");
+        string project = Path.Join(root, "Probe.csproj");
         await File.WriteAllTextAsync(project, "<Project Sdk='Microsoft.NET.Sdk'><Import Project='Shared.props'/><ItemGroup><PackageReference Include='Ankus.Testing' Version='$(SharedVersion)'/></ItemGroup></Project>", token);
-        string sibling = Path.Combine(root, "Sibling.csproj");
+        string sibling = Path.Join(root, "Sibling.csproj");
         await File.WriteAllTextAsync(sibling, "<Project Sdk='Microsoft.NET.Sdk'><Import Project='Shared.props'/><ItemGroup><PackageReference Include='Unrelated' Version='$(SharedVersion)'/></ItemGroup></Project>", token);
         Dictionary<string, byte[]> before = SnapshotUpgradeFiles(root);
         ProcessResult result = await InvokeAsync(["upgrade", "--project", project, "--to", "0.2.0"], token);
@@ -389,7 +389,7 @@ public sealed partial class ToolCommandTests
         string root = CreateDirectory();
         string project = await WriteUpgradeProjectAsync(root, "0.1.0", token);
         await CreateUpgradeFeedAsync(root, "Ankus.Testing", token);
-        string config = Path.Combine(root, "NuGet.Config");
+        string config = Path.Join(root, "NuGet.Config");
         if (mapped)
         {
             XDocument settings = XDocument.Load(config);
@@ -398,7 +398,7 @@ public sealed partial class ToolCommandTests
             settings.Save(config);
         }
 
-        string source = named ? "owned" : Path.GetRelativePath(s_root, Path.Combine(root, "feed"));
+        string source = named ? "owned" : Path.GetRelativePath(s_root, Path.Join(root, "feed"));
         Dictionary<string, byte[]> before = SnapshotUpgradeFiles(root);
         ProcessResult result = await InvokeAsync(["upgrade", "--project", project, "--source", source, "--configfile", config], token);
         Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
@@ -417,17 +417,17 @@ public sealed partial class ToolCommandTests
         string root = CreateDirectory();
         string project = await WriteUpgradeProjectAsync(root, "0.1.0", token);
         await CreateUpgradeFeedAsync(root, "Ankus.Testing", token);
-        string config = Path.Combine(root, "NuGet.Config");
+        string config = Path.Join(root, "NuGet.Config");
         XDocument settings = XDocument.Load(config);
         settings.Root!.Add(new XElement("packageSourceMapping", new XElement("clear"),
             new XElement("packageSource", new XAttribute("key", "owned"), new XElement("package", new XAttribute("pattern", "Ankus.*")))));
         settings.Save(config);
-        string parent = Path.Combine(CreateDirectory(), "linked parent");
+        string parent = Path.Join(CreateDirectory(), "linked parent");
         Directory.CreateSymbolicLink(parent, Path.GetDirectoryName(root)!);
-        string target = Path.Combine(parent, Path.GetFileName(root));
-        string alias = Path.Combine(CreateDirectory(), "linked source");
+        string target = Path.Join(parent, Path.GetFileName(root));
+        string alias = Path.Join(CreateDirectory(), "linked source");
         Directory.CreateSymbolicLink(alias, target);
-        ProcessResult result = await InvokeAsync(["upgrade", "--project", project, "--source", Path.Combine(alias, "feed"), "--configfile", config], token);
+        ProcessResult result = await InvokeAsync(["upgrade", "--project", project, "--source", Path.Join(alias, "feed"), "--configfile", config], token);
         Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
         Assert.AreEqual("0.2.0", XDocument.Load(project).Descendants("PackageReference").Single().Attribute("Version")!.Value);
         Assert.AreEqual(target, new DirectoryInfo(alias).LinkTarget);
@@ -450,7 +450,7 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string root = CreateDirectory();
-        string project = Path.Combine(root, "Probe.csproj");
+        string project = Path.Join(root, "Probe.csproj");
         string child = expanded ? $"><Version Condition=\"'$(Configuration)' == 'Release'\">0.1.1</Version><!-- keep metadata comment --></{kind}>" : "/>";
         string original = $$"""
             <Project>
@@ -509,9 +509,9 @@ public sealed partial class ToolCommandTests
         string root = CreateDirectory();
         await CreateUpgradeFeedAsync(root, "Ankus.Testing", token);
         await CreateUpgradeFeedAsync(root, "Unrelated", token);
-        string central = Path.Combine(root, "Directory.Packages.props");
+        string central = Path.Join(root, "Directory.Packages.props");
         await File.WriteAllTextAsync(central, "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup><ItemGroup><PackageVersion Include='Ankus.Testing;Unrelated' Version='0.1.0'/></ItemGroup></Project>", token);
-        string project = Path.Combine(root, "Probe.csproj");
+        string project = Path.Join(root, "Probe.csproj");
         await File.WriteAllTextAsync(project, """
             <Project Sdk="Microsoft.NET.Sdk">
               <PropertyGroup><TargetFramework>net10.0</TargetFramework><Shared>0.1.0</Shared></PropertyGroup>
@@ -522,9 +522,9 @@ public sealed partial class ToolCommandTests
         Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
         Assert.AreEqual("true", XDocument.Load(central).Descendants("ManagePackageVersionsCentrally").Single().Value);
         Assert.AreEqual("0.1.0", XDocument.Load(project).Descendants("Shared").Single().Value);
-        ProcessResult restored = await RunDotnetAsync(["restore", project, "--configfile", Path.Combine(root, "NuGet.Config"), "--packages", Path.Combine(root, "packages")], token);
+        ProcessResult restored = await RunDotnetAsync(["restore", project, "--configfile", Path.Join(root, "NuGet.Config"), "--packages", Path.Join(root, "packages")], token);
         Assert.AreEqual(0, restored.ExitCode, restored.StandardOutput + restored.StandardError);
-        using JsonDocument assets = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(root, "obj", "project.assets.json"), token));
+        using JsonDocument assets = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Join(root, "obj", "project.assets.json"), token));
         Assert.AreSequenceEqual(["Ankus.Testing/0.2.0", "Unrelated/0.1.0"], assets.RootElement.GetProperty("libraries")
             .EnumerateObject().Select(static package => package.Name).Order(StringComparer.Ordinal));
     }
@@ -538,17 +538,17 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string root = CreateDirectory();
-        string physical = Path.Combine(root, "physical");
+        string physical = Path.Join(root, "physical");
         Directory.CreateDirectory(physical);
-        string target = Path.Combine(physical, "Shared.props");
+        string target = Path.Join(physical, "Shared.props");
         await File.WriteAllTextAsync(target, "<Project><Import Project='$(MSBuildThisFileDirectory)Versions.props'/></Project>", token);
-        string alias = Path.Combine(root, "Shared.props");
+        string alias = Path.Join(root, "Shared.props");
         File.CreateSymbolicLink(alias, target);
         string content = "<Project><ItemGroup><PackageReference Include='Ankus.Testing' Version='0.1.0'/></ItemGroup></Project>";
-        string imported = Path.Combine(root, "Versions.props");
+        string imported = Path.Join(root, "Versions.props");
         await File.WriteAllTextAsync(imported, content, token);
-        await File.WriteAllTextAsync(Path.Combine(physical, "Versions.props"), content.Replace("0.1.0", "9.9.9", StringComparison.Ordinal), token);
-        string project = Path.Combine(root, "Probe.csproj");
+        await File.WriteAllTextAsync(Path.Join(physical, "Versions.props"), content.Replace("0.1.0", "9.9.9", StringComparison.Ordinal), token);
+        string project = Path.Join(root, "Probe.csproj");
         await File.WriteAllTextAsync(project, "<Project Sdk='Microsoft.NET.Sdk'><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup><Import Project='Shared.props'/></Project>", token);
         Dictionary<string, byte[]> before = SnapshotUpgradeFiles(root);
         ProcessResult result = await InvokeAsync(["upgrade", "--project", project, "--to", "0.2.0"], token);
@@ -572,11 +572,11 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string root = CreateDirectory();
-        string cache = Path.Combine(root, "package-cache");
+        string cache = Path.Join(root, "package-cache");
         Directory.CreateDirectory(cache);
-        string imported = Path.Combine(cache, "Dependency.props");
+        string imported = Path.Join(cache, "Dependency.props");
         await File.WriteAllTextAsync(imported, "<Project><ItemGroup><PackageReference Include='Ankus.Runtime' Version='0.1.0'/></ItemGroup></Project>", token);
-        string project = Path.Combine(root, "Probe.csproj");
+        string project = Path.Join(root, "Probe.csproj");
         var document = XDocument.Parse("""
             <Project Sdk="Microsoft.NET.Sdk">
               <PropertyGroup><TargetFramework>net10.0</TargetFramework><NuGetPackageRoot>$(MSBuildThisFileDirectory)package-cache/</NuGetPackageRoot></PropertyGroup>
@@ -596,7 +596,7 @@ public sealed partial class ToolCommandTests
             document.Root.Element("Import")!.Attribute("Condition")?.SetValue("Exists('" + imported + "')");
             new XDocument(new XElement("configuration", new XElement("fallbackPackageFolders", new XElement("clear"),
                 new XElement("add", new XAttribute("key", "owned"), new XAttribute("value", cache)))))
-                .Save(Path.Combine(root, "NuGet.Config"));
+                .Save(Path.Join(root, "NuGet.Config"));
         }
 
         await File.WriteAllTextAsync(project, document.ToString(), token);
@@ -616,14 +616,14 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         string root = CreateDirectory();
         _ = await WriteUpgradeProjectAsync(root, "0.1.0", token);
-        string invalid = Path.Combine(root, "Invalid.csproj");
+        string invalid = Path.Join(root, "Invalid.csproj");
         await File.WriteAllTextAsync(invalid, """
             <Project Sdk="Microsoft.NET.Sdk">
               <PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup>
               <Import Project="$([MSBuild]::NormalizePath('$(MSBuildThisFileDirectory)', 'Missing.props'))" />
             </Project>
             """, token);
-        string solution = Path.Combine(root, "Probe.slnx");
+        string solution = Path.Join(root, "Probe.slnx");
         await File.WriteAllTextAsync(solution, "<Solution><Project Path='Probe.csproj'/><Project Path='Invalid.csproj'/></Solution>", token);
         Dictionary<string, byte[]> before = SnapshotUpgradeFiles(root);
         ProcessResult result = await InvokeAsync(["upgrade", "--solution", solution, "--to", "0.2.0"], token);
@@ -649,7 +649,7 @@ public sealed partial class ToolCommandTests
         using var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
         int port = ((IPEndPoint)listener.LocalEndpoint).Port;
-        string config = Path.Combine(root, "NuGet.Config");
+        string config = Path.Join(root, "NuGet.Config");
         XDocument configuration = XDocument.Load(config);
         configuration.Root!.Element("packageSources")!.Add(new XElement("add", new XAttribute("key", "broken"),
             new XAttribute("value", $"http://127.0.0.1:{port.ToString(CultureInfo.InvariantCulture)}/v3/index.json"), new XAttribute("allowInsecureConnections", "true")));
@@ -705,7 +705,7 @@ public sealed partial class ToolCommandTests
         var configuration = new XDocument(new XElement("configuration", new XElement("packageSources", new XElement("clear"),
             new XElement("add", new XAttribute("key", "waiting"), new XAttribute("allowInsecureConnections", "true"),
                 new XAttribute("value", $"http://127.0.0.1:{port.ToString(CultureInfo.InvariantCulture)}/v3/index.json")))));
-        configuration.Save(Path.Combine(root, "NuGet.Config"));
+        configuration.Save(Path.Join(root, "NuGet.Config"));
         Dictionary<string, byte[]> before = SnapshotUpgradeFiles(root);
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(token);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token);
@@ -738,9 +738,9 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string root = CreateDirectory();
-        string project = Path.Combine(root, "Probe.csproj");
+        string project = Path.Join(root, "Probe.csproj");
         await File.WriteAllTextAsync(project, "<Project Sdk='Microsoft.NET.Sdk'><Import Project='Versions.props'/></Project>", token);
-        string imported = Path.Combine(root, "Versions.props");
+        string imported = Path.Join(root, "Versions.props");
         await File.WriteAllTextAsync(imported, "<Project><ItemGroup><PackageReference Include='Ankus.Testing' Version='0.1.0'/></ItemGroup></Project>", token);
         using var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
@@ -748,7 +748,7 @@ public sealed partial class ToolCommandTests
         string source = $"http://127.0.0.1:{port.ToString(CultureInfo.InvariantCulture)}/";
         new XDocument(new XElement("configuration", new XElement("packageSources", new XElement("clear"),
             new XElement("add", new XAttribute("key", "waiting"), new XAttribute("allowInsecureConnections", "true"),
-                new XAttribute("value", source + "index.json"))))).Save(Path.Combine(root, "NuGet.Config"));
+                new XAttribute("value", source + "index.json"))))).Save(Path.Join(root, "NuGet.Config"));
         Dictionary<string, byte[]> before = SnapshotUpgradeFiles(root);
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(token);
         var observed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -872,14 +872,14 @@ public sealed partial class ToolCommandTests
                 break;
             case "duplicateSdk":
                 await File.WriteAllTextAsync(project, "<Project Sdk='Ankus.Sdk'/>", token);
-                await File.WriteAllTextAsync(Path.Combine(root, "global.json"), "{\"msbuild-sdks\":{\"Ankus.Sdk\":\"0.1.0\",\"Ankus.Sdk\":\"0.1.1\"}}", token);
+                await File.WriteAllTextAsync(Path.Join(root, "global.json"), "{\"msbuild-sdks\":{\"Ankus.Sdk\":\"0.1.0\",\"Ankus.Sdk\":\"0.1.1\"}}", token);
                 break;
             case "missingProject":
-                selection = Path.Combine(root, "Bad.slnx");
+                selection = Path.Join(root, "Bad.slnx");
                 await File.WriteAllTextAsync(selection, "<Solution><Project Path='Probe.csproj'/><Project Path='Missing.csproj'/></Solution>", token);
                 break;
             case "unknownPackage":
-                selection = Path.Combine(root, "Probe.slnx");
+                selection = Path.Join(root, "Probe.slnx");
                 await File.WriteAllTextAsync(selection, "<Solution><Project Path='Probe.csproj'/></Solution>", token);
                 target = ["--to", "0.2.0", "--package", "Missing"];
                 break;
@@ -923,9 +923,9 @@ public sealed partial class ToolCommandTests
         string project = await WriteUpgradeProjectAsync(root, "0.1.0", token);
         string original = await File.ReadAllTextAsync(project, token);
         await File.WriteAllTextAsync(project, original.Replace("Microsoft.NET.Sdk", "Ankus.Sdk", StringComparison.Ordinal), token);
-        string global = Path.Combine(root, "global.json");
+        string global = Path.Join(root, "global.json");
         await File.WriteAllTextAsync(global, "{\"msbuild-sdks\":{\"Ankus.Sdk\":\"0.1.0\"}}", token);
-        string central = Path.Combine(root, "Directory.Packages.props");
+        string central = Path.Join(root, "Directory.Packages.props");
         await File.WriteAllTextAsync(central, "<Project><ItemGroup><PackageVersion Include='Ankus.Runtime' Version='0.1.0'/></ItemGroup></Project>", token);
         Dictionary<string, byte[]> before = SnapshotUpgradeFiles(root);
         using var locked = new FileStream(global, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -944,7 +944,7 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         string root = CreateDirectory();
         string project = await WriteUpgradeProjectAsync(root, "0.1.0", token);
-        string central = Path.Combine(root, "Directory.Packages.props");
+        string central = Path.Join(root, "Directory.Packages.props");
         await File.WriteAllTextAsync(central, "<Project><ItemGroup><PackageVersion Include='Ankus.Runtime' Version='0.1.0'/></ItemGroup></Project>", token);
         Dictionary<string, byte[]> before = SnapshotUpgradeFiles(root);
         FileAttributes original = File.GetAttributes(project);
@@ -964,7 +964,7 @@ public sealed partial class ToolCommandTests
 
     private static async Task<string> WriteUpgradeProjectAsync(string root, string version, CancellationToken token)
     {
-        string path = Path.Combine(root, "Probe.csproj");
+        string path = Path.Join(root, "Probe.csproj");
         var document = new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
             new XElement("ItemGroup", new XElement("PackageReference", new XAttribute("Include", "Ankus.Testing"), new XAttribute("Version", version)))));
         await File.WriteAllTextAsync(path, document.ToString(), token);
@@ -973,11 +973,11 @@ public sealed partial class ToolCommandTests
 
     private static async Task CreateUpgradeFeedAsync(string root, string package, CancellationToken token)
     {
-        string feed = Path.Combine(root, "feed");
+        string feed = Path.Join(root, "feed");
         Directory.CreateDirectory(feed);
         foreach (string version in new[] { "0.1.0", "0.2.0", "0.3.0-beta.2", "0.3.0-beta.10" })
         {
-            await using var file = new FileStream(Path.Combine(feed, package + "." + version + ".nupkg"), FileMode.CreateNew);
+            await using var file = new FileStream(Path.Join(feed, package + "." + version + ".nupkg"), FileMode.CreateNew);
             using var archive = new ZipArchive(file, ZipArchiveMode.Create, leaveOpen: true);
             ZipArchiveEntry entry = archive.CreateEntry(package + ".nuspec");
             await using Stream destination = entry.Open();
@@ -987,7 +987,7 @@ public sealed partial class ToolCommandTests
 
         var configuration = new XDocument(new XElement("configuration", new XElement("packageSources", new XElement("clear"),
             new XElement("add", new XAttribute("key", "owned"), new XAttribute("value", feed)))));
-        await File.WriteAllTextAsync(Path.Combine(root, "NuGet.Config"), configuration.ToString(), token);
+        await File.WriteAllTextAsync(Path.Join(root, "NuGet.Config"), configuration.ToString(), token);
     }
 
     private static Dictionary<string, byte[]> SnapshotUpgradeFiles(string root)
@@ -1013,6 +1013,7 @@ public sealed partial class ToolCommandTests
             string request = await reader.ReadLineAsync(token) ?? "";
             while (await reader.ReadLineAsync(token) is string line && line.Length != 0)
             {
+                // Skip the request headers.
             }
 
             observed.TrySetResult();

@@ -22,7 +22,7 @@ internal static class TestCommandContext
             }
 
             string? session = SessionDirectory;
-            string expected = session is null ? string.Empty : Path.GetFullPath(Path.Combine(session, "msbuild-properties"));
+            string expected = session is null ? string.Empty : Path.GetFullPath(Path.Join(session, "msbuild-properties"));
             if (!Path.IsPathFullyQualified(path) || !File.Exists(path) || !string.Equals(Path.GetFullPath(path), expected,
                 OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
             {
@@ -71,7 +71,12 @@ internal static class TestCommandContext
         get
         {
             string? value = Environment.GetEnvironmentVariable("ANKUS_TEST_REUSE_SCHEMA");
-            return value is null ? false : bool.TryParse(value, out bool reuse) ? reuse :
+            if (value is null)
+            {
+                return false;
+            }
+
+            return bool.TryParse(value, out bool reuse) ? reuse :
                 throw new InvalidOperationException("ANKUS_TEST_REUSE_SCHEMA must be true or false.");
         }
     }
@@ -124,7 +129,7 @@ internal static class TestCommandContext
                 throw new InvalidOperationException("The ankus test data directory requires an existing command session.");
             }
 
-            return data ?? (session is null ? null : Path.Combine(session, "pgdata"));
+            return data ?? (session is null ? null : Path.Join(session, "pgdata"));
         }
     }
 

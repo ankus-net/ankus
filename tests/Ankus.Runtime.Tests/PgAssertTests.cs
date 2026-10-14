@@ -15,8 +15,8 @@ public sealed class PgAssertTests
     [TestMethod]
     public void FailuresNameTheCheckAndValues()
     {
-        PgAssert.IsTrue(1 + 1 == 2);
-        PgAssert.IsFalse(1 + 1 == 3);
+        PgAssert.IsTrue(s_pair.Contains(2));
+        PgAssert.IsFalse(s_pair.Contains(3));
         PgAssert.AreEqual(42, 42);
         PgAssert.AreNotEqual("a", "b");
         PgAssert.AreSequenceEqual(s_pair, new List<int> { 1, 2 });

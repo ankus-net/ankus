@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 
 namespace Ankus.Runtime.Tests;
@@ -15,9 +14,7 @@ public sealed partial class PgSharedMemoryTests
         using var fixture = new SharedFixture();
         NativeBorrowScope scope = NativeMemoryContext.BorrowScope;
         WeakReference released = ReleaseLease(scope);
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
+        GarbageCollection.Collect();
         Assert.IsFalse(released.IsAlive, "A long-running callback must not retain every disposed lock acquisition.");
         scope.Validate();
         Assert.AreSequenceEqual<nint>([20], fixture.Memory.Requests.Select(static request => request._other));
@@ -25,7 +22,7 @@ public sealed partial class PgSharedMemoryTests
         [MethodImpl(MethodImplOptions.NoInlining)]
         static WeakReference ReleaseLease(NativeBorrowScope owner)
         {
-            var lease = new NativeSharedMemoryLease(owner, 71);
+            using var lease = new NativeSharedMemoryLease(owner, 71);
             owner.Register(lease);
             lease.Acquired(20);
             var weak = new WeakReference(lease);
@@ -84,21 +81,25 @@ public sealed partial class PgSharedMemoryTests
         PgSharedMemory.Initialize(storage);
         fixture.Bytes = BitConverter.GetBytes(731);
         using PgLwLockShareGuard<int> outer = storage.Share();
-        PgLwLockExclusiveGuard<int> expired;
-        using (MemoryContextTestFixture.Enter())
-        {
-            expired = storage.Exclusive();
-            _ = storage.Share();
-            Assert.AreEqual(731, outer.Value);
-            Assert.AreEqual(731, expired.Value);
-        }
-
+        using PgLwLockExclusiveGuard<int> expired = AcquireInCallback();
         Assert.AreSequenceEqual<nint>([22, 21], fixture.Memory.Requests.Where(static request => request._flags == 5).Select(static request => request._other));
         Assert.AreEqual(731, outer.Value);
         Assert.ThrowsExactly<ObjectDisposedException>(() => expired.Value);
         expired.Dispose();
         outer.Dispose();
         Assert.AreSequenceEqual<nint>([22, 21, 20], fixture.Memory.Requests.Where(static request => request._flags == 5).Select(static request => request._other));
+
+        PgLwLockExclusiveGuard<int> AcquireInCallback()
+        {
+            using (MemoryContextTestFixture.Enter())
+            {
+                PgLwLockExclusiveGuard<int> guard = storage.Exclusive();
+                _ = storage.Share();
+                Assert.AreEqual(731, outer.Value);
+                Assert.AreEqual(731, guard.Value);
+                return guard;
+            }
+        }
     }
 
     /// <summary>
@@ -122,25 +123,11 @@ public sealed partial class PgSharedMemoryTests
             Assert.ThrowsExactly<InvalidOperationException>(() => PgSharedMemory.Initialize(storage));
         }
 
-        Exception? failure = null;
-        var thread = new Thread(() =>
+        DedicatedThread.Run(() =>
         {
-            try
-            {
-                Assert.ThrowsExactly<InvalidOperationException>(() => guard.Value);
-                Assert.ThrowsExactly<InvalidOperationException>(guard.Dispose);
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
+            Assert.ThrowsExactly<InvalidOperationException>(() => guard.Value);
+            Assert.ThrowsExactly<InvalidOperationException>(guard.Dispose);
         });
-        thread.Start();
-        thread.Join();
-        if (failure is not null)
-        {
-            ExceptionDispatchInfo.Capture(failure).Throw();
-        }
 
         Assert.HasCount(2, fixture.Memory.Requests);
         Assert.AreEqual(37, guard.Value);

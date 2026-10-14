@@ -46,7 +46,7 @@ public sealed unsafe class RelationTests
     public void OpenPreservesLockAndIdentity(int mode)
     {
         using var fixture = new Fixture();
-        PgRelation relation = PgRelation.Open(uint.MaxValue, (PgLockMode)mode);
+        using PgRelation relation = PgRelation.Open(uint.MaxValue, (PgLockMode)mode);
         Assert.AreEqual((byte)35, (byte)fixture.Requests[0]._operation);
         Assert.AreEqual(1, fixture.Requests[0]._scalarOperation);
         Assert.AreEqual(mode, fixture.Requests[0]._limit);
@@ -127,7 +127,7 @@ public sealed unsafe class RelationTests
         Assert.AreEqual(1, fixture.Requests[^1]._limit);
         Assert.AreEqual(42U, clone.Oid);
         Assert.AreEqual<nint>(0x12340, (nint)relation.DangerousGetPointer());
-        PgRelation borrowed = PgRelation.DangerousBorrow((void*)0x12340)!;
+        using PgRelation borrowed = PgRelation.DangerousBorrow((void*)0x12340)!;
         Assert.AreEqual(3, fixture.Requests[^1]._scalarOperation);
         Assert.AreEqual<nint>(0x12340, fixture.Requests[^1]._callback);
         long identity = borrowed.Identity;
@@ -376,7 +376,7 @@ public sealed unsafe class RelationTests
     public void EditedCellsCopyRelationIdentities()
     {
         using var fixture = new Fixture();
-        PgRelation original = PgRelation.Open(42);
+        using PgRelation original = PgRelation.Open(42);
         SpiColumn[] columns = [new("r", 2205), new("a", 2210), new("v", 2210)];
         var row = new SpiRow(new object?[3], columns);
         var shaped = new PgArray<PgRelation?>([original, null], [1, 2], [-3, 4]);
@@ -588,7 +588,7 @@ public sealed unsafe class RelationTests
                         8 => new NativeValue { Integral = 2200 },
                         9 => NativeValue.FromString("schema 名"),
                         10 => new NativeValue { Integral = fixture.Kind },
-                        11 => new NativeValue { Integral = BitConverter.SingleToInt32Bits(fixture.Estimate), IsNull = fixture.Estimate == 0 ? (byte)1 : (byte)0 },
+                        11 => new NativeValue { Integral = BitConverter.SingleToInt32Bits(fixture.Estimate), IsNull = fixture.Estimate is 0 ? (byte)1 : (byte)0 },
                         13 => NativeValue.FromArray(new PgArray<uint>(fixture.Indexes)),
                         14 => new NativeValue { Integral = fixture.Heap },
                         15 => new NativeValue { Integral = 0x12340 },
@@ -602,6 +602,7 @@ public sealed unsafe class RelationTests
 
                 return 0;
             }
+            // codeql[cs/catch-of-all-exceptions] This stands in for native code, so every exception goes back as an error instead of unwinding through it.
             catch (Exception exception)
             {
                 NativeError.Write(exception, error);

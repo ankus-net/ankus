@@ -222,17 +222,8 @@ public sealed class InitializationTests(TestContext context)
         };
         await using (var failing = new NpgsqlConnection(builder.ConnectionString))
         {
-            NpgsqlException? failure = null;
-            try
-            {
-                await failing.OpenAsync(token);
-            }
-            catch (NpgsqlException error)
-            {
-                failure = error;
-            }
-
-            Assert.IsNotNull(failure, "The failing session initializer accepted a connection.");
+            NpgsqlException failure = await Assert.ThrowsAsync<NpgsqlException>(() => failing.OpenAsync(token),
+                "The failing session initializer accepted a connection.");
             if (failure is PostgresException postgres)
             {
                 Assert.AreEqual("38000", postgres.SqlState);

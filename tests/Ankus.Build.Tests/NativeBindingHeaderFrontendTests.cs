@@ -28,12 +28,12 @@ public sealed partial class NativeBindingNativeTests
             new("native_inline", "native_inline", true), new("native_unannotated_exit", "native_unannotated_exit", true),
             new("native_declared_exit", "native_declared_exit", true),
         ];
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-header-frontend-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-header-frontend-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
-            string file = Path.Combine(directory, "types.c");
-            string ast = Path.Combine(directory, "types.ast.json");
+            string file = Path.Join(directory, "types.c");
+            string ast = Path.Join(directory, "types.ast.json");
             string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang";
             string[] frontend = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/Zs", "-Xclang", "-ast-dump=json", file]

@@ -24,7 +24,7 @@ public sealed partial class ToolCommandTests
         foreach (string operation in new[] { "build", "publish", "install", "package", "schema", "run", "connect", "get", "regress", "bench" })
         {
             string[] command = operation == "get" ? [operation, "extname"] : [operation];
-            ProcessResult result = await InvokeAsync([.. command, "--project", Path.Combine(directory, "missing.csproj"),
+            ProcessResult result = await InvokeAsync([.. command, "--project", Path.Join(directory, "missing.csproj"),
                 "--property", property], context.CancellationToken);
             Assert.AreEqual(1, result.ExitCode, operation + ": " + result.StandardError);
             Assert.Contains("MSBuild properties must contain name=value", result.StandardError);
@@ -68,8 +68,8 @@ public sealed partial class ToolCommandTests
     public async Task ProjectCommandsRejectContradictoryGlobalProperties(string property, string error)
     {
         string directory = CreateDirectory();
-        ProcessResult result = await InvokeAsync(["publish", "--project", Path.Combine(directory, "missing.csproj"),
-            "--configuration", "Release", "--property", property, "--output", Path.Combine(directory, "publication")],
+        ProcessResult result = await InvokeAsync(["publish", "--project", Path.Join(directory, "missing.csproj"),
+            "--configuration", "Release", "--property", property, "--output", Path.Join(directory, "publication")],
             context.CancellationToken);
         Assert.AreNotEqual(0, result.ExitCode);
         Assert.Contains(error, result.StandardError);
@@ -89,9 +89,9 @@ public sealed partial class ToolCommandTests
         string[] options = selection == "major"
             ? ["--pg", DifferentMajor().ToString(System.Globalization.CultureInfo.InvariantCulture),
                 "--property", "AnkusPostgresMajor=" + MajorText()]
-            : ["--pg-config", s_installation.PgConfigPath, "--property", "AnkusPgConfigPath=" + Path.Combine(directory, "missing-pg-config")];
-        ProcessResult rejected = await InvokeAsync(["publish", "--project", Path.Combine(directory, "missing.csproj"),
-            .. options, "--output", Path.Combine(directory, "publication")], context.CancellationToken);
+            : ["--pg-config", s_installation.PgConfigPath, "--property", "AnkusPgConfigPath=" + Path.Join(directory, "missing-pg-config")];
+        ProcessResult rejected = await InvokeAsync(["publish", "--project", Path.Join(directory, "missing.csproj"),
+            .. options, "--output", Path.Join(directory, "publication")], context.CancellationToken);
         Assert.AreNotEqual(0, rejected.ExitCode);
         Assert.Contains(selection == "major" ? "Select the same PostgreSQL major" : "Select the same pg_config", rejected.StandardError);
         Assert.IsEmpty(Directory.GetFileSystemEntries(directory));
@@ -105,11 +105,11 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "PropertyProbe.csproj");
+        string project = Path.Join(directory, "PropertyProbe.csproj");
         XDocument definition = XDocument.Load(s_project);
         definition.Root!.Add(new XElement("Import", new XAttribute("Project", "selection.props")));
         definition.Save(project);
-        await File.WriteAllTextAsync(Path.Combine(directory, "selection.props"), """
+        await File.WriteAllTextAsync(Path.Join(directory, "selection.props"), """
             <Project>
               <PropertyGroup>
                 <AnkusPostgresMajor>$(ServerMajor)</AnkusPostgresMajor>
@@ -122,7 +122,7 @@ public sealed partial class ToolCommandTests
               </PropertyGroup>
             </Project>
             """, token);
-        await File.WriteAllTextAsync(Path.Combine(directory, "Functions.cs"), """
+        await File.WriteAllTextAsync(Path.Join(directory, "Functions.cs"), """
             using Ankus;
             public static class Functions
             {
@@ -137,16 +137,16 @@ public sealed partial class ToolCommandTests
                 }
             }
             """, token);
-        await File.WriteAllTextAsync(Path.Combine(directory, "Directory.Build.rsp"),
+        await File.WriteAllTextAsync(Path.Join(directory, "Directory.Build.rsp"),
             "-property:ResponseProbe=enabled" + Environment.NewLine, token);
-        string configurationDirectory = Directory.CreateDirectory(Path.Combine(directory, "configuration with spaces")).FullName;
-        string restoreConfiguration = Path.Combine(configurationDirectory, "NuGet.Config");
-        File.Copy(Path.Combine(s_root, "NuGet.Config"), restoreConfiguration);
+        string configurationDirectory = Directory.CreateDirectory(Path.Join(directory, "configuration with spaces")).FullName;
+        string restoreConfiguration = Path.Join(configurationDirectory, "NuGet.Config");
+        File.Copy(Path.Join(s_root, "NuGet.Config"), restoreConfiguration);
         new XDocument(new XElement("configuration", new XElement("packageSources", new XElement("clear"))))
-            .Save(Path.Combine(directory, "NuGet.Config"));
-        string packageDirectory = Path.Combine(directory, "packages with spaces");
-        string intermediateDirectory = Path.Combine(directory, "intermediate with spaces") + Path.DirectorySeparatorChar;
-        string home = Path.Combine(directory, "unregistered home");
+            .Save(Path.Join(directory, "NuGet.Config"));
+        string packageDirectory = Path.Join(directory, "packages with spaces");
+        string intermediateDirectory = Path.Join(directory, "intermediate with spaces") + Path.DirectorySeparatorChar;
+        string home = Path.Join(directory, "unregistered home");
         string[] options = ["--home", home, "--project", project, "--property", "Configuration=Shipping+Checked",
             "-p", "Probe=disabled", "--property", "pRoBe=enabled", "--property", "ServerMajor=" + MajorText(),
             "--property", "ServerConfig=" + s_installation.PgConfigPath,
@@ -161,10 +161,10 @@ public sealed partial class ToolCommandTests
         Assert.AreEqual("3.2.1" + Environment.NewLine, version.StandardOutput);
         ProcessResult build = await InvokeAsync(["build", .. options], token);
         Assert.AreEqual(0, build.ExitCode, build.StandardOutput + build.StandardError);
-        Assert.IsTrue(Directory.Exists(Path.Combine(packageDirectory, "ankus.runtime", s_version)));
+        Assert.IsTrue(Directory.Exists(Path.Join(packageDirectory, "ankus.runtime", s_version)));
         Assert.IsNotEmpty(Directory.GetFiles(intermediateDirectory, "*", SearchOption.AllDirectories));
-        Assert.IsFalse(Directory.Exists(Path.Combine(directory, "obj")));
-        string defaultOutput = Path.Combine(directory, "bin", "ankus", s_postgresKey,
+        Assert.IsFalse(Directory.Exists(Path.Join(directory, "obj")));
+        string defaultOutput = Path.Join(directory, "bin", "ankus", s_postgresKey,
             RuntimeInformation.RuntimeIdentifier, "Shipping+Checked");
         PublishedExtension original = PublishedExtension.Read(defaultOutput);
         Assert.AreEqual("ankus_global_properties.control", original.Control);
@@ -186,7 +186,7 @@ public sealed partial class ToolCommandTests
 
         ProcessResult schema = await InvokeAsync(["schema", .. options], token);
         Assert.AreEqual(0, schema.ExitCode, schema.StandardError);
-        Assert.AreEqual(await File.ReadAllTextAsync(Path.Combine(defaultOutput, "extension", original.Sql), token), schema.StandardOutput);
+        Assert.AreEqual(await File.ReadAllTextAsync(Path.Join(defaultOutput, "extension", original.Sql), token), schema.StandardOutput);
         ProcessResult skippedSchema = await InvokeAsync(["schema", .. options, "--skip-build"], token);
         Assert.AreEqual(0, skippedSchema.ExitCode, skippedSchema.StandardError);
         Assert.AreEqual(schema.StandardOutput, skippedSchema.StandardOutput);
@@ -199,12 +199,12 @@ public sealed partial class ToolCommandTests
             s_environment, token, workingDirectory: directory);
         Assert.AreEqual(0, projectDirectorySchema.ExitCode, projectDirectorySchema.StandardOutput + projectDirectorySchema.StandardError);
         Assert.AreEqual(schema.StandardOutput, projectDirectorySchema.StandardOutput);
-        Assert.IsFalse(Directory.Exists(Path.Combine(directory, "obj")));
+        Assert.IsFalse(Directory.Exists(Path.Join(directory, "obj")));
         string stage = CreateDirectory();
         ProcessResult install = await InvokeAsync(["install", .. options, "--destdir", stage], token);
         Assert.AreEqual(0, install.ExitCode, install.StandardOutput + install.StandardError);
-        Assert.AreEqual(await File.ReadAllTextAsync(Path.Combine(defaultOutput, "extension", original.Control), token),
-            await File.ReadAllTextAsync(Path.Combine(StagedPath(stage, s_installation.SharedDirectory), "extension", original.Control), token));
+        Assert.AreEqual(await File.ReadAllTextAsync(Path.Join(defaultOutput, "extension", original.Control), token),
+            await File.ReadAllTextAsync(Path.Join(StagedPath(stage, s_installation.SharedDirectory), "extension", original.Control), token));
         string package = CreateDirectory();
         ProcessResult packaged = await InvokeAsync(["package", .. options, "--output", package], token);
         Assert.AreEqual(0, packaged.ExitCode, packaged.StandardOutput + packaged.StandardError);

@@ -68,6 +68,7 @@ internal static class UpgradeTransaction
                     RequireUnchanged(document.Path, content);
                     File.Move(backup, document.Path, overwrite: true);
                 }
+                // codeql[cs/catch-of-all-exceptions] Every file is restored even when another fails, and each failure is reported.
                 catch (Exception rollback)
                 {
                     failures.Add(new IOException($"Could not restore '{document.Path}'; its original file remains at '{backup}'.", rollback));

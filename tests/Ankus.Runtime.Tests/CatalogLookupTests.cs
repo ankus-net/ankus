@@ -361,6 +361,7 @@ public sealed class CatalogLookupTests
                 result->_text.Integral = script.Result;
                 return 0;
             }
+            // codeql[cs/catch-of-all-exceptions] This stands in for native code, so every exception goes back as an error instead of unwinding through it.
             catch (Exception exception)
             {
                 NativeError.Write(exception, error);
@@ -397,6 +398,5 @@ public sealed class CatalogLookupTests
     /// <summary>
     /// Replaces transport release callbacks to prove allocator-matched ownership cleanup.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_release")]
-    private static extern unsafe ref delegate* unmanaged[Cdecl]<void*, void> ReleaseCallback(ref NativeValue value);
+    private static unsafe ref delegate* unmanaged[Cdecl]<void*, void> ReleaseCallback(ref NativeValue value) => ref value._release;
 }

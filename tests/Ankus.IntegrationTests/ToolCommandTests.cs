@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -28,7 +29,7 @@ public sealed partial class ToolCommandTests(TestContext context)
     private static string s_version = null!;
     private static string s_postgresOption = null!;
     private static string s_postgresKey = null!;
-    private static Dictionary<string, string?> s_environment = null!;
+    private static ConcurrentDictionary<string, string?> s_environment = null!;
     private static PostgresInstallation s_installation = null!;
 
     /// <summary>
@@ -50,41 +51,41 @@ public sealed partial class ToolCommandTests(TestContext context)
             : Path.GetFullPath(runnerWork);
         string identity = Guid.NewGuid().ToString("N")[..12];
         s_root = IntegrationEnvironment.PhysicalDirectory(Directory.CreateDirectory(
-            Path.Combine(workRoot, ".aw-" + identity)));
+            Path.Join(workRoot, ".aw-" + identity)));
         s_temporaryRoot = IntegrationEnvironment.PhysicalDirectory(Directory.CreateDirectory(
-            Path.Combine(workRoot, ".at-" + identity)));
+            Path.Join(workRoot, ".at-" + identity)));
         string? configuredPipeRoot = Environment.GetEnvironmentVariable("TESTINGPLATFORM_PIPE_DIRECTORY");
         s_pipeRoot = PackagePipeDirectory.Create(s_temporaryRoot, string.IsNullOrWhiteSpace(configuredPipeRoot)
             ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
             : configuredPipeRoot);
         // Independent cases own concurrency; each generated consumer build stays on one MSBuild node.
-        await File.WriteAllTextAsync(Path.Combine(s_root, "Directory.Build.rsp"), "-m:1\n-nr:false\n", token);
-        s_home = Path.Combine(s_root, "Ankus home");
-        s_published = Path.Combine(s_root, "published extension");
+        await File.WriteAllTextAsync(Path.Join(s_root, "Directory.Build.rsp"), "-m:1\n-nr:false\n", token);
+        s_home = Path.Join(s_root, "Ankus home");
+        s_published = Path.Join(s_root, "published extension");
         s_installation = await IntegrationEnvironment.GetInstallationAsync(token);
         s_postgresOption = "--pg" + s_installation.Version.Major.ToString(CultureInfo.InvariantCulture);
         s_postgresKey = "pg" + s_installation.Version.Major.ToString(CultureInfo.InvariantCulture);
-        string feed = Path.Combine(s_root, "feed");
+        string feed = Path.Join(s_root, "feed");
         Directory.CreateDirectory(feed);
         s_version = "0.0.0-test." + Guid.NewGuid().ToString("N");
         string runtimeIdentifier = RuntimeInformation.RuntimeIdentifier;
-        string runtimeSdk = Path.Combine(repository, "artifacts", "nativeaot", runtimeIdentifier, "aotsdk") +
+        string runtimeSdk = Path.Join(repository, "artifacts", "nativeaot", runtimeIdentifier, "aotsdk") +
                             Path.DirectorySeparatorChar;
-        string compilerTools = Path.Combine(repository, "artifacts", "nativeaot", runtimeIdentifier, "compiler") +
+        string compilerTools = Path.Join(repository, "artifacts", "nativeaot", runtimeIdentifier, "compiler") +
                                Path.DirectorySeparatorChar;
-        string runtimeSource = Path.Combine(repository, "artifacts", "nativeaot", runtimeIdentifier, "source");
+        string runtimeSource = Path.Join(repository, "artifacts", "nativeaot", runtimeIdentifier, "source");
         await PackageProcessRunner.RunCheckedAsync("dotnet",
-            ["pack", Path.Combine(repository, "src/Ankus.NativeAot.Runtime"), "-c", "Release", "-o", feed,
+            ["pack", Path.Join(repository, "src/Ankus.NativeAot.Runtime"), "-c", "Release", "-o", feed,
                 "-p:AnkusRuntimeIdentifier=" + runtimeIdentifier, "-p:AnkusRuntimeSdkPath=" + runtimeSdk,
                 "-p:AnkusRuntimeSourcePath=" + runtimeSource,
-                "-bl:" + Path.Combine(repository, "artifacts", "runtime-package-pack-{}.binlog")],
+                "-bl:" + Path.Join(repository, "artifacts", "runtime-package-pack-{}.binlog")],
             new Dictionary<string, string?>(), token);
         await PackageProcessRunner.RunCheckedAsync("dotnet",
-            ["pack", Path.Combine(repository, "src/Ankus.NativeAot.Compiler"), "-c", "Release", "-o", feed,
+            ["pack", Path.Join(repository, "src/Ankus.NativeAot.Compiler"), "-c", "Release", "-o", feed,
                 "-p:AnkusCompilerRuntimeIdentifier=" + runtimeIdentifier,
                 "-p:AnkusCompilerToolsPath=" + compilerTools,
                 "-p:AnkusRuntimeSourcePath=" + runtimeSource,
-                "-bl:" + Path.Combine(repository, "artifacts", "compiler-package-pack-{}.binlog")],
+                "-bl:" + Path.Join(repository, "artifacts", "compiler-package-pack-{}.binlog")],
             new Dictionary<string, string?>(), token);
 
         string[] projects = ["src/Ankus.Runtime", "src/Ankus.Generators", "src/Ankus.PgConfig",
@@ -94,14 +95,14 @@ public sealed partial class ToolCommandTests(TestContext context)
         foreach (string project in projects)
         {
             await PackageProcessRunner.RunCheckedAsync("dotnet",
-                ["pack", Path.Combine(repository, project), "-c", "Release", "-o", feed, "-p:PackageVersion=" + s_version,
-                    "-bl:" + Path.Combine(repository, "artifacts", "package-pack-{}.binlog")],
+                ["pack", Path.Join(repository, project), "-c", "Release", "-o", feed, "-p:PackageVersion=" + s_version,
+                    "-bl:" + Path.Join(repository, "artifacts", "package-pack-{}.binlog")],
                 new Dictionary<string, string?>(), token);
         }
 
-        s_environment = new Dictionary<string, string?>
+        var environment = new Dictionary<string, string?>
         {
-            ["NUGET_PACKAGES"] = Path.Combine(s_root, "NuGet packages"),
+            ["NUGET_PACKAGES"] = Path.Join(s_root, "NuGet packages"),
             ["TMP"] = s_temporaryRoot,
             ["TEMP"] = s_temporaryRoot,
             ["TMPDIR"] = s_temporaryRoot,
@@ -123,36 +124,38 @@ public sealed partial class ToolCommandTests(TestContext context)
         };
         for (int major = 13; major <= 19; major++)
         {
-            s_environment["PG" + major.ToString(CultureInfo.InvariantCulture) + "_PG_CONFIG"] = null;
+            environment["PG" + major.ToString(CultureInfo.InvariantCulture) + "_PG_CONFIG"] = null;
         }
 
-        File.Copy(Path.Combine(repository, "global.json"), Path.Combine(s_root, "global.json"));
-        string config = Path.Combine(s_root, "NuGet.Config");
+        s_environment = new(environment);
+
+        File.Copy(Path.Join(repository, "global.json"), Path.Join(s_root, "global.json"));
+        string config = Path.Join(s_root, "NuGet.Config");
         new XDocument(new XElement("configuration", new XElement("packageSources", new XElement("clear"),
             new XElement("add", new XAttribute("key", "test"), new XAttribute("value", feed)),
             new XElement("add", new XAttribute("key", "nuget.org"), new XAttribute("value", "https://api.nuget.org/v3/index.json")))))
             .Save(config);
-        string toolDirectory = Path.Combine(s_root, "installed tool");
+        string toolDirectory = Path.Join(s_root, "installed tool");
         await PackageProcessRunner.RunCheckedAsync("dotnet",
             ["tool", "install", "Ankus.Tool", "--version", s_version, "--tool-path", toolDirectory, "--configfile", config],
             s_environment, token, workingDirectory: s_root);
-        s_tool = Path.Combine(toolDirectory, OperatingSystem.IsWindows() ? "ankus.exe" : "ankus");
+        s_tool = Path.Join(toolDirectory, OperatingSystem.IsWindows() ? "ankus.exe" : "ankus");
         (await InvokeAsync(["init", "--home", s_home, s_postgresOption, s_installation.PgConfigPath], token))
             .EnsureSuccess(s_tool, ["init"]);
 
-        string projectDirectory = Path.Combine(s_root, "author project");
+        string projectDirectory = Path.Join(s_root, "author project");
         Directory.CreateDirectory(projectDirectory);
-        s_project = Path.Combine(projectDirectory, "ToolProbe.csproj");
+        s_project = Path.Join(projectDirectory, "ToolProbe.csproj");
         new XDocument(new XElement("Project", new XAttribute("Sdk", "Ankus.Sdk/" + s_version),
             new XElement("PropertyGroup", new XElement("TargetFramework", "net10.0"),
                 new XElement("Nullable", "enable"), new XElement("ImplicitUsings", "enable"),
                 new XElement("TreatWarningsAsErrors", "true"), new XElement("AnkusExtensionName", "ankus_tool_probe"),
                 new XElement("AnkusExtensionVersion", "0.1.0"))))
             .Save(s_project);
-        File.Copy(Path.Combine(repository, "samples", "Ankus.Examples.Hello", "Hello.cs"), Path.Combine(projectDirectory, "Hello.cs"));
-        File.Copy(Path.Combine(repository, "samples", "Ankus.Examples.Initialization", "Startup.cs"),
-            Path.Combine(projectDirectory, "Startup.cs"));
-        await File.WriteAllTextAsync(Path.Combine(projectDirectory, "RuntimeProbe.cs"), """
+        File.Copy(Path.Join(repository, "samples", "Ankus.Examples.Hello", "Hello.cs"), Path.Join(projectDirectory, "Hello.cs"));
+        File.Copy(Path.Join(repository, "samples", "Ankus.Examples.Initialization", "Startup.cs"),
+            Path.Join(projectDirectory, "Startup.cs"));
+        await File.WriteAllTextAsync(Path.Join(projectDirectory, "RuntimeProbe.cs"), """
             namespace Ankus.Examples.Hello;
 
             /// <summary>
@@ -176,7 +179,7 @@ public sealed partial class ToolCommandTests(TestContext context)
                 public static string? ToolGcRegionSetting() => Environment.GetEnvironmentVariable("DOTNET_GCRegionRange");
             }
             """, token);
-        await File.WriteAllTextAsync(Path.Combine(projectDirectory, "BenchmarkProbe.cs"), """
+        await File.WriteAllTextAsync(Path.Join(projectDirectory, "BenchmarkProbe.cs"), """
             namespace Ankus.Examples.Hello;
 
             /// <summary>
@@ -296,7 +299,7 @@ public sealed partial class ToolCommandTests(TestContext context)
     public async Task InitPreservesSettingsAndInfoUsesRegistration()
     {
         string home = CreateDirectory();
-        string configuration = Path.Combine(home, "config.json");
+        string configuration = Path.Join(home, "config.json");
         int otherMajor = DifferentMajor();
         string otherKey = "pg" + otherMajor.ToString(CultureInfo.InvariantCulture);
         await File.WriteAllTextAsync(configuration, $"{{\"{otherKey}\":\"other/pg_config\",\"port\":28800}}", context.CancellationToken);
@@ -320,7 +323,7 @@ public sealed partial class ToolCommandTests(TestContext context)
     public async Task InitRejectsWrongMajorWithoutPartialUpdate()
     {
         string home = CreateDirectory();
-        string configuration = Path.Combine(home, "config.json");
+        string configuration = Path.Join(home, "config.json");
         const string Original = "{ \"pg13\": \"keep this\" }\n";
         await File.WriteAllTextAsync(configuration, Original, context.CancellationToken);
         int wrongMajor = DifferentMajor();
@@ -343,7 +346,7 @@ public sealed partial class ToolCommandTests(TestContext context)
     public async Task InitPreservesInvalidConfiguration(string original)
     {
         string home = CreateDirectory();
-        string configuration = Path.Combine(home, "config.json");
+        string configuration = Path.Join(home, "config.json");
         await File.WriteAllTextAsync(configuration, original, context.CancellationToken);
         ProcessResult result = await InvokeAsync(["init", "--home", home, s_postgresOption, s_installation.PgConfigPath],
             context.CancellationToken);
@@ -366,7 +369,7 @@ public sealed partial class ToolCommandTests(TestContext context)
             context.CancellationToken);
         Assert.AreEqual(0, explicitPath.ExitCode, explicitPath.StandardError);
         Assert.Contains(s_installation.PgConfigPath, explicitPath.StandardOutput);
-        Assert.IsFalse(File.Exists(Path.Combine(home, "config.json")));
+        Assert.IsFalse(File.Exists(Path.Join(home, "config.json")));
     }
 
     /// <summary>
@@ -376,7 +379,7 @@ public sealed partial class ToolCommandTests(TestContext context)
     public async Task StaleRegistrationFails()
     {
         string home = CreateDirectory();
-        await File.WriteAllTextAsync(Path.Combine(home, "config.json"), "{\"pg18\":\"missing/pg_config\"}",
+        await File.WriteAllTextAsync(Path.Join(home, "config.json"), "{\"pg18\":\"missing/pg_config\"}",
             context.CancellationToken);
         ProcessResult result = await InvokeAsync(["info", "--home", home], context.CancellationToken);
         Assert.AreEqual(1, result.ExitCode);
@@ -401,7 +404,7 @@ public sealed partial class ToolCommandTests(TestContext context)
         ProcessResult result = await InvokeAsync([command, "--home", home, option], context.CancellationToken);
         Assert.AreNotEqual(0, result.ExitCode);
         Assert.IsNotEmpty(result.StandardError);
-        Assert.IsFalse(File.Exists(Path.Combine(home, "config.json")));
+        Assert.IsFalse(File.Exists(Path.Join(home, "config.json")));
     }
 
     /// <summary>
@@ -422,11 +425,11 @@ public sealed partial class ToolCommandTests(TestContext context)
         Assert.AreEqual(0, result.ExitCode, result.StandardError);
         string libraries = StagedPath(stage, s_installation.LibraryDirectory);
         string shared = StagedPath(stage, s_installation.SharedDirectory);
-        string installedLibrary = Path.Combine(libraries, manifest.Library);
-        Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Combine(s_published, manifest.Library), token),
+        string installedLibrary = Path.Join(libraries, manifest.Library);
+        Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Join(s_published, manifest.Library), token),
             await File.ReadAllBytesAsync(installedLibrary, token));
-        Assert.AreEqual(await File.ReadAllTextAsync(Path.Combine(s_published, "extension", manifest.Control), token),
-            await File.ReadAllTextAsync(Path.Combine(shared, "extension", manifest.Control), token));
+        Assert.AreEqual(await File.ReadAllTextAsync(Path.Join(s_published, "extension", manifest.Control), token),
+            await File.ReadAllTextAsync(Path.Join(shared, "extension", manifest.Control), token));
         Assert.HasCount(3, Directory.GetFiles(stage, "*", SearchOption.AllDirectories));
         PostgresInstallation installation = await PrepareCaseInstallationAsync(s_published, token);
         List<string> configuration = ["dynamic_library_path = '" + EscapeSetting(libraries) + "'"];
@@ -438,8 +441,8 @@ public sealed partial class ToolCommandTests(TestContext context)
         await using PostgresTestCluster cluster = await PostgresTestCluster.StartAsync(new PostgresTestClusterOptions
         {
             Installation = installation,
-            DataDirectoryBase = Path.Combine(s_root, "pgdata"),
-            LogDirectory = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
+            DataDirectoryBase = Path.Join(s_root, "pgdata"),
+            LogDirectory = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
             PostgreSqlConfiguration = [.. configuration, "shared_preload_libraries = '" + manifest.Library + "'"],
         }, token);
         await using NpgsqlConnection connection = await cluster.OpenConnectionAsync(token);
@@ -472,15 +475,15 @@ public sealed partial class ToolCommandTests(TestContext context)
     public async Task InvalidArtifactDoesNotPartiallyInstall(string operation, string failure)
     {
         string source = CreateDirectory();
-        Directory.CreateDirectory(Path.Combine(source, "extension"));
+        Directory.CreateDirectory(Path.Join(source, "extension"));
         foreach (string path in Directory.GetFiles(s_published, "*", SearchOption.AllDirectories))
         {
-            string destination = Path.Combine(source, Path.GetRelativePath(s_published, path));
+            string destination = Path.Join(source, Path.GetRelativePath(s_published, path));
             Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
             File.Copy(path, destination);
         }
 
-        string manifestPath = Path.Combine(source, PublishedExtension.FileName);
+        string manifestPath = Path.Join(source, PublishedExtension.FileName);
         JsonNode manifest = JsonNode.Parse(await File.ReadAllTextAsync(manifestPath, context.CancellationToken))!;
         switch (failure)
         {
@@ -494,10 +497,10 @@ public sealed partial class ToolCommandTests(TestContext context)
                 manifest["library"] = "../outside.so";
                 break;
             case "missing":
-                File.Delete(Path.Combine(source, "extension", manifest["sql"]!.GetValue<string>()));
+                File.Delete(Path.Join(source, "extension", manifest["sql"]!.GetValue<string>()));
                 break;
             case "directory":
-                string control = Path.Combine(source, "extension", manifest["control"]!.GetValue<string>());
+                string control = Path.Join(source, "extension", manifest["control"]!.GetValue<string>());
                 await File.AppendAllTextAsync(control, "\ndirectory='different'\n", context.CancellationToken);
                 break;
             case "versionControl":
@@ -529,16 +532,16 @@ public sealed partial class ToolCommandTests(TestContext context)
     public async Task FailedBuildDoesNotLeaveInstallableManifest()
     {
         string project = CreateDirectory();
-        File.Copy(s_project, Path.Combine(project, "Broken.csproj"));
-        await File.WriteAllTextAsync(Path.Combine(project, "Broken.cs"), "#error Intentional tool test failure", context.CancellationToken);
+        File.Copy(s_project, Path.Join(project, "Broken.csproj"));
+        await File.WriteAllTextAsync(Path.Join(project, "Broken.cs"), "#error Intentional tool test failure", context.CancellationToken);
         string output = CreateDirectory();
-        File.Copy(Path.Combine(s_published, PublishedExtension.FileName), Path.Combine(output, PublishedExtension.FileName));
+        File.Copy(Path.Join(s_published, PublishedExtension.FileName), Path.Join(output, PublishedExtension.FileName));
         ProcessResult result = await InvokeAsync(
             ["build", "--home", s_home, "--pg", MajorText(), "--project", project, "--output", output],
             context.CancellationToken);
         Assert.AreEqual(1, result.ExitCode);
         Assert.Contains("Intentional tool test failure", result.StandardOutput);
-        Assert.IsFalse(File.Exists(Path.Combine(output, PublishedExtension.FileName)));
+        Assert.IsFalse(File.Exists(Path.Join(output, PublishedExtension.FileName)));
     }
 
     /// <summary>
@@ -549,7 +552,7 @@ public sealed partial class ToolCommandTests(TestContext context)
     {
         Assert.IsFalse(s_project.StartsWith(IntegrationEnvironment.RepositoryRoot, StringComparison.Ordinal));
         ProcessResult evaluated = await RunDotnetAsync(["msbuild", s_project, "-target:ResolveReferences;SetupProperties", "-verbosity:quiet",
-            "-bl:" + Path.Combine(s_root, "references-{}.binlog"),
+            "-bl:" + Path.Join(s_root, "references-{}.binlog"),
             "-getProperty:PublishAot,IsAotCompatible,NativeLib,_AnkusBuildTool,RuntimeFrameworkVersion,IlcToolsPath", "-getItem:ProjectReference,Analyzer"],
             context.CancellationToken);
         evaluated.EnsureSuccess("dotnet", ["msbuild"]);
@@ -561,9 +564,9 @@ public sealed partial class ToolCommandTests(TestContext context)
         Assert.AreEqual("10.0.13", properties.GetProperty("RuntimeFrameworkVersion").GetString());
         string compilerTools = Path.GetFullPath(properties.GetProperty("IlcToolsPath").GetString()!);
         Assert.StartsWith(s_environment["NUGET_PACKAGES"]!, compilerTools);
-        string compiler = Path.Combine(compilerTools, OperatingSystem.IsWindows() ? "ilc.exe" : "ilc");
+        string compiler = Path.Join(compilerTools, OperatingSystem.IsWindows() ? "ilc.exe" : "ilc");
         Assert.IsTrue(File.Exists(compiler));
-        string stagedCompiler = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "nativeaot",
+        string stagedCompiler = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "nativeaot",
             RuntimeInformation.RuntimeIdentifier, "compiler", OperatingSystem.IsWindows() ? "ilc.exe" : "ilc");
         Assert.AreSequenceEqual(await File.ReadAllBytesAsync(stagedCompiler, context.CancellationToken),
             await File.ReadAllBytesAsync(compiler, context.CancellationToken));
@@ -580,7 +583,7 @@ public sealed partial class ToolCommandTests(TestContext context)
         }
 
         using JsonDocument assets = JsonDocument.Parse(await File.ReadAllTextAsync(
-            Path.Combine(Path.GetDirectoryName(s_project)!, "obj", "project.assets.json"), context.CancellationToken));
+            Path.Join(Path.GetDirectoryName(s_project)!, "obj", "project.assets.json"), context.CancellationToken));
         JsonElement libraries = assets.RootElement.GetProperty("libraries");
         Assert.IsEmpty(libraries.EnumerateObject().Where(static library =>
             library.Name.StartsWith("Microsoft.CodeAnalysis.", StringComparison.Ordinal)));
@@ -612,20 +615,20 @@ public sealed partial class ToolCommandTests(TestContext context)
     public async Task SdkSupportsDirectPublishWithCentralPackages()
     {
         string projectDirectory = CreateDirectory();
-        string project = Path.Combine(projectDirectory, "DirectProbe.csproj");
+        string project = Path.Join(projectDirectory, "DirectProbe.csproj");
         XDocument projectFile = XDocument.Load(s_project);
         projectFile.Root!.SetAttributeValue("Sdk", "Ankus.Sdk");
         projectFile.Root.Element("PropertyGroup")!.Add(
             new XElement("AnkusPostgresMajor", MajorText()),
             new XElement("DefineConstants", "$(DefineConstants);PACKAGE_WITNESS"));
         projectFile.Save(project);
-        JsonNode global = JsonNode.Parse(await File.ReadAllTextAsync(Path.Combine(s_root, "global.json"), context.CancellationToken))!;
+        JsonNode global = JsonNode.Parse(await File.ReadAllTextAsync(Path.Join(s_root, "global.json"), context.CancellationToken))!;
         global["msbuild-sdks"]!["Ankus.Sdk"] = s_version;
-        await File.WriteAllTextAsync(Path.Combine(projectDirectory, "global.json"), global.ToJsonString(), context.CancellationToken);
-        await File.WriteAllTextAsync(Path.Combine(projectDirectory, "Directory.Packages.props"),
+        await File.WriteAllTextAsync(Path.Join(projectDirectory, "global.json"), global.ToJsonString(), context.CancellationToken);
+        await File.WriteAllTextAsync(Path.Join(projectDirectory, "Directory.Packages.props"),
             "<Project><PropertyGroup><ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally></PropertyGroup></Project>",
             context.CancellationToken);
-        await File.WriteAllTextAsync(Path.Combine(projectDirectory, "Functions.cs"), """
+        await File.WriteAllTextAsync(Path.Join(projectDirectory, "Functions.cs"), """
             using Ankus;
             [assembly: PgSql("package-pair", "CREATE TYPE package_pair AS (name text, amount integer);")]
             public static class Functions
@@ -700,10 +703,10 @@ public sealed partial class ToolCommandTests(TestContext context)
                 }
             }
             """, context.CancellationToken);
-        string output = Path.Combine(projectDirectory, "published");
+        string output = Path.Join(projectDirectory, "published");
         ProcessResult result = await RunDotnetAsync(["publish", project, "-c", "Release", "-r", RuntimeInformation.RuntimeIdentifier,
             "-o", output, "-p:AnkusPgConfigPath=" + s_installation.PgConfigPath,
-            "-p:AnkusExtensionVersion=2.3.4", "-bl:" + Path.Combine(projectDirectory, "publish-{}.binlog")], context.CancellationToken);
+            "-p:AnkusExtensionVersion=2.3.4", "-bl:" + Path.Join(projectDirectory, "publish-{}.binlog")], context.CancellationToken);
         result.EnsureSuccess("dotnet", ["publish"]);
         PublishedExtension manifest = PublishedExtension.Read(output);
         Assert.AreEqual("ankus_tool_probe--2.3.4.sql", manifest.Sql);
@@ -750,11 +753,11 @@ public sealed partial class ToolCommandTests(TestContext context)
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "EnumOnly.csproj");
+        string project = Path.Join(directory, "EnumOnly.csproj");
         File.Copy(s_project, project);
-        await File.WriteAllTextAsync(Path.Combine(directory, "State.cs"),
+        await File.WriteAllTextAsync(Path.Join(directory, "State.cs"),
             "using Ankus; [PgEnum] public enum State { " + (empty ? string.Empty : "Ready, Complete") + " }", token);
-        string output = Path.Combine(directory, "published");
+        string output = Path.Join(directory, "published");
         ProcessResult result = await RunDotnetAsync(["publish", project, "-c", "Release", "-r", RuntimeInformation.RuntimeIdentifier,
             "-o", output, "-p:AnkusPostgresMajor=" + MajorText(), "-p:AnkusPgConfigPath=" + s_installation.PgConfigPath], token);
         result.EnsureSuccess("dotnet", ["publish"]);
@@ -780,17 +783,17 @@ public sealed partial class ToolCommandTests(TestContext context)
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "SchemaOnly.csproj");
+        string project = Path.Join(directory, "SchemaOnly.csproj");
         File.Copy(s_project, project);
-        await File.WriteAllTextAsync(Path.Combine(directory, "Schema.cs"), """
+        await File.WriteAllTextAsync(Path.Join(directory, "Schema.cs"), """
             using Ankus;
             [PgSchema("package_schema_only")]
             public static class SchemaOnly;
             """, token);
-        string output = Path.Combine(directory, "published");
+        string output = Path.Join(directory, "published");
         ProcessResult result = await RunDotnetAsync(["publish", project, "-c", "Release", "-r", RuntimeInformation.RuntimeIdentifier,
             "-o", output, "-p:AnkusPostgresMajor=" + MajorText(), "-p:AnkusPgConfigPath=" + s_installation.PgConfigPath,
-            "-bl:" + Path.Combine(directory, "schema-only-{}.binlog")], token);
+            "-bl:" + Path.Join(directory, "schema-only-{}.binlog")], token);
         result.EnsureSuccess("dotnet", ["publish"]);
         PublishedExtension manifest = PublishedExtension.Read(output);
         await using PostgresTestCluster cluster = await StartPublishedClusterAsync(output, token);
@@ -813,20 +816,20 @@ public sealed partial class ToolCommandTests(TestContext context)
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "SqlOnly.csproj");
+        string project = Path.Join(directory, "SqlOnly.csproj");
         XDocument projectFile = XDocument.Load(s_project);
         projectFile.Root!.Add(new XElement("ItemGroup", new XElement("AdditionalFiles", new XAttribute("Include", "sql setup/seed.sql"))));
         projectFile.Save(project);
-        await File.WriteAllTextAsync(Path.Combine(directory, "Installation.cs"), """
+        await File.WriteAllTextAsync(Path.Join(directory, "Installation.cs"), """
             using Ankus;
             [assembly: PgSql("view", "CREATE VIEW sql_view AS SELECT amount + 1 AS answer FROM sql_values;",
                 Requires = ["seed"], Relocatable = true)]
             [assembly: PgSqlFile("seed", "sql setup/seed.sql", Relocatable = true)]
             """, token);
-        string sqlDirectory = Path.Combine(directory, "sql setup");
+        string sqlDirectory = Path.Join(directory, "sql setup");
         Directory.CreateDirectory(sqlDirectory);
-        string sqlFile = Path.Combine(sqlDirectory, "seed.sql");
-        string output = Path.Combine(directory, "published");
+        string sqlFile = Path.Join(sqlDirectory, "seed.sql");
+        string output = Path.Join(directory, "published");
         foreach (int input in new[] { 41, 52 })
         {
             await File.WriteAllTextAsync(sqlFile, $"CREATE TABLE sql_values(amount int); INSERT INTO sql_values VALUES ({input});", token);
@@ -864,7 +867,7 @@ public sealed partial class ToolCommandTests(TestContext context)
         {
             ProcessResult result = await RunDotnetAsync(["publish", project, "-c", "Release", "-r", RuntimeInformation.RuntimeIdentifier,
                 "-o", output, "-p:AnkusPostgresMajor=" + MajorText(), "-p:AnkusPgConfigPath=" + s_installation.PgConfigPath,
-                "-bl:" + Path.Combine(directory, "sql-only-{}.binlog")], token);
+                "-bl:" + Path.Join(directory, "sql-only-{}.binlog")], token);
             result.EnsureSuccess("dotnet", ["publish"]);
         }
     }
@@ -885,19 +888,19 @@ public sealed partial class ToolCommandTests(TestContext context)
     public async Task SdkRejectsNonExtensionPublishSettings(string property, string message)
     {
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "ToolProbe.csproj");
+        string project = Path.Join(directory, "ToolProbe.csproj");
         File.Copy(s_project, project);
         foreach (string source in Directory.EnumerateFiles(Path.GetDirectoryName(s_project)!, "*.cs"))
         {
-            File.Copy(source, Path.Combine(directory, Path.GetFileName(source)));
+            File.Copy(source, Path.Join(directory, Path.GetFileName(source)));
         }
 
-        string output = Path.Combine(directory, "published");
+        string output = Path.Join(directory, "published");
         ProcessResult result = await RunDotnetAsync(["publish", project, "-c", "Release", "-r", RuntimeInformation.RuntimeIdentifier,
-            "-o", output, "-p:" + property, "-bl:" + Path.Combine(output, "rejected-{}.binlog")], context.CancellationToken);
+            "-o", output, "-p:" + property, "-bl:" + Path.Join(output, "rejected-{}.binlog")], context.CancellationToken);
         Assert.AreNotEqual(0, result.ExitCode);
         Assert.Contains(message, result.StandardOutput);
-        Assert.IsFalse(File.Exists(Path.Combine(output, PublishedExtension.FileName)));
+        Assert.IsFalse(File.Exists(Path.Join(output, PublishedExtension.FileName)));
     }
 
     /// <summary>
@@ -908,7 +911,7 @@ public sealed partial class ToolCommandTests(TestContext context)
     {
         PostgresInstallation installation = await PrepareCaseInstallationAsync(s_published, context.CancellationToken);
         string projectDirectory = CreateDirectory();
-        string project = Path.Combine(projectDirectory, "ConsumerTests.csproj");
+        string project = Path.Join(projectDirectory, "ConsumerTests.csproj");
         string controlSetting = s_installation.Version.Major >= 18
             ? JsonSerializer.Serialize("extension_control_path = '" + EscapeSetting(s_published) + "'") + ","
             : string.Empty;
@@ -917,7 +920,7 @@ public sealed partial class ToolCommandTests(TestContext context)
                 new XElement("ImplicitUsings", "enable"), new XElement("Nullable", "enable")),
             new XElement("ItemGroup", new XElement("PackageReference", new XAttribute("Include", "Ankus.Testing"),
                 new XAttribute("Version", s_version))))).Save(project);
-        await File.WriteAllTextAsync(Path.Combine(projectDirectory, "PackageTests.cs"), $$"""
+        await File.WriteAllTextAsync(Path.Join(projectDirectory, "PackageTests.cs"), $$"""
             using Ankus.PgConfig;
             using Ankus.Testing;
             using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -969,28 +972,28 @@ public sealed partial class ToolCommandTests(TestContext context)
     public async Task NewSolutionRunsManagedAndBackendTests()
     {
         CancellationToken token = context.CancellationToken;
-        string output = Path.Combine(CreateDirectory(), "new solution with spaces");
+        string output = Path.Join(CreateDirectory(), "new solution with spaces");
         ProcessResult created = await InvokeAsync(["new", "Acme.HTTPProbe", "-o", output], token);
         created.EnsureSuccess(s_tool, ["new"]);
-        using JsonDocument global = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(output, "global.json"), token));
+        using JsonDocument global = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Join(output, "global.json"), token));
         Assert.AreEqual(s_version, global.RootElement.GetProperty("msbuild-sdks").GetProperty("Ankus.Sdk").GetString());
         Assert.AreEqual("Microsoft.Testing.Platform", global.RootElement.GetProperty("test").GetProperty("runner").GetString());
-        string project = Path.Combine(output, "src", "Acme.HTTPProbe", "Acme.HTTPProbe.csproj");
+        string project = Path.Join(output, "src", "Acme.HTTPProbe", "Acme.HTTPProbe.csproj");
         XDocument extension = XDocument.Load(project);
         Assert.AreEqual("acme_http_probe", extension.Descendants("AnkusExtensionName").Single().Value);
         Assert.AreEqual("0.1.0", extension.Descendants("AnkusExtensionVersion").Single().Value);
-        XDocument packages = XDocument.Load(Path.Combine(output, "Directory.Packages.props"));
+        XDocument packages = XDocument.Load(Path.Join(output, "Directory.Packages.props"));
         Assert.AreEqual(s_version, packages.Descendants("PackageVersion").Single(element => (string?)element.Attribute("Include") == "Ankus.Testing").Attribute("Version")!.Value);
-        Assert.IsFalse(File.Exists(Path.Combine(output, ".editorconfig")));
-        Assert.IsTrue(File.Exists(Path.Combine(output, ".gitignore")));
+        Assert.IsFalse(File.Exists(Path.Join(output, ".editorconfig")));
+        Assert.IsTrue(File.Exists(Path.Join(output, ".gitignore")));
         ProcessResult listing = await PackageProcessRunner.RunCheckedAsync("dotnet", ["sln", "Acme.HTTPProbe.slnx", "list"],
             s_environment, token, workingDirectory: output);
         Assert.Contains("Acme.HTTPProbe.Tests.csproj", listing.StandardOutput);
 
-        string logs = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs", "generated-solution");
+        string logs = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs", "generated-solution");
         Directory.CreateDirectory(logs);
         ProcessResult tests = await PackageProcessRunner.RunAsync("dotnet",
-            ["test", "--report-trx", "-bl:" + Path.Combine(logs, "generated-tests-{}.binlog"), "-p:AnkusPostgresMajor=" + MajorText()],
+            ["test", "--report-trx", "-bl:" + Path.Join(logs, "generated-tests-{}.binlog"), "-p:AnkusPostgresMajor=" + MajorText()],
             s_environment, token, workingDirectory: output);
         tests.EnsureSuccess("dotnet", ["test"]);
         string trx = Directory.GetFiles(output, "*.trx", SearchOption.AllDirectories).Single();
@@ -1005,11 +1008,11 @@ public sealed partial class ToolCommandTests(TestContext context)
         Assert.Contains("Acme.HTTPProbe.BackendChecks.AdditionInsidePostgres()", report.Descendants(ns + "UnitTestResult").Select(element => element.Attribute("testName")!.Value));
         Assert.Contains("Acme.HTTPProbe.BackendChecks.ExpectedFailure()", report.Descendants(ns + "UnitTestResult").Select(element => element.Attribute("testName")!.Value));
         string projectDirectory = Path.GetDirectoryName(project)!;
-        Assert.IsFalse(Directory.Exists(Path.Combine(projectDirectory, "bin", "ankus-test-pgdata")));
-        Assert.IsEmpty(Directory.GetDirectories(Path.Combine(projectDirectory, "bin", "ankus-test-publish")));
-        Assert.IsNotEmpty(Directory.GetFiles(Path.Combine(projectDirectory, "bin", "ankus-test-logs"), "*.log"));
+        Assert.IsFalse(Directory.Exists(Path.Join(projectDirectory, "bin", "ankus-test-pgdata")));
+        Assert.IsEmpty(Directory.GetDirectories(Path.Join(projectDirectory, "bin", "ankus-test-publish")));
+        Assert.IsNotEmpty(Directory.GetFiles(Path.Join(projectDirectory, "bin", "ankus-test-logs"), "*.log"));
 
-        string published = Path.Combine(output, "published");
+        string published = Path.Join(output, "published");
         ProcessResult publish = await PackageProcessRunner.RunAsync(s_tool,
             ["publish", "--home", s_home, "--pg", MajorText(), "-o", published],
             s_environment, token, workingDirectory: output);
@@ -1021,23 +1024,23 @@ public sealed partial class ToolCommandTests(TestContext context)
         Assert.AreEqual(42, await command.ExecuteScalarAsync(token));
 
         PublishedExtension normal = PublishedExtension.Read(published);
-        ExtensionSchema normalSchema = ExtensionSchema.Read(Path.Combine(published, normal.Library));
+        ExtensionSchema normalSchema = ExtensionSchema.Read(Path.Join(published, normal.Library));
         Assert.DoesNotContain("ankus_test_", normalSchema.Sql);
         command.CommandText = "SELECT count(*) FROM pg_proc WHERE proname LIKE 'ankus_test_%'";
         Assert.AreEqual(0L, await command.ExecuteScalarAsync(token));
 
-        string functions = Path.Combine(projectDirectory, "Functions.cs");
+        string functions = Path.Join(projectDirectory, "Functions.cs");
         string text = await File.ReadAllTextAsync(functions, token);
         await File.WriteAllTextAsync(functions, text.Replace("checked(left + right)", "checked(left - right)", StringComparison.Ordinal), token);
         ProcessResult changed = await PackageProcessRunner.RunAsync("dotnet",
-            ["test", "--filter", "FullyQualifiedName~FunctionsExecuteInPostgres", "-bl:" + Path.Combine(logs, "changed-tests-{}.binlog"),
+            ["test", "--filter", "FullyQualifiedName~FunctionsExecuteInPostgres", "-bl:" + Path.Join(logs, "changed-tests-{}.binlog"),
                 "-p:AnkusPostgresMajor=" + MajorText()],
             s_environment, token, workingDirectory: output);
         Assert.AreNotEqual(0, changed.ExitCode);
         Assert.Contains("expected: 42", changed.StandardOutput);
         Assert.Contains("actual:   38", changed.StandardOutput);
-        Assert.IsFalse(Directory.Exists(Path.Combine(projectDirectory, "bin", "ankus-test-pgdata")));
-        Assert.IsEmpty(Directory.GetDirectories(Path.Combine(projectDirectory, "bin", "ankus-test-publish")));
+        Assert.IsFalse(Directory.Exists(Path.Join(projectDirectory, "bin", "ankus-test-pgdata")));
+        Assert.IsEmpty(Directory.GetDirectories(Path.Join(projectDirectory, "bin", "ankus-test-publish")));
 
     }
 
@@ -1051,17 +1054,17 @@ public sealed partial class ToolCommandTests(TestContext context)
     public async Task NewSolutionReportsInitializationFailuresAndCleansUp(string failure)
     {
         CancellationToken token = context.CancellationToken;
-        string output = Path.Combine(CreateDirectory(), "failure solution");
+        string output = Path.Join(CreateDirectory(), "failure solution");
         (await InvokeAsync(["new", "FailureProbe", "-o", output], token)).EnsureSuccess(s_tool, ["new"]);
-        string projectDirectory = Path.Combine(output, "src", "FailureProbe");
+        string projectDirectory = Path.Join(output, "src", "FailureProbe");
         if (failure == "build")
         {
-            await File.WriteAllTextAsync(Path.Combine(projectDirectory, "FailPublish.cs"),
+            await File.WriteAllTextAsync(Path.Join(projectDirectory, "FailPublish.cs"),
                 "#if !DEBUG\n#error Intentional native publication failure\n#endif\n", token);
         }
         else
         {
-            string project = Path.Combine(projectDirectory, "FailureProbe.csproj");
+            string project = Path.Join(projectDirectory, "FailureProbe.csproj");
             XDocument document = XDocument.Load(project);
             document.Root!.Add(new XElement("Target", new XAttribute("Name", "FailExtensionLoad"),
                 new XAttribute("AfterTargets", "_PublishAnkusSchema"),
@@ -1077,10 +1080,10 @@ public sealed partial class ToolCommandTests(TestContext context)
         Assert.AreNotEqual(0, result.ExitCode);
         Assert.Contains(failure == "build" ? "Intentional native publication failure" : "division by zero", result.StandardOutput);
         Assert.Contains("BackendTests.InitializeAsync", result.StandardOutput);
-        string pgdata = Path.Combine(projectDirectory, "bin", "ankus-test-pgdata");
+        string pgdata = Path.Join(projectDirectory, "bin", "ankus-test-pgdata");
         Assert.IsFalse(Directory.Exists(pgdata));
-        Assert.IsEmpty(Directory.GetDirectories(Path.Combine(projectDirectory, "bin", "ankus-test-publish")));
-        Assert.IsNotEmpty(Directory.GetFiles(Path.Combine(projectDirectory, "bin", "ankus-test-logs"), "*.binlog"));
+        Assert.IsEmpty(Directory.GetDirectories(Path.Join(projectDirectory, "bin", "ankus-test-publish")));
+        Assert.IsNotEmpty(Directory.GetFiles(Path.Join(projectDirectory, "bin", "ankus-test-logs"), "*.binlog"));
     }
 
     /// <summary>
@@ -1094,9 +1097,9 @@ public sealed partial class ToolCommandTests(TestContext context)
     public async Task NewSolutionSupportsKeywordsAndExplicitNames(string name, string extension)
     {
         CancellationToken token = context.CancellationToken;
-        string output = Path.Combine(CreateDirectory(), "solution");
+        string output = Path.Join(CreateDirectory(), "solution");
         (await InvokeAsync(["new", name, "--output", output, "--extension-name", extension], token)).EnsureSuccess(s_tool, ["new"]);
-        string project = Path.Combine(output, "src", name, name + ".csproj");
+        string project = Path.Join(output, "src", name, name + ".csproj");
         Assert.AreEqual(extension, XDocument.Load(project).Descendants("AnkusExtensionName").Single().Value);
         ProcessResult build = await PackageProcessRunner.RunAsync("dotnet", ["build", "-bl:names-{}.binlog"],
             s_environment, token, workingDirectory: output);
@@ -1118,7 +1121,7 @@ public sealed partial class ToolCommandTests(TestContext context)
     [DataRow("Project", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")]
     public async Task NewRejectsInvalidNamesWithoutFiles(string name, string? extension)
     {
-        string output = Path.Combine(CreateDirectory(), "rejected");
+        string output = Path.Join(CreateDirectory(), "rejected");
         string[] arguments = extension is null ? ["new", name, "-o", output] : ["new", name, "-o", output, "--extension-name", extension];
         ProcessResult result = await InvokeAsync(arguments, context.CancellationToken);
         Assert.AreEqual(1, result.ExitCode);
@@ -1134,7 +1137,7 @@ public sealed partial class ToolCommandTests(TestContext context)
     public async Task NewPreservesExistingFiles()
     {
         string output = CreateDirectory();
-        string file = Path.Combine(output, "user-data.txt");
+        string file = Path.Join(output, "user-data.txt");
         await File.WriteAllTextAsync(file, "keep this exact text", context.CancellationToken);
         ProcessResult result = await InvokeAsync(["new", "Existing", "-o", output], context.CancellationToken);
         Assert.AreEqual(1, result.ExitCode);
@@ -1149,13 +1152,13 @@ public sealed partial class ToolCommandTests(TestContext context)
     [TestMethod]
     public async Task NewSolutionWithMultipleExtensionsRequiresSelection()
     {
-        string output = Path.Combine(CreateDirectory(), "solution");
+        string output = Path.Join(CreateDirectory(), "solution");
         CancellationToken token = context.CancellationToken;
         (await InvokeAsync(["new", "First", "-o", output], token)).EnsureSuccess(s_tool, ["new"]);
-        string second = Path.Combine(output, "src", "Second");
+        string second = Path.Join(output, "src", "Second");
         Directory.CreateDirectory(second);
-        await File.WriteAllTextAsync(Path.Combine(second, "Second.csproj"), "<Project Sdk=\"Ankus.Sdk\" />", token);
-        string solution = Path.Combine(output, "First.slnx");
+        await File.WriteAllTextAsync(Path.Join(second, "Second.csproj"), "<Project Sdk=\"Ankus.Sdk\" />", token);
+        string solution = Path.Join(output, "First.slnx");
         XDocument document = XDocument.Load(solution);
         document.Root!.Add(new XElement("Project", new XAttribute("Path", "src/Second/Second.csproj")));
         document.Save(solution);
@@ -1164,7 +1167,7 @@ public sealed partial class ToolCommandTests(TestContext context)
             s_environment, token, workingDirectory: output);
         Assert.AreEqual(1, result.ExitCode);
         Assert.Contains("Specify --project", result.StandardError);
-        Assert.IsFalse(Directory.Exists(Path.Combine(output, "published")));
+        Assert.IsFalse(Directory.Exists(Path.Join(output, "published")));
     }
 
     private async Task<PostgresTestCluster> StartPublishedClusterAsync(string output, CancellationToken token,
@@ -1192,8 +1195,8 @@ public sealed partial class ToolCommandTests(TestContext context)
         PostgresTestCluster cluster = await PostgresTestCluster.StartAsync(new PostgresTestClusterOptions
         {
             Installation = installation,
-            DataDirectoryBase = Path.Combine(s_root, "pgdata"),
-            LogDirectory = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
+            DataDirectoryBase = Path.Join(s_root, "pgdata"),
+            LogDirectory = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
             StartupTimeout = IntegrationEnvironment.StartupTimeout,
             PostgreSqlConfiguration = configuration,
         }, token);
@@ -1228,13 +1231,13 @@ public sealed partial class ToolCommandTests(TestContext context)
     /// </summary>
     private static string CreateSharedDirectory()
     {
-        string path = Path.Combine(s_root, "case-" + Guid.NewGuid().ToString("N"));
+        string path = Path.Join(s_root, "case-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(path);
         return path;
     }
 
     private static string StagedPath(string stage, string absolute)
-        => Path.Combine(stage, absolute[Path.GetPathRoot(absolute)!.Length..]);
+        => Path.Join(stage, absolute[Path.GetPathRoot(absolute)!.Length..]);
 
     private static string EscapeSetting(string path)
         => path.Replace("\\", "/", StringComparison.Ordinal).Replace("'", "''", StringComparison.Ordinal);

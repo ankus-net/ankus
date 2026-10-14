@@ -81,7 +81,7 @@ internal static class PostgresFixture
             }
             finally
             {
-                ProcessTimings.Write(Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-results", "process-timings.log"));
+                ProcessTimings.Write(Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-results", "process-timings.log"));
             }
         }
     }

@@ -19,12 +19,12 @@ public sealed partial class PgFunctionGeneratorTests
     [DataRow(true, true)]
     public void CustomSqlResolutionCachesUnrelatedEdits(bool file, bool move)
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "sql-cache-project");
+        string project = Path.Join(AppContext.BaseDirectory, "sql-cache-project");
         string attribute = file ? "[assembly: Ankus.PgSqlFile(\"seed\", \"seed.sql\", Relocatable = true)]" :
             "[assembly: Ankus.PgSql(\"seed\", \"SELECT 'café'; -- exact\", Relocatable = true)]";
         string source = attribute + "\npublic static class Ordinary { public static int Value() => 1; }";
         CSharpCompilation initial = ModuleCompilation(source);
-        AdditionalText[] files = file ? [new SqlInput(Path.Combine(project, "seed.sql"), "SELECT 'café'; -- exact")] : [];
+        AdditionalText[] files = file ? [new SqlInput(Path.Join(project, "seed.sql"), "SELECT 'café'; -- exact")] : [];
         GeneratorDriver driver = RunModule(CustomSqlDriver(project, files), initial, out Compilation first);
         CSharpCompilation edited = initial.ReplaceSyntaxTree(initial.SyntaxTrees.Single(), CSharpSyntaxTree.ParseText(
             move ? "\n\n" + source : source.Replace("=> 1", "=> 2", StringComparison.Ordinal),
@@ -47,8 +47,8 @@ public sealed partial class PgFunctionGeneratorTests
     [DataRow(true)]
     public void CustomSqlResolutionTracksContent(bool file)
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "sql-cache-project");
-        var original = new SqlInput(Path.Combine(project, "seed.sql"), "SELECT 'first';\n");
+        string project = Path.Join(AppContext.BaseDirectory, "sql-cache-project");
+        var original = new SqlInput(Path.Join(project, "seed.sql"), "SELECT 'first';\n");
         string source = (file ? "[assembly: Ankus.PgSqlFile(\"a\", \"seed.sql\") ]" :
             "[assembly: Ankus.PgSql(\"a\", \"SELECT 'first';\\n\") ]") +
             "\n[assembly: Ankus.PgSql(\"b\", \"SELECT 'survivor';\") ]";
@@ -74,9 +74,9 @@ public sealed partial class PgFunctionGeneratorTests
     [TestMethod]
     public void CustomSqlResolutionIgnoresUnrelatedFiles()
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "sql-cache-project");
-        var used = new SqlInput(Path.Combine(project, "seed.sql"), "SELECT 'used';");
-        var unused = new SqlInput(Path.Combine(project, "unused.sql"), "SELECT 'unused';");
+        string project = Path.Join(AppContext.BaseDirectory, "sql-cache-project");
+        var used = new SqlInput(Path.Join(project, "seed.sql"), "SELECT 'used';");
+        var unused = new SqlInput(Path.Join(project, "unused.sql"), "SELECT 'unused';");
         CSharpCompilation input = ModuleCompilation("""
             [assembly: Ankus.PgSqlFile("a", "seed.sql")]
             [assembly: Ankus.PgSql("b", "SELECT 'inline';")]
@@ -142,12 +142,12 @@ public sealed partial class PgFunctionGeneratorTests
     [DataRow(true)]
     public void CustomSqlResolutionTracksProjectDirectory(bool same)
     {
-        string firstRoot = Path.Combine(AppContext.BaseDirectory, "sql-first");
-        string secondRoot = Path.Combine(AppContext.BaseDirectory, "sql-second");
+        string firstRoot = Path.Join(AppContext.BaseDirectory, "sql-first");
+        string secondRoot = Path.Join(AppContext.BaseDirectory, "sql-second");
         CSharpCompilation input = ModuleCompilation("""[assembly: Ankus.PgSqlFile("a", "seed.sql")]""");
         GeneratorDriver driver = RunModule(CustomSqlDriver(firstRoot,
-            [new SqlInput(Path.Combine(firstRoot, "seed.sql"), "SELECT 1;"),
-                new SqlInput(Path.Combine(secondRoot, "seed.sql"), same ? "SELECT 1;" : "SELECT 2;")]), input, out Compilation first);
+            [new SqlInput(Path.Join(firstRoot, "seed.sql"), "SELECT 1;"),
+                new SqlInput(Path.Join(secondRoot, "seed.sql"), same ? "SELECT 1;" : "SELECT 2;")]), input, out Compilation first);
         driver = driver.WithUpdatedAnalyzerConfigOptions(new SqlOptions(secondRoot));
         driver = RunModule(driver, input, out Compilation second);
 
@@ -172,7 +172,7 @@ public sealed partial class PgFunctionGeneratorTests
     [DataRow("invalid order")]
     public void CustomSqlDiagnosticsFollowCurrentInputsAndRecover(string kind)
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "sql-cache-project");
+        string project = Path.Join(AppContext.BaseDirectory, "sql-cache-project");
         string source = kind switch
         {
             "invalid arguments" => "[assembly: Ankus.PgSql(\"a\")]",
@@ -181,7 +181,7 @@ public sealed partial class PgFunctionGeneratorTests
             "invalid order" => "[assembly: Ankus.PgSql(\"a\", \"SELECT 1;\", Order = (Ankus.PgSqlOrder)3)]",
             _ => "[assembly: Ankus.PgSqlFile(\"a\", \"seed.sql\")]",
         };
-        var file = new SqlInput(Path.Combine(project, "seed.sql"), kind switch
+        var file = new SqlInput(Path.Join(project, "seed.sql"), kind switch
         {
             "unreadable" => null,
             "invalid text" => "SELECT '\0';",
@@ -189,7 +189,7 @@ public sealed partial class PgFunctionGeneratorTests
             _ => "SELECT 1;",
         });
         AdditionalText[] files = kind == "missing" ? [] : kind == "duplicate"
-            ? [file, new SqlInput(Path.Combine(project, "nested", "..", "seed.sql"), "SELECT 2;")] : [file];
+            ? [file, new SqlInput(Path.Join(project, "nested", "..", "seed.sql"), "SELECT 2;")] : [file];
         CSharpCompilation initial = ModuleCompilation(source);
         GeneratorDriver driver = CustomSqlDriver(project, files).RunGeneratorsAndUpdateCompilation(initial, out _,
             out ImmutableArray<Diagnostic> firstErrors, context.CancellationToken);
@@ -234,7 +234,7 @@ public sealed partial class PgFunctionGeneratorTests
         driver = driver.ReplaceAdditionalTexts([new SqlInput(file.Path, "SELECT 1;")]);
         CSharpCompilation repaired = edited.ReplaceSyntaxTree(moved, CSharpSyntaxTree.ParseText(
             """[assembly: Ankus.PgSqlFile("a", "seed.sql")]""", path: "Repaired.cs", cancellationToken: context.CancellationToken));
-        driver = RunModule(driver, repaired, out Compilation output);
+        _ = RunModule(driver, repaired, out Compilation output);
         Assert.AreEqual("SELECT 1;\n", InstallationBody(output));
         Assert.Contains("Repaired.cs:", ManifestValue(output, "Ankus.Sql"));
     }
@@ -248,12 +248,12 @@ public sealed partial class PgFunctionGeneratorTests
     [DataRow(true)]
     public void CustomSqlResolutionTracksAuthoredFileProvenance(bool inline)
     {
-        string project = Path.Combine(AppContext.BaseDirectory, "sql-cache-project");
+        string project = Path.Join(AppContext.BaseDirectory, "sql-cache-project");
         const string Source = "[assembly: Ankus.PgSqlFile(\"a\", \"seed.sql\")]";
         CSharpCompilation initial = ModuleCompilation(Source);
         GeneratorDriver driver = RunModule(CustomSqlDriver(project,
-            [new SqlInput(Path.Combine(project, "seed.sql"), "SELECT 1;"),
-                new SqlInput(Path.Combine(project, "alternate.sql"), "SELECT 1;")]), initial, out Compilation first);
+            [new SqlInput(Path.Join(project, "seed.sql"), "SELECT 1;"),
+                new SqlInput(Path.Join(project, "alternate.sql"), "SELECT 1;")]), initial, out Compilation first);
         CSharpCompilation edited = initial.ReplaceSyntaxTree(initial.SyntaxTrees.Single(), CSharpSyntaxTree.ParseText(
             inline ? "[assembly: Ankus.PgSql(\"a\", \"SELECT 1;\")]" : Source.Replace("seed.sql", "alternate.sql", StringComparison.Ordinal),
             path: "Module.cs", cancellationToken: context.CancellationToken));

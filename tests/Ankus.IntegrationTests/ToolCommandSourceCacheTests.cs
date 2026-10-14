@@ -20,28 +20,27 @@ public sealed partial class ToolCommandTests
         string root = PhysicalBindingDirectory(Directory.CreateTempSubdirectory("ac-"));
         try
         {
-            string first = Path.Combine(root, "first");
-            string second = Path.Combine(root, "second");
+            string first = Path.Join(root, "first");
+            string second = Path.Join(root, "second");
             foreach (string source in Directory.EnumerateFiles(original, "*", SearchOption.AllDirectories))
             {
                 string relative = Path.GetRelativePath(original, source);
-                foreach (string directory in new[] { first, second })
+                foreach (string destination in (new[] { first, second }).Select(directory => Path.Join(directory, relative)))
                 {
-                    string destination = Path.Combine(directory, relative);
                     Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
                     File.Copy(source, destination);
                 }
             }
 
-            string cache = Path.Combine(root, "cache");
-            string sources = Path.Combine(cache, "sources");
+            string cache = Path.Join(root, "cache");
+            string sources = Path.Join(cache, "sources");
             string initial = await GenerateAsync("initial", first, reused: false);
             Dictionary<string, string> expected = await SourceArtifactHashesAsync(initial, token);
             Assert.HasCount(10, expected);
             string entry = Assert.ContainsSingle(Directory.GetDirectories(sources));
-            string catalogs = Path.Combine(cache, "catalogs");
+            string catalogs = Path.Join(cache, "catalogs");
             string catalogEntry = Assert.ContainsSingle(Directory.GetDirectories(catalogs));
-            using (JsonDocument derived = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(catalogEntry, "native-catalogs.json"), token)))
+            using (JsonDocument derived = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Join(catalogEntry, "native-catalogs.json"), token)))
             {
                 // The build derives its declarations from the selected headers instead of reading pgrx's pinned output.
                 Assert.AreEqual(s_installation.Version.Major, derived.RootElement.GetProperty("Types").GetProperty("PostgresMajor").GetInt32());
@@ -49,7 +48,7 @@ public sealed partial class ToolCommandTests
                 Assert.AreEqual(JsonValueKind.Null, derived.RootElement.GetProperty("Raw").GetProperty("SourceRevision").ValueKind);
             }
 
-            string cachedSource = Path.Combine(entry, "native-binding.g.cs");
+            string cachedSource = Path.Join(entry, "native-binding.g.cs");
             File.SetLastWriteTimeUtc(cachedSource, DateTime.UtcNow.AddDays(-1));
             DateTime timestamp = File.GetLastWriteTimeUtc(cachedSource);
 
@@ -57,7 +56,7 @@ public sealed partial class ToolCommandTests
             Directory.Delete(first, recursive: true);
             await AssertReuseAsync("producer-removed");
 
-            string changed = Path.Combine(second, "Ankus.Build.dll");
+            string changed = Path.Join(second, "Ankus.Build.dll");
             DateTime helperTimestamp = File.GetLastWriteTimeUtc(changed);
             await using (FileStream helper = new(changed, FileMode.Append, FileAccess.Write))
             {
@@ -82,8 +81,8 @@ public sealed partial class ToolCommandTests
 
             async Task<string> GenerateAsync(string name, string directory, bool reused)
             {
-                string output = Path.Combine(root, name);
-                string[] arguments = [Path.Combine(directory, "Ankus.Build.dll"), "binding-sources", MajorText(),
+                string output = Path.Join(root, name);
+                string[] arguments = [Path.Join(directory, "Ankus.Build.dll"), "binding-sources", MajorText(),
                     s_installation.PgConfigPath, output, "", "", RuntimeInformation.RuntimeIdentifier, "", "", "", cache];
                 ProcessResult result = await PackageProcessRunner.RunAsync("dotnet", arguments, s_environment, token, workingDirectory: root);
                 result.EnsureSuccess("dotnet", ["binding-sources"]);

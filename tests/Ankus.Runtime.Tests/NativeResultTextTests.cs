@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 
 namespace Ankus.Runtime.Tests;
 
@@ -38,10 +37,10 @@ public sealed unsafe class NativeResultTextTests
         NativeValue first = NativeValue.FromResultString(large);
         Assert.AreEqual(800_000, Length(ref first));
         Assert.AreEqual(large, first.ReadString());
-        Assert.AreEqual(800_000, Capacity(default));
+        Assert.AreEqual(800_000, Capacity());
         NativeValue second = NativeValue.FromResultString("small");
         Assert.AreEqual("small", second.ReadString());
-        Assert.AreEqual(256, Capacity(default));
+        Assert.AreEqual(256, Capacity());
     }
 
     /// <summary>
@@ -56,15 +55,11 @@ public sealed unsafe class NativeResultTextTests
 
     private static byte Terminator(NativeValue value) => Data(ref value)[Length(ref value)];
 
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_data")]
-    private static extern ref byte* Data(ref NativeValue value);
+    private static ref byte* Data(ref NativeValue value) => ref value._data;
 
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_length")]
-    private static extern ref int Length(ref NativeValue value);
+    private static ref int Length(ref NativeValue value) => ref value._length;
 
-    [UnsafeAccessor(UnsafeAccessorKind.StaticField, Name = "s_resultTextCapacity")]
-    private static extern ref int Capacity(NativeValue type);
+    private static ref int Capacity() => ref NativeValue.s_resultTextCapacity;
 
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_release")]
-    private static extern ref delegate* unmanaged[Cdecl]<void*, void> Release(ref NativeValue value);
+    private static ref delegate* unmanaged[Cdecl]<void*, void> Release(ref NativeValue value) => ref value._release;
 }

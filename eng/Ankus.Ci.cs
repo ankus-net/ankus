@@ -62,9 +62,9 @@ try
             {
                 ["CI"] = "true",
             };
-            Run("pnpm", ["install", "--frozen-lockfile"], Path.Combine(repositoryRoot, "docs"), environment: continuousIntegration);
-            Run("pnpm", ["exec", "astro", "build"], Path.Combine(repositoryRoot, "docs"), environment: continuousIntegration);
-            Run("pnpm", ["check"], Path.Combine(repositoryRoot, "docs"), environment: continuousIntegration);
+            Run("pnpm", ["install", "--frozen-lockfile"], Path.Join(repositoryRoot, "docs"), environment: continuousIntegration);
+            Run("pnpm", ["exec", "astro", "build"], Path.Join(repositoryRoot, "docs"), environment: continuousIntegration);
+            Run("pnpm", ["check"], Path.Join(repositoryRoot, "docs"), environment: continuousIntegration);
             break;
 
         case "runtime-build":
@@ -116,6 +116,16 @@ try
             RequireArguments(args, 1);
             ValidateRuntimeIdentity(repositoryRoot);
             RunRuntimeTests(repositoryRoot);
+            break;
+
+        case "native-analysis-run":
+            RequireArguments(args, 1);
+            ValidateRuntimeIdentity(repositoryRoot);
+            ConfigureRunAsAccount();
+            // The assembly fixture publishes the Hello sample and composes every native fixture from the test extension's
+            // generated bridge; this test also compiles the worker signal fixture. CodeQL traces those compilations.
+            RunTestModule(repositoryRoot, "tests/Ankus.IntegrationTests/bin/Release/net10.0/Ankus.IntegrationTests.dll",
+                "FullyQualifiedName~BackgroundWorkersRegisterAndShareState");
             break;
 
         case "target-export":
@@ -197,7 +207,7 @@ try
                 args[3],
                 GetBuiltRuntimePath(repositoryRoot, args[1], args[2]),
                 GetBuiltCompilerPath(repositoryRoot, args[1], args[2]),
-                Path.Combine(repositoryRoot, "runtime"));
+                Path.Join(repositoryRoot, "runtime"));
             break;
 
         case "release-verify":
@@ -228,7 +238,7 @@ static string FindRepositoryRoot()
 
     while (directory is not null)
     {
-        if (File.Exists(Path.Combine(directory.FullName, "Ankus.slnx")))
+        if (File.Exists(Path.Join(directory.FullName, "Ankus.slnx")))
         {
             return directory.FullName;
         }
@@ -260,7 +270,7 @@ static string GetDotNetHost()
 
     if (!string.IsNullOrWhiteSpace(root))
     {
-        return Path.Combine(root, OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet");
+        return Path.Join(root, OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet");
     }
 
     return OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet";
@@ -280,13 +290,13 @@ static void ExportTarget(string repositoryRoot, string runtimeIdentifier, string
 static void BuildForTarget(string repositoryRoot, string archive, string runtimeIdentifier, string output)
 {
     // Clang and libclang are unusable here, so the bindings can only come from the archive.
-    string missing = Path.Combine(repositoryRoot, "artifacts", "no-clang", "clang");
+    string missing = Path.Join(repositoryRoot, "artifacts", "no-clang", "clang");
     Run(GetDotNetHost(), ["publish", TargetSampleProject(repositoryRoot), "-nologo", "-c", "Release", "-r", runtimeIdentifier,
         "--self-contained", "true", "-o", Path.GetFullPath(output), "-p:AnkusTargetInfo=" + Path.GetFullPath(archive),
         "-p:AnkusClangPath=" + missing, "-p:AnkusLibClangPath=" + missing],
         environment: new Dictionary<string, string?> { ["AnkusPgConfigPath"] = null, ["AnkusPostgresMajor"] = null });
     PublishedExtension manifest = PublishedExtension.Read(output);
-    string architecture = ReadNativeArchitecture(Path.Combine(output, manifest.Library));
+    string architecture = ReadNativeArchitecture(Path.Join(output, manifest.Library));
     if (manifest.RuntimeIdentifier != runtimeIdentifier || !runtimeIdentifier.EndsWith("-" + architecture, StringComparison.Ordinal))
     {
         throw new InvalidOperationException($"The {runtimeIdentifier} build produced a {manifest.RuntimeIdentifier} manifest and a {architecture} library.");
@@ -345,14 +355,14 @@ static void VerifyTargetPublication(string publication, string pgConfig)
     string root = Directory.CreateTempSubdirectory("ankus-target-verify-").FullName;
     try
     {
-        string shared = Path.Combine(root, "share");
-        Directory.CreateDirectory(Path.Combine(shared, "extension"));
+        string shared = Path.Join(root, "share");
+        Directory.CreateDirectory(Path.Join(shared, "extension"));
         foreach (string file in new[] { manifest.Control, manifest.Sql })
         {
-            File.Copy(Path.Combine(publication, "extension", file), Path.Combine(shared, "extension", file));
+            File.Copy(Path.Join(publication, "extension", file), Path.Join(shared, "extension", file));
         }
 
-        var cluster = new PostgresDevelopmentCluster(installation, Path.Combine(root, "home"));
+        var cluster = new PostgresDevelopmentCluster(installation, Path.Join(root, "home"));
         cluster.StartAsync(new PostgresDevelopmentOptions
         {
             Port = 28700 + installation.Version.Major,
@@ -387,7 +397,7 @@ static void VerifyTargetPublication(string publication, string pgConfig)
 }
 
 static string TargetSampleProject(string repositoryRoot)
-    => Path.Combine(repositoryRoot, "samples", "Ankus.Examples.Hello", "Ankus.Examples.Hello.csproj");
+    => Path.Join(repositoryRoot, "samples", "Ankus.Examples.Hello", "Ankus.Examples.Hello.csproj");
 
 static void ValidateRuntimeIdentity(string repositoryRoot)
 {
@@ -442,7 +452,7 @@ static void ValidateRuntimeIdentity(string repositoryRoot)
 
 static void RequireText(string repositoryRoot, string relativePath, string expected)
 {
-    string path = Path.Combine(repositoryRoot, relativePath);
+    string path = Path.Join(repositoryRoot, relativePath);
     string contents = File.ReadAllText(path);
 
     if (!contents.Contains(expected, StringComparison.Ordinal))
@@ -487,8 +497,8 @@ static void IsolateRuntimeBuildPackages(string repositoryRoot)
 {
     string? toolCache = Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE");
     string packages = string.IsNullOrWhiteSpace(toolCache)
-        ? Path.Combine(repositoryRoot, "runtime", ".packages")
-        : Path.Combine(toolCache, "ankus-runtime-nuget");
+        ? Path.Join(repositoryRoot, "runtime", ".packages")
+        : Path.Join(toolCache, "ankus-runtime-nuget");
     Directory.CreateDirectory(packages);
     Environment.SetEnvironmentVariable("NUGET_PACKAGES", packages);
     Console.WriteLine($"Runtime build packages: {packages}");
@@ -537,7 +547,7 @@ static void BuildRuntime(string repositoryRoot, string platform, string architec
 {
     VerifyPlatform(platform, architecture);
     (string cCompiler, string cppCompiler, IReadOnlyDictionary<string, string?>? environment) = GetRuntimeToolchain();
-    string runtimeRoot = Path.Combine(repositoryRoot, "runtime");
+    string runtimeRoot = Path.Join(repositoryRoot, "runtime");
     List<string> arguments =
     [
         "-s",
@@ -551,18 +561,18 @@ static void BuildRuntime(string repositoryRoot, string platform, string architec
 
     if (OperatingSystem.IsWindows())
     {
-        Run(Path.Combine(runtimeRoot, "build.cmd"), arguments, runtimeRoot, true);
+        Run(Path.Join(runtimeRoot, "build.cmd"), arguments, runtimeRoot, true);
     }
     else
     {
-        Run(Path.Combine(runtimeRoot, "build.sh"), arguments, runtimeRoot, environment: environment);
+        Run(Path.Join(runtimeRoot, "build.sh"), arguments, runtimeRoot, environment: environment);
     }
 
-    string runtimeDotNet = Path.Combine(runtimeRoot, OperatingSystem.IsWindows() ? "dotnet.cmd" : "dotnet.sh");
+    string runtimeDotNet = Path.Join(runtimeRoot, OperatingSystem.IsWindows() ? "dotnet.cmd" : "dotnet.sh");
     Run(runtimeDotNet,
     [
         "publish",
-        Path.Combine(runtimeRoot, "src", "coreclr", "tools", "aot", "ILCompiler", "ILCompiler_publish.csproj"),
+        Path.Join(runtimeRoot, "src", "coreclr", "tools", "aot", "ILCompiler", "ILCompiler_publish.csproj"),
         "--configuration", "Release",
         "-p:UseNativeAotForComponents=true",
         $"-p:IlcSdkPath={GetBuiltRuntimePath(repositoryRoot, platform, architecture)}{Path.DirectorySeparatorChar}",
@@ -612,20 +622,20 @@ static void VerifyNativeHostBehavior(
     IReadOnlyDictionary<string, string?>? environment)
 {
     string runtimeIdentifier = $"{platform}-{architecture}";
-    string probeRoot = Path.Combine(repositoryRoot, "runtime", "eng", "ankus", "fork-probes", "host-shutdown");
-    string output = Path.Combine(repositoryRoot, "artifacts", "runtime-checks", runtimeIdentifier);
+    string probeRoot = Path.Join(repositoryRoot, "runtime", "eng", "ankus", "fork-probes", "host-shutdown");
+    string output = Path.Join(repositoryRoot, "artifacts", "runtime-checks", runtimeIdentifier);
     Run(GetDotNetHost(),
     [
-        "publish", Path.Combine(probeRoot, "NativeHostShutdownProbe.csproj"),
+        "publish", Path.Join(probeRoot, "NativeHostShutdownProbe.csproj"),
         "--configuration", "Release", "--runtime", runtimeIdentifier, "--output", output,
         $"-p:IlcSdkPath={GetBuiltRuntimePath(repositoryRoot, platform, architecture)}{Path.DirectorySeparatorChar}",
         $"-p:IlcToolsPath={GetBuiltCompilerPath(repositoryRoot, platform, architecture)}{Path.DirectorySeparatorChar}",
     ], environment: environment);
 
-    string host = Path.Combine(output, "host");
+    string host = Path.Join(output, "host");
     List<string> compilerArguments =
     [
-        "-std=gnu17", "-O2", "-Wall", "-Wextra", "-Werror", Path.Combine(probeRoot, "host.c"),
+        "-std=gnu17", "-O2", "-Wall", "-Wextra", "-Werror", Path.Join(probeRoot, "host.c"),
         "-pthread", "-o", host,
     ];
     if (OperatingSystem.IsLinux())
@@ -635,15 +645,15 @@ static void VerifyNativeHostBehavior(
 
     Run(cCompiler, compilerArguments, environment: environment);
     string library = "NativeHostShutdownProbe" + (OperatingSystem.IsMacOS() ? ".dylib" : ".so");
-    Run(host, [Path.Combine(output, library)]);
+    Run(host, [Path.Join(output, library)]);
 
-    string signalProbe = Path.Combine(repositoryRoot, "runtime", "eng", "ankus", "fork-probes", "signal-mask", "host.cpp");
-    string signalHost = Path.Combine(output, "signal-mask-host");
+    string signalProbe = Path.Join(repositoryRoot, "runtime", "eng", "ankus", "fork-probes", "signal-mask", "host.cpp");
+    string signalHost = Path.Join(output, "signal-mask-host");
     List<string> signalArguments =
     [
         "-std=c++17", "-O2", "-Wall", "-Wextra", "-Werror",
-        "-I" + Path.Combine(repositoryRoot, "runtime", "src", "coreclr", "nativeaot", "Runtime", "unix"),
-        signalProbe, Path.Combine(GetBuiltRuntimePath(repositoryRoot, platform, architecture), "libRuntime.WorkstationGC.a"),
+        "-I" + Path.Join(repositoryRoot, "runtime", "src", "coreclr", "nativeaot", "Runtime", "unix"),
+        signalProbe, Path.Join(GetBuiltRuntimePath(repositoryRoot, platform, architecture), "libRuntime.WorkstationGC.a"),
         "-o", signalHost,
     ];
     if (OperatingSystem.IsLinux())
@@ -653,23 +663,23 @@ static void VerifyNativeHostBehavior(
 
     Run(cppCompiler, signalArguments, environment: environment);
     Run(signalHost, []);
-    Run(signalHost, [Path.Combine(output, library)]);
+    Run(signalHost, [Path.Join(output, library)]);
 
     // Runtime threads must leave the host's process signals pending for the host thread.
-    string hostSignalRoot = Path.Combine(repositoryRoot, "runtime", "eng", "ankus", "fork-probes", "host-signals");
-    string hostSignalOutput = Path.Combine(output, "host-signals");
+    string hostSignalRoot = Path.Join(repositoryRoot, "runtime", "eng", "ankus", "fork-probes", "host-signals");
+    string hostSignalOutput = Path.Join(output, "host-signals");
     Run(GetDotNetHost(),
     [
-        "publish", Path.Combine(hostSignalRoot, "NativeHostSignalProbe.csproj"),
+        "publish", Path.Join(hostSignalRoot, "NativeHostSignalProbe.csproj"),
         "--configuration", "Release", "--runtime", runtimeIdentifier, "--output", hostSignalOutput,
         $"-p:IlcSdkPath={GetBuiltRuntimePath(repositoryRoot, platform, architecture)}{Path.DirectorySeparatorChar}",
         $"-p:IlcToolsPath={GetBuiltCompilerPath(repositoryRoot, platform, architecture)}{Path.DirectorySeparatorChar}",
     ], environment: environment);
 
-    string hostSignalHost = Path.Combine(hostSignalOutput, "host");
+    string hostSignalHost = Path.Join(hostSignalOutput, "host");
     List<string> hostSignalArguments =
     [
-        "-std=gnu17", "-O2", "-Wall", "-Wextra", "-Werror", Path.Combine(hostSignalRoot, "host.c"),
+        "-std=gnu17", "-O2", "-Wall", "-Wextra", "-Werror", Path.Join(hostSignalRoot, "host.c"),
         "-pthread", "-o", hostSignalHost,
     ];
     if (OperatingSystem.IsLinux())
@@ -678,7 +688,7 @@ static void VerifyNativeHostBehavior(
     }
 
     Run(cCompiler, hostSignalArguments, environment: environment);
-    Run(hostSignalHost, [Path.Combine(hostSignalOutput, "NativeHostSignalProbe" + (OperatingSystem.IsMacOS() ? ".dylib" : ".so"))]);
+    Run(hostSignalHost, [Path.Join(hostSignalOutput, "NativeHostSignalProbe" + (OperatingSystem.IsMacOS() ? ".dylib" : ".so"))]);
 }
 
 static void VerifyPlatform(string platform, string architecture)
@@ -742,27 +752,27 @@ static void InstallRuntimePrerequisites()
 
 static string GetBuiltRuntimePath(string repositoryRoot, string platform, string architecture)
 {
-    return Path.Combine(repositoryRoot, "runtime", "artifacts", "bin", "coreclr", $"{platform}.{architecture}.Release", "aotsdk");
+    return Path.Join(repositoryRoot, "runtime", "artifacts", "bin", "coreclr", $"{platform}.{architecture}.Release", "aotsdk");
 }
 
 static string GetBuiltCompilerPath(string repositoryRoot, string platform, string architecture)
 {
-    return Path.Combine(repositoryRoot, "runtime", "artifacts", "bin", "coreclr", $"{platform}.{architecture}.Release", "ilc-published");
+    return Path.Join(repositoryRoot, "runtime", "artifacts", "bin", "coreclr", $"{platform}.{architecture}.Release", "ilc-published");
 }
 
 static string GetStagedRuntimePath(string repositoryRoot, string runtimeIdentifier)
 {
-    return Path.Combine(repositoryRoot, "artifacts", "nativeaot", runtimeIdentifier, "aotsdk");
+    return Path.Join(repositoryRoot, "artifacts", "nativeaot", runtimeIdentifier, "aotsdk");
 }
 
 static string GetStagedCompilerPath(string repositoryRoot, string runtimeIdentifier)
 {
-    return Path.Combine(repositoryRoot, "artifacts", "nativeaot", runtimeIdentifier, "compiler");
+    return Path.Join(repositoryRoot, "artifacts", "nativeaot", runtimeIdentifier, "compiler");
 }
 
 static string GetStagedRuntimeSourcePath(string repositoryRoot, string runtimeIdentifier)
 {
-    return Path.Combine(repositoryRoot, "artifacts", "nativeaot", runtimeIdentifier, "source");
+    return Path.Join(repositoryRoot, "artifacts", "nativeaot", runtimeIdentifier, "source");
 }
 
 static void StageRuntime(string repositoryRoot, string platform, string architecture, string runtimeIdentifier)
@@ -786,21 +796,21 @@ static void StageRuntime(string repositoryRoot, string platform, string architec
 
     CopyDirectory(compilerSource, compilerDestination);
 
-    string runtimeSource = Path.Combine(repositoryRoot, "runtime");
+    string runtimeSource = Path.Join(repositoryRoot, "runtime");
     string stagedSource = GetStagedRuntimeSourcePath(repositoryRoot, runtimeIdentifier);
     Directory.CreateDirectory(stagedSource);
     string[] metadataFiles = ["LICENSE.TXT", "THIRD-PARTY-NOTICES.TXT"];
 
     foreach (string fileName in metadataFiles)
     {
-        string sourceFile = Path.Combine(runtimeSource, fileName);
+        string sourceFile = Path.Join(runtimeSource, fileName);
 
         if (!File.Exists(sourceFile))
         {
             throw new FileNotFoundException("Required runtime package metadata was not found.", sourceFile);
         }
 
-        File.Copy(sourceFile, Path.Combine(stagedSource, fileName), true);
+        File.Copy(sourceFile, Path.Join(stagedSource, fileName), true);
     }
 }
 
@@ -809,12 +819,12 @@ static void VerifyStagedRuntime(string repositoryRoot, string runtimeIdentifier)
     string path = GetStagedRuntimePath(repositoryRoot, runtimeIdentifier);
     string sourcePath = GetStagedRuntimeSourcePath(repositoryRoot, runtimeIdentifier);
     string compilerPath = GetStagedCompilerPath(repositoryRoot, runtimeIdentifier);
-    string compilerExecutable = Path.Combine(compilerPath, runtimeIdentifier == "win-x64" ? "ilc.exe" : "ilc");
+    string compilerExecutable = Path.Join(compilerPath, runtimeIdentifier == "win-x64" ? "ilc.exe" : "ilc");
 
-    if (!File.Exists(Path.Combine(path, "System.Private.CoreLib.dll"))
+    if (!File.Exists(Path.Join(path, "System.Private.CoreLib.dll"))
         || !File.Exists(compilerExecutable)
-        || !File.Exists(Path.Combine(sourcePath, "LICENSE.TXT"))
-        || !File.Exists(Path.Combine(sourcePath, "THIRD-PARTY-NOTICES.TXT")))
+        || !File.Exists(Path.Join(sourcePath, "LICENSE.TXT"))
+        || !File.Exists(Path.Join(sourcePath, "THIRD-PARTY-NOTICES.TXT")))
     {
         throw new DirectoryNotFoundException($"The staged {runtimeIdentifier} runtime is incomplete.");
     }
@@ -833,13 +843,13 @@ static void CopyDirectory(string source, string destination)
     foreach (string sourceDirectory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
     {
         string relativePath = Path.GetRelativePath(source, sourceDirectory);
-        Directory.CreateDirectory(Path.Combine(destination, relativePath));
+        Directory.CreateDirectory(Path.Join(destination, relativePath));
     }
 
     foreach (string sourceFile in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
     {
         string relativePath = Path.GetRelativePath(source, sourceFile);
-        string destinationFile = Path.Combine(destination, relativePath);
+        string destinationFile = Path.Join(destination, relativePath);
         File.Copy(sourceFile, destinationFile, true);
 
         if (!OperatingSystem.IsWindows())
@@ -885,7 +895,7 @@ static void InstallPostgreSql(string repositoryRoot, string version)
         string pgConfig = brew is null
             ? FindOnPath("pg_config") ?? throw new FileNotFoundException(
                 $"The macOS runner does not contain PostgreSQL {version}. Set {variable} to its pg_config path.")
-            : Path.Combine(Capture(brew, ["--prefix", formula]), "bin", "pg_config");
+            : Path.Join(Capture(brew, ["--prefix", formula]), "bin", "pg_config");
         VerifyPostgreSqlHeaders(pgConfig, version);
         SelectPostgreSql(version, pgConfig);
         return;
@@ -894,8 +904,8 @@ static void InstallPostgreSql(string repositoryRoot, string version)
     if (OperatingSystem.IsWindows())
     {
         string root = Environment.GetEnvironmentVariable("PGROOT")
-            ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "PostgreSQL", version);
-        string pgConfig = Path.Combine(root, "bin", "pg_config.exe");
+            ?? Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "PostgreSQL", version);
+        string pgConfig = Path.Join(root, "bin", "pg_config.exe");
 
         if (!File.Exists(pgConfig))
         {
@@ -933,7 +943,7 @@ static string? FindOnPath(string command)
 
     foreach (string directory in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
     {
-        string candidate = Path.Combine(directory, command);
+        string candidate = Path.Join(directory, command);
         if (File.Exists(candidate))
         {
             return candidate;
@@ -965,21 +975,21 @@ static void ConfigureWindowsToolchain()
         throw new PlatformNotSupportedException("The Windows C++ toolchain requires Windows.");
     }
 
-    string locator = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
+    string locator = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
         "Microsoft Visual Studio", "Installer", "vswhere.exe");
     string installation = Capture(locator,
     [
         "-latest", "-products", "*", "-version", "[17.9,)",
         "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64", "-property", "installationPath",
     ]);
-    string setup = Path.Combine(installation, "VC", "Auxiliary", "Build", "vcvarsall.bat");
+    string setup = Path.Join(installation, "VC", "Auxiliary", "Build", "vcvarsall.bat");
     if (string.IsNullOrWhiteSpace(installation) || !File.Exists(setup))
     {
         throw new InvalidOperationException("Visual Studio 2022 17.9 or later with the C++ x64 tools is required.");
     }
 
     // cmd.exe needs its own quoting rules for a batch path containing spaces.
-    var start = new ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "cmd.exe"))
+    var start = new ProcessStartInfo(Path.Join(Environment.SystemDirectory, "cmd.exe"))
     {
         Arguments = $"/d /s /c \"\"{setup}\" x64 >nul && set\"",
     };
@@ -1017,7 +1027,7 @@ static void ConfigureHeaderFrontend(string repositoryRoot)
         Environment.GetEnvironmentVariable("RUNNER_ENVIRONMENT") == "self-hosted")
     {
         string resourceDirectory = Capture("clang", ["-print-resource-dir"]);
-        directory = Path.GetFullPath(Path.Combine(resourceDirectory, "..", "..", "..", "bin"));
+        directory = Path.GetFullPath(Path.Join(resourceDirectory, "..", "..", "..", "bin"));
     }
     else if (OperatingSystem.IsMacOS())
     {
@@ -1025,18 +1035,18 @@ static void ConfigureHeaderFrontend(string repositoryRoot)
         {
             ["HOMEBREW_NO_AUTO_UPDATE"] = "1",
         });
-        directory = Path.Combine(Capture("brew", ["--prefix", "llvm@20"]), "bin");
+        directory = Path.Join(Capture("brew", ["--prefix", "llvm@20"]), "bin");
     }
     else if (OperatingSystem.IsWindows())
     {
-        directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "LLVM", "bin");
+        directory = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "LLVM", "bin");
     }
     else
     {
         throw new PlatformNotSupportedException("Header frontend installation is not defined for this runner.");
     }
 
-    string compiler = Path.Combine(directory, OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang");
+    string compiler = Path.Join(directory, OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang");
     VerifyHeaderFrontend(compiler);
     Environment.SetEnvironmentVariable("PATH", directory + Path.PathSeparator + Environment.GetEnvironmentVariable("PATH"));
     string pathFile = Environment.GetEnvironmentVariable("GITHUB_PATH")
@@ -1050,7 +1060,7 @@ static string? FindLinuxHeaderFrontendDirectory()
     if (selected is not null && HeaderFrontendMajor(selected) >= 20)
     {
         string resourceDirectory = Capture(selected, ["-print-resource-dir"]);
-        return Path.GetFullPath(Path.Combine(resourceDirectory, "..", "..", "..", "bin"));
+        return Path.GetFullPath(Path.Join(resourceDirectory, "..", "..", "..", "bin"));
     }
 
     if (!Directory.Exists("/usr/lib"))
@@ -1060,9 +1070,9 @@ static string? FindLinuxHeaderFrontendDirectory()
 
     return Directory.EnumerateDirectories("/usr/lib", "llvm-*")
         .Select(static path => (Path: path, Major: ParseLlvmDirectoryMajor(path)))
-        .Where(static candidate => candidate.Major >= 20 && File.Exists(Path.Combine(candidate.Path, "bin", "clang")))
+        .Where(static candidate => candidate.Major >= 20 && File.Exists(Path.Join(candidate.Path, "bin", "clang")))
         .OrderByDescending(static candidate => candidate.Major)
-        .Select(static candidate => Path.Combine(candidate.Path, "bin"))
+        .Select(static candidate => Path.Join(candidate.Path, "bin"))
         .FirstOrDefault();
 }
 
@@ -1089,10 +1099,10 @@ static string InstallLinuxHeaderFrontend(string repositoryRoot)
         .ToDictionary(static parts => parts[0], static parts => parts[1].Trim('"'), StringComparer.Ordinal);
     string codeName = operatingSystem.GetValueOrDefault("VERSION_CODENAME")
         ?? throw new InvalidOperationException("VERSION_CODENAME is missing from /etc/os-release.");
-    string temporaryDirectory = Path.Combine(repositoryRoot, "artifacts", "ci");
+    string temporaryDirectory = Path.Join(repositoryRoot, "artifacts", "ci");
     Directory.CreateDirectory(temporaryDirectory);
-    string keyPath = Path.Combine(temporaryDirectory, "llvm.asc");
-    string sourcePath = Path.Combine(temporaryDirectory, "llvm.list");
+    string keyPath = Path.Join(temporaryDirectory, "llvm.asc");
+    string sourcePath = Path.Join(temporaryDirectory, "llvm.list");
     using (HttpClient client = new())
     {
         File.WriteAllBytes(keyPath, client.GetByteArrayAsync("https://apt.llvm.org/llvm-snapshot.gpg.key").GetAwaiter().GetResult());
@@ -1135,9 +1145,9 @@ static void ConfigureBindingCache(string repositoryRoot)
     if (string.IsNullOrWhiteSpace(directory))
     {
         directory = Environment.GetEnvironmentVariable("RUNNER_ENVIRONMENT") == "self-hosted"
-            ? Path.Combine(Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE")
+            ? Path.Join(Environment.GetEnvironmentVariable("RUNNER_TOOL_CACHE")
                 ?? throw new InvalidOperationException("RUNNER_TOOL_CACHE is required for the dedicated runner."), "ankus-binding-cache")
-            : Path.Combine(repositoryRoot, "artifacts", "binding-cache");
+            : Path.Join(repositoryRoot, "artifacts", "binding-cache");
     }
 
     Directory.CreateDirectory(directory);
@@ -1233,10 +1243,10 @@ static Dictionary<int, int> FindPostgreSqlProcesses()
             try
             {
                 if (int.TryParse(Path.GetFileName(directory), out int process)
-                    && File.ReadAllText(Path.Combine(directory, "comm")).TrimEnd('\n') == "postgres")
+                    && File.ReadAllText(Path.Join(directory, "comm")).TrimEnd('\n') == "postgres")
                 {
                     // The command name in /proc/<pid>/stat is parenthesized and may contain spaces; the parent follows the state.
-                    string status = File.ReadAllText(Path.Combine(directory, "stat"));
+                    string status = File.ReadAllText(Path.Join(directory, "stat"));
                     processes[process] = int.Parse(status[(status.LastIndexOf(')') + 2)..].Split(' ')[1], CultureInfo.InvariantCulture);
                 }
             }
@@ -1326,10 +1336,10 @@ static void InstallPostgreSqlLinux(string repositoryRoot, string version)
         .ToDictionary(static parts => parts[0], static parts => parts[1].Trim('"'), StringComparer.Ordinal);
     string codeName = operatingSystem.GetValueOrDefault("VERSION_CODENAME")
         ?? throw new InvalidOperationException("VERSION_CODENAME is missing from /etc/os-release.");
-    string temporaryDirectory = Path.Combine(repositoryRoot, "artifacts", "ci");
+    string temporaryDirectory = Path.Join(repositoryRoot, "artifacts", "ci");
     Directory.CreateDirectory(temporaryDirectory);
-    string keyPath = Path.Combine(temporaryDirectory, "postgresql.asc");
-    string sourcePath = Path.Combine(temporaryDirectory, "pgdg.list");
+    string keyPath = Path.Join(temporaryDirectory, "postgresql.asc");
+    string sourcePath = Path.Join(temporaryDirectory, "pgdg.list");
 
     using (HttpClient client = new())
     {
@@ -1354,7 +1364,7 @@ static PostgresVersion VerifyPostgreSqlHeaders(string pgConfig, string version)
     }
 
     Console.WriteLine($"Using PostgreSQL {installation.Version}.");
-    string header = Path.Combine(installation.ServerIncludeDirectory, "postgres.h");
+    string header = Path.Join(installation.ServerIncludeDirectory, "postgres.h");
     if (!File.Exists(header))
     {
         throw new FileNotFoundException("The runner requires PostgreSQL server headers.", header);
@@ -1457,7 +1467,7 @@ static void PrepareReports(string repositoryRoot)
         .SelectMany(static value => new[] { value, SecurityElement.Escape(value) ?? value })
         .Distinct(StringComparer.Ordinal)
         .OrderByDescending(static value => value.Length)];
-    string destination = Path.Combine(repositoryRoot, "artifacts", "ci-reports");
+    string destination = Path.Join(repositoryRoot, "artifacts", "ci-reports");
     if (Directory.Exists(destination))
     {
         Directory.Delete(destination, true);
@@ -1470,13 +1480,13 @@ static void PrepareReports(string repositoryRoot)
 
     foreach ((string directory, string pattern) in new[] { ("test-results", "*.trx"), ("test-results", "*.log"), ("test-logs", "*.log") })
     {
-        string source = Path.Combine(repositoryRoot, "artifacts", directory);
+        string source = Path.Join(repositoryRoot, "artifacts", directory);
         if (!Directory.Exists(source))
         {
             continue;
         }
 
-        string target = Path.Combine(destination, directory);
+        string target = Path.Join(destination, directory);
         Directory.CreateDirectory(target);
         foreach (string file in Directory.EnumerateFiles(source, pattern))
         {
@@ -1491,12 +1501,12 @@ static void PrepareReports(string repositoryRoot)
                 contents = contents.Replace(value, "[private]", StringComparison.Ordinal);
             }
 
-            File.WriteAllText(Path.Combine(target, Path.GetFileName(file)), contents);
+            File.WriteAllText(Path.Join(target, Path.GetFileName(file)), contents);
         }
     }
 
     // Show where the suite spent its time directly in the job log.
-    string timings = Path.Combine(destination, "test-results", "process-timings.log");
+    string timings = Path.Join(destination, "test-results", "process-timings.log");
     if (File.Exists(timings))
     {
         Console.WriteLine("Integration test process timings:");
@@ -1508,13 +1518,13 @@ static void PrepareReports(string repositoryRoot)
 // durations; binary logs and their environment/property payloads stay local.
 static void SaveBuildTimings(string repositoryRoot)
 {
-    string logs = Path.Combine(repositoryRoot, "artifacts", "test-logs");
+    string logs = Path.Join(repositoryRoot, "artifacts", "test-logs");
     Directory.CreateDirectory(logs);
     string[] roots = [logs,
         .. Directory.EnumerateDirectories(Path.GetTempPath(), "ankus package tests *")];
     List<string> report = [];
     EnumerationOptions options = new() { RecurseSubdirectories = true, AttributesToSkip = FileAttributes.ReparsePoint };
-    string[] files = [.. Directory.EnumerateFiles(Path.Combine(repositoryRoot, "artifacts"), "*.binlog")
+    string[] files = [.. Directory.EnumerateFiles(Path.Join(repositoryRoot, "artifacts"), "*.binlog")
         .Concat(roots.SelectMany(root => Directory.EnumerateFiles(root, "*.binlog", options)))
         .Order(StringComparer.Ordinal)];
     foreach (string file in files)
@@ -1559,7 +1569,7 @@ static void SaveBuildTimings(string repositoryRoot)
         report.AddRange(ReadBindingTimings(repositoryRoot, files).Split('\n'));
     }
 
-    File.WriteAllLines(Path.Combine(logs, "build-timings.log"), report);
+    File.WriteAllLines(Path.Join(logs, "build-timings.log"), report);
 }
 
 // Only fixed phase metadata reaches job logs or upload reports, never command
@@ -1569,7 +1579,7 @@ static string ReadBindingTimings(string repositoryRoot, IReadOnlyList<string> fi
     try
     {
         return Capture(GetDotNetHost(), ["run", "--file",
-            Path.Combine(repositoryRoot, "eng", "Ankus.BuildTimings.cs"), "--", .. files]);
+            Path.Join(repositoryRoot, "eng", "Ankus.BuildTimings.cs"), "--", .. files]);
     }
     catch (InvalidOperationException)
     {
@@ -1579,9 +1589,9 @@ static string ReadBindingTimings(string repositoryRoot, IReadOnlyList<string> fi
 
 static void BuildTests(string repositoryRoot)
 {
-    string logs = Path.Combine(repositoryRoot, "artifacts", "test-logs");
+    string logs = Path.Join(repositoryRoot, "artifacts", "test-logs");
     Directory.CreateDirectory(logs);
-    string binlog = Path.Combine(logs, "build-tests-" + Guid.NewGuid().ToString("N") + ".binlog");
+    string binlog = Path.Join(logs, "build-tests-" + Guid.NewGuid().ToString("N") + ".binlog");
     Run(GetDotNetHost(), ["build", "Ankus.slnx", "--configuration", "Release", "-m",
         "-clp:PerformanceSummary", "-bl:" + binlog], repositoryRoot);
     if (Environment.GetEnvironmentVariable("RUNNER_ENVIRONMENT") == "github-hosted")
@@ -1598,7 +1608,7 @@ static void VerifyBindingHeaderManifest(string repositoryRoot, string version)
     [
         "run", "--project", "src/Ankus.Build", "--configuration", "Release", "--no-build", "--",
         "binding-header-manifest", version, pgConfig,
-        Path.Combine(repositoryRoot, "src", "Ankus.Build", "Bindings", $"pg{version}.h"), "--check",
+        Path.Join(repositoryRoot, "src", "Ankus.Build", "Bindings", $"pg{version}.h"), "--check",
     ], repositoryRoot);
 }
 
@@ -1619,9 +1629,9 @@ static void RunUnitTestModules(string repositoryRoot)
     }
 }
 
-static void RunTestModule(string repositoryRoot, string testModule)
+static void RunTestModule(string repositoryRoot, string testModule, string? filter = null)
 {
-    string path = Path.Combine(repositoryRoot, testModule.Replace('/', Path.DirectorySeparatorChar));
+    string path = Path.Join(repositoryRoot, testModule.Replace('/', Path.DirectorySeparatorChar));
 
     if (!File.Exists(path))
     {
@@ -1639,8 +1649,13 @@ static void RunTestModule(string repositoryRoot, string testModule)
         "1",
         "--report-trx",
         "--results-directory",
-        Path.Combine(repositoryRoot, "artifacts", "test-results"),
+        Path.Join(repositoryRoot, "artifacts", "test-results"),
     ];
+    if (filter is not null)
+    {
+        arguments.AddRange(["--filter", filter]);
+    }
+
     if (Environment.GetEnvironmentVariable("RUNNER_ENVIRONMENT") == "github-hosted")
     {
         // Completed case names and durations survive a timeout that prevents the final TRX from being written.
@@ -1727,7 +1742,7 @@ static void PackRuntime(
 
 static void PublishPackages(string repositoryRoot, string packageVersion)
 {
-    string packageDirectory = Path.Combine(repositoryRoot, "artifacts", "packages");
+    string packageDirectory = Path.Join(repositoryRoot, "artifacts", "packages");
     string[] packages = VerifyPackages(repositoryRoot, packageVersion);
     string apiKey = Environment.GetEnvironmentVariable("NUGET_API_KEY")
         ?? throw new InvalidOperationException("NUGET_API_KEY is required.");
@@ -1738,7 +1753,7 @@ static void PublishPackages(string repositoryRoot, string packageVersion)
         [
             "nuget",
             "push",
-            Path.Combine(packageDirectory, package),
+            Path.Join(packageDirectory, package),
             "--api-key",
             apiKey,
             "--source",
@@ -1752,7 +1767,7 @@ static void PublishPackages(string repositoryRoot, string packageVersion)
 // license and the Ankus repository at the commit being released. A rehearsal runs the same checks without publishing.
 static string[] VerifyPackages(string repositoryRoot, string packageVersion)
 {
-    string packageDirectory = Path.Combine(repositoryRoot, "artifacts", "packages");
+    string packageDirectory = Path.Join(repositoryRoot, "artifacts", "packages");
     string[] packages =
     [
         $"Ankus.NativeAot.Runtime.linux-x64.{RuntimeVersion}.nupkg",
@@ -1788,7 +1803,7 @@ static string[] VerifyPackages(string repositoryRoot, string packageVersion)
     string? commit = Environment.GetEnvironmentVariable("GITHUB_SHA");
     foreach (string package in packages)
     {
-        using ZipArchive archive = ZipFile.OpenRead(Path.Combine(packageDirectory, package));
+        using ZipArchive archive = ZipFile.OpenRead(Path.Join(packageDirectory, package));
         ZipArchiveEntry manifest = archive.Entries.SingleOrDefault(static entry =>
                 !entry.FullName.Contains('/', StringComparison.Ordinal) && entry.FullName.EndsWith(".nuspec", StringComparison.OrdinalIgnoreCase))
             ?? throw new InvalidOperationException($"{package} has no root manifest.");

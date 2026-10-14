@@ -201,7 +201,7 @@ internal static class CustomSql
         }
 
         string root = Path.GetPathRoot(projectDirectory)!;
-        string anchor = Path.Combine(root, "__ankus_project__");
+        string anchor = Join(root, "__ankus_project__");
         string? normalized = Normalize(path, anchor);
         string prefix = anchor + Path.DirectorySeparatorChar;
         StringComparison comparison = Path.DirectorySeparatorChar == '\\' ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
@@ -235,7 +235,7 @@ internal static class CustomSql
                     return null;
                 }
 
-                path = Path.Combine(projectDirectory, path);
+                path = Join(projectDirectory, path);
             }
 
             return Path.GetFullPath(path);
@@ -245,4 +245,12 @@ internal static class CustomSql
             return null;
         }
     }
+
+    /// <summary>
+    /// Joins a directory and a relative path. Callers pass only a relative second path, so this needs neither
+    /// <see cref="Path.Combine(string, string)"/>, which would let a rooted one replace the directory, nor
+    /// <c>Path.Join</c>, which .NET Standard 2.0 lacks.
+    /// </summary>
+    private static string Join(string directory, string path)
+        => directory.Length > 0 && directory[directory.Length - 1] is '/' or '\\' ? directory + path : directory + Path.DirectorySeparatorChar + path;
 }

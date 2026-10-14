@@ -69,6 +69,7 @@ internal static unsafe class NativeBackgroundWorker
             }
 
             NativeBorrowScope scope = NativeMemoryContext.BorrowScope;
+            // codeql[cs/missed-using-statement] The returned handle owns the lease, so it is released here only when registration fails.
             var lease = new NativeBackgroundWorkerLease(scope, options.NotifyProcessId);
             var handle = new PgBackgroundWorkerHandle(lease);
             scope.Register(lease);
@@ -266,6 +267,7 @@ internal static unsafe class NativeBackgroundWorker
 
             return 0;
         }
+        // codeql[cs/catch-of-all-exceptions] Native code calls this, so every exception is kept for the caller instead of unwinding through it.
         catch (Exception exception)
         {
             frame.Failure = ExceptionDispatchInfo.Capture(exception);

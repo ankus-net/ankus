@@ -103,6 +103,7 @@ public sealed class PgInternal
             {
                 identity.Dispose();
             }
+            // codeql[cs/catch-of-all-exceptions] A failed cleanup is reported together with the failure that required it.
             catch (Exception cleanup)
             {
                 throw new AggregateException("Creating internal state and releasing its native identity failed.", primary, cleanup);

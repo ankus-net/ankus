@@ -12,6 +12,11 @@ internal static class SpiArray
         "Use PgArray<T> to preserve dimensions and lower bounds, or ToArray() to explicitly flatten them.";
 
     /// <summary>
+    /// Maps each supported vector and <see cref="PgArray{T}"/> type to the built-in OID of its element type.
+    /// </summary>
+    private static readonly Dictionary<Type, uint> s_elementOids = CreateElementOids();
+
+    /// <summary>
     /// Validates PostgreSQL dimension limits, exclusive upper bounds, and the row-major element count.
     /// </summary>
     /// <param name="count">The supplied number of elements, including NULLs.</param>
@@ -106,47 +111,7 @@ internal static class SpiArray
     /// <returns>The built-in PostgreSQL array OID, or zero when the type is unsupported.</returns>
     internal static uint GetOid(Type type)
     {
-        uint element =
-            Matches<PgRelation>(type) || Matches<PgRelationIdentity>(type) || Matches<PgRelationIdentity?>(type) ? 2205u :
-            Matches<PgHeapTuple>(type) ? 2249u :
-            Matches<PgRange<int>>(type) ? 3904u : Matches<PgRange<long>>(type) ? 3926u :
-            Matches<PgRange<PgNumeric>>(type) || Matches<PgRange<decimal>>(type) ? 3906u :
-            Matches<PgRange<PgDate>>(type) || Matches<PgRange<DateOnly>>(type) ? 3912u :
-            Matches<PgRange<PgTimestamp>>(type) || Matches<PgRange<DateTime>>(type) ? 3908u :
-            Matches<PgRange<PgTimestampTz>>(type) || Matches<PgRange<DateTimeOffset>>(type) ? 3910u :
-            Matches<PgPoint>(type) || Matches<PgPoint?>(type) ? 600u :
-            Matches<PgLineSegment>(type) || Matches<PgLineSegment?>(type) ? 601u :
-            Matches<PgPath>(type) ? 602u :
-            Matches<PgBox>(type) || Matches<PgBox?>(type) ? 603u :
-            Matches<PgPolygon>(type) ? 604u :
-            Matches<PgLine>(type) || Matches<PgLine?>(type) ? 628u :
-            Matches<PgCircle>(type) || Matches<PgCircle?>(type) ? 718u :
-            Matches<PgInet>(type) || Matches<PgInet?>(type) || Matches<System.Net.IPAddress>(type) ? 869u :
-            Matches<PgCidr>(type) || Matches<PgCidr?>(type) || Matches<System.Net.IPNetwork>(type) || Matches<System.Net.IPNetwork?>(type) ? 650u :
-            Matches<bool>(type) || Matches<bool?>(type) ? 16u :
-            Matches<byte[]>(type) ? 17u :
-            Matches<sbyte>(type) || Matches<sbyte?>(type) ? 18u :
-            Matches<long>(type) || Matches<long?>(type) ? 20u :
-            Matches<short>(type) || Matches<short?>(type) ? 21u :
-            Matches<int>(type) || Matches<int?>(type) ? 23u :
-            Matches<string>(type) ? 25u :
-            Matches<PgCString>(type) ? 2275u :
-            Matches<uint>(type) || Matches<uint?>(type) ? 26u :
-            Matches<PgItemPointer>(type) || Matches<PgItemPointer?>(type) ? 27u :
-            Matches<PgTransactionId>(type) || Matches<PgTransactionId?>(type) ? 28u :
-            Matches<float>(type) || Matches<float?>(type) ? 700u :
-            Matches<double>(type) || Matches<double?>(type) ? 701u :
-            Matches<Guid>(type) || Matches<Guid?>(type) ? 2950u :
-            Matches<System.Text.Rune>(type) || Matches<System.Text.Rune?>(type) ? 1043u :
-            Matches<PgJson>(type) || Matches<PgJson?>(type) ? 114u :
-            Matches<PgJsonb>(type) || Matches<PgJsonb?>(type) ? 3802u :
-            Matches<PgNumeric>(type) || Matches<PgNumeric?>(type) || Matches<decimal>(type) || Matches<decimal?>(type) ? 1700u :
-            Matches<PgDate>(type) || Matches<PgDate?>(type) || Matches<DateOnly>(type) || Matches<DateOnly?>(type) ? 1082u :
-            Matches<PgTime>(type) || Matches<PgTime?>(type) || Matches<TimeOnly>(type) || Matches<TimeOnly?>(type) ? 1083u :
-            Matches<PgTimeTz>(type) || Matches<PgTimeTz?>(type) ? 1266u :
-            Matches<PgTimestamp>(type) || Matches<PgTimestamp?>(type) || Matches<DateTime>(type) || Matches<DateTime?>(type) ? 1114u :
-            Matches<PgTimestampTz>(type) || Matches<PgTimestampTz?>(type) || Matches<DateTimeOffset>(type) || Matches<DateTimeOffset?>(type) ? 1184u :
-            Matches<PgInterval>(type) || Matches<PgInterval?>(type) || Matches<TimeSpan>(type) || Matches<TimeSpan?>(type) ? 1186u : 0;
+        uint element = s_elementOids.GetValueOrDefault(type);
         return element == 0 ? 0 : ArrayOid(element);
     }
 
@@ -346,6 +311,111 @@ internal static class SpiArray
         {
             NativeRelationScope.Release(values, primary);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Lists every statically supported element type under both of its array forms.
+    /// </summary>
+    private static Dictionary<Type, uint> CreateElementOids()
+    {
+        var oids = new Dictionary<Type, uint>();
+        Add<PgRelation>(2205);
+        Add<PgRelationIdentity>(2205);
+        Add<PgRelationIdentity?>(2205);
+        Add<PgHeapTuple>(2249);
+        Add<PgRange<int>>(3904);
+        Add<PgRange<long>>(3926);
+        Add<PgRange<PgNumeric>>(3906);
+        Add<PgRange<decimal>>(3906);
+        Add<PgRange<PgDate>>(3912);
+        Add<PgRange<DateOnly>>(3912);
+        Add<PgRange<PgTimestamp>>(3908);
+        Add<PgRange<DateTime>>(3908);
+        Add<PgRange<PgTimestampTz>>(3910);
+        Add<PgRange<DateTimeOffset>>(3910);
+        Add<PgPoint>(600);
+        Add<PgPoint?>(600);
+        Add<PgLineSegment>(601);
+        Add<PgLineSegment?>(601);
+        Add<PgPath>(602);
+        Add<PgBox>(603);
+        Add<PgBox?>(603);
+        Add<PgPolygon>(604);
+        Add<PgLine>(628);
+        Add<PgLine?>(628);
+        Add<PgCircle>(718);
+        Add<PgCircle?>(718);
+        Add<PgInet>(869);
+        Add<PgInet?>(869);
+        Add<System.Net.IPAddress>(869);
+        Add<PgCidr>(650);
+        Add<PgCidr?>(650);
+        Add<System.Net.IPNetwork>(650);
+        Add<System.Net.IPNetwork?>(650);
+        Add<bool>(16);
+        Add<bool?>(16);
+        Add<byte[]>(17);
+        Add<sbyte>(18);
+        Add<sbyte?>(18);
+        Add<long>(20);
+        Add<long?>(20);
+        Add<short>(21);
+        Add<short?>(21);
+        Add<int>(23);
+        Add<int?>(23);
+        Add<string>(25);
+        Add<PgCString>(2275);
+        Add<uint>(26);
+        Add<uint?>(26);
+        Add<PgItemPointer>(27);
+        Add<PgItemPointer?>(27);
+        Add<PgTransactionId>(28);
+        Add<PgTransactionId?>(28);
+        Add<float>(700);
+        Add<float?>(700);
+        Add<double>(701);
+        Add<double?>(701);
+        Add<Guid>(2950);
+        Add<Guid?>(2950);
+        Add<System.Text.Rune>(1043);
+        Add<System.Text.Rune?>(1043);
+        Add<PgJson>(114);
+        Add<PgJson?>(114);
+        Add<PgJsonb>(3802);
+        Add<PgJsonb?>(3802);
+        Add<PgNumeric>(1700);
+        Add<PgNumeric?>(1700);
+        Add<decimal>(1700);
+        Add<decimal?>(1700);
+        Add<PgDate>(1082);
+        Add<PgDate?>(1082);
+        Add<DateOnly>(1082);
+        Add<DateOnly?>(1082);
+        Add<PgTime>(1083);
+        Add<PgTime?>(1083);
+        Add<TimeOnly>(1083);
+        Add<TimeOnly?>(1083);
+        Add<PgTimeTz>(1266);
+        Add<PgTimeTz?>(1266);
+        Add<PgTimestamp>(1114);
+        Add<PgTimestamp?>(1114);
+        Add<DateTime>(1114);
+        Add<DateTime?>(1114);
+        Add<PgTimestampTz>(1184);
+        Add<PgTimestampTz?>(1184);
+        Add<DateTimeOffset>(1184);
+        Add<DateTimeOffset?>(1184);
+        Add<PgInterval>(1186);
+        Add<PgInterval?>(1186);
+        Add<TimeSpan>(1186);
+        Add<TimeSpan?>(1186);
+        return oids;
+
+        void Add<T>(uint oid)
+        {
+            oids.Add(typeof(T[]), oid);
+            oids.Add(typeof(PgArray<T>), oid);
         }
     }
 

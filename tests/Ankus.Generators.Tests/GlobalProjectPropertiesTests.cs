@@ -18,8 +18,8 @@ public sealed class GlobalProjectPropertiesTests(TestContext context)
         string directory = Directory.CreateTempSubdirectory("ankus response selection ").FullName;
         try
         {
-            string project = Path.Combine(directory, "extension.csproj");
-            await File.WriteAllTextAsync(Path.Combine(directory, "Directory.Build.rsp"), "-property:ServerFlavor=alternate\n",
+            string project = Path.Join(directory, "extension.csproj");
+            await File.WriteAllTextAsync(Path.Join(directory, "Directory.Build.rsp"), "-property:ServerFlavor=alternate\n",
                 context.CancellationToken);
             await File.WriteAllTextAsync(project, """
                 <Project Sdk="Microsoft.NET.Sdk">
@@ -53,8 +53,8 @@ public sealed class GlobalProjectPropertiesTests(TestContext context)
         string directory = Directory.CreateTempSubdirectory("ankus global selection ").FullName;
         try
         {
-            string child = Path.Combine(directory, "extension.csproj");
-            string parent = Path.Combine(directory, "tests.csproj");
+            string child = Path.Join(directory, "extension.csproj");
+            string parent = Path.Join(directory, "tests.csproj");
             await File.WriteAllTextAsync(child, """
                 <Project Sdk="Microsoft.NET.Sdk">
                   <PropertyGroup>
@@ -86,7 +86,7 @@ public sealed class GlobalProjectPropertiesTests(TestContext context)
             {
                 Assert.IsNotNull(selected);
                 Assert.AreEqual(17, selected.PostgresMajor);
-                Assert.AreEqual(Path.Combine(directory, "postgres", "17", "pg_config"), selected.PgConfigPath);
+                Assert.AreEqual(Path.Join(directory, "postgres", "17", "pg_config"), selected.PgConfigPath);
             }
 
             Assert.AreEqual("alternate", properties["ServerFlavor"]);
@@ -110,7 +110,7 @@ public sealed class GlobalProjectPropertiesTests(TestContext context)
         string directory = Directory.CreateTempSubdirectory("ankus global literals ").FullName;
         try
         {
-            string project = Path.Combine(directory, "literal.csproj");
+            string project = Path.Join(directory, "literal.csproj");
             await File.WriteAllTextAsync(project, """
                 <Project Sdk="Microsoft.NET.Sdk">
                   <PropertyGroup>
@@ -146,7 +146,7 @@ public sealed class GlobalProjectPropertiesTests(TestContext context)
         string directory = Directory.CreateTempSubdirectory("ankus global conflicts ").FullName;
         try
         {
-            string project = Path.Combine(directory, "conflict.csproj");
+            string project = Path.Join(directory, "conflict.csproj");
             await File.WriteAllTextAsync(project, "<Project><Import Project=\"must-not-evaluate.props\" /></Project>", context.CancellationToken);
             ArgumentException error = await Assert.ThrowsExactlyAsync<ArgumentException>(() =>
                 PostgresProjectSettings.ReadAsync(project, "Release", new Dictionary<string, string> { [property] = value },

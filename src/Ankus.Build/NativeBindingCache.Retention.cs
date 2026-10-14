@@ -29,7 +29,7 @@ internal static partial class NativeBindingCache
     {
         ArgumentOutOfRangeException.ThrowIfNegative(maximumBytes);
         cancellationToken.ThrowIfCancellationRequested();
-        await using FileStream? maintenance = TryLock(Path.Combine(root, ".retention.lock"));
+        await using FileStream? maintenance = TryLock(Path.Join(root, ".retention.lock"));
         if (maintenance is null)
         {
             return;
@@ -55,7 +55,7 @@ internal static partial class NativeBindingCache
                 continue;
             }
 
-            await using FileStream? ownership = TryLock(Path.Combine(root, key + ".lock"));
+            await using FileStream? ownership = TryLock(Path.Join(root, key + ".lock"));
             if (ownership is null || !Directory.Exists(path) || File.GetAttributes(path).HasFlag(FileAttributes.ReparsePoint))
             {
                 continue;
@@ -80,7 +80,7 @@ internal static partial class NativeBindingCache
                 break;
             }
 
-            await using FileStream? ownership = TryLock(Path.Combine(root, key + ".lock"));
+            await using FileStream? ownership = TryLock(Path.Join(root, key + ".lock"));
             if (ownership is null || !Directory.Exists(path) || Directory.GetLastWriteTimeUtc(path) != used)
             {
                 continue;

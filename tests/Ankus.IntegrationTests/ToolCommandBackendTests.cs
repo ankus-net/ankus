@@ -15,19 +15,19 @@ public sealed partial class ToolCommandTests
     public async Task GeneratedBackendTestsDiscoverExecuteAndRollback(bool sourceGeneration)
     {
         CancellationToken token = context.CancellationToken;
-        string output = Path.Combine(CreateDirectory(), "backend discovery");
+        string output = Path.Join(CreateDirectory(), "backend discovery");
         (await InvokeAsync(["new", "BackendProbe", "-o", output], token)).EnsureSuccess(s_tool, ["new"]);
-        string extensionRoot = Path.Combine(output, "src", "BackendProbe");
-        string hostRoot = Path.Combine(output, "tests", "BackendProbe.Tests");
-        string project = Path.Combine(extensionRoot, "BackendProbe.csproj");
+        string extensionRoot = Path.Join(output, "src", "BackendProbe");
+        string hostRoot = Path.Join(output, "tests", "BackendProbe.Tests");
+        string project = Path.Join(extensionRoot, "BackendProbe.csproj");
         XDocument extension = XDocument.Load(project);
         extension.Root!.Add(new XElement("PropertyGroup", new XElement("AnkusExtensionControlFile", "probe.control")));
         extension.Save(project);
-        await File.WriteAllTextAsync(Path.Combine(extensionRoot, "probe.control"), "schema = 'Case Schema'\nrelocatable = false\n", token);
-        XDocument host = XDocument.Load(Path.Combine(hostRoot, "BackendProbe.Tests.csproj"));
+        await File.WriteAllTextAsync(Path.Join(extensionRoot, "probe.control"), "schema = 'Case Schema'\nrelocatable = false\n", token);
+        XDocument host = XDocument.Load(Path.Join(hostRoot, "BackendProbe.Tests.csproj"));
         host.Root!.Add(new XElement("PropertyGroup", new XElement("EnableMSTestSourceGeneration", sourceGeneration)));
-        host.Save(Path.Combine(hostRoot, "BackendProbe.Tests.csproj"));
-        await File.WriteAllTextAsync(Path.Combine(extensionRoot, "BackendChecks.cs"), """
+        host.Save(Path.Join(hostRoot, "BackendProbe.Tests.csproj"));
+        await File.WriteAllTextAsync(Path.Join(extensionRoot, "BackendChecks.cs"), """
             using Ankus;
             namespace BackendProbe;
             public static partial class BackendChecks
@@ -127,7 +127,7 @@ public sealed partial class ToolCommandTests
                 }
             }
             """, token);
-        await File.WriteAllTextAsync(Path.Combine(hostRoot, "BackendTests.cs"), """
+        await File.WriteAllTextAsync(Path.Join(hostRoot, "BackendTests.cs"), """
             using System.Runtime.CompilerServices;
             using Ankus;
             using Ankus.Testing;
@@ -227,14 +227,14 @@ public sealed partial class ToolCommandTests
                 }
 
                 private static string ProjectPath([CallerFilePath] string source = "")
-                    => Path.GetFullPath(Path.Combine(Path.GetDirectoryName(source)!, "../../src/BackendProbe/BackendProbe.csproj"));
+                    => Path.GetFullPath(Path.Join(Path.GetDirectoryName(source)!, "../../src/BackendProbe/BackendProbe.csproj"));
             }
             """, token);
         ProcessResult listing = await PackageProcessRunner.RunAsync("dotnet", ["test", "--list-tests"], s_environment, token, workingDirectory: output);
         Assert.AreEqual(0, listing.ExitCode, listing.StandardOutput + listing.StandardError);
         Assert.Contains("BackendProbe.BackendChecks.WritesRows()", listing.StandardOutput);
         Assert.Contains("BackendProbe.BackendChecks.QuotedExpectedFailure()", listing.StandardOutput);
-        Assert.IsFalse(Directory.Exists(Path.Combine(extensionRoot, "bin", "ankus-test-publish")));
+        Assert.IsFalse(Directory.Exists(Path.Join(extensionRoot, "bin", "ankus-test-publish")));
         ProcessResult result = await PackageProcessRunner.RunAsync("dotnet",
             ["test", "--report-trx", "-p:AnkusPostgresMajor=" + MajorText()], s_environment, token, workingDirectory: output);
         Assert.AreNotEqual(0, result.ExitCode, "Incorrect expected errors must fail the host test run.");
@@ -257,7 +257,7 @@ public sealed partial class ToolCommandTests
         Assert.AreEqual("14", counters.Attribute("total")!.Value);
         Assert.AreEqual("11", counters.Attribute("passed")!.Value);
         Assert.AreEqual("2", counters.Attribute("failed")!.Value);
-        Assert.IsEmpty(Directory.GetDirectories(Path.Combine(extensionRoot, "bin", "ankus-test-publish")));
+        Assert.IsEmpty(Directory.GetDirectories(Path.Join(extensionRoot, "bin", "ankus-test-publish")));
     }
 
     /// <summary>
@@ -266,7 +266,7 @@ public sealed partial class ToolCommandTests
     [TestMethod]
     public void BackendTestFixtureRejectsInvalidOptions()
     {
-        string project = Path.Combine(CreateDirectory(), "absent.csproj");
+        string project = Path.Join(CreateDirectory(), "absent.csproj");
         Assert.ThrowsExactly<ArgumentNullException>(() => PostgresExtensionTest.StartAsync(null!, context.CancellationToken));
         Assert.ThrowsExactly<ArgumentException>(() => PostgresExtensionTest.StartAsync(new PostgresExtensionTestOptions { ProjectPath = " " }, context.CancellationToken));
         Assert.ThrowsExactly<ArgumentException>(() => PostgresExtensionTest.StartAsync(new PostgresExtensionTestOptions { ProjectPath = project, Configuration = " " }, context.CancellationToken));

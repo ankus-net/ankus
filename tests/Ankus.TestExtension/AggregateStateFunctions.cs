@@ -31,7 +31,7 @@ public static class AggregateStateFunctions
         /// </summary>
         public static PgArray<int?>? Transition(PgAggregateContext context, PgArray<int?>? state, PgArray<int?>? value)
         {
-            GC.Collect();
+            GarbageCollection.Collect();
             return state ?? value;
         }
     }
@@ -51,7 +51,7 @@ public static class AggregateStateFunctions
             [PgCompositeType("dog", Schema = "tuple_values")] PgHeapTuple? state,
             [PgCompositeType("dog", Schema = "tuple_values")] PgHeapTuple? value)
         {
-            GC.Collect();
+            GarbageCollection.Collect();
             return state ?? value;
         }
     }

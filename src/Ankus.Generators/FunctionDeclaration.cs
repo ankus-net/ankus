@@ -131,7 +131,7 @@ internal sealed record FunctionDeclaration
             return Invalid(FunctionDeclarationDiagnostics.ExecutionOption, Option("NullInput"), "NullInput", "PgNullInput");
         }
 
-        if (double.IsNaN(cost) || double.IsInfinity(cost) || cost <= 0 || cost > float.MaxValue || (float)cost == 0)
+        if (!IsPositiveSingle(cost))
         {
             return Invalid(FunctionDeclarationDiagnostics.Cost, Option("Cost"));
         }
@@ -206,7 +206,7 @@ internal sealed record FunctionDeclaration
         {
             double rows = Value(attribute, "Rows", 1000d);
             int mode = Value(attribute, "SetMode", 0);
-            if (double.IsNaN(rows) || double.IsInfinity(rows) || rows <= 0 || rows > float.MaxValue || (float)rows == 0)
+            if (!IsPositiveSingle(rows))
             {
                 return Invalid(FunctionDeclarationDiagnostics.Rows, Option("Rows"));
             }
@@ -218,9 +218,8 @@ internal sealed record FunctionDeclaration
 
             options.Add("ROWS " + rows.ToString("R", CultureInfo.InvariantCulture));
         }
-        else if (attribute?.NamedArguments.Any(static argument => argument.Key is "Rows" or "SetMode") == true)
+        else if (attribute?.NamedArguments.FirstOrDefault(static argument => argument.Key is "Rows" or "SetMode").Key is string option)
         {
-            string option = attribute.NamedArguments.First(static argument => argument.Key is "Rows" or "SetMode").Key;
             return Invalid(FunctionDeclarationDiagnostics.ScalarSetOption, Option(option), option);
         }
 
@@ -347,6 +346,12 @@ internal sealed record FunctionDeclaration
             return null;
         }
     }
+
+    /// <summary>
+    /// Checks that an estimate is positive and stays positive as the float4 PostgreSQL stores it in.
+    /// </summary>
+    /// <remarks>NaN fails every comparison, so it is rejected too.</remarks>
+    private static bool IsPositiveSingle(double value) => value > 0 && value <= float.MaxValue && (float)value > 0;
 
     private static T Value<T>(AttributeData? attribute, string name, T fallback)
     {

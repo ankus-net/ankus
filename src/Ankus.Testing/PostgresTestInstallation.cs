@@ -64,7 +64,7 @@ public sealed class PostgresTestInstallation : IAsyncDisposable
 
             // pg_config may be reached through an alias outside the authoritative binary directory,
             // such as Homebrew's opt symlink. Query the executable in the directory we actually copied.
-            string stagedPgConfig = Path.Combine(StagePath(installation.BinDirectory, root),
+            string stagedPgConfig = Path.Join(StagePath(installation.BinDirectory, root),
                 OperatingSystem.IsWindows() ? "pg_config.exe" : "pg_config");
             PostgresInstallation staged = await PostgresInstallation.CreateAsync(stagedPgConfig, cancellationToken)
                 .ConfigureAwait(false);
@@ -117,7 +117,7 @@ public sealed class PostgresTestInstallation : IAsyncDisposable
         string fullPath = Path.GetFullPath(absolutePath);
         string pathRoot = Path.GetPathRoot(fullPath)
             ?? throw new InvalidOperationException($"PostgreSQL returned a path without a root: {fullPath}");
-        return Path.Combine(rootDirectory, fullPath[pathRoot.Length..]);
+        return Path.Join(rootDirectory, fullPath[pathRoot.Length..]);
     }
 
     private static void CopyDirectory(string source, string destination, CancellationToken cancellationToken)
@@ -132,14 +132,14 @@ public sealed class PostgresTestInstallation : IAsyncDisposable
         {
             cancellationToken.ThrowIfCancellationRequested();
             string relativePath = Path.GetRelativePath(source, sourceDirectory);
-            Directory.CreateDirectory(Path.Combine(destination, relativePath));
+            Directory.CreateDirectory(Path.Join(destination, relativePath));
         }
 
         foreach (string sourceFile in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
         {
             cancellationToken.ThrowIfCancellationRequested();
             string relativePath = Path.GetRelativePath(source, sourceFile);
-            string destinationFile = Path.Combine(destination, relativePath);
+            string destinationFile = Path.Join(destination, relativePath);
             Directory.CreateDirectory(Path.GetDirectoryName(destinationFile)!);
             File.Copy(sourceFile, destinationFile, overwrite: true);
             if (!OperatingSystem.IsWindows())

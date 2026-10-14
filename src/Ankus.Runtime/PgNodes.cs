@@ -33,6 +33,7 @@ public static class PgNodes
             {
                 allocation.Dispose();
             }
+            // codeql[cs/catch-of-all-exceptions] A failed cleanup is reported together with the failure that required it.
             catch (Exception cleanup)
             {
                 throw new AggregateException("Initializing a PostgreSQL node and releasing its allocation failed.", primary, cleanup);

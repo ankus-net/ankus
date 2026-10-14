@@ -13,24 +13,19 @@ internal static class WindowsToolchain
     internal static IEnumerable<string> GetIncludeDirectories(string libraryDirectories)
     {
         var includes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (string library in libraryDirectories.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        foreach (DirectoryInfo? parent in libraryDirectories.Split(';', StringSplitOptions.RemoveEmptyEntries)
+            .Select(static library => new DirectoryInfo(library.Trim()).Parent))
         {
-            var architecture = new DirectoryInfo(library.Trim());
-            DirectoryInfo? parent = architecture.Parent;
-            if (parent?.Name.Equals("lib", StringComparison.OrdinalIgnoreCase) == true && parent.Parent is not null)
+            if (parent is { Parent: DirectoryInfo root } && parent.Name.Equals("lib", StringComparison.OrdinalIgnoreCase))
             {
-                includes.Add(Path.Combine(parent.Parent.FullName, "include"));
+                includes.Add(Path.Join(root.FullName, "include"));
             }
-            else if (parent?.Parent?.Parent?.Name.Equals("lib", StringComparison.OrdinalIgnoreCase) == true)
+            else if (parent is { Parent: { Parent: { Parent: DirectoryInfo sdk } library } version } &&
+                library.Name.Equals("lib", StringComparison.OrdinalIgnoreCase))
             {
-                DirectoryInfo version = parent.Parent;
-                DirectoryInfo? sdk = version.Parent?.Parent;
-                if (sdk is not null)
+                foreach (string component in new[] { "ucrt", "shared", "um", "winrt" })
                 {
-                    foreach (string component in new[] { "ucrt", "shared", "um", "winrt" })
-                    {
-                        includes.Add(Path.Combine(sdk.FullName, "Include", version.Name, component));
-                    }
+                    includes.Add(Path.Join(sdk.FullName, "Include", version.Name, component));
                 }
             }
         }

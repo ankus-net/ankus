@@ -35,9 +35,9 @@ public sealed class SpiSqlInterpolatedStringHandlerTests
             bindingError = error;
         }
 
-        Assert.IsNotNull(bindingError);
-        Assert.AreEqual(typeof(ArgumentException), bindingError.GetType());
-        Assert.AreEqual("value", bindingError.ParamName);
+        ArgumentException rejected = Assert.IsInstanceOfType<ArgumentException>(bindingError);
+        Assert.AreEqual(typeof(ArgumentException), rejected.GetType());
+        Assert.AreEqual("value", rejected.ParamName);
         ArgumentNullException? literalError = null;
         try
         {
@@ -48,8 +48,7 @@ public sealed class SpiSqlInterpolatedStringHandlerTests
             literalError = error;
         }
 
-        Assert.IsNotNull(literalError);
-        Assert.AreEqual("value", literalError.ParamName);
+        Assert.AreEqual("value", Assert.IsInstanceOfType<ArgumentNullException>(literalError).ParamName);
         handler.AppendFormatted(42);
         SpiCommand command = Spi.Sql(handler);
         Assert.AreEqual("SELECT ($1)", command.CommandText);
@@ -65,6 +64,7 @@ public sealed class SpiSqlInterpolatedStringHandlerTests
     {
         var descriptor = new PgTupleDescriptor(9200, -1, [], baseTypeOid: 9100);
         SpiParameter parameter = SpiParameter.Create(null, descriptor);
+        // codeql[cs/call-to-object-tostring] Spi.Sql binds each interpolated value as a parameter; nothing is formatted as text.
         SpiCommand command = Spi.Sql($"SELECT {parameter}");
         Assert.AreEqual("SELECT ($1)", command.CommandText);
         Assert.HasCount(1, command.Parameters);
@@ -84,6 +84,7 @@ public sealed class SpiSqlInterpolatedStringHandlerTests
         using var fixture = new MemoryContextTestFixture();
         using MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter();
         PgDatum value = PgDatum.DangerousCreate(nuint.MaxValue, 98765, PgMemoryContext.Current, isNull);
+        // codeql[cs/call-to-object-tostring] Spi.Sql binds each interpolated value as a parameter; nothing is formatted as text.
         SpiCommand command = Spi.Sql($"SELECT {value}, {SpiParameter.Create(value)}");
         Assert.AreEqual("SELECT ($1), ($2)", command.CommandText);
         Assert.HasCount(2, command.Parameters);

@@ -780,7 +780,8 @@ public sealed unsafe class PgMappedArrayTests
     public void EnumerableMappedEnumsRejectUnderlyingArrayIdentity()
     {
         int[] source = [1, 7];
-        IEnumerable<Kind> aliased = (Kind[])(object)source;
+        object boxed = source;
+        IEnumerable<Kind> aliased = (Kind[])boxed;
         Assert.ThrowsExactly<InvalidCastException>(() => new PgArray<Kind>(aliased));
         var projected = new PgArray<Kind>(source.Select(static item => (Kind)item));
         Assert.AreSequenceEqual<Kind>([Kind.One, (Kind)7], projected.ToVector());
@@ -946,6 +947,11 @@ public sealed unsafe class PgMappedArrayTests
     {
         [ThreadStatic]
         private static Script? s_current;
+
+        /// <summary>
+        /// Makes <paramref name="current"/> the Script this thread's native callbacks use, or restores the enclosing one.
+        /// </summary>
+        private static void Install(Script? current) => s_current = current;
         private readonly Script? _previous = s_current;
         private readonly MemoryContextTestFixture.Scope _scope;
         private readonly nint _previousBackend;
@@ -957,7 +963,7 @@ public sealed unsafe class PgMappedArrayTests
         /// </summary>
         internal Script()
         {
-            s_current = this;
+            Install(this);
             Memory = new MemoryContextTestFixture();
             Memory.Handler = RespondMemory;
             _scope = MemoryContextTestFixture.Enter();
@@ -1396,7 +1402,7 @@ public sealed unsafe class PgMappedArrayTests
             NativeBackend.Exit(_previousBackend);
             _scope.Dispose();
             Memory.Dispose();
-            s_current = _previous;
+            Install(_previous);
         }
 
         /// <summary>
@@ -1454,6 +1460,7 @@ public sealed unsafe class PgMappedArrayTests
                 Current.Respond(request, result);
                 return 0;
             }
+            // codeql[cs/catch-of-all-exceptions] This stands in for native code, so every exception goes back as an error instead of unwinding through it.
             catch (Exception exception)
             {
                 NativeError.Write(exception, error);

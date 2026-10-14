@@ -45,8 +45,8 @@ public sealed class NativeBindingCompilationTests(TestContext context)
             string second = await SourceAsync(root, "second consumer");
             string[] firstArguments = Arguments(root, first, settings);
             string[] secondSettings = separatePackages
-                ? await SettingsAsync(Directory.CreateDirectory(Path.Combine(root, "other restore")).FullName,
-                    ["-property:RestorePackagesPath=" + Path.Combine(root, "other packages")])
+                ? await SettingsAsync(Directory.CreateDirectory(Path.Join(root, "other restore")).FullName,
+                    ["-property:RestorePackagesPath=" + Path.Join(root, "other packages")])
                 : settings;
             string[] secondArguments = Arguments(root, second, secondSettings);
             secondArguments[3] = "ConsumerSpecificConfiguration";
@@ -55,8 +55,8 @@ public sealed class NativeBindingCompilationTests(TestContext context)
             string[] prefix = [];
             if (!OperatingSystem.IsWindows())
             {
-                string physical = Directory.CreateDirectory(Path.Combine(root, "temporary")).FullName;
-                string alias = Path.Combine(root, "linked temporary");
+                string physical = Directory.CreateDirectory(Path.Join(root, "temporary")).FullName;
+                string alias = Path.Join(root, "linked temporary");
                 Directory.CreateSymbolicLink(alias, physical);
                 program = "/usr/bin/env";
                 prefix = ["TMPDIR=" + alias, "dotnet"];
@@ -82,9 +82,9 @@ public sealed class NativeBindingCompilationTests(TestContext context)
             Assert.DoesNotContain("Managed binding compilation: preparing compiler inputs", reused);
             Assert.AreEqual(timestamp, File.GetLastWriteTimeUtc(artifact));
             Assert.AreEqual(41, Execute(artifact));
-            string cache = Path.Combine(root, "cache");
+            string cache = Path.Join(root, "cache");
             Assert.HasCount(separatePackages ? 2 : 1, RequestEntries(cache));
-            Assert.HasCount(1, RequestEntries(Path.Combine(cache, "compilations")));
+            Assert.HasCount(1, RequestEntries(Path.Join(cache, "compilations")));
         }
         finally
         {
@@ -101,10 +101,10 @@ public sealed class NativeBindingCompilationTests(TestContext context)
         string root = Directory.CreateTempSubdirectory("ankus-compiled-options-").FullName;
         try
         {
-            string packages = Path.Combine(root, "packages");
+            string packages = Path.Join(root, "packages");
             string[] settings = await SettingsAsync(root, ["-property:RestorePackagesPath=" + packages]);
             string source = await SourceAsync(root, "consumer");
-            await File.WriteAllTextAsync(Path.Combine(source, "native-binding.g.cs"), Source.Replace(
+            await File.WriteAllTextAsync(Path.Join(source, "native-binding.g.cs"), Source.Replace(
                 "public static int Read() => 41;", """
                 public static int Read() => Add(int.MaxValue, 1);
 
@@ -117,8 +117,8 @@ public sealed class NativeBindingCompilationTests(TestContext context)
             await NativeBindingCompilationCommand.RunAsync(arguments, context.CancellationToken);
             Assert.AreEqual(int.MinValue, Execute(Artifact(source)));
 
-            string package = Assert.ContainsSingle(Directory.GetDirectories(Path.Combine(packages, "microsoft.net.illink.tasks")));
-            string target = Path.Combine(package, "build", "Microsoft.NET.ILLink.targets");
+            string package = Assert.ContainsSingle(Directory.GetDirectories(Path.Join(packages, "microsoft.net.illink.tasks")));
+            string target = Path.Join(package, "build", "Microsoft.NET.ILLink.targets");
             XDocument project = XDocument.Load(target);
             XNamespace ns = project.Root!.Name.Namespace;
             project.Root.Add(new XElement(ns + "PropertyGroup", new XElement(ns + "CheckForOverflowUnderflow", "true")));
@@ -144,18 +144,17 @@ public sealed class NativeBindingCompilationTests(TestContext context)
         try
         {
             string[] settings = await SettingsAsync(root);
-            string originalRuntime = Path.Combine(root, "Ankus.Runtime.dll");
-            string relocatedRuntime = Path.Combine(Directory.CreateDirectory(Path.Combine(root, "moved runtime")).FullName, "Ankus.Runtime.dll");
+            string originalRuntime = Path.Join(root, "Ankus.Runtime.dll");
+            string relocatedRuntime = Path.Join(Directory.CreateDirectory(Path.Join(root, "moved runtime")).FullName, "Ankus.Runtime.dll");
             File.Copy(originalRuntime, relocatedRuntime);
-            string originalHelper = Path.Combine(root, "first helper");
-            string relocatedHelper = Path.Combine(root, "second helper");
+            string originalHelper = Path.Join(root, "first helper");
+            string relocatedHelper = Path.Join(root, "second helper");
             string tools = Path.GetDirectoryName(typeof(NativeBindingCompilationCommand).Assembly.Location)!;
             foreach (string file in Directory.EnumerateFiles(tools, "*", SearchOption.AllDirectories))
             {
                 string relative = Path.GetRelativePath(tools, file);
-                foreach (string directory in new[] { originalHelper, relocatedHelper })
+                foreach (string destination in (new[] { originalHelper, relocatedHelper }).Select(directory => Path.Join(directory, relative)))
                 {
-                    string destination = Path.Combine(directory, relative);
                     Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
                     File.Copy(file, destination);
                 }
@@ -164,9 +163,9 @@ public sealed class NativeBindingCompilationTests(TestContext context)
             string first = await CompileAsync("initial consumer", originalHelper, originalRuntime, reused: false);
             Dictionary<string, string> expected = await ArtifactHashesAsync(first);
             Assert.HasCount(3, expected);
-            string cache = Path.Combine(root, "cache");
+            string cache = Path.Join(root, "cache");
             string entry = Assert.ContainsSingle(RequestEntries(cache));
-            string cachedAssembly = Path.Combine(entry, AssemblyName + ".dll");
+            string cachedAssembly = Path.Join(entry, AssemblyName + ".dll");
             File.SetLastWriteTimeUtc(cachedAssembly, DateTime.UtcNow.AddDays(-1));
             DateTime timestamp = File.GetLastWriteTimeUtc(cachedAssembly);
 
@@ -177,7 +176,7 @@ public sealed class NativeBindingCompilationTests(TestContext context)
             Directory.Delete(first, recursive: true);
             await AssertReuseAsync("producer removed", relocatedHelper);
 
-            string changedHelper = Path.Combine(relocatedHelper, "Ankus.Build.dll");
+            string changedHelper = Path.Join(relocatedHelper, "Ankus.Build.dll");
             DateTime helperTimestamp = File.GetLastWriteTimeUtc(changedHelper);
             await using (FileStream helper = new(changedHelper, FileMode.Append, FileAccess.Write))
             {
@@ -201,9 +200,9 @@ public sealed class NativeBindingCompilationTests(TestContext context)
             async Task<string> CompileAsync(string name, string helper, string runtime, bool reused)
             {
                 string source = await SourceAsync(root, name);
-                string[] arguments = [source, runtime, "net10.0", "Release", .. settings, Path.Combine(root, "cache")];
+                string[] arguments = [source, runtime, "net10.0", "Release", .. settings, Path.Join(root, "cache")];
                 string output = await NativeBindingLayoutCommand.RunProcessAsync("dotnet",
-                    [Path.Combine(helper, "Ankus.Build.dll"), "binding-compile", .. arguments], root, context.CancellationToken);
+                    [Path.Join(helper, "Ankus.Build.dll"), "binding-compile", .. arguments], root, context.CancellationToken);
                 Assert.Contains(reused ? "Managed binding compilation: reused " : "Managed binding compilation: built ", output);
                 Assert.AreEqual(41, Execute(Artifact(source)));
                 return source;
@@ -231,13 +230,13 @@ public sealed class NativeBindingCompilationTests(TestContext context)
             string artifact = Artifact(source);
             Assert.AreEqual(41, Execute(artifact));
             string original = await NativeBindingCache.HashAsync(artifact, context.CancellationToken);
-            string input = Path.Combine(source, "native-binding.g.cs");
+            string input = Path.Join(source, "native-binding.g.cs");
             await File.WriteAllTextAsync(input, "This source does not compile.", context.CancellationToken);
             await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => NativeBindingCompilationCommand.RunAsync(arguments, context.CancellationToken));
             Assert.AreEqual(original, await NativeBindingCache.HashAsync(artifact, context.CancellationToken));
             Assert.AreEqual(41, Execute(artifact));
             Assert.DoesNotContain(static path => Path.GetFileName(path).Contains(".stage-", StringComparison.Ordinal),
-                Directory.GetDirectories(Path.Combine(root, "cache"), "*", SearchOption.AllDirectories));
+                Directory.GetDirectories(Path.Join(root, "cache"), "*", SearchOption.AllDirectories));
             await File.WriteAllTextAsync(input, Source.Replace("41", "43", StringComparison.Ordinal), context.CancellationToken);
             await NativeBindingCompilationCommand.RunAsync(arguments, context.CancellationToken);
             Assert.AreEqual(43, Execute(artifact));
@@ -274,15 +273,15 @@ public sealed class NativeBindingCompilationTests(TestContext context)
         {
             string[] settings = await SettingsAsync(root);
             NativeBindingRestoreSettings initial = await NativeBindingRestoreSettings.ReadAsync(settings[2], context.CancellationToken);
-            string configurationDirectory = Directory.CreateDirectory(Path.Combine(root, "feed settings")).FullName;
-            string feed = Directory.CreateDirectory(Path.Combine(configurationDirectory, "feed")).FullName;
+            string configurationDirectory = Directory.CreateDirectory(Path.Join(root, "feed settings")).FullName;
+            string feed = Directory.CreateDirectory(Path.Join(configurationDirectory, "feed")).FullName;
             string[] packages = [.. s_offlinePackages
-                .Select(package => Path.Combine(initial.Packages, package)).Where(Directory.Exists)
+                .Select(package => Path.Join(initial.Packages, package)).Where(Directory.Exists)
                 .SelectMany(static directory => Directory.GetFiles(directory, "*.nupkg", SearchOption.AllDirectories))];
             Assert.IsNotEmpty(packages);
             foreach (string package in packages)
             {
-                File.Copy(package, Path.Combine(feed, Path.GetFileName(package)));
+                File.Copy(package, Path.Join(feed, Path.GetFileName(package)));
             }
 
             var configuration = XDocument.Parse("""
@@ -298,7 +297,7 @@ public sealed class NativeBindingCompilationTests(TestContext context)
                   </packageSourceMapping>
                 </configuration>
                 """);
-            string configurationPath = Path.Combine(configurationDirectory, "explicit.config");
+            string configurationPath = Path.Join(configurationDirectory, "explicit.config");
             string[] restoreArguments = ["-property:RestoreConfigFile=" + configurationPath];
             if (useSourceOverride)
             {
@@ -310,13 +309,13 @@ public sealed class NativeBindingCompilationTests(TestContext context)
             await File.WriteAllTextAsync(configurationPath, configuration.ToString(), context.CancellationToken);
             // An inherited NUGET_PACKAGES overrides NuGet.Config's globalPackagesFolder.
             // An explicit MSBuild property keeps this consumer's cache isolated on dedicated runners too.
-            string packagesDirectory = Path.Combine(configurationDirectory, "packages");
+            string packagesDirectory = Path.Join(configurationDirectory, "packages");
             settings = await SettingsAsync(root, [.. restoreArguments, "-property:RestorePackagesPath=" + packagesDirectory]);
             NativeBindingRestoreSettings resolved = await NativeBindingRestoreSettings.ReadAsync(settings[2], context.CancellationToken);
             Assert.AreEqual(packagesDirectory, resolved.Packages);
             Assert.Contains(feed, resolved.Sources);
             Assert.DoesNotContain(static source => !Path.IsPathFullyQualified(source), resolved.Sources);
-            Assert.DoesNotContain(Path.Combine(configurationDirectory, "missing-feed"), resolved.Sources);
+            Assert.DoesNotContain(Path.Join(configurationDirectory, "missing-feed"), resolved.Sources);
             Assert.AreSequenceEqual([configurationPath], resolved.Configurations);
             string source = await SourceAsync(root, "consumer");
             string[] arguments = Arguments(root, source, settings);
@@ -327,7 +326,7 @@ public sealed class NativeBindingCompilationTests(TestContext context)
             // A warm compiled artifact must not bypass a changed restore policy with a new package cache.
             configuration.Root!.Element("packageSourceMapping")!.Element("packageSource")!.Element("package")!.SetAttributeValue("pattern", "Unrelated.*");
             await File.WriteAllTextAsync(configurationPath, configuration.ToString(), context.CancellationToken);
-            string deniedDirectory = Path.Combine(configurationDirectory, "denied-packages");
+            string deniedDirectory = Path.Join(configurationDirectory, "denied-packages");
             settings = await SettingsAsync(root, [.. restoreArguments, "-property:RestorePackagesPath=" + deniedDirectory]);
             NativeBindingRestoreSettings denied = await NativeBindingRestoreSettings.ReadAsync(settings[2], context.CancellationToken);
             Assert.AreEqual(deniedDirectory, denied.Packages);
@@ -352,30 +351,30 @@ public sealed class NativeBindingCompilationTests(TestContext context)
     private async Task<string[]> SettingsAsync(string root, string[]? restoreArguments = null)
     {
         await TestDotnetSdk.ConfigureAsync(root, context.CancellationToken);
-        string project = Path.Combine(root, "Settings.csproj");
+        string project = Path.Join(root, "Settings.csproj");
         await File.WriteAllTextAsync(project, "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>", context.CancellationToken);
         string properties = await NativeBindingLayoutCommand.RunProcessAsync("dotnet", ["msbuild", project, "-nologo",
             "-restore", "-target:ResolveReferences", "-verbosity:quiet", "-getProperty:NETCoreSdkVersion,MSBuildToolsPath,ProjectAssetsFile", .. restoreArguments ?? []], root, context.CancellationToken);
         using JsonDocument document = JsonDocument.Parse(properties);
         JsonElement values = document.RootElement.GetProperty("Properties");
         Assert.AreEqual(TestDotnetSdk.Version, values.GetProperty("NETCoreSdkVersion").GetString());
-        File.Copy(typeof(PgDatum).Assembly.Location, Path.Combine(root, "Ankus.Runtime.dll"), overwrite: true);
+        File.Copy(typeof(PgDatum).Assembly.Location, Path.Join(root, "Ankus.Runtime.dll"), overwrite: true);
         return [values.GetProperty("NETCoreSdkVersion").GetString()!, values.GetProperty("MSBuildToolsPath").GetString()!, values.GetProperty("ProjectAssetsFile").GetString()!];
     }
 
     private async Task<string> SourceAsync(string root, string name)
     {
-        string directory = Path.Combine(root, name);
+        string directory = Path.Join(root, name);
         Directory.CreateDirectory(directory);
-        await File.WriteAllTextAsync(Path.Combine(directory, "native-binding.assembly-name"), AssemblyName, context.CancellationToken);
-        await File.WriteAllTextAsync(Path.Combine(directory, "native-binding.g.cs"), Source, context.CancellationToken);
+        await File.WriteAllTextAsync(Path.Join(directory, "native-binding.assembly-name"), AssemblyName, context.CancellationToken);
+        await File.WriteAllTextAsync(Path.Join(directory, "native-binding.g.cs"), Source, context.CancellationToken);
         return directory;
     }
 
     private static string[] Arguments(string root, string source, string[] settings)
-        => [source, Path.Combine(root, "Ankus.Runtime.dll"), "net10.0", "Release", .. settings, Path.Combine(root, "cache")];
+        => [source, Path.Join(root, "Ankus.Runtime.dll"), "net10.0", "Release", .. settings, Path.Join(root, "cache")];
 
-    private static string Artifact(string source) => Path.Combine(source, "compiled", AssemblyName + ".dll");
+    private static string Artifact(string source) => Path.Join(source, "compiled", AssemblyName + ".dll");
 
     /// <summary>
     /// Selects immutable entries without treating the shared compilation store as a request.
@@ -391,7 +390,7 @@ public sealed class NativeBindingCompilationTests(TestContext context)
     private async Task<Dictionary<string, string>> ArtifactHashesAsync(string source)
     {
         var hashes = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (string file in Directory.EnumerateFiles(Path.Combine(source, "compiled")))
+        foreach (string file in Directory.EnumerateFiles(Path.Join(source, "compiled")))
         {
             hashes.Add(Path.GetFileName(file), await NativeBindingCache.HashAsync(file, context.CancellationToken));
         }

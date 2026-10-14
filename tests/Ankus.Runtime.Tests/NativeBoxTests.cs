@@ -138,7 +138,7 @@ public sealed unsafe class NativeBoxTests
         using MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter();
         byte[] storage = new byte[sizeof(int)];
         fixture.Handler = request => fixture.RespondWithStorage(request, storage);
-        PgNativeBox<int> box = PgMemoryContext.Current.CreateBox(5);
+        using PgNativeBox<int> box = PgMemoryContext.Current.CreateBox(5);
         PgNativeReference<int> borrow = box.Borrow();
         fixture.Handler = request => request._operation == NativeMemoryOperation.Free
             ? throw new PgException("55006", "free failed")
@@ -167,7 +167,7 @@ public sealed unsafe class NativeBoxTests
         using MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter();
         byte[] storage = new byte[sizeof(int)];
         fixture.Handler = request => fixture.RespondWithStorage(request, storage);
-        PgNativeBox<int> box = PgMemoryContext.Current.CreateBox(5, PgAllocationOptions.Huge, 32);
+        using PgNativeBox<int> box = PgMemoryContext.Current.CreateBox(5, PgAllocationOptions.Huge, 32);
         PgNativeReference<int> before = box.Borrow();
         fixture.Requests.Clear();
         PgContextValue<int> value = box.ReleaseToContext();
@@ -247,7 +247,7 @@ public sealed unsafe class NativeBoxTests
         using MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter();
         byte[] storage = new byte[sizeof(int)];
         fixture.Handler = request => fixture.RespondWithStorage(request, storage);
-        PgNativeBox<int> box = PgMemoryContext.Current.CreateBox(5);
+        using PgNativeBox<int> box = PgMemoryContext.Current.CreateBox(5);
         PgNativeReference<int> reference = box.Borrow();
         fixture.Handler = request => request._operation == NativeMemoryOperation.Detach
             ? throw new PgException("55006", "transfer failed")

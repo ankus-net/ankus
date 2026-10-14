@@ -99,7 +99,7 @@ public sealed partial class NativeBindingNativeTests
     [TestMethod]
     public async Task NativeCallBodySelectionsRetainCompleteValidation()
     {
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-call-selection-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-call-selection-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {

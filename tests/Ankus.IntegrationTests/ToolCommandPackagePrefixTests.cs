@@ -24,43 +24,43 @@ public sealed partial class ToolCommandTests
         string output = CreateDirectory();
         string prefix = kind switch
         {
-            "absolute" => Path.Combine(Path.GetPathRoot(s_installation.SharedDirectory)!, "custom prefix", "extension"),
+            "absolute" => Path.Join(Path.GetPathRoot(s_installation.SharedDirectory)!, "custom prefix", "extension"),
             "root" => Path.GetPathRoot(s_installation.SharedDirectory)!,
-            "normalized" => Path.Combine("custom prefix", "temporary", "..", "extension"),
-            _ => Path.Combine("custom prefix", "extension"),
+            "normalized" => Path.Join("custom prefix", "temporary", "..", "extension"),
+            _ => Path.Join("custom prefix", "extension"),
         };
-        string assets = kind == "root" ? output : Path.Combine(output, "custom prefix", "extension");
+        string assets = kind == "root" ? output : Path.Join(output, "custom prefix", "extension");
         string libraries = OperatingSystem.IsWindows() ? PackageLibraryDirectory(output) : assets;
-        string controls = OperatingSystem.IsWindows() ? Path.Combine(PackageSharedDirectory(output), "extension") : assets;
-        string marker = Path.Combine(output, "keep.txt");
+        string controls = OperatingSystem.IsWindows() ? Path.Join(PackageSharedDirectory(output), "extension") : assets;
+        string marker = Path.Join(output, "keep.txt");
         await File.WriteAllTextAsync(marker, "unrelated package content", token);
         string[] installedPaths =
         [
-            Path.Combine(s_installation.LibraryDirectory, manifest.Library),
-            Path.Combine(s_installation.SharedDirectory, "extension", manifest.Control),
-            Path.Combine(s_installation.SharedDirectory, "extension", manifest.Sql),
+            Path.Join(s_installation.LibraryDirectory, manifest.Library),
+            Path.Join(s_installation.SharedDirectory, "extension", manifest.Control),
+            Path.Join(s_installation.SharedDirectory, "extension", manifest.Sql),
         ];
         Dictionary<string, byte[]?> installed = installedPaths.ToDictionary(static path => path,
             static path => File.Exists(path) ? File.ReadAllBytes(path) : null);
         ProcessResult result = await InvokeAsync(["package", "--home", s_home, "--pg", MajorText(), "--from", source,
             "--output", output, "--prefix-dir", prefix], token);
         Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
-        string[] published = [manifest.Library, Path.Combine("extension", manifest.Control), Path.Combine("extension", manifest.Sql)];
-        string[] packaged = [Path.Combine(libraries, manifest.Library), Path.Combine(controls, manifest.Control), Path.Combine(controls, manifest.Sql)];
+        string[] published = [manifest.Library, Path.Join("extension", manifest.Control), Path.Join("extension", manifest.Sql)];
+        string[] packaged = [Path.Join(libraries, manifest.Library), Path.Join(controls, manifest.Control), Path.Join(controls, manifest.Sql)];
         await File.WriteAllTextAsync(packaged[2], "stale prefixed SQL", token);
         ProcessResult repeated = await InvokeAsync(["package", "--home", s_home, "--pg", MajorText(), "--from", source,
             "--output", output, "--prefix-dir", prefix], token);
         Assert.AreEqual(0, repeated.ExitCode, repeated.StandardOutput + repeated.StandardError);
         for (int index = 0; index < published.Length; index++)
         {
-            byte[] original = await File.ReadAllBytesAsync(Path.Combine(s_published, published[index]), token);
+            byte[] original = await File.ReadAllBytesAsync(Path.Join(s_published, published[index]), token);
             Assert.AreSequenceEqual(original, await File.ReadAllBytesAsync(packaged[index], token));
-            Assert.AreSequenceEqual(original, await File.ReadAllBytesAsync(Path.Combine(source, published[index]), token));
+            Assert.AreSequenceEqual(original, await File.ReadAllBytesAsync(Path.Join(source, published[index]), token));
         }
 
         Assert.HasCount(4, Directory.GetFiles(output, "*", SearchOption.AllDirectories));
         Assert.AreEqual("unrelated package content", await File.ReadAllTextAsync(marker, token));
-        Assert.IsFalse(Directory.Exists(Path.Combine(output, "custom prefix", "temporary")));
+        Assert.IsFalse(Directory.Exists(Path.Join(output, "custom prefix", "temporary")));
         foreach ((string path, byte[]? original) in installed)
         {
             if (original is null)
@@ -82,18 +82,18 @@ public sealed partial class ToolCommandTests
     {
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
-        string project = Path.Combine(directory, "PrefixProbe.csproj");
+        string project = Path.Join(directory, "PrefixProbe.csproj");
         XDocument.Load(s_project).Save(project);
-        File.Copy(Path.Combine(Path.GetDirectoryName(s_project)!, "Hello.cs"), Path.Combine(directory, "Hello.cs"));
+        File.Copy(Path.Join(Path.GetDirectoryName(s_project)!, "Hello.cs"), Path.Join(directory, "Hello.cs"));
         ProcessResult result = await InvokeAsync(["package", "--home", s_home, "--pg", MajorText(), "--project", project,
-            "--prefix-dir", Path.Combine("custom prefix", "extension")], token);
+            "--prefix-dir", Path.Join("custom prefix", "extension")], token);
         Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
-        string publication = Path.Combine(directory, "bin", "ankus", s_installation.Label, RuntimeInformation.RuntimeIdentifier, "Release");
+        string publication = Path.Join(directory, "bin", "ankus", s_installation.Label, RuntimeInformation.RuntimeIdentifier, "Release");
         PublishedExtension manifest = PublishedExtension.Read(publication);
         string name = Path.GetFileNameWithoutExtension(manifest.Control);
-        string output = Path.Combine(publication, name + "-" + s_installation.Label);
-        string libraries = OperatingSystem.IsWindows() ? PackageLibraryDirectory(output) : Path.Combine(output, "custom prefix", "extension");
-        string shared = OperatingSystem.IsWindows() ? PackageSharedDirectory(output) : Path.Combine(output, "custom prefix");
+        string output = Path.Join(publication, name + "-" + s_installation.Label);
+        string libraries = OperatingSystem.IsWindows() ? PackageLibraryDirectory(output) : Path.Join(output, "custom prefix", "extension");
+        string shared = OperatingSystem.IsWindows() ? PackageSharedDirectory(output) : Path.Join(output, "custom prefix");
         Assert.HasCount(3, Directory.GetFiles(output, "*", SearchOption.AllDirectories));
         await AssertPackagedExtensionAsync(output, manifest, name, "0.1.0", token, libraryDirectory: libraries, sharedDirectory: shared);
     }
@@ -108,32 +108,32 @@ public sealed partial class ToolCommandTests
     public async Task PackagePrefixPreservesCustomSqlDirectories(bool absolute)
     {
         CancellationToken token = context.CancellationToken;
-        string absoluteDirectory = Path.Combine(CreateDirectory(), "SQL 'files");
+        string absoluteDirectory = Path.Join(CreateDirectory(), "SQL 'files");
         string directory = absolute ? absoluteDirectory : "nested/SQL files";
         string source = CreateDirectory();
         PublishedExtension manifest = await CopyScriptDirectoryPublicationAsync(source, directory, token);
         string output = CreateDirectory();
         ProcessResult result = await InvokeAsync(["package", "--home", s_home, "--pg", MajorText(), "--from", source,
-            "--output", output, "--prefix-dir", Path.Combine("custom prefix", "extension")], token);
+            "--output", output, "--prefix-dir", Path.Join("custom prefix", "extension")], token);
         Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
-        string assets = Path.Combine(output, "custom prefix", "extension");
-        string controls = OperatingSystem.IsWindows() ? Path.Combine(PackageSharedDirectory(output), "extension") : assets;
+        string assets = Path.Join(output, "custom prefix", "extension");
+        string controls = OperatingSystem.IsWindows() ? Path.Join(PackageSharedDirectory(output), "extension") : assets;
         string libraries = OperatingSystem.IsWindows() ? PackageLibraryDirectory(output) : assets;
         string shared = OperatingSystem.IsWindows() || s_installation.Version.Major < 18
-            ? PackageSharedDirectory(output) : Path.Combine(output, "custom prefix");
-        string scripts = absolute ? StagedPath(output, absoluteDirectory) : Path.Combine(shared, "nested", "SQL files");
+            ? PackageSharedDirectory(output) : Path.Join(output, "custom prefix");
+        string scripts = absolute ? StagedPath(output, absoluteDirectory) : Path.Join(shared, "nested", "SQL files");
         string[] scriptNames = [manifest.Sql, .. manifest.UpgradeScripts, .. manifest.VersionControlFiles];
         foreach (string name in scriptNames)
         {
-            Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Combine(source, "extension", name), token),
-                await File.ReadAllBytesAsync(Path.Combine(scripts, name), token));
+            Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Join(source, "extension", name), token),
+                await File.ReadAllBytesAsync(Path.Join(scripts, name), token));
         }
 
-        Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Combine(source, manifest.Library), token),
-            await File.ReadAllBytesAsync(Path.Combine(libraries, manifest.Library), token));
-        Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Combine(source, "extension", manifest.Control), token),
-            await File.ReadAllBytesAsync(Path.Combine(controls, manifest.Control), token));
-        Assert.AreEqual(directory, ExtensionControlFile.Read(Path.Combine(controls, manifest.Control))["directory"]);
+        Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Join(source, manifest.Library), token),
+            await File.ReadAllBytesAsync(Path.Join(libraries, manifest.Library), token));
+        Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Join(source, "extension", manifest.Control), token),
+            await File.ReadAllBytesAsync(Path.Join(controls, manifest.Control), token));
+        Assert.AreEqual(directory, ExtensionControlFile.Read(Path.Join(controls, manifest.Control))["directory"]);
         Assert.HasCount(5, Directory.GetFiles(output, "*", SearchOption.AllDirectories));
         Assert.IsFalse(Directory.Exists(absoluteDirectory));
     }
@@ -147,12 +147,12 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         string output = CreateDirectory();
         ProcessResult result = await InvokeAsync(["package", "--home", s_home, "--pg", MajorText(), "--from", s_published,
-            "--output", output, "--prefix-dir", Path.Combine("custom prefix", "extension")], token);
+            "--output", output, "--prefix-dir", Path.Join("custom prefix", "extension")], token);
         Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
         string relocated = output + " moved";
         Directory.Move(output, relocated);
-        string libraries = OperatingSystem.IsWindows() ? PackageLibraryDirectory(relocated) : Path.Combine(relocated, "custom prefix", "extension");
-        string shared = OperatingSystem.IsWindows() ? PackageSharedDirectory(relocated) : Path.Combine(relocated, "custom prefix");
+        string libraries = OperatingSystem.IsWindows() ? PackageLibraryDirectory(relocated) : Path.Join(relocated, "custom prefix", "extension");
+        string shared = OperatingSystem.IsWindows() ? PackageSharedDirectory(relocated) : Path.Join(relocated, "custom prefix");
         await AssertPackagedExtensionAsync(relocated, PublishedExtension.Read(s_published), "ankus_tool_probe", "0.1.0", token,
             libraryDirectory: libraries, sharedDirectory: shared);
     }
@@ -190,11 +190,11 @@ public sealed partial class ToolCommandTests
     private async Task AssertInvalidPackagePrefixAsync(string prefix, string message)
     {
         string parent = CreateDirectory();
-        string output = Path.Combine(parent, "package");
+        string output = Path.Join(parent, "package");
         Directory.CreateDirectory(output);
-        string marker = Path.Combine(output, "keep.txt");
+        string marker = Path.Join(output, "keep.txt");
         await File.WriteAllTextAsync(marker, "preserved prefix rejection", context.CancellationToken);
-        byte[] original = await File.ReadAllBytesAsync(Path.Combine(s_published, "extension", "ankus_tool_probe.control"), context.CancellationToken);
+        byte[] original = await File.ReadAllBytesAsync(Path.Join(s_published, "extension", "ankus_tool_probe.control"), context.CancellationToken);
         ProcessResult result = await InvokeAsync(["package", "--home", CreateDirectory(), "--from", s_published,
             "--output", output, "--prefix-dir", prefix], context.CancellationToken);
         Assert.AreNotEqual(0, result.ExitCode);
@@ -202,8 +202,8 @@ public sealed partial class ToolCommandTests
         Assert.IsEmpty(result.StandardOutput);
         Assert.AreEqual("preserved prefix rejection", await File.ReadAllTextAsync(marker, context.CancellationToken));
         Assert.HasCount(1, Directory.GetFiles(parent, "*", SearchOption.AllDirectories));
-        Assert.IsFalse(Directory.Exists(Path.Combine(parent, "escaped prefix")));
-        Assert.AreSequenceEqual(original, await File.ReadAllBytesAsync(Path.Combine(s_published, "extension", "ankus_tool_probe.control"),
+        Assert.IsFalse(Directory.Exists(Path.Join(parent, "escaped prefix")));
+        Assert.AreSequenceEqual(original, await File.ReadAllBytesAsync(Path.Join(s_published, "extension", "ankus_tool_probe.control"),
             context.CancellationToken));
     }
 
@@ -217,7 +217,7 @@ public sealed partial class ToolCommandTests
     [DataRow("install")]
     public async Task PackagePrefixRejectsInvalidCommandArguments(string kind)
     {
-        string output = Path.Combine(CreateDirectory(), "uncreated output");
+        string output = Path.Join(CreateDirectory(), "uncreated output");
         string home = CreateDirectory();
         string[] arguments = kind switch
         {
@@ -242,11 +242,11 @@ public sealed partial class ToolCommandTests
     {
         PublishedExtension manifest = PublishedExtension.Read(s_published);
         manifest.Write(source);
-        Directory.CreateDirectory(Path.Combine(source, "extension"));
-        string[] names = [manifest.Library, Path.Combine("extension", manifest.Control), Path.Combine("extension", manifest.Sql)];
+        Directory.CreateDirectory(Path.Join(source, "extension"));
+        string[] names = [manifest.Library, Path.Join("extension", manifest.Control), Path.Join("extension", manifest.Sql)];
         foreach (string name in names)
         {
-            await File.WriteAllBytesAsync(Path.Combine(source, name), await File.ReadAllBytesAsync(Path.Combine(s_published, name), token), token);
+            await File.WriteAllBytesAsync(Path.Join(source, name), await File.ReadAllBytesAsync(Path.Join(s_published, name), token), token);
         }
 
         return manifest;

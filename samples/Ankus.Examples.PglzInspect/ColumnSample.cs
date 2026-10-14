@@ -55,9 +55,8 @@ internal sealed record ColumnSample(string DisplayName, string QuotedColumn, dou
 
         var probes = new List<Probe>(rows.Count);
         byte[] scratch = [];
-        foreach (SpiRow row in rows)
+        foreach (byte[]? value in rows.Select(static row => row.Get<byte[]?>(0)))
         {
-            byte[]? value = row.Get<byte[]?>(0);
             if (value is null)
             {
                 continue;

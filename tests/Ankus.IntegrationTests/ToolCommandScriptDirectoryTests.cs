@@ -26,7 +26,7 @@ public sealed partial class ToolCommandTests
     public async Task ScriptDirectoryStagingPreservesDeclaredLayout(string operation, string kind)
     {
         CancellationToken token = context.CancellationToken;
-        string absolute = Path.Combine(CreateDirectory(), "SQL 'files");
+        string absolute = Path.Join(CreateDirectory(), "SQL 'files");
         string directory = kind switch
         {
             "nested" => "nested/SQL files",
@@ -44,27 +44,27 @@ public sealed partial class ToolCommandTests
         string shared = operation == "package" ? PackageSharedDirectory(stage) : StagedPath(stage, s_installation.SharedDirectory);
         string scripts = kind switch
         {
-            "nested" => Path.Combine(shared, "nested", "SQL files"),
+            "nested" => Path.Join(shared, "nested", "SQL files"),
             "empty" => shared,
-            "parent" => Path.Combine(Directory.GetParent(shared)!.FullName, "sibling SQL"),
-            "nested-parent" => Path.Combine(shared, "after traversal"),
+            "parent" => Path.Join(Directory.GetParent(shared)!.FullName, "sibling SQL"),
+            "nested-parent" => Path.Join(shared, "after traversal"),
             _ => StagedPath(stage, absolute),
         };
         string[] files = [manifest.Sql, .. manifest.UpgradeScripts, .. manifest.VersionControlFiles];
         foreach (string file in files)
         {
-            Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Combine(source, "extension", file), token),
-                await File.ReadAllBytesAsync(Path.Combine(scripts, file), token));
+            Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Join(source, "extension", file), token),
+                await File.ReadAllBytesAsync(Path.Join(scripts, file), token));
         }
 
-        Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Combine(source, "extension", manifest.Control), token),
-            await File.ReadAllBytesAsync(Path.Combine(shared, "extension", manifest.Control), token));
-        Assert.AreEqual(directory, ExtensionControlFile.Read(Path.Combine(shared, "extension", manifest.Control))["directory"]);
+        Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Join(source, "extension", manifest.Control), token),
+            await File.ReadAllBytesAsync(Path.Join(shared, "extension", manifest.Control), token));
+        Assert.AreEqual(directory, ExtensionControlFile.Read(Path.Join(shared, "extension", manifest.Control))["directory"]);
         Assert.HasCount(5, Directory.GetFiles(stage, "*", SearchOption.AllDirectories));
         Assert.IsFalse(Directory.Exists(absolute));
         if (kind == "nested-parent" && !OperatingSystem.IsWindows())
         {
-            Assert.IsTrue(Directory.Exists(Path.Combine(shared, "traversal parent")));
+            Assert.IsTrue(Directory.Exists(Path.Join(shared, "traversal parent")));
         }
     }
 
@@ -114,23 +114,23 @@ public sealed partial class ToolCommandTests
             "empty" => "",
             "nested-parent" => "traversal parent/../after traversal",
             "linked-parent" => "traversal link/../after link",
-            _ => Path.Combine(CreateDirectory(), "SQL 'files"),
+            _ => Path.Join(CreateDirectory(), "SQL 'files"),
         };
         string projectRoot = CreateDirectory();
         string project = await CreateControlProjectAsync(projectRoot, token, "ankus_directory_probe");
-        await File.WriteAllTextAsync(Path.Combine(projectRoot, "author settings.control"), ExtensionControlFile.Format(
+        await File.WriteAllTextAsync(Path.Join(projectRoot, "author settings.control"), ExtensionControlFile.Format(
             new Dictionary<string, string> { ["directory"] = directory, ["comment"] = "primary" }), token);
-        string sql = Path.Combine(projectRoot, "sql");
+        string sql = Path.Join(projectRoot, "sql");
         Directory.CreateDirectory(sql);
         const string Upgrade = "ankus_directory_probe--0.1.0--next.sql";
-        await File.WriteAllTextAsync(Path.Combine(sql, "ankus_directory_probe--0.1.0.control"), "comment='directory current'", token);
-        await File.WriteAllTextAsync(Path.Combine(sql, "ankus_directory_probe--next.control"), "relocatable=false", token);
-        await File.WriteAllTextAsync(Path.Combine(sql, Upgrade),
+        await File.WriteAllTextAsync(Path.Join(sql, "ankus_directory_probe--0.1.0.control"), "comment='directory current'", token);
+        await File.WriteAllTextAsync(Path.Join(sql, "ankus_directory_probe--next.control"), "relocatable=false", token);
+        await File.WriteAllTextAsync(Path.Join(sql, Upgrade),
             "CREATE TABLE directory_state (value text); INSERT INTO directory_state VALUES ('café 🐘'); SELECT 1/0;", token);
         string output = CreateDirectory();
         PublishedExtension manifest = await PublishControlProbeAsync(project, output, token);
         Assert.AreEqual(directory, manifest.ScriptDirectory);
-        Assert.IsTrue(File.Exists(Path.Combine(output, "extension", manifest.Sql)));
+        Assert.IsTrue(File.Exists(Path.Join(output, "extension", manifest.Sql)));
         await using PostgresTestInstallation? owned = _caseInstallation is null
             ? await PostgresTestInstallation.StageAsync(s_installation, CreateDirectory(), token) : null;
         PostgresTestInstallation installationOwner = _caseInstallation ?? owned!;
@@ -138,12 +138,12 @@ public sealed partial class ToolCommandTests
         string ownedRoot = IntegrationEnvironment.PhysicalDirectory(new DirectoryInfo(installationOwner.RootDirectory)) + Path.DirectorySeparatorChar;
         Assert.StartsWith(ownedRoot, IntegrationEnvironment.PhysicalDirectory(new DirectoryInfo(installation.LibraryDirectory)));
         Assert.StartsWith(ownedRoot, IntegrationEnvironment.PhysicalDirectory(new DirectoryInfo(installation.SharedDirectory)));
-        string linkedDestination = Path.Combine(installationOwner.RootDirectory, "directory link target", "after link");
+        string linkedDestination = Path.Join(installationOwner.RootDirectory, "directory link target", "after link");
         if (kind == "linked-parent")
         {
-            string target = Path.Combine(installationOwner.RootDirectory, "directory link target", "leaf");
+            string target = Path.Join(installationOwner.RootDirectory, "directory link target", "leaf");
             Directory.CreateDirectory(target);
-            Directory.CreateSymbolicLink(Path.Combine(installation.SharedDirectory, "traversal link"), target);
+            Directory.CreateSymbolicLink(Path.Join(installation.SharedDirectory, "traversal link"), target);
         }
 
         string home = CreateDirectory();
@@ -156,16 +156,16 @@ public sealed partial class ToolCommandTests
         string[] files = [manifest.Sql, .. manifest.UpgradeScripts, .. manifest.VersionControlFiles];
         foreach (string file in files)
         {
-            Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Combine(output, "extension", file), token),
-                await File.ReadAllBytesAsync(Path.Combine(installedScripts, file), token));
+            Assert.AreSequenceEqual(await File.ReadAllBytesAsync(Path.Join(output, "extension", file), token),
+                await File.ReadAllBytesAsync(Path.Join(installedScripts, file), token));
         }
 
-        Assert.AreEqual(directory, ExtensionControlFile.Read(Path.Combine(installation.SharedDirectory, "extension", manifest.Control))["directory"]);
+        Assert.AreEqual(directory, ExtensionControlFile.Read(Path.Join(installation.SharedDirectory, "extension", manifest.Control))["directory"]);
         await using PostgresTestCluster cluster = await PostgresTestCluster.StartAsync(new PostgresTestClusterOptions
         {
             Installation = installation,
-            DataDirectoryBase = Path.Combine(s_root, "script-directory-pgdata"),
-            LogDirectory = Path.Combine(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
+            DataDirectoryBase = Path.Join(s_root, "script-directory-pgdata"),
+            LogDirectory = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "test-logs"),
             PostgreSqlConfiguration = ["dynamic_library_path = '" + EscapeSetting(installation.LibraryDirectory) + "'"],
         }, token);
         await using NpgsqlConnection connection = await cluster.OpenConnectionAsync(token);
@@ -180,7 +180,7 @@ public sealed partial class ToolCommandTests
         Assert.AreEqual("0.1.0", await SqlPackageScalarAsync<string>(connection,
             "SELECT extversion FROM pg_extension WHERE extname='ankus_directory_probe'"));
         Assert.IsTrue(await SqlPackageScalarAsync<bool>(connection, "SELECT to_regclass('directory_state') IS NULL"));
-        string upgrade = Path.Combine(installedScripts, Upgrade);
+        string upgrade = Path.Join(installedScripts, Upgrade);
         string corrected = (await File.ReadAllTextAsync(upgrade, token)).Replace("SELECT 1/0;", "", StringComparison.Ordinal);
         await File.WriteAllTextAsync(upgrade, corrected, token);
         await ExecuteSqlPackageAsync(connection, "ALTER EXTENSION ankus_directory_probe UPDATE TO 'next'");
@@ -198,20 +198,20 @@ public sealed partial class ToolCommandTests
     public async Task GeneratedTestsIsolateAuthoredScriptDirectory()
     {
         CancellationToken token = context.CancellationToken;
-        string output = Path.Combine(CreateDirectory(), "directory fixture");
+        string output = Path.Join(CreateDirectory(), "directory fixture");
         ProcessResult created = await InvokeAsync(["new", "DirectoryFixture", "-o", output], token);
         Assert.AreEqual(0, created.ExitCode, created.StandardOutput + created.StandardError);
-        string project = Path.Combine(output, "src", "DirectoryFixture", "DirectoryFixture.csproj");
+        string project = Path.Join(output, "src", "DirectoryFixture", "DirectoryFixture.csproj");
         XDocument definition = XDocument.Load(project);
         definition.Root!.Add(new XElement("PropertyGroup",
             new XElement("AnkusExtensionControlFile", "author.control")));
         definition.Save(project);
         string authorDirectory = CreateDirectory();
-        string marker = Path.Combine(authorDirectory, "retain.txt");
+        string marker = Path.Join(authorDirectory, "retain.txt");
         await File.WriteAllTextAsync(marker, "untouched", token);
         string control = ExtensionControlFile.Format(new Dictionary<string, string> { ["directory"] = authorDirectory });
         string projectDirectory = Path.GetDirectoryName(project)!;
-        string controlFile = Path.Combine(projectDirectory, "author.control");
+        string controlFile = Path.Join(projectDirectory, "author.control");
         await File.WriteAllTextAsync(controlFile, control, token);
         ProcessResult tests = await PackageProcessRunner.RunAsync("dotnet", ["test", "--report-trx", "-p:AnkusPostgresMajor=" + MajorText()],
             s_environment, token, workingDirectory: output);
@@ -229,7 +229,7 @@ public sealed partial class ToolCommandTests
         Assert.AreEqual(control, await File.ReadAllTextAsync(controlFile, token));
         Assert.AreEqual(marker, Assert.ContainsSingle(Directory.GetFiles(authorDirectory, "*", SearchOption.AllDirectories)));
         Assert.AreEqual("untouched", await File.ReadAllTextAsync(marker, token));
-        Assert.IsEmpty(Directory.GetDirectories(Path.Combine(projectDirectory, "bin", "ankus-test-publish")));
+        Assert.IsEmpty(Directory.GetDirectories(Path.Join(projectDirectory, "bin", "ankus-test-publish")));
     }
 
     private static async Task<PublishedExtension> CopyScriptDirectoryPublicationAsync(string source, string directory, CancellationToken token)
@@ -237,18 +237,18 @@ public sealed partial class ToolCommandTests
         PublishedExtension original = PublishedExtension.Read(s_published);
         var manifest = new PublishedExtension(original.PostgresMajor, original.RuntimeIdentifier, original.Library, original.Control,
             original.Sql, ["ankus_tool_probe--0.1.0--next.sql"], ["ankus_tool_probe--next.control"], directory);
-        string extension = Path.Combine(source, "extension");
+        string extension = Path.Join(source, "extension");
         Directory.CreateDirectory(extension);
-        File.Copy(Path.Combine(s_published, original.Library), Path.Combine(source, original.Library));
-        File.Copy(Path.Combine(s_published, "extension", original.Sql), Path.Combine(extension, original.Sql));
-        var settings = new Dictionary<string, string>(ExtensionControlFile.Read(Path.Combine(s_published, "extension", original.Control)), StringComparer.Ordinal)
+        File.Copy(Path.Join(s_published, original.Library), Path.Join(source, original.Library));
+        File.Copy(Path.Join(s_published, "extension", original.Sql), Path.Join(extension, original.Sql));
+        var settings = new Dictionary<string, string>(ExtensionControlFile.Read(Path.Join(s_published, "extension", original.Control)), StringComparer.Ordinal)
         {
             ["directory"] = directory,
         };
-        await File.WriteAllTextAsync(Path.Combine(extension, original.Control), ExtensionControlFile.Format(settings), token);
-        await File.WriteAllTextAsync(Path.Combine(extension, manifest.UpgradeScripts[0]), "SELECT 'café 🐘';\r\n", token);
-        await File.WriteAllTextAsync(Path.Combine(extension, manifest.VersionControlFiles[0]), "relocatable=false\r\n", token);
-        await File.WriteAllTextAsync(Path.Combine(extension, "unlisted.sql"), "unlisted", token);
+        await File.WriteAllTextAsync(Path.Join(extension, original.Control), ExtensionControlFile.Format(settings), token);
+        await File.WriteAllTextAsync(Path.Join(extension, manifest.UpgradeScripts[0]), "SELECT 'café 🐘';\r\n", token);
+        await File.WriteAllTextAsync(Path.Join(extension, manifest.VersionControlFiles[0]), "relocatable=false\r\n", token);
+        await File.WriteAllTextAsync(Path.Join(extension, "unlisted.sql"), "unlisted", token);
         manifest.Write(source);
         return manifest;
     }

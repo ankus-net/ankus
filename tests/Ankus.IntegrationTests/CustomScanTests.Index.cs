@@ -52,9 +52,8 @@ public sealed partial class CustomScanTests
             Assert.IsGreaterThan(0L, scan.GetProperty("Trace Restores").GetInt64());
             JsonElement[] scans = [.. TraceNodes(join)];
             Assert.HasCount(2, scans);
-            foreach (JsonElement traced in scans)
+            foreach (JsonElement child in scans.Select(static traced => traced.GetProperty("Plans")[0]))
             {
-                JsonElement child = traced.GetProperty("Plans")[0];
                 Assert.AreEqual(indexOnly ? "Index Only Scan" : "Index Scan", child.GetProperty("Node Type").GetString());
                 if (indexOnly)
                 {

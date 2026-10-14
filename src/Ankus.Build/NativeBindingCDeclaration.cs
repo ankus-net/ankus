@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Ankus.Build;
@@ -361,14 +362,14 @@ internal static partial class NativeBindingCDeclaration
 
         private string ReadPath()
         {
-            string path = Take("::") ? "::" : "";
-            path += ReadIdentifier();
+            var path = new StringBuilder(Take("::") ? "::" : "");
+            path.Append(ReadIdentifier());
             while (Take("::"))
             {
-                path += "::" + ReadIdentifier();
+                path.Append("::").Append(ReadIdentifier());
             }
 
-            return path;
+            return path.ToString();
         }
 
         private string ReadIdentifier()

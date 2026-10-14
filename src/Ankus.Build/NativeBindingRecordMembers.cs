@@ -82,11 +82,13 @@ internal sealed class NativeBindingRecordMembers(NativeRecordGraph graph)
         var containers = new HashSet<int>();
         foreach (NativeRecordField field in graph.Declarations.SelectMany(static declaration => declaration.Fields))
         {
-            if (field.IsAnonymous && graph.Types[graph.Types[field.Type].Canonical].Declaration is int declaration &&
-                graph.Declarations[declaration].Name.Length == 0)
+            if (!(field.IsAnonymous && graph.Types[graph.Types[field.Type].Canonical].Declaration is int declaration &&
+                graph.Declarations[declaration].Name.Length == 0))
             {
-                containers.Add(declaration);
+                continue;
             }
+
+            containers.Add(declaration);
         }
 
         foreach (int root in graph.Roots.Values)

@@ -30,12 +30,12 @@ public sealed class NativeBindingRecordCommandTests(TestContext context)
     [DataRow("ExecutorRun;\n")]
     public async Task InvalidRecordSelectionsPreserveOutput(string names)
     {
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-record-command-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-record-command-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
-            string list = Path.Combine(directory, "symbols.txt");
-            string contract = Path.Combine(directory, "native-records.json");
+            string list = Path.Join(directory, "symbols.txt");
+            string contract = Path.Join(directory, "native-records.json");
             await File.WriteAllTextAsync(list, names, context.CancellationToken);
             await File.WriteAllTextAsync(contract, "existing-contract", context.CancellationToken);
             await Assert.ThrowsExactlyAsync<FormatException>(() => NativeBindingRecordCommand.RunAsync(

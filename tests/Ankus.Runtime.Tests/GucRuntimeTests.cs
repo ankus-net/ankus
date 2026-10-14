@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -547,7 +546,7 @@ public sealed class GucRuntimeTests
     {
         using var fixture = new ReadFixture { Value = new NativeValue { Integral = 17 } };
         using var scope = new ReadScope(ReadPointer);
-        RunWorker(static () =>
+        DedicatedThread.Run(static () =>
         {
             Assert.ThrowsExactly<InvalidOperationException>(() => NativeGuc.ReadBoolean("sample.enabled"));
             Assert.ThrowsExactly<InvalidOperationException>(() => NativeGuc.ReadString("sample.text"));
@@ -659,6 +658,7 @@ public sealed class GucRuntimeTests
 
             return 0;
         }
+        // codeql[cs/catch-of-all-exceptions] This stands in for native code, so every exception goes back as an error instead of unwinding through it.
         catch (Exception exception)
         {
             NativeError.Write(exception, error);
@@ -696,57 +696,27 @@ public sealed class GucRuntimeTests
     /// <summary>
     /// Accesses the release callback to observe matching allocator cleanup in controlled native fixtures.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_release")]
-    private static extern unsafe ref delegate* unmanaged[Cdecl]<void*, void> ReleaseCallback(ref NativeValue value);
+    private static unsafe ref delegate* unmanaged[Cdecl]<void*, void> ReleaseCallback(ref NativeValue value) => ref value._release;
 
     /// <summary>
     /// Accesses byte length to reject malformed input without reading its buffer.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_length")]
-    private static extern ref int Length(ref NativeValue value);
+    private static ref int Length(ref NativeValue value) => ref value._length;
 
     /// <summary>
     /// Accesses the first non-GUC scalar discriminator for malformed-envelope tests.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary1")]
-    private static extern ref int Auxiliary1(ref NativeValue value);
+    private static ref int Auxiliary1(ref NativeValue value) => ref value._auxiliary1;
 
     /// <summary>
     /// Accesses the second non-GUC scalar discriminator for malformed-envelope tests.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_auxiliary2")]
-    private static extern ref int Auxiliary2(ref NativeValue value);
+    private static ref int Auxiliary2(ref NativeValue value) => ref value._auxiliary2;
 
     /// <summary>
     /// Accesses the non-GUC temporal discriminator for malformed-envelope tests.
     /// </summary>
-    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_temporalInfinity")]
-    private static extern ref int Infinity(ref NativeValue value);
-
-    /// <summary>
-    /// Runs affinity assertions without moving the parent native scope to a different thread.
-    /// </summary>
-    private static void RunWorker(Action action)
-    {
-        Exception? failure = null;
-        var worker = new Thread(() =>
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        worker.Start();
-        worker.Join();
-        if (failure is not null)
-        {
-            ExceptionDispatchInfo.Capture(failure).Throw();
-        }
-    }
+    private static ref int Infinity(ref NativeValue value) => ref value._temporalInfinity;
 
     /// <summary>
     /// Keeps controlled callback data isolated to each test thread.

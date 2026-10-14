@@ -216,11 +216,11 @@ public static class ExplicitDatumMappingFunctions
         using SpiRawResult result = Spi.QueryRaw(sql);
         if (wide)
         {
-            _ = result[0][0].Read<ExplicitBox<long>?>();
+            result[0][0].Read<ExplicitBox<long>?>();
         }
         else
         {
-            _ = result[0][0].Read<ExplicitBox<int>?>();
+            result[0][0].Read<ExplicitBox<int>?>();
         }
     }
 

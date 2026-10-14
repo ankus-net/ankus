@@ -39,7 +39,7 @@ internal static partial class ToolCommand
                 }
 
                 PublishedExtension manifest = PublishedExtension.Read(publication);
-                IReadOnlyDictionary<string, string> settings = ExtensionControlFile.Read(Path.Combine(publication, "extension", manifest.Control));
+                IReadOnlyDictionary<string, string> settings = ExtensionControlFile.Read(Path.Join(publication, "extension", manifest.Control));
                 value = name == "extname" ? Path.GetFileNameWithoutExtension(manifest.Control) : settings.GetValueOrDefault(name);
             }
             else
@@ -72,7 +72,7 @@ internal static partial class ToolCommand
                     string temporary = Directory.CreateTempSubdirectory("ankus-control-query-").FullName;
                     try
                     {
-                        string control = Path.Combine(temporary, "extension.control");
+                        string control = Path.Join(temporary, "extension.control");
                         int code = await ExtensionBuilder.GenerateControlAsync(project, configuration, installation, control, token, BuildProperties(result));
                         if (code != 0)
                         {

@@ -31,16 +31,16 @@ internal static class NativeBindingRecordCommand
         string library = arguments.Length == 9 && arguments[8].Length != 0 ? Path.GetFullPath(arguments[8])
             : await FindLibraryAsync(compiler, headers.Target.ClangMajor, cancellationToken);
         string output = Path.GetFullPath(arguments[3]);
-        string ast = Path.Combine(output, "native-header-records.ast");
-        await NativeBindingHeaderCommand.InspectAsync(installation, headerArguments, Path.Combine(output, "native-header-types.c"),
-            Path.Combine(output, "native-header-records.txt"), output, cancellationToken, dumpAst: false, serializedAst: ast);
+        string ast = Path.Join(output, "native-header-records.ast");
+        await NativeBindingHeaderCommand.InspectAsync(installation, headerArguments, Path.Join(output, "native-header-types.c"),
+            Path.Join(output, "native-header-records.txt"), output, cancellationToken, dumpAst: false, serializedAst: ast);
         var symbols = headers.Symbols.ToDictionary(static pair => pair.Key,
             static pair => new NativeHeaderRequest(pair.Key, pair.Value.NativeName, pair.Value.IsFunction), StringComparer.Ordinal);
         var request = new NativeRecordRequest(ast, library, headers.Target, symbols);
         NativeRecordGraph graph = await NativeBindingRecordWorker.InspectAsync(request, output, cancellationToken);
         var records = new NativeHeaderRecords(headers, graph);
         NativeBindingSignatureValidation.Validate(records);
-        string temporary = Path.Combine(output, "native-records-" + Guid.NewGuid().ToString("N") + ".tmp");
+        string temporary = Path.Join(output, "native-records-" + Guid.NewGuid().ToString("N") + ".tmp");
         try
         {
             await using (FileStream stream = File.Create(temporary))
@@ -49,7 +49,7 @@ internal static class NativeBindingRecordCommand
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            File.Move(temporary, Path.Combine(output, "native-records.json"), overwrite: true);
+            File.Move(temporary, Path.Join(output, "native-records.json"), overwrite: true);
         }
         finally
         {
@@ -74,9 +74,8 @@ internal static class NativeBindingRecordCommand
         }
 
         string name = OperatingSystem.IsWindows() && !compiler.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ? compiler + ".exe" : compiler;
-        foreach (string directory in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+        foreach (string candidate in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries).Select(directory => Path.Join(directory, name)))
         {
-            string candidate = Path.Combine(directory, name);
             if (File.Exists(candidate))
             {
                 return Resolve(candidate);
@@ -149,11 +148,11 @@ internal static class NativeBindingRecordCommand
             throw new InvalidOperationException("Clang did not report its absolute resource directory.");
         }
 
-        string lib = Path.GetFullPath(Path.Combine(resources, "..", ".."));
-        string bin = Path.GetFullPath(Path.Combine(lib, "..", "bin"));
-        string[] candidates = OperatingSystem.IsWindows() ? [Path.Combine(bin, "libclang.dll")]
-            : OperatingSystem.IsMacOS() ? [Path.Combine(lib, "libclang.dylib")]
-            : [Path.Combine(lib, "libclang.so"), Path.Combine(lib, "libclang.so.1"), Path.Combine(lib, $"libclang-{major}.so.1"), Path.Combine(lib, $"libclang.so.{major}")];
+        string lib = Path.GetFullPath(Path.Join(resources, "..", ".."));
+        string bin = Path.GetFullPath(Path.Join(lib, "..", "bin"));
+        string[] candidates = OperatingSystem.IsWindows() ? [Path.Join(bin, "libclang.dll")]
+            : OperatingSystem.IsMacOS() ? [Path.Join(lib, "libclang.dylib")]
+            : [Path.Join(lib, "libclang.so"), Path.Join(lib, "libclang.so.1"), Path.Join(lib, $"libclang-{major}.so.1"), Path.Join(lib, $"libclang.so.{major}")];
         return candidates.FirstOrDefault(File.Exists) ?? throw new FileNotFoundException("A matching libclang library was not found beside the selected compiler. Supply its explicit path.");
     }
 }

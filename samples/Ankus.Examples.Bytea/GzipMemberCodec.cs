@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.IO.Compression;
+using System.Numerics;
 
 namespace Ankus.Examples.Bytea;
 
@@ -109,18 +110,17 @@ internal static class GzipMemberCodec
             }
         }
 
-        foreach (int flag in new[] { 8, 16 })
+        // The file name (FNAME, 8) and comment (FCOMMENT, 16) are each zero-terminated (RFC 1952, section 2.3.1).
+        int terminated = BitOperations.PopCount((uint)(flags & (8 | 16)));
+        for (int field = 0; field < terminated; field++)
         {
-            if ((flags & flag) != 0)
+            int end = bytes[offset..].IndexOf((byte)0);
+            if (end < 0)
             {
-                int end = bytes[offset..].IndexOf((byte)0);
-                if (end < 0)
-                {
-                    throw new InvalidDataException("The gzip metadata is not terminated.");
-                }
-
-                offset += end + 1;
+                throw new InvalidDataException("The gzip metadata is not terminated.");
             }
+
+            offset += end + 1;
         }
 
         if ((flags & 2) != 0)

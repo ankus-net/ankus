@@ -314,31 +314,17 @@ public sealed unsafe class PgBackgroundWorkerTests
         using var fixture = new MemoryContextTestFixture();
         fixture.Handler = request => request._flags == 1 ? new() { _context = 71, _value = 1 } : default;
         PgBackgroundWorkerHandle retained;
-        using (MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter())
+        using (MemoryContextTestFixture.Enter())
         {
             Assert.IsTrue(PgBackgroundWorker.TryStart(new("worker", "library", "Run"), out PgBackgroundWorkerHandle? handle));
             retained = handle;
-            using (MemoryContextTestFixture.Scope other = MemoryContextTestFixture.Enter(23))
+            using (MemoryContextTestFixture.Enter(23))
             {
                 Assert.ThrowsExactly<InvalidOperationException>(() => handle.GetState());
                 Assert.ThrowsExactly<InvalidOperationException>(handle.Dispose);
             }
 
-            Exception? observed = null;
-            Thread thread = new(() =>
-            {
-                try
-                {
-                    handle.Terminate();
-                }
-                catch (Exception exception)
-                {
-                    observed = exception;
-                }
-            });
-            thread.Start();
-            thread.Join();
-            Assert.IsInstanceOfType<InvalidOperationException>(observed);
+            Assert.Throws<InvalidOperationException>(() => DedicatedThread.Run(handle.Terminate));
             Assert.AreSequenceEqual([1], fixture.Requests.Select(static request => request._flags));
         }
 
@@ -557,6 +543,7 @@ public sealed unsafe class PgBackgroundWorkerTests
 
             return default;
         };
+        // codeql[cs/missed-using-statement] Each scenario starts the worker at a different point, so the handle is disposed when the test ends.
         PgBackgroundWorkerHandle? handle = null;
         try
         {

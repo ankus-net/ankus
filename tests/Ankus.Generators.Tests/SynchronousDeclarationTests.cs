@@ -96,7 +96,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreSame(mapped, error.Location.SourceTree);
         Assert.AreEqual("Authored.cs", error.Location.GetMappedLineSpan().Path);
         Assert.AreEqual(75, error.Location.GetMappedLineSpan().StartLinePosition.Line);
-        driver = RunModule(driver, edited.ReplaceSyntaxTree(mapped, CSharpSyntaxTree.ParseText(source.Replace(declaration, "int Answer() => 42;",
+        _ = RunModule(driver, edited.ReplaceSyntaxTree(mapped, CSharpSyntaxTree.ParseText(source.Replace(declaration, "int Answer() => 42;",
             StringComparison.Ordinal), path: "Moved.cs", cancellationToken: context.CancellationToken)), out Compilation repaired);
         Assert.AreEqual(42, InvokeSqlReferenceAnswer(repaired));
         Assert.Contains("RETURNS integer", InstallationBody(repaired));
@@ -148,7 +148,7 @@ public sealed partial class PgFunctionGeneratorTests
         GeneratorDriver driver = ModuleDriver().RunGeneratorsAndUpdateCompilation(initial, out _, out ImmutableArray<Diagnostic> diagnostics,
             context.CancellationToken);
         Assert.AreEqual("ANKUS039", Assert.ContainsSingle(diagnostics).Id);
-        driver = RunModule(driver, initial.ReplaceSyntaxTree(initial.SyntaxTrees.Single(), CSharpSyntaxTree.ParseText(
+        _ = RunModule(driver, initial.ReplaceSyntaxTree(initial.SyntaxTrees.Single(), CSharpSyntaxTree.ParseText(
             initial.SyntaxTrees.Single().GetText(context.CancellationToken).ToString().Replace(
                 "System.Threading.Tasks.Task Echo(System.Threading.Tasks.Task value)", "int Echo(int value)", StringComparison.Ordinal),
             path: "Module.cs", cancellationToken: context.CancellationToken)), out Compilation output);
@@ -250,7 +250,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
         Assert.IsNull(Assert.ContainsSingle(driver.GetRunResult().Results).Exception);
         Assert.IsNull(output.GetTypeByMetadataName("Functions+PostgresTests"));
-        driver = RunModule(driver, initial.ReplaceSyntaxTree(initial.SyntaxTrees.Last(), CSharpSyntaxTree.ParseText(
+        _ = RunModule(driver, initial.ReplaceSyntaxTree(initial.SyntaxTrees.Last(), CSharpSyntaxTree.ParseText(
             implementation.Replace("async partial", "partial", StringComparison.Ordinal)
                 .Replace("await System.Threading.Tasks.Task.Yield();", "System.GC.KeepAlive(null);", StringComparison.Ordinal),
             path: "Implementation.cs", cancellationToken: context.CancellationToken)), out Compilation repaired);

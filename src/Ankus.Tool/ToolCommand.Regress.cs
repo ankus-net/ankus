@@ -142,7 +142,7 @@ internal static partial class ToolCommand
             PostgresInstallation installation = selection.Installation;
             string driver = await installation.GetRegressionDriverPathAsync(token);
             Directory.CreateDirectory(suite.DirectoryPath);
-            using var suiteLock = new FileStream(Path.Combine(suite.DirectoryPath, ".ankus-regress.lock"), FileMode.OpenOrCreate,
+            using var suiteLock = new FileStream(Path.Join(suite.DirectoryPath, ".ankus-regress.lock"), FileMode.OpenOrCreate,
                 FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose);
             var cluster = new PostgresDevelopmentCluster(installation, result.GetValue(home));
             await cluster.StopAsync(token);
@@ -208,7 +208,7 @@ internal static partial class ToolCommand
                 Console.WriteLine($"Selected {ready.Length} tests; skipped {tests.Length - ready.Length}.");
                 if (iterations > 1)
                 {
-                    File.Delete(Path.Combine(suite.DirectoryPath, "regression." + iteration.ToString(CultureInfo.InvariantCulture) + ".diffs"));
+                    File.Delete(Path.Join(suite.DirectoryPath, "regression." + iteration.ToString(CultureInfo.InvariantCulture) + ".diffs"));
                 }
 
                 int code = await RegressionDriver.RunAsync(installation, driver, connection, suite.DirectoryPath, ready, detail, token);

@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using System.Runtime.ExceptionServices;
 
 namespace Ankus.Runtime.Tests;
 
@@ -256,24 +255,7 @@ public sealed class PgSpinLockReadTests
             Assert.ThrowsExactly<InvalidOperationException>(() => parent.Read(reader));
         }
 
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                Assert.ThrowsExactly<InvalidOperationException>(() => parent.Read(reader));
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        thread.Start();
-        thread.Join();
-        if (failure is not null)
-        {
-            ExceptionDispatchInfo.Capture(failure).Throw();
-        }
+        DedicatedThread.Run(() => Assert.ThrowsExactly<InvalidOperationException>(() => parent.Read(reader)));
 
         parent.Dispose();
         Assert.ThrowsExactly<ObjectDisposedException>(() => parent.Read(reader));

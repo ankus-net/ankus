@@ -28,9 +28,8 @@ internal static class NativeBindingCallFrameLayout
             long position = checked((long)parameters.Count * graph.Target.PointerSize * 2);
             long alignment = graph.Target.PointerSize;
             var offsets = new List<long>(parameters.Count);
-            foreach (int parameter in parameters)
+            foreach (NativeRecordType storage in parameters.Select(parameter => graph.Types[parameter]))
             {
-                NativeRecordType storage = graph.Types[parameter];
                 long required = storage.Alignment!.Value;
                 alignment = Math.Max(alignment, required);
                 position = checked(position + (required - 1)) & -required;

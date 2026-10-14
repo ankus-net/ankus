@@ -45,9 +45,10 @@ public sealed class NativeRelationScope : IDisposable
             }
             else if (value is PgRelation?[] vector)
             {
-                foreach (PgRelation? item in vector)
+                // Indexed, so capturing a result's relations allocates no enumerator.
+                for (int index = 0; index < vector.Length; index++)
                 {
-                    if (item is not null)
+                    if (vector[index] is PgRelation item)
                     {
                         Capture(item);
                     }
@@ -55,9 +56,9 @@ public sealed class NativeRelationScope : IDisposable
             }
             else if (value is PgArray<PgRelation?> array)
             {
-                foreach (PgRelation? item in array)
+                for (int index = 0; index < array.Count; index++)
                 {
-                    if (item is not null)
+                    if (array[index] is PgRelation item)
                     {
                         Capture(item);
                     }
@@ -130,6 +131,7 @@ public sealed class NativeRelationScope : IDisposable
                 {
                     relations[index].Dispose();
                 }
+                // codeql[cs/catch-of-all-exceptions] Every cleanup step still runs, and all of their failures are reported together.
                 catch (Exception exception)
                 {
                     failure ??= exception;
@@ -187,6 +189,7 @@ public sealed class NativeRelationScope : IDisposable
         {
             relation?.Dispose();
         }
+        // codeql[cs/catch-of-all-exceptions] A failed close is attached to the failure that required it.
         catch (Exception cleanup)
         {
             primary.Data["Ankus.RelationCleanup"] = cleanup;

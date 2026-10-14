@@ -265,7 +265,7 @@ public sealed partial class NativeBindingNativeTests
     public async Task NativeRecordChecksRejectUnverifiableExposedValues()
     {
         const string Headers = "extern struct { int number; float fraction; } current(void);";
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-unnameable-record-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-unnameable-record-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
@@ -400,7 +400,7 @@ public sealed partial class NativeBindingNativeTests
     public async Task NativeRecordChecksRejectFieldAliasCorruption(string mutation)
     {
         const string Headers = "typedef int First; typedef int Second; struct Entry { First first; Second second; }; extern struct Entry current;";
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-record-alias-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-record-alias-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
@@ -483,7 +483,7 @@ public sealed partial class NativeBindingNativeTests
     private async Task<string> VerifyRecordChecksAsync(string measured, string actual, NativeHeaderRequest[] requests, bool compile, bool execute, bool nativeCompiler = true,
         Func<NativeHeaderRecords, NativeHeaderRecords>? mutate = null, string? compilerOverride = null, string beforeEntryPoint = "")
     {
-        string directory = Path.Combine(Path.GetTempPath(), $"ankus-record-checks-{Guid.NewGuid():N}");
+        string directory = Path.Join(Path.GetTempPath(), $"ankus-record-checks-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
         try
         {
@@ -494,9 +494,9 @@ public sealed partial class NativeBindingNativeTests
             }
 
             string source = NativeBindingRecordChecks.Generate(records, "#define PG_VERSION_NUM 180006\n" + actual);
-            string file = Path.Combine(directory, "checks.c");
+            string file = Path.Join(directory, "checks.c");
             await File.WriteAllTextAsync(file, source + beforeEntryPoint + NativeBindingRecordChecks.ExecutableEntryPoint, context.CancellationToken);
-            string executable = Path.Combine(directory, OperatingSystem.IsWindows() ? "checks.exe" : "checks");
+            string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "checks.exe" : "checks");
             string compiler = compilerOverride ?? (OperatingSystem.IsWindows() ? nativeCompiler ? "cl.exe" : "clang-cl.exe" : "clang");
             List<string> arguments = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/O2", "/Fe" + executable, "/Fo" + Path.ChangeExtension(executable, ".obj"), file]

@@ -74,7 +74,7 @@ public sealed class PostgresEventLogTests(TestContext context)
             {
                 failed = cluster;
                 RouteToEvents(cluster);
-                File.AppendAllText(Path.Combine(cluster.DataDirectory, "postgresql.auto.conf"),
+                File.AppendAllText(Path.Join(cluster.DataDirectory, "postgresql.auto.conf"),
                     "shared_preload_libraries = 'ankus_eventlog_missing_library'\n");
             }, context.CancellationToken));
         Assert.Contains("ankus_eventlog_missing_library", error.Message);
@@ -89,7 +89,7 @@ public sealed class PostgresEventLogTests(TestContext context)
     /// Selects PostgreSQL's real event destination without requiring the test host to run as a service.
     /// </summary>
     private static void RouteToEvents(PostgresTestCluster cluster)
-        => File.AppendAllText(Path.Combine(cluster.DataDirectory, "postgresql.auto.conf"),
+        => File.AppendAllText(Path.Join(cluster.DataDirectory, "postgresql.auto.conf"),
             "log_destination = 'eventlog'\nlog_error_verbosity = default\n");
 
     /// <summary>

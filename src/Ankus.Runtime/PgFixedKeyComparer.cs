@@ -66,13 +66,13 @@ public static class PgFixedKeyComparer
         {
             float number = Unsafe.As<T, float>(ref value);
             BinaryPrimitives.WriteInt32LittleEndian(bytes, float.IsNaN(number) ? 0x7FC00000 :
-                number == 0 ? 0 : BitConverter.SingleToInt32Bits(number));
+                number is 0 ? 0 : BitConverter.SingleToInt32Bits(number));
         }
         else if (typeof(T) == typeof(double))
         {
             double number = Unsafe.As<T, double>(ref value);
             BinaryPrimitives.WriteInt64LittleEndian(bytes, double.IsNaN(number) ? 0x7FF8000000000000 :
-                number == 0 ? 0 : BitConverter.DoubleToInt64Bits(number));
+                number is 0 ? 0 : BitConverter.DoubleToInt64Bits(number));
         }
         else if (typeof(T) == typeof(decimal))
         {

@@ -51,13 +51,10 @@ internal sealed partial class ApiReferenceRenderer
         foreach ((string uid, YamlMappingNode item) in _items.Where(static pair => IsPage(pair.Value)))
         {
             _links.Add(uid, "/api/" + Slug(uid) + "/");
-            foreach (YamlNode child in Sequence(item, "children"))
+            foreach (string childUid in Sequence(item, "children").Select(static child => Scalar(child))
+                .Where(childUid => _items.TryGetValue(childUid, out YamlMappingNode? member) && !IsPage(member)))
             {
-                string childUid = Scalar(child);
-                if (_items.TryGetValue(childUid, out YamlMappingNode? member) && !IsPage(member))
-                {
-                    _links.Add(childUid, Text(item, "type") == "Delegate" ? _links[uid] : _links[uid] + "#" + Anchor(childUid));
-                }
+                _links.Add(childUid, Text(item, "type") == "Delegate" ? _links[uid] : _links[uid] + "#" + Anchor(childUid));
             }
         }
 
@@ -79,9 +76,10 @@ internal sealed partial class ApiReferenceRenderer
     internal IReadOnlyDictionary<string, string> Render()
     {
         var pages = new Dictionary<string, string>(StringComparer.Ordinal);
+        var text = new StringBuilder();
         foreach ((string uid, YamlMappingNode item) in _items.Where(static pair => IsPage(pair.Value)))
         {
-            var text = new StringBuilder();
+            text.Clear();
             text.AppendLine("---");
             text.AppendLine("title: '" + Text(item, "name").Replace("'", "''", StringComparison.Ordinal) + "'");
             string fullName = Text(item, "fullName").Replace("'", "''", StringComparison.Ordinal);

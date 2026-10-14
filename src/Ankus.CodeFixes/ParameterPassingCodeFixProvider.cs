@@ -58,12 +58,14 @@ public sealed class ParameterPassingCodeFixProvider : CodeFixProvider
 
         foreach (Diagnostic diagnostic in context.Diagnostics.Where(static value => s_referenceParameterIds.Contains(value.Id)))
         {
-            if (FindParameter(root, model, diagnostic, cancellationToken) is { } parameter)
+            if (FindParameter(root, model, diagnostic, cancellationToken) is not { } parameter)
             {
-                context.RegisterCodeFix(CodeAction.Create($"Pass '{parameter.Name}' by value", async token =>
-                    await PassByValueAsync(context.Document.Project.Solution, [parameter], token).ConfigureAwait(false)
-                        ?? context.Document.Project.Solution, nameof(ParameterPassingCodeFixProvider)), diagnostic);
+                continue;
             }
+
+            context.RegisterCodeFix(CodeAction.Create($"Pass '{parameter.Name}' by value", async token =>
+                await PassByValueAsync(context.Document.Project.Solution, [parameter], token).ConfigureAwait(false)
+                    ?? context.Document.Project.Solution, nameof(ParameterPassingCodeFixProvider)), diagnostic);
         }
     }
 
@@ -107,10 +109,12 @@ public sealed class ParameterPassingCodeFixProvider : CodeFixProvider
 
             foreach (Diagnostic diagnostic in selection.Value.Where(static value => s_referenceParameterIds.Contains(value.Id)))
             {
-                if (FindParameter(root, model, diagnostic, cancellationToken) is { } parameter)
+                if (FindParameter(root, model, diagnostic, cancellationToken) is not { } parameter)
                 {
-                    parameters.Add(parameter);
+                    continue;
                 }
+
+                parameters.Add(parameter);
             }
         }
 
@@ -173,11 +177,13 @@ public sealed class ParameterPassingCodeFixProvider : CodeFixProvider
 
                     foreach (IArgumentOperation argument in operation.Arguments)
                     {
-                        if (argument.Parameter is { } bound && targets.Contains(bound.OriginalDefinition) &&
-                            argument.Syntax is ArgumentSyntax passed && !passed.RefKindKeyword.IsKind(SyntaxKind.None))
+                        if (!(argument.Parameter is { } bound && targets.Contains(bound.OriginalDefinition) &&
+                            argument.Syntax is ArgumentSyntax passed && !passed.RefKindKeyword.IsKind(SyntaxKind.None)))
                         {
-                            Add(edits, location.Document.Id, passed);
+                            continue;
                         }
+
+                        Add(edits, location.Document.Id, passed);
                     }
                 }
             }

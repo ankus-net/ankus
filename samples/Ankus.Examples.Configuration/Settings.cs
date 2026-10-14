@@ -130,8 +130,6 @@ public static partial class Settings
     [PgFunction]
     public static string ConfigurationSnapshot()
     {
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
         return string.Create(CultureInfo.InvariantCulture,
             $"{Startup}|{Reload}|{Connection}|{PrivilegedConnection}|{Internal}|{User}|{Privileged}|{Text ?? "<null>"}|{s_firstProcess}");
     }
