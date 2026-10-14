@@ -228,11 +228,18 @@ timings, rejected attempts and superseded
 results remain in the [acceptance history](docs/contributing/evidence/port-history.md#superseded-active-and-primary-acceptance-detail-before-sqldatetime-acceptance-2026-10-06).
 These results establish the named combinations, not full-port completion.
 
-Every row below uses the current runtime, and every supported major now passes
-on every platform.
+The first rows below use the current runtime, `10.0.13-ankus.1` from fork commit
+`f97c4de`. With the primary CI above, every supported major passes on Linux x64,
+macOS ARM64 and Windows x64, and PostgreSQL 19 beta passes on Intel macOS; the
+other Intel majors last passed on `ankus.5`, below.
 
 | Earlier complete evidence | Platform / PostgreSQL | Result | Duration |
 | --- | --- | --- | --- |
+| [Scheduled versions 38561530691](https://github.com/willibrandon/ankus/actions/runs/38561530691), **6d446a8 / 10.0.13-ankus.1 (f97c4de)** | Linux x64 / each of 13–17 and 19 beta 4 | 14,990 total per major; 14,938 passed; 52 platform skips; zero failures | 26m58s–49m57s jobs, two majors per host |
+| [Platform versions 38523432351](https://github.com/willibrandon/ankus/actions/runs/38523432351), **4f20a29 / same runtime** | macOS ARM64 / each of 13, 14, 16, 17 and 19 beta (assertions enabled) | 14,990 total per major; 14,921–14,925 passed; 65–69 platform skips; zero failures | 23m22s–30m22s jobs |
+| Same platform-versions run / revision / runtime | Windows x64 / each of 13–16 and 19 | 14,990 total per major; 14,944 passed; 46 platform skips; zero failures | 30m28s–59m36s jobs |
+| [Platform versions 38568898790](https://github.com/willibrandon/ankus/actions/runs/38568898790) and [38568893884](https://github.com/willibrandon/ankus/actions/runs/38568893884), **badb5d0 / same runtime** | macOS ARM64 / 15; Windows x64 / 18 | 14,990 total each; 14,925 and 14,944 passed; 65 and 46 platform skips; zero failures | 32m44s and 54m51s jobs |
+| [Intel run 38569108147](https://github.com/willibrandon/ankus/actions/runs/38569108147), **2b1e0ec / same runtime** | macOS x64 / 19 beta | 14,990 total; 14,925 passed; 65 platform skips; zero failures | 1h29m53s job |
 | [Intel weekly 38115991171](https://github.com/willibrandon/ankus/actions/runs/38115991171), **f220a27 / ankus.5** | macOS x64 / each of 13–18 and 19 beta | 14,654 total per major; 14,589 passed; 65 platform skips; zero failures | 1h21m36s–1h24m00s jobs, run in turn |
 | [Version CI 38102793609](https://github.com/willibrandon/ankus/actions/runs/38102793609), **be3fbcd / ankus.5** | Linux x64 / each of 13–17 and 19 beta 4 | 14,512 total per major; 14,457–14,460 passed; 52–55 platform skips; zero failures | 27m31s–35m27s jobs; 1h24m for three reruns sharing one host |
 | [Platform versions 38109393201](https://github.com/willibrandon/ankus/actions/runs/38109393201), **660ea5e / ankus.5** | macOS ARM64 / each of 13–17 and 19 beta 4 (assertions enabled) | 14,642 total per major; 14,573–14,577 passed; 65–69 platform skips; zero failures | 25m52s–32m09s jobs |
@@ -299,7 +306,13 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   and 19 beta and Windows x64 13–16 and 19. The macOS 15 suite passed, but
   runner cleanup failed when another runner's job kept the shared compiler
   server busy; cleanup now reports that as a warning. A host restart cut off
-  Windows 18. Both cells are running again on current `main`.
+  Windows 18. Both cells then passed on `badb5d0`, the scheduled Linux run passed
+  every major including 14, and Intel macOS passed 19 beta, whose earlier
+  failures were the writer and `pg_dump` cases fixed since. CI on a merged
+  Dependabot update later failed one Windows consumer restore with `NU1900`:
+  both Windows runners share one account's NuGet HTTP cache, and NuGet's audit
+  found a cached response still open in the other runner's restore. Each
+  dedicated runner now keeps its own HTTP cache.
 - `ankus status` and `ankus info` seemed to hang when run from a large solution's
   directory, such as this repository's root. Without `--pg`, these commands use
   the PostgreSQL selection of the project or solution in the current directory.
