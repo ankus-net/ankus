@@ -277,6 +277,19 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   memory switch cases moved into functions; the 763 memory, allocator, list,
   node and ownership backend tests pass after it, and the PostgreSQL 13
   integration suite passed 5,523 of 5,540 with 17 platform skips.
+- `ankus status` and `ankus info` seemed to hang when run from a large solution's
+  directory, such as this repository's root. Without `--pg`, these commands use
+  the PostgreSQL selection of the project or solution in the current directory.
+  Reading it started one `dotnet msbuild` evaluation per project and per
+  reference, one after another, and evaluated shared references again for every
+  project: 46 seconds here on Linux and minutes on a slower machine. Projects are
+  now evaluated side by side, each project and property set once, and results are
+  still read in solution order, so the selection and the first reported problem
+  are unchanged. The same commands take 6 seconds here, and `ankus test` on a
+  solution benefits too. A failure stops the remaining evaluations and waits for
+  their processes. New PgConfig tests cover a shared reference and the order of
+  reported problems; the 52 selection and cluster backend tests pass on Linux x64
+  with PostgreSQL 18.
 - GitHub flagged the C# scan's quality: read from source alone, it resolved only
   81% of calls. Nearly all the misses were MSTest calls in the test projects,
   whose global `using` MSTest's package adds through MSBuild, which a scan of the
