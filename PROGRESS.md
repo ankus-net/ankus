@@ -93,7 +93,13 @@ consumers first remove staging-feed packages from the shared cache. .NET reports
 behemoth and 126 on the macOS ARM64 runner; Windows had removed 124 the run before.
 CI run 38461706610 on **623a333** then passed the complete suites on
 **10.0.13-ankus.1**: Linux x64 (PostgreSQL 18), macOS ARM64 (18) and Windows x64
-(17). The release rehearsal and the platform matrices rerun on it next.
+(17). Release rehearsal 38464938810 on it then built and verified every package,
+including the runtime on GitHub's hosted Intel macOS runner. After the fork moved
+to `f97c4de` for patched build tasks, rehearsal
+[38600378664](https://github.com/willibrandon/ankus/actions/runs/38600378664) on
+**73b1a23** did the same in 23 minutes: the managed packages, the Linux x64,
+Windows x64, macOS ARM64 and Intel macOS runtimes, and the verify job, with
+publishing skipped as a rehearsal does.
 
 Before the servicing update, the Linux version matrix
 ([38441422083](https://github.com/willibrandon/ankus/actions/runs/38441422083)) passed
