@@ -32,7 +32,7 @@ internal static class NativeItemPointerMemoryBridge
                 AnkusMemoryRequest allocation_request = {0};
                 allocation_request.length = sizeof(ItemPointerData);
                 ankus_memory_allocate_request(entry, &allocation_request, result);
-                AnkusMemoryAllocation *allocation = ankus_memory_allocation_by_id((uint64) result->pointer);
+                AnkusMemoryAllocation *allocation = ankus_memory_allocation_required((uint64) result->pointer);
                 ItemPointerSet((ItemPointer) allocation->pointer, (BlockNumber) request->value, (OffsetNumber) request->length);
                 return;
             }

@@ -215,7 +215,7 @@ internal static class NativeTransactionBridge
             AnkusPendingError *volatile pending = ankus_pending_error_save();
             PG_TRY();
             {
-                PG_TRY();
+                ANKUS_PG_TRY_INNER();
                 {
                     if ((operation != 0 && operation != 1) || level < 0 || level > 12 || enabled == NULL)
                     {
@@ -236,7 +236,7 @@ internal static class NativeTransactionBridge
                         ankus_report(report, ankus_log_level(level));
                     }
                 }
-                PG_CATCH();
+                ANKUS_PG_CATCH_INNER();
                 {
                     ErrorData *data;
                     MemoryContext diagnostic;
@@ -253,7 +253,7 @@ internal static class NativeTransactionBridge
                     MemoryContextDelete(diagnostic);
                     status = 1;
                 }
-                PG_END_TRY();
+                ANKUS_PG_END_TRY_INNER();
             }
             PG_CATCH();
             {

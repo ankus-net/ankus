@@ -101,18 +101,17 @@ internal sealed record CustomTypeModel(string Name, string? Schema, string Manag
     }
 
     /// <summary>
-    /// Emits the backend catalog check for this validated base type.
+    /// Emits this validated base type's name and schema as an entry of the native supported-type table.
     /// </summary>
     /// <param name="contract">The immutable catalog identity.</param>
-    /// <param name="source">The native supported-type predicate.</param>
+    /// <param name="source">The native supported-type table.</param>
     internal static void EmitNativeTypeCheck(CatalogContract contract, StringBuilder source)
     {
-        source.AppendLine("    {");
-        source.AppendLine("        const AnkusValue name = { .data = (unsigned char *) " + Utf8Literal(contract.Name) + ", .length = " + Encoding.UTF8.GetByteCount(contract.Name).ToString(CultureInfo.InvariantCulture) + " };");
-        source.AppendLine(contract.Schema is null ? "        const AnkusValue schema = { .is_null = 1 };" :
-            "        const AnkusValue schema = { .data = (unsigned char *) " + Utf8Literal(contract.Schema) + ", .length = " + Encoding.UTF8.GetByteCount(contract.Schema).ToString(CultureInfo.InvariantCulture) + " };");
-        source.AppendLine("        if (ankus_resolve_named_type(&name, &schema, true, TYPTYPE_BASE) == type) return true;");
-        source.AppendLine("    }");
+        string name = "{ .data = (unsigned char *) " + Utf8Literal(contract.Name) + ", .length = " +
+            Encoding.UTF8.GetByteCount(contract.Name).ToString(CultureInfo.InvariantCulture) + " }";
+        string schema = contract.Schema is null ? "{ .is_null = 1 }" : "{ .data = (unsigned char *) " + Utf8Literal(contract.Schema) +
+            ", .length = " + Encoding.UTF8.GetByteCount(contract.Schema).ToString(CultureInfo.InvariantCulture) + " }";
+        source.AppendLine("    { " + name + ", " + schema + " },");
     }
 
     /// <summary>

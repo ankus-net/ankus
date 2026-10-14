@@ -348,6 +348,7 @@ internal static class NativeSpiBridge
             Datum *values = NULL;
             char *nulls = NULL;
             char *sql;
+            /* Cursor and plan bookkeeping needs no parameters or command text. */
             if (request->operation >= ANKUS_SPI_FETCH_CURSOR && request->operation <= ANKUS_SPI_FIND_CURSOR)
             {
                 return ankus_cursor_operation(request, result);
@@ -371,6 +372,7 @@ internal static class NativeSpiBridge
                 return SPI_freeplan(plan);
             }
 
+            /* Preparing needs only the parameter types; running needs their values too. */
             if (request->parameter_count > 0)
             {
                 types = palloc(sizeof(Oid) * (Size) request->parameter_count);
@@ -387,6 +389,7 @@ internal static class NativeSpiBridge
                 }
             }
 
+            /* A prepared plan runs only with exactly the parameter types it was prepared for. */
             if (request->operation == ANKUS_SPI_EXECUTE_PLAN || request->operation == ANKUS_SPI_OPEN_PLAN_CURSOR)
             {
                 if (SPI_getargcount(request->plan) != request->parameter_count)

@@ -207,6 +207,8 @@ internal static class NativeStringInfoBridge
                 return;
             }
 
+            /* A borrowed buffer is valid while its anchor context keeps the generation it captured; an owned one while
+             * its registration lasts. */
             AnkusStringInfo *owned = NULL;
             StringInfo buffer;
             uint64 context_id;
@@ -240,6 +242,7 @@ internal static class NativeStringInfoBridge
                 buffer = owned->buffer;
             }
 
+            /* A buffer PostgreSQL made read-only has no capacity, so nothing may write to it. */
             ankus_stringinfo_validate(buffer);
             if (buffer->maxlen == 0 && (operation == ANKUS_STRINGINFO_APPEND || operation == ANKUS_STRINGINFO_WRITE ||
                 operation == ANKUS_STRINGINFO_RESET || operation == ANKUS_STRINGINFO_ENLARGE || operation == ANKUS_STRINGINFO_ENSURE_CAPACITY))
@@ -304,6 +307,7 @@ internal static class NativeStringInfoBridge
                     }
 
                     return;
+                /* Detaching hands the buffer, or only its bytes, to the caller and forgets an owned registration. */
                 case ANKUS_STRINGINFO_DETACH:
                 case ANKUS_STRINGINFO_DETACH_DATA:
                 case ANKUS_STRINGINFO_DETACH_CSTRING:

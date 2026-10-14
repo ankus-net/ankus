@@ -46,7 +46,6 @@ jobs:
         with:
           category: /language:${{ matrix.language }}
           output: artifacts/codeql-results
-          wait-for-processing: false
 
       - name: Archive CodeQL results
         uses: actions/upload-artifact@v7
@@ -54,6 +53,15 @@ jobs:
           name: codeql-results-${{ matrix.language }}-${{ github.run_attempt }}
           path: artifacts/codeql-results/**/*.sarif
           if-no-files-found: error
+
+      # Code scanning keeps a result open even when a `codeql[rule]` comment marks it, so the alerts of marked results
+      # are dismissed on main with each comment's reason.
+      - name: Dismiss alerts suppressed in source
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CATEGORY: /language:${{ matrix.language }}
+        run: dotnet run --file ./eng/Ankus.CodeQl.cs -- dismiss artifacts/codeql-results "$CATEGORY"
 
       # Code scanning lists findings without failing anything, so a new one would go unseen.
       - name: Require zero findings
@@ -101,6 +109,13 @@ jobs:
         if: steps.runtime-cache.outputs.cache-hit != 'true'
         run: dotnet run --file ./eng/Ankus.Ci.cs -- runtime-build linux x64 linux-x64
 
+      - name: Save runtime
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: artifacts/nativeaot/linux-x64
+          key: ${{ steps.runtime-cache.outputs.cache-primary-key }}
+
       - name: Restore NuGet packages
         run: dotnet restore Ankus.slnx -p:Platform="Any CPU"
 
@@ -122,7 +137,6 @@ jobs:
         with:
           category: /language:c-cpp
           output: artifacts/codeql-results
-          wait-for-processing: false
 
       - name: Archive CodeQL results
         uses: actions/upload-artifact@v7
@@ -130,6 +144,12 @@ jobs:
           name: codeql-results-c-cpp-${{ github.run_attempt }}
           path: artifacts/codeql-results/**/*.sarif
           if-no-files-found: error
+
+      - name: Dismiss alerts suppressed in source
+        if: github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: dotnet run --file ./eng/Ankus.CodeQl.cs -- dismiss artifacts/codeql-results /language:c-cpp
 
       - name: Require zero findings
         run: dotnet run --file ./eng/Ankus.CodeQl.cs -- artifacts/codeql-results

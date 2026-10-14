@@ -397,10 +397,56 @@ internal static class NativeListBridge
             result->pointer = (intptr_t) entry->id;
         }
 
+        /* Copies a range of cells to or from the caller's buffer; draining or removing then closes the gap. */
+        static void
+        ankus_list_transfer(AnkusList *entry, List *list, AnkusMemoryRequest *request, AnkusListOperation operation)
+        {
+            ankus_list_range(list, request);
+            if (request->length != 0 && operation != ANKUS_LIST_REMOVE && request->data == 0)
+            {
+                ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("missing PostgreSQL list cell buffer")));
+            }
+
+            if (operation == ANKUS_LIST_WRITE)
+            {
+                ankus_list_validate_input(request, entry->kind);
+            }
+
+            uint64 *values = (uint64 *) request->data;
+            for (uintptr_t index = 0; index < request->length; index++)
+            {
+                ListCell *cell = &list->elements[request->value + index];
+                if (operation == ANKUS_LIST_WRITE)
+                {
+                    *cell = ankus_list_cell(entry->kind, values[index]);
+                }
+                else if (operation != ANKUS_LIST_REMOVE)
+                {
+                    values[index] = ankus_list_bits(entry->kind, cell);
+                }
+            }
+
+            if (request->length != 0 && (operation == ANKUS_LIST_DRAIN || operation == ANKUS_LIST_REMOVE))
+            {
+                if (request->length == (uintptr_t) list->length)
+                {
+                    list_free(list);
+                    entry->list = NIL;
+                }
+                else
+                {
+                    int tail = (int) request->value + (int) request->length;
+                    memmove(list->elements + request->value, list->elements + tail, (Size) (list->length - tail) * sizeof(ListCell));
+                    list->length -= (int) request->length;
+                }
+            }
+        }
+
         static void
         ankus_list_execute(AnkusMemoryRequest *request, AnkusMemoryResult *result)
         {
             AnkusListOperation operation = (AnkusListOperation) request->flags;
+            /* Parsing defaults and creating or borrowing a list need no existing handle. */
             if (operation == ANKUS_LIST_PARSE_DEFAULTS)
             {
                 ankus_list_parse_defaults(request, result);
@@ -413,6 +459,7 @@ internal static class NativeListBridge
                 return;
             }
 
+            /* Disposing a list its context already reclaimed does nothing, as disposing twice does. */
             AnkusList *entry = ankus_list_find((uint64) request->context);
             if (entry == NULL)
             {
@@ -435,6 +482,7 @@ internal static class NativeListBridge
                 return;
             }
 
+            /* Every other operation first checks that the native list still holds cells of its kind. */
             List *list = entry->list;
             ankus_list_validate(list, entry->kind);
             switch (operation)
@@ -488,49 +536,8 @@ internal static class NativeListBridge
                 case ANKUS_LIST_WRITE:
                 case ANKUS_LIST_DRAIN:
                 case ANKUS_LIST_REMOVE:
-                {
-                    ankus_list_range(list, request);
-                    if (request->length != 0 && operation != ANKUS_LIST_REMOVE && request->data == 0)
-                    {
-                        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("missing PostgreSQL list cell buffer")));
-                    }
-
-                    if (operation == ANKUS_LIST_WRITE)
-                    {
-                        ankus_list_validate_input(request, entry->kind);
-                    }
-
-                    uint64 *values = (uint64 *) request->data;
-                    for (uintptr_t index = 0; index < request->length; index++)
-                    {
-                        ListCell *cell = &list->elements[request->value + index];
-                        if (operation == ANKUS_LIST_WRITE)
-                        {
-                            *cell = ankus_list_cell(entry->kind, values[index]);
-                        }
-                        else if (operation != ANKUS_LIST_REMOVE)
-                        {
-                            values[index] = ankus_list_bits(entry->kind, cell);
-                        }
-                    }
-
-                    if (request->length != 0 && (operation == ANKUS_LIST_DRAIN || operation == ANKUS_LIST_REMOVE))
-                    {
-                        if (request->length == (uintptr_t) list->length)
-                        {
-                            list_free(list);
-                            entry->list = NIL;
-                        }
-                        else
-                        {
-                            int tail = (int) request->value + (int) request->length;
-                            memmove(list->elements + request->value, list->elements + tail, (Size) (list->length - tail) * sizeof(ListCell));
-                            list->length -= (int) request->length;
-                        }
-                    }
-
+                    ankus_list_transfer(entry, list, request, operation);
                     break;
-                }
                 case ANKUS_LIST_CLEAR:
                     list_free(list);
                     entry->list = NIL;

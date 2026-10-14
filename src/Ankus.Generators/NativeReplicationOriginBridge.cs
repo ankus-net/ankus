@@ -81,6 +81,7 @@ internal static class NativeReplicationOriginBridge
         {
             switch (request->flags)
             {
+                /* Creates an origin. */
                 case 1:
                 {
                     char *name;
@@ -98,10 +99,12 @@ internal static class NativeReplicationOriginBridge
                     result->value = (intptr_t) replorigin_create(name);
                     break;
                 }
+                /* Finds an origin by name. */
                 case 2:
                     ankus_origin_check(false, true, true);
                     result->value = (intptr_t) replorigin_by_name(ankus_origin_name(request->pointer), true);
                     break;
+                /* Drops an origin; a missing one is an error unless the caller allows it. */
                 case 3:
                 {
                     char *name;
@@ -118,6 +121,7 @@ internal static class NativeReplicationOriginBridge
         #endif
                     break;
                 }
+                /* Makes an origin this session's, so its commits record their remote position. */
                 case 4:
                     ankus_origin_check(true, false, false);
         #if PG_VERSION_NUM >= 160000
@@ -127,6 +131,7 @@ internal static class NativeReplicationOriginBridge
         #endif
                     ankus_session_origin = (AnkusOriginId) request->value;
                     break;
+                /* Ends this session's origin. */
                 case 5:
                     ankus_origin_check(true, false, false);
                     replorigin_session_reset();
@@ -138,6 +143,7 @@ internal static class NativeReplicationOriginBridge
                     replorigin_session_origin_timestamp = 0;
         #endif
                     break;
+                /* Records the remote commit this transaction applies. */
                 case 6:
                     ankus_origin_check(true, false, false);
                     ankus_origin_require_session();
@@ -147,15 +153,18 @@ internal static class NativeReplicationOriginBridge
                     ankus_session_origin_lsn = (XLogRecPtr) request->value;
                     ankus_session_origin_timestamp = (TimestampTz) request->data;
                     break;
+                /* Reads this session's origin progress. */
                 case 7:
                     ankus_origin_check(true, true, false);
                     ankus_origin_require_session();
                     result->value = (intptr_t) replorigin_session_get_progress(request->value != 0);
                     break;
+                /* Reads an origin's progress. */
                 case 8:
                     ankus_origin_check(true, true, false);
                     result->value = (intptr_t) replorigin_get_progress((AnkusOriginId) request->context, request->value != 0);
                     break;
+                /* Moves an origin's progress, as pg_replication_origin_advance does. */
                 case 9:
                 {
                     AnkusOriginId origin = (AnkusOriginId) request->context;
@@ -171,6 +180,7 @@ internal static class NativeReplicationOriginBridge
                     UnlockRelationOid(ReplicationOriginRelationId, RowExclusiveLock);
                     break;
                 }
+                /* Names this session's origin. */
                 case 10:
                     result->value = (intptr_t) ankus_session_origin;
                     break;
