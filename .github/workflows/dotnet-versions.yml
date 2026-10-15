@@ -146,6 +146,15 @@ jobs:
 
       # The PostgreSQL input is a fixed choice, so it is safe to expand into the command line on every shell.
       - name: Build PostgreSQL tests
+        env:
+          # Majors outside each runner's default installation come from the same settings the version workflows use.
+          PGROOT: ${{ runner.os == 'Windows' && secrets[format('ANKUS_WINDOWS_PG{0}_ROOT', inputs.postgresql)] || '' }}
+          PG13_PG_CONFIG: ${{ matrix.rid == 'osx-arm64' && vars.ANKUS_MACOS_PG13_PG_CONFIG || matrix.rid == 'osx-x64' && vars.ANKUS_MACOS_X64_PG13_PG_CONFIG || '' }}
+          PG14_PG_CONFIG: ${{ matrix.rid == 'osx-arm64' && vars.ANKUS_MACOS_PG14_PG_CONFIG || matrix.rid == 'osx-x64' && vars.ANKUS_MACOS_X64_PG14_PG_CONFIG || '' }}
+          PG15_PG_CONFIG: ${{ matrix.rid == 'osx-x64' && vars.ANKUS_MACOS_X64_PG15_PG_CONFIG || '' }}
+          PG16_PG_CONFIG: ${{ matrix.rid == 'osx-x64' && vars.ANKUS_MACOS_X64_PG16_PG_CONFIG || '' }}
+          PG17_PG_CONFIG: ${{ matrix.rid == 'osx-arm64' && vars.ANKUS_MACOS_PG17_PG_CONFIG || matrix.rid == 'osx-x64' && vars.ANKUS_MACOS_X64_PG17_PG_CONFIG || '' }}
+          PG19_PG_CONFIG: ${{ matrix.rid == 'osx-arm64' && vars.ANKUS_MACOS_PG19_PG_CONFIG || matrix.rid == 'osx-x64' && vars.ANKUS_MACOS_X64_PG19_PG_CONFIG || '' }}
         run: >-
           dotnet run --file ./eng/Ankus.Ci.cs -- runtime-test-build ${{ matrix.rid }}
           ${{ (inputs.postgresql != '' && inputs.postgresql != 'default' && inputs.postgresql) || (matrix.rid == 'win-x64' && '17') || '18' }}
