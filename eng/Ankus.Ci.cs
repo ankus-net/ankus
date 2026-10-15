@@ -211,8 +211,13 @@ try
             RequireLineArguments(args, 4);
             ValidateRuntimeIdentity(repositoryRoot);
             RuntimeLine line = SelectRuntimeLine(args, 4);
+
+            // As in CI, the runtime build restores into a package folder of its own, apart from the one packing uses.
+            string? packages = Environment.GetEnvironmentVariable("NUGET_PACKAGES");
+            IsolateRuntimeBuildPackages(repositoryRoot);
             InstallRuntimePrerequisites();
             BuildRuntime(repositoryRoot, args[1], args[2], line);
+            Environment.SetEnvironmentVariable("NUGET_PACKAGES", packages);
             PackRuntime(
                 repositoryRoot,
                 args[3],
@@ -593,15 +598,14 @@ static void BuildRuntime(string repositoryRoot, string platform, string architec
 
     if (OperatingSystem.IsWindows())
     {
-        Run(Path.Join(runtimeRoot, "build.cmd"), arguments, runtimeRoot, true);
+        RunBatch(Path.Join(runtimeRoot, "build.cmd"), arguments, runtimeRoot);
     }
     else
     {
         Run(Path.Join(runtimeRoot, "build.sh"), arguments, runtimeRoot, environment: environment);
     }
 
-    string runtimeDotNet = Path.Join(runtimeRoot, OperatingSystem.IsWindows() ? "dotnet.cmd" : "dotnet.sh");
-    Run(runtimeDotNet,
+    List<string> publish =
     [
         "publish",
         Path.Join(runtimeRoot, "src", "coreclr", "tools", "aot", "ILCompiler", "ILCompiler_publish.csproj"),
@@ -610,7 +614,15 @@ static void BuildRuntime(string repositoryRoot, string platform, string architec
         $"-p:IlcSdkPath={GetBuiltRuntimePath(repositoryRoot, platform, architecture)}{Path.DirectorySeparatorChar}",
         $"-p:RuntimeFrameworkVersion={line.CompilerVersion}",
         "/p:ManagePackageVersionsCentrally=false",
-    ], runtimeRoot, OperatingSystem.IsWindows(), environment);
+    ];
+    if (OperatingSystem.IsWindows())
+    {
+        RunBatch(Path.Join(runtimeRoot, "dotnet.cmd"), publish, runtimeRoot);
+    }
+    else
+    {
+        Run(Path.Join(runtimeRoot, "dotnet.sh"), publish, runtimeRoot, environment: environment);
+    }
 
     if (!OperatingSystem.IsWindows())
     {
@@ -1933,6 +1945,50 @@ static void Run(
     {
         throw new InvalidOperationException($"Command failed with exit code {exitCode}: {fileName}");
     }
+}
+
+// Runs one of the runtime's batch files. Started through the shell, a batch file gets a console of its own, which a
+// runner's job log never sees, so a failure showed only an exit code. Its output now goes to a file that the log shows
+// when it ends.
+static void RunBatch(string batch, IReadOnlyList<string> arguments, string workingDirectory)
+{
+    string logs = Path.Join(workingDirectory, "artifacts", "log");
+    Directory.CreateDirectory(logs);
+    string name = Path.GetFileNameWithoutExtension(batch);
+    string output = Path.Join(logs, $"ankus-{name}.log");
+    string wrapper = Path.Join(logs, $"ankus-{name}.cmd");
+    File.WriteAllLines(wrapper,
+    [
+        "@echo off",
+        $"call {QuoteBatchArgument(batch)} {string.Join(' ', arguments.Select(QuoteBatchArgument))} > {QuoteBatchArgument(output)} 2>&1",
+        "exit /b %ERRORLEVEL%",
+    ]);
+    int exitCode = RunForExitCode(wrapper, [], workingDirectory, useShellExecute: true);
+    Console.WriteLine($"::group::{Path.GetFileName(batch)} output");
+    if (File.Exists(output))
+    {
+        foreach (string line in File.ReadLines(output))
+        {
+            Console.WriteLine(line);
+        }
+    }
+
+    Console.WriteLine("::endgroup::");
+    if (exitCode != 0)
+    {
+        throw new InvalidOperationException($"Command failed with exit code {exitCode}: {batch}; its output is in the group above.");
+    }
+}
+
+// cmd expands % and treats & | < > ^ as operators even in quotes, so only plain arguments are written into a batch file.
+static string QuoteBatchArgument(string argument)
+{
+    if (argument.IndexOfAny(['"', '%', '!', '^', '&', '|', '<', '>', '\r', '\n']) >= 0)
+    {
+        throw new InvalidOperationException($"Argument cannot be passed through a batch file: {argument}");
+    }
+
+    return argument.Contains(' ', StringComparison.Ordinal) ? $"\"{argument}\"" : argument;
 }
 
 // Runs a command, echoing its output, and returns its exit code for the caller to judge.

@@ -143,6 +143,10 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+      - name: Clean generated runner files
+        if: always()
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- runner-cleanup
+
   verify:
     needs: [metadata, managed-packages, runtime-packages]
     runs-on: ubuntu-24.04

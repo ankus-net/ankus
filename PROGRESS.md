@@ -523,6 +523,18 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   dedicated Linux hosts is now RC1, and the complete suite passes on it on
   Linux x64: 14,976 passed and 52 platform skips. macOS and Windows still test
   beta 4 until their installations move to RC1.
+- Release rehearsal 38759505000 on 0746e49 failed both Windows runtime jobs
+  32 seconds into the runtime's `build.cmd`, right after its restore and
+  before any compilation, and the log showed only the exit code: CI starts
+  batch files through the shell, whose console the runner never reads. The
+  same build passes when run as the runners' NETWORK SERVICE account with
+  their environment, with both runtime lines building at once, and with both
+  extracting into one empty package folder, so the trigger is not yet known.
+  The release path differed from CI's in one way: it restored into the
+  runners' shared package folder instead of one of its own. It now isolates
+  that folder as CI does, a batch file's output goes to a log the job prints,
+  and the job stops the runtime SDK's build servers afterward, which otherwise
+  keep its files locked for minutes.
 - Scheduled run 38729094424 lost one Windows/PostgreSQL 18.6 case before its
   test body ran: the server reset the connection during authentication. The
   new backend had failed with `FATAL: incorrect checksum in control file` in
