@@ -62,7 +62,7 @@ internal static class NativeEventTriggerBridge
             {
                 ankus_trigger_scope = previous_trigger;
                 ankus_function_oid = previous_function;
-                MemoryContextSwitchTo(caller);
+                ANKUS_FINALLY_RESTORE(caller);
                 if (result->release != NULL)
                     result->release(result->data);
                 ankus_release_error(error);

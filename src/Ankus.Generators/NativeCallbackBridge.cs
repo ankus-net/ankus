@@ -78,7 +78,7 @@ internal static class NativeCallbackBridge
             PG_FINALLY();
             {
                 ankus_native_callback_depth--;
-                MemoryContextSwitchTo(caller_identity != 0 && ankus_memory_context_by_id(caller_identity) == NULL
+                ANKUS_FINALLY_RESTORE(caller_identity != 0 && ankus_memory_context_by_id(caller_identity) == NULL
                     ? recovery : caller);
                 ankus_release_error(error);
                 pfree(error);

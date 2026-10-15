@@ -142,7 +142,8 @@ internal static class PgInitializeEmitter
                 PG_CATCH();
                 {
                     ankus_initialization_state = 0;
-                    MemoryContextSwitchTo(caller);
+                    MemoryContext propagating = MemoryContextSwitchTo(caller);
+                    MemoryContextSwitchTo(propagating);
                     PG_RE_THROW();
                 }
                 PG_END_TRY();
@@ -187,8 +188,9 @@ internal static class PgInitializeEmitter
                 PG_CATCH();
                 {
                     ankus_initialization_state = 0;
-                    MemoryContextSwitchTo(caller);
+                    MemoryContext propagating = MemoryContextSwitchTo(caller);
             {{errorCleanup}}
+                    MemoryContextSwitchTo(propagating);
                     PG_RE_THROW();
                 }
                 PG_END_TRY();

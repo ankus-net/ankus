@@ -793,3 +793,42 @@ ankus_test_allocator_flags(PG_FUNCTION_ARGS)
 #endif
     PG_RETURN_INT32(flags);
 }
+
+/* Calls a function that must fail and reports whether ErrorContext is current when its ERROR reaches this
+ * handler. PostgreSQL's own errors arrive there with it current, and handlers that restore the context they
+ * caught an error in before rethrowing, as logical decoding's does, rely on that. */
+PGDLLEXPORT Datum ankus_test_error_arrival(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(ankus_test_error_arrival);
+PGDLLEXPORT Datum
+ankus_test_error_arrival(PG_FUNCTION_ARGS)
+{
+    Oid function = PG_GETARG_OID(0);
+    MemoryContext caller = CurrentMemoryContext;
+    ResourceOwner owner = CurrentResourceOwner;
+    volatile bool raised = false;
+    volatile bool error_context = false;
+    BeginInternalSubTransaction(NULL);
+    MemoryContextSwitchTo(caller);
+    PG_TRY();
+    {
+        (void) OidFunctionCall0(function);
+        ReleaseCurrentSubTransaction();
+    }
+    PG_CATCH();
+    {
+        raised = true;
+        error_context = CurrentMemoryContext == ErrorContext;
+        MemoryContextSwitchTo(caller);
+        FlushErrorState();
+        RollbackAndReleaseCurrentSubTransaction();
+    }
+    PG_END_TRY();
+    MemoryContextSwitchTo(caller);
+    CurrentResourceOwner = owner;
+    if (!raised)
+    {
+        ereport(ERROR, (errcode(ERRCODE_INTERNAL_ERROR), errmsg("the observed function returned without an error")));
+    }
+
+    PG_RETURN_BOOL(error_context);
+}

@@ -372,8 +372,9 @@ internal static class NativeBackgroundWorkerBridge
             }
             PG_CATCH();
             {
-                MemoryContextSwitchTo(caller);
+                MemoryContext propagating = MemoryContextSwitchTo(caller);
                 MemoryContextDelete(owner);
+                MemoryContextSwitchTo(propagating);
                 PG_RE_THROW();
             }
             PG_END_TRY();
@@ -452,11 +453,12 @@ internal static class NativeBackgroundWorkerBridge
             PG_CATCH();
             {
                 ankus_worker_transaction_active = 0;
-                MemoryContextSwitchTo(caller);
+                MemoryContext propagating = MemoryContextSwitchTo(caller);
                 AbortCurrentTransaction();
                 *recovered = true;
                 ankus_release_error(error);
                 pfree(error);
+                MemoryContextSwitchTo(propagating);
                 PG_RE_THROW();
             }
             PG_END_TRY();

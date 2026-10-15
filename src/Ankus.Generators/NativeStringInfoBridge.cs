@@ -136,7 +136,7 @@ internal static class NativeStringInfoBridge
             }
             PG_CATCH();
             {
-                MemoryContextSwitchTo(caller);
+                MemoryContext propagating = MemoryContextSwitchTo(caller);
                 if (entry->buffer != NULL)
                 {
                     if (entry->buffer->data != NULL)
@@ -148,6 +148,7 @@ internal static class NativeStringInfoBridge
                 }
 
                 free(entry);
+                MemoryContextSwitchTo(propagating);
                 PG_RE_THROW();
             }
             PG_END_TRY();

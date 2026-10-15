@@ -99,7 +99,7 @@ internal static class NativeTupleBridge
             }
             PG_FINALLY();
             {
-                MemoryContextSwitchTo(previous);
+                ANKUS_FINALLY_RESTORE(previous);
                 FreeExecutorState(estate);
             }
             PG_END_TRY();
@@ -389,9 +389,10 @@ internal static class NativeTupleBridge
             }
             PG_CATCH();
             {
-                MemoryContextSwitchTo(previous);
+                MemoryContext propagating = MemoryContextSwitchTo(previous);
                 MemoryContextDelete(entry->context);
                 memset(entry, 0, sizeof(*entry));
+                MemoryContextSwitchTo(propagating);
                 PG_RE_THROW();
             }
             PG_END_TRY();

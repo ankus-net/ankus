@@ -65,7 +65,7 @@ internal static class NativeSetBridge
             {
                 if (operation == 0)
                 {
-                    MemoryContextSwitchTo(caller);
+                    ANKUS_FINALLY_RESTORE(caller);
                 }
 
                 ankus_memory_protection = protection.previous;

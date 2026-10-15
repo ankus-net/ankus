@@ -145,7 +145,7 @@ internal static class NativeNodeBridge
             }
             PG_FINALLY();
             {
-                MemoryContextSwitchTo(caller);
+                ANKUS_FINALLY_RESTORE(caller);
                 ankus_memory_protection = scope.previous;
                 MemoryContextDelete(temporary);
             }

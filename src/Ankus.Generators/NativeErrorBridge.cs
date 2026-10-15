@@ -921,7 +921,9 @@ internal static class NativeErrorBridge
             }
             PG_CATCH();
             {
+                MemoryContext propagating = CurrentMemoryContext;
                 ankus_finish_error_report(error, caller, recovery, temporary, cleanup, reporting, false);
+                MemoryContextSwitchTo(propagating);
                 PG_RE_THROW();
             }
             PG_END_TRY();

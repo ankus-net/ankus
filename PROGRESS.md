@@ -456,6 +456,19 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   with the old bridge a normal PostgreSQL 19 build then crashes every time,
   and with the fix the memory classes pass on 19 under `net10.0` and
   `net11.0`.
+- Running the complete suite on that overwriting 19 build found a second fault.
+  PostgreSQL leaves `ErrorContext` current while an ERROR propagates, and
+  logical decoding's handler restores whatever was current when it caught the
+  error after rolling back the transaction it decoded in. Ankus's error reporter
+  and the entry points PostgreSQL calls switched back to their caller's context
+  before rethrowing, so when the WAL decoder sample rejected a type, that
+  rollback deleted the caller's context and the next handler allocated in it.
+  Catch blocks now return to the context the error arrived in before
+  rethrowing, and finally blocks restore their caller's context only when no
+  error has left `ErrorContext` current. A native fixture calls a failing
+  function and records the context current when its ERROR arrives: a SQL
+  function's error and an Ankus function's both arrive in `ErrorContext`, and
+  before the change the Ankus one did not.
 - The same matrix found two test races. On Windows, a test that ends its
   backend with FATAL can see a connection reset instead of the report, so all
   three such GUC tests now accept a reset there and read the report from the

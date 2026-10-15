@@ -1553,7 +1553,7 @@ internal static class NativeGucBridge
                 }
                 ANKUS_PG_CATCH_INNER();
                 {
-                    MemoryContextSwitchTo(caller);
+                    MemoryContext propagating = MemoryContextSwitchTo(caller);
                     if (frame->snapshot_owned)
                     {
                         frame->snapshot_owned = false;
@@ -1571,13 +1571,14 @@ internal static class NativeGucBridge
                         ThrowErrorData(data);
                     }
 
+                    MemoryContextSwitchTo(propagating);
                     PG_RE_THROW();
                 }
                 ANKUS_PG_END_TRY_INNER();
             }
             PG_FINALLY();
             {
-                MemoryContextSwitchTo(caller);
+                ANKUS_FINALLY_RESTORE(caller);
                 ankus_guc_frame_release(frame);
                 MemoryContextDelete(work);
             }
@@ -1664,7 +1665,7 @@ internal static class NativeGucBridge
             }
             PG_FINALLY();
             {
-                MemoryContextSwitchTo(caller);
+                ANKUS_FINALLY_RESTORE(caller);
                 if (frame != NULL)
                     ankus_guc_frame_release(frame);
                 if (work != NULL)
@@ -1715,6 +1716,7 @@ internal static class NativeGucBridge
                 }
                 ANKUS_PG_CATCH_INNER();
                 {
+                    MemoryContext propagating = CurrentMemoryContext;
                     if ((frame != NULL && frame->error.report_level != 0) || !IsTransactionState())
                     {
                         MemoryContextSwitchTo(caller);
@@ -1725,13 +1727,14 @@ internal static class NativeGucBridge
                         ThrowErrorData(data);
                     }
 
+                    MemoryContextSwitchTo(propagating);
                     PG_RE_THROW();
                 }
                 ANKUS_PG_END_TRY_INNER();
             }
             PG_FINALLY();
             {
-                MemoryContextSwitchTo(caller);
+                ANKUS_FINALLY_RESTORE(caller);
                 if (frame != NULL)
                     ankus_guc_frame_release(frame);
                 if (work != NULL)

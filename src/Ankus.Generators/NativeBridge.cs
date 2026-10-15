@@ -61,6 +61,20 @@ internal static class NativeBridge
             } while (0)
         #endif
 
+        #include "utils/memutils.h"
+
+        /* PostgreSQL propagates an ERROR with ErrorContext current. A handler that cleans up and rethrows,
+         * as logical decoding's does, restores whatever was current when it caught the error, after that
+         * cleanup may have deleted other contexts, and an outer handler then allocates there. Code that a
+         * propagating error passes through therefore leaves the context it arrived in current: a catch
+         * block switches back to it before rethrowing, and a finally block restores its caller's context
+         * only when no error has left ErrorContext current. */
+        #define ANKUS_FINALLY_RESTORE(caller) \
+            do { \
+                if (CurrentMemoryContext != ErrorContext) \
+                    MemoryContextSwitchTo(caller); \
+            } while (0)
+
         typedef struct AnkusValue
         {
             int64 integral;

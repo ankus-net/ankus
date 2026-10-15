@@ -560,7 +560,7 @@ internal static class NativeCustomScanBridge
             }
             PG_FINALLY();
             {
-                MemoryContextSwitchTo(caller);
+                ANKUS_FINALLY_RESTORE(caller);
                 ankus_custom_scan_release_row(state, descriptor->natts);
             }
             PG_END_TRY();

@@ -483,7 +483,7 @@ internal static class NativeAggregateBridge
                 ankus_memory_protection = protection.previous;
                 ankus_aggregate_scope = previous;
                 ankus_function_oid = previous_function;
-                MemoryContextSwitchTo(caller);
+                ANKUS_FINALLY_RESTORE(caller);
                 for (int index = 0; index < arguments_count; index++)
                     ankus_free_input(&owned[index]);
                 if (result->release != NULL)

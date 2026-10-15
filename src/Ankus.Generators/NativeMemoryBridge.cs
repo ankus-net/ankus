@@ -998,8 +998,9 @@ internal static class NativeMemoryBridge
             }
             PG_CATCH();
             {
-                MemoryContextSwitchTo(caller);
+                MemoryContext propagating = MemoryContextSwitchTo(caller);
                 MemoryContextDelete(context);
+                MemoryContextSwitchTo(propagating);
                 PG_RE_THROW();
             }
             PG_END_TRY();
@@ -1030,7 +1031,7 @@ internal static class NativeMemoryBridge
             }
             PG_FINALLY();
             {
-                MemoryContextSwitchTo(caller);
+                ANKUS_FINALLY_RESTORE(caller);
                 MemoryContextDelete(temporary);
             }
             PG_END_TRY();

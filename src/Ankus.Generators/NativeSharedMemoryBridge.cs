@@ -616,7 +616,7 @@ internal static class NativeSharedMemoryBridge
             }
             PG_FINALLY();
             {
-                MemoryContextSwitchTo(caller);
+                ANKUS_FINALLY_RESTORE(caller);
                 ankus_release_error(error);
                 pfree(error);
                 if (entered)

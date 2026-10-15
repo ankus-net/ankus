@@ -92,7 +92,7 @@ internal static class PgBackgroundWorkerEmitter
                 }
                 PG_FINALLY();
                 {
-                    MemoryContextSwitchTo(caller);
+                    ANKUS_FINALLY_RESTORE(caller);
                     ankus_worker_active = false;
                     ankus_worker_execute = NULL;
                     ankus_release_error(error);

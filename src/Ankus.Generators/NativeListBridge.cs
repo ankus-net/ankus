@@ -260,9 +260,10 @@ internal static class NativeListBridge
                 }
                 PG_CATCH();
                 {
-                    MemoryContextSwitchTo(caller);
+                    MemoryContext propagating = MemoryContextSwitchTo(caller);
                     list_free(entry->list);
                     entry->list = NIL;
+                    MemoryContextSwitchTo(propagating);
                     PG_RE_THROW();
                 }
                 PG_END_TRY();
@@ -381,10 +382,11 @@ internal static class NativeListBridge
             }
             PG_CATCH();
             {
-                MemoryContextSwitchTo(caller);
+                MemoryContext propagating = MemoryContextSwitchTo(caller);
                 if (temporary != NULL)
                     MemoryContextDelete(temporary);
                 free(entry);
+                MemoryContextSwitchTo(propagating);
                 PG_RE_THROW();
             }
             PG_END_TRY();

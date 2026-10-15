@@ -19,6 +19,8 @@ internal static class AllocatorFixtureCompiler
     internal static string InstallationSql { get; } = $$"""
         CREATE FUNCTION tests.cstring_argument(regprocedure, boolean) RETURNS boolean
         AS '{{ModuleFileName}}', 'ankus_test_cstring_argument' LANGUAGE c STRICT;
+        CREATE FUNCTION tests.error_arrival(regprocedure) RETURNS boolean
+        AS '{{ModuleFileName}}', 'ankus_test_error_arrival' LANGUAGE c STRICT;
         CREATE FUNCTION tests.buffer_argument(regprocedure, anyelement) RETURNS text[]
         AS '{{ModuleFileName}}', 'ankus_test_buffer_argument' LANGUAGE c STRICT;
         CREATE FUNCTION tests.buffer_invalid_text(regprocedure, integer) RETURNS text[]

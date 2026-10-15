@@ -92,7 +92,7 @@ internal static class PgModuleLoadEmitter
                 PG_CATCH();
                 {
                     ankus_module_loading = false;
-                    MemoryContextSwitchTo(caller);
+                    MemoryContext propagating = MemoryContextSwitchTo(caller);
                     if (snapshot_owned)
                     {
                         snapshot_owned = false;
@@ -101,6 +101,7 @@ internal static class PgModuleLoadEmitter
 
                     ankus_release_error(error);
                     pfree(error);
+                    MemoryContextSwitchTo(propagating);
                     PG_RE_THROW();
                 }
                 PG_END_TRY();

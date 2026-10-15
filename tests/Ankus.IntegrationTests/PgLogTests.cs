@@ -74,6 +74,27 @@ public sealed partial class PgLogTests(TestContext context)
             }, context.CancellationToken);
 
     /// <summary>
+    /// An ERROR from an extension function reaches the calling C handler with ErrorContext current, as PostgreSQL's own
+    /// errors do. Handlers that restore the context they caught an error in before rethrowing, as logical decoding's
+    /// does after deleting other contexts, depend on it.
+    /// </summary>
+    [TestMethod]
+    public Task ErrorsReachHandlersInErrorContext()
+        => PostgresFixture.Cluster.RunInTransactionAsync(nameof(ErrorsReachHandlersInErrorContext),
+            async (connection, transaction, token) =>
+            {
+                await using var command = new NpgsqlCommand(
+                    "CREATE FUNCTION pg_temp.native_failure() RETURNS integer LANGUAGE sql AS $$ SELECT 1 / 0 $$", connection, transaction);
+                await command.ExecuteNonQueryAsync(token);
+                command.CommandText = "SELECT tests.error_arrival('pg_temp.native_failure()'::regprocedure)";
+                Assert.IsTrue(Assert.IsInstanceOfType<bool>(await command.ExecuteScalarAsync(token)));
+                command.CommandText = "SELECT tests.error_arrival('datatype.raise_domain()'::regprocedure)";
+                Assert.IsTrue(Assert.IsInstanceOfType<bool>(await command.ExecuteScalarAsync(token)));
+                command.CommandText = "SELECT 42";
+                Assert.AreEqual(42, await command.ExecuteScalarAsync(token));
+            }, context.CancellationToken);
+
+    /// <summary>
     /// Interpolated messages evaluate their expressions only for enabled levels: DEBUG levels are disabled at
     /// PostgreSQL's default client threshold, WARNING is enabled, and enabling DEBUG1 evaluates and delivers it.
     /// </summary>

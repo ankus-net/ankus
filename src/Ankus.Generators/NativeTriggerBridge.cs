@@ -41,7 +41,7 @@ internal static class NativeTriggerBridge
                 }
                 PG_FINALLY();
                 {
-                    MemoryContextSwitchTo(previous);
+                    ANKUS_FINALLY_RESTORE(previous);
                 }
                 PG_END_TRY();
             }
@@ -172,8 +172,9 @@ internal static class NativeTriggerBridge
             }
             PG_CATCH();
             {
-                MemoryContextSwitchTo(previous);
+                MemoryContext propagating = MemoryContextSwitchTo(previous);
                 MemoryContextDelete(context);
+                MemoryContextSwitchTo(propagating);
                 PG_RE_THROW();
             }
             PG_END_TRY();
@@ -407,8 +408,9 @@ internal static class NativeTriggerBridge
             }
             PG_CATCH();
             {
-                MemoryContextSwitchTo(caller);
+                MemoryContext propagating = MemoryContextSwitchTo(caller);
                 MemoryContextDelete(scope.context);
+                MemoryContextSwitchTo(propagating);
                 PG_RE_THROW();
             }
             PG_END_TRY();
@@ -470,7 +472,7 @@ internal static class NativeTriggerBridge
             }
             PG_FINALLY();
             {
-                MemoryContextSwitchTo(caller);
+                ANKUS_FINALLY_RESTORE(caller);
                 /* A nested call's private site lives in the scope context deleted below. */
                 site->busy--;
                 if (result->release != NULL)
@@ -487,7 +489,7 @@ internal static class NativeTriggerBridge
                 {
                     ankus_trigger_scope = previous_scope;
                     ankus_function_oid = previous_function;
-                    MemoryContextSwitchTo(caller);
+                    ANKUS_FINALLY_RESTORE(caller);
                 }
                 ANKUS_PG_END_TRY_INNER();
             }
