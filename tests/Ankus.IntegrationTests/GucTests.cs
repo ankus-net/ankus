@@ -400,29 +400,7 @@ public sealed class GucTests(TestContext context)
     {
         await using NpgsqlConnection failing = await OpenAsync();
         await using NpgsqlConnection observer = await OpenAsync();
-        string session = "ankus-guc-assign-failure-" + Guid.NewGuid().ToString("N");
-        await ExecuteAsync(failing, $"SET application_name = '{session}'; SET log_error_verbosity = verbose");
-        await using var command = new NpgsqlCommand("SET ankus_guc.hook_int = '66'", failing);
-        NpgsqlException failure = await Assert.ThrowsAsync<NpgsqlException>(() => command.ExecuteNonQueryAsync(context.CancellationToken));
-        if (failure is PostgresException error)
-        {
-            Assert.AreEqual("FATAL", error.InvariantSeverity);
-            Assert.AreEqual("38000", error.SqlState);
-            Assert.AreEqual("Assign must not fail.", error.MessageText);
-        }
-        else
-        {
-            // PostgreSQL has already flushed FATAL, but Windows can reset the closing socket before it is read.
-            Assert.IsTrue(OperatingSystem.IsWindows());
-            IOException transport = Assert.IsInstanceOfType<IOException>(failure.InnerException);
-            SocketException socket = Assert.IsInstanceOfType<SocketException>(transport.InnerException);
-            Assert.AreEqual(SocketError.ConnectionReset, socket.SocketErrorCode);
-        }
-
-        string log = string.Join('\n', PostgresFixture.Cluster.ReadServerLog().Split('\n')
-            .Where(line => line.Contains($"[{session}]:", StringComparison.Ordinal)));
-        Assert.Contains("FATAL:  38000: Assign must not fail.", log);
-        Assert.AreEqual(System.Data.ConnectionState.Closed, failing.State);
+        await TerminalFailureAsync(failing, "SET ankus_guc.hook_int = '66'", "38000", "Assign must not fail.");
         Assert.AreEqual(42, await ScalarAsync(observer, "SELECT 42"));
         Assert.AreEqual("integer=10;extra=0A000000", await ScalarAsync(observer, "SHOW ankus_guc.hook_int"));
     }
@@ -435,10 +413,7 @@ public sealed class GucTests(TestContext context)
     {
         await using NpgsqlConnection failing = await PostgresFixture.Cluster.OpenConnectionAsync(context.CancellationToken);
         await ExecuteAsync(failing, "SET ankus_guc.control = 'reject-boot'");
-        PostgresException error = await FailureAsync(failing, "LOAD 'Ankus.TestExtension'");
-        Assert.AreEqual("FATAL", error.InvariantSeverity);
-        Assert.AreEqual("XX000", error.SqlState);
-        Assert.AreEqual("failed to initialize ankus_guc.hook_int to 10", error.MessageText);
+        await TerminalFailureAsync(failing, "LOAD 'Ankus.TestExtension'", "XX000", "failed to initialize ankus_guc.hook_int to 10");
         Assert.Contains("Rejected boot integer.", PostgresFixture.Cluster.ReadServerLog());
         await using NpgsqlConnection recovered = await OpenAsync();
         Assert.AreEqual("integer=10;extra=0A000000", await ScalarAsync(recovered, "SHOW ankus_guc.hook_int"));
@@ -474,12 +449,16 @@ public sealed class GucTests(TestContext context)
         await using NpgsqlConnection observer = await OpenAsync();
         bool reportsOutsideTransaction = PostgresFixture.Cluster.Installation.Version.Major >= 14;
         int process = failing.ProcessID;
-        PostgresException error = await FailureAsync(failing, "SET ankus_guc.reported = '666'");
-        Assert.AreEqual(reportsOutsideTransaction ? "FATAL" : "ERROR", error.InvariantSeverity);
-        Assert.AreEqual("38000", error.SqlState);
-        Assert.AreEqual("Report show must not fail.", error.MessageText);
-        if (!reportsOutsideTransaction)
+        if (reportsOutsideTransaction)
         {
+            await TerminalFailureAsync(failing, "SET ankus_guc.reported = '666'", "38000", "Report show must not fail.");
+        }
+        else
+        {
+            PostgresException error = await FailureAsync(failing, "SET ankus_guc.reported = '666'");
+            Assert.AreEqual("ERROR", error.InvariantSeverity);
+            Assert.AreEqual("38000", error.SqlState);
+            Assert.AreEqual("Report show must not fail.", error.MessageText);
             Assert.AreEqual(process, failing.ProcessID);
             Assert.AreEqual("report=1;sql=unavailable", await ScalarAsync(failing, "SHOW ankus_guc.reported"));
             await ExecuteAsync(failing, "SET ankus_guc.reported = '2'");
@@ -620,5 +599,41 @@ public sealed class GucTests(TestContext context)
     {
         await using var command = new NpgsqlCommand(sql, connection);
         return await Assert.ThrowsExactlyAsync<PostgresException>(() => command.ExecuteNonQueryAsync(context.CancellationToken));
+    }
+
+    /// <summary>
+    /// Runs a statement that must end its backend with FATAL and checks that report. PostgreSQL flushes FATAL before it
+    /// exits, but Windows can reset the closing socket before the client reads it, so the server log, filtered to this
+    /// session, must always carry the same report.
+    /// </summary>
+    /// <param name="connection">The open connection whose backend the statement terminates.</param>
+    /// <param name="sql">The terminating statement.</param>
+    /// <param name="sqlState">The expected SQLSTATE.</param>
+    /// <param name="message">The expected primary message.</param>
+    /// <returns>A task that completes after the report and the closed connection are checked.</returns>
+    private async Task TerminalFailureAsync(NpgsqlConnection connection, string sql, string sqlState, string message)
+    {
+        string session = "ankus-guc-terminal-" + Guid.NewGuid().ToString("N");
+        await ExecuteAsync(connection, $"SET application_name = '{session}'; SET log_error_verbosity = verbose");
+        await using var command = new NpgsqlCommand(sql, connection);
+        NpgsqlException failure = await Assert.ThrowsAsync<NpgsqlException>(() => command.ExecuteNonQueryAsync(context.CancellationToken));
+        if (failure is PostgresException error)
+        {
+            Assert.AreEqual("FATAL", error.InvariantSeverity);
+            Assert.AreEqual(sqlState, error.SqlState);
+            Assert.AreEqual(message, error.MessageText);
+        }
+        else
+        {
+            Assert.IsTrue(OperatingSystem.IsWindows());
+            IOException transport = Assert.IsInstanceOfType<IOException>(failure.InnerException);
+            SocketException socket = Assert.IsInstanceOfType<SocketException>(transport.InnerException);
+            Assert.AreEqual(SocketError.ConnectionReset, socket.SocketErrorCode);
+        }
+
+        string log = string.Join('\n', PostgresFixture.Cluster.ReadServerLog().Split('\n')
+            .Where(line => line.Contains($"[{session}]:", StringComparison.Ordinal)));
+        Assert.Contains($"FATAL:  {sqlState}: {message}", log);
+        Assert.AreEqual(System.Data.ConnectionState.Closed, connection.State);
     }
 }
