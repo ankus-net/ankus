@@ -566,6 +566,13 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   gives the timed statement its own connection, configured with the timeout
   at startup, and the four that check same-session recovery retry their
   cleanup when the timeout they set cancels it.
+- CI 38791251483 on 12f71f8 failed before building: restoring the CI script on
+  a Windows runner reported NU1900 because another runner was replacing
+  NuGet's vulnerability data in the service account's shared HTTP cache. The
+  three Windows runners share that cache and a package folder, but NuGet
+  coordinates them through lock files under `NUGET_SCRATCH`, which defaults to
+  each runner's own `TEMP`. The runner guide now says to share it; the
+  Windows runners do not share one yet, so the race remains possible there.
 - Scheduled run 38729094424 lost one Windows/PostgreSQL 18.6 case before its
   test body ran: the server reset the connection during authentication. The
   new backend had failed with `FATAL: incorrect checksum in control file` in

@@ -269,7 +269,12 @@ SDK also carries its `LIB` roots into header verification and native compilation
 The dedicated runner keeps its SDK installation, NuGet packages, temporary
 files and work directory under its own storage root. Configure
 `DOTNET_INSTALL_DIR`, `DOTNET_ROOT`, `DOTNET_CLI_HOME`, `NUGET_PACKAGES`, `TEMP`
-and `TMP` for its service account. Native binding entries persist in
+and `TMP` for its service account. Runners on one host that share the package
+folder, or the service account's NuGet HTTP cache, must also share
+`NUGET_SCRATCH`: NuGet keeps the locks that coordinate those caches there, under
+`TEMP` by default, so runners with their own `TEMP` restored the same files at
+once, and a restore could fail on the vulnerability data another runner was
+replacing. Native binding entries persist in
 `runner.tool_cache/ankus-binding-cache` and retain normal content and ABI
 validation. Parallel binding compiler restores share the package cache but keep
 their transient NuGet HTTP metadata in their owned compiler workspaces, avoiding
