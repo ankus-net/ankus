@@ -381,7 +381,7 @@ internal static class SpiType
     /// <param name="value">The borrowed native cell.</param>
     /// <param name="oid">The PostgreSQL base type OID.</param>
     /// <returns>The managed value, or null for SQL NULL.</returns>
-    internal static object? FromNative(NativeValue value, uint oid)
+    internal static object? FromNative(in NativeValue value, uint oid)
     {
         if (value.IsNull != 0)
         {

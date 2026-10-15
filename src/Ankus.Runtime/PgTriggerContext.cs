@@ -1,5 +1,3 @@
-using System.Collections.ObjectModel;
-
 namespace Ankus;
 
 /// <summary>
@@ -8,6 +6,8 @@ namespace Ankus;
 /// </summary>
 public sealed class PgTriggerContext
 {
+    private readonly PgTriggerDefinition _definition;
+
     /// <summary>
     /// Validates the event and takes ownership of converted rows while copying the trigger argument list.
     /// </summary>
@@ -15,25 +15,23 @@ public sealed class PgTriggerContext
         string tableSchema, string? oldTransitionTableName, string? newTransitionTableName,
         string[] arguments, PgHeapTuple? oldRow, PgHeapTuple? newRow, PgTupleDescriptor descriptor,
         int[]? updateOfColumns = null, int[]? updatedColumns = null, uint constraintOid = 0, int constraintFlags = 0)
-        : this(eventBits, relationOid, triggerOid, name, tableName, tableSchema, oldTransitionTableName, newTransitionTableName,
-            Array.AsReadOnly<string>([.. arguments ?? throw new ArgumentNullException(nameof(arguments))]), oldRow, newRow, descriptor,
-            Array.AsReadOnly<int>([.. updateOfColumns ?? []]), updatedColumns, constraintOid, constraintFlags)
+        : this(new PgTriggerDefinition(relationOid, triggerOid, name, tableName, tableSchema, oldTransitionTableName,
+            newTransitionTableName, Array.AsReadOnly<string>([.. arguments ?? throw new ArgumentNullException(nameof(arguments))]),
+            descriptor, Array.AsReadOnly<int>([.. updateOfColumns ?? []])), eventBits, oldRow, newRow, updatedColumns,
+            constraintOid, constraintFlags)
     {
     }
 
     /// <summary>
-    /// Validates the event and takes ownership of converted rows, sharing read-only argument and column lists that
-    /// nothing can change, such as those a trigger call site parsed once.
+    /// Validates the event and takes ownership of converted rows, sharing a definition that nothing can change, such as
+    /// the one a trigger call site parsed once.
     /// </summary>
     /// <remarks>
-    /// A call site passes <paramref name="metadataValidated"/> after checking its names, arguments and columns once
-    /// with <see cref="ValidateMetadata"/>; they do not change between its rows.
+    /// A call site passes <paramref name="metadataValidated"/> after checking its definition once with
+    /// <see cref="ValidateMetadata"/>; it does not change between its rows.
     /// </remarks>
-    internal PgTriggerContext(uint eventBits, uint relationOid, uint triggerOid, string name, string tableName,
-        string tableSchema, string? oldTransitionTableName, string? newTransitionTableName,
-        ReadOnlyCollection<string> arguments, PgHeapTuple? oldRow, PgHeapTuple? newRow, PgTupleDescriptor descriptor,
-        ReadOnlyCollection<int> updateOfColumns, int[]? updatedColumns, uint constraintOid, int constraintFlags,
-        bool metadataValidated = false)
+    internal PgTriggerContext(PgTriggerDefinition definition, uint eventBits, PgHeapTuple? oldRow, PgHeapTuple? newRow,
+        int[]? updatedColumns, uint constraintOid, int constraintFlags, bool metadataValidated = false)
     {
         if ((eventBits & ~127U) != 0 || (eventBits & 24U) == 24U ||
             ((eventBits & 4U) != 0 && (eventBits & 3U) == 3U) ||
@@ -42,30 +40,22 @@ public sealed class PgTriggerContext
             throw new InvalidOperationException("The native trigger event has an invalid operation, timing, or level.");
         }
 
-        if (relationOid == 0 || triggerOid == 0)
+        if (definition.RelationOid == 0 || definition.TriggerOid == 0)
         {
             throw new InvalidOperationException("Trigger and relation identities must be valid PostgreSQL OIDs.");
         }
 
-        ArgumentNullException.ThrowIfNull(arguments);
-        ArgumentNullException.ThrowIfNull(descriptor);
-        ArgumentNullException.ThrowIfNull(updateOfColumns);
+        ArgumentNullException.ThrowIfNull(definition.Arguments, "arguments");
+        ArgumentNullException.ThrowIfNull(definition.Descriptor, "descriptor");
+        ArgumentNullException.ThrowIfNull(definition.UpdateOfColumns, "updateOfColumns");
         if (!metadataValidated)
         {
-            ValidateMetadata(name, tableName, tableSchema, oldTransitionTableName, newTransitionTableName, arguments,
-                updateOfColumns, descriptor);
+            ValidateMetadata(definition.Name, definition.TableName, definition.TableSchema, definition.OldTransitionTableName,
+                definition.NewTransitionTableName, definition.Arguments, definition.UpdateOfColumns, definition.Descriptor);
         }
 
+        _definition = definition;
         Event = eventBits;
-        Operation = (PgTriggerOperation)(eventBits & 3U);
-        Timing = (eventBits & 24U) switch
-        {
-            8 => PgTriggerTiming.Before,
-            16 => PgTriggerTiming.InsteadOf,
-            _ => PgTriggerTiming.After,
-        };
-
-        Level = (eventBits & 4U) != 0 ? PgTriggerLevel.Row : PgTriggerLevel.Statement;
         bool needsOld = Level == PgTriggerLevel.Row && Operation is PgTriggerOperation.Delete or PgTriggerOperation.Update;
         bool needsNew = Level == PgTriggerLevel.Row && Operation is PgTriggerOperation.Insert or PgTriggerOperation.Update;
         if ((oldRow is not null) != needsOld || (newRow is not null) != needsNew)
@@ -73,8 +63,8 @@ public sealed class PgTriggerContext
             throw new InvalidOperationException("OLD and NEW row presence does not match the trigger operation and level.");
         }
 
-        ValidateRow(oldRow, descriptor);
-        ValidateRow(newRow, descriptor);
+        ValidateRow(oldRow, definition.Descriptor);
+        ValidateRow(newRow, definition.Descriptor);
         if (updatedColumns is not null)
         {
             if (Operation != PgTriggerOperation.Update)
@@ -82,7 +72,7 @@ public sealed class PgTriggerContext
                 throw new InvalidOperationException("Only an UPDATE trigger reports updated columns.");
             }
 
-            ValidateColumns(updatedColumns, descriptor);
+            ValidateColumns(updatedColumns, definition.Descriptor);
         }
         else if (Operation == PgTriggerOperation.Update)
         {
@@ -94,18 +84,8 @@ public sealed class PgTriggerContext
             throw new InvalidOperationException("A trigger can be initially deferred only when it is deferrable.");
         }
 
-        RelationOid = relationOid;
-        TriggerOid = triggerOid;
-        Name = name;
-        TableName = tableName;
-        TableSchema = tableSchema;
-        OldTransitionTableName = oldTransitionTableName;
-        NewTransitionTableName = newTransitionTableName;
-        Arguments = arguments;
         Old = oldRow;
         New = newRow;
-        Descriptor = descriptor;
-        UpdateOfColumns = updateOfColumns;
         UpdatedColumns = updatedColumns is null ? null : Array.AsReadOnly<int>([.. updatedColumns]);
         ConstraintOid = constraintOid;
         IsDeferrable = (constraintFlags & 1) != 0;
@@ -115,27 +95,27 @@ public sealed class PgTriggerContext
     /// <summary>
     /// Gets the exact name of the trigger that fired.
     /// </summary>
-    public string Name { get; }
+    public string Name => _definition.Name;
 
     /// <summary>
     /// Gets the exact target table or view name.
     /// </summary>
-    public string TableName { get; }
+    public string TableName => _definition.TableName;
 
     /// <summary>
     /// Gets the exact target relation's schema name.
     /// </summary>
-    public string TableSchema { get; }
+    public string TableSchema => _definition.TableSchema;
 
     /// <summary>
     /// Gets the target relation's catalog OID, distinct from its row type OID.
     /// </summary>
-    public uint RelationOid { get; }
+    public uint RelationOid => _definition.RelationOid;
 
     /// <summary>
     /// Gets the fired trigger's catalog OID.
     /// </summary>
-    public uint TriggerOid { get; }
+    public uint TriggerOid => _definition.TriggerOid;
 
     /// <summary>
     /// Gets PostgreSQL's raw trigger event bits, retaining internal deferrability flags.
@@ -145,17 +125,22 @@ public sealed class PgTriggerContext
     /// <summary>
     /// Gets the single operation that caused this invocation.
     /// </summary>
-    public PgTriggerOperation Operation { get; }
+    public PgTriggerOperation Operation => (PgTriggerOperation)(Event & 3U);
 
     /// <summary>
     /// Gets whether this invocation runs before, after, or instead of the operation.
     /// </summary>
-    public PgTriggerTiming Timing { get; }
+    public PgTriggerTiming Timing => (Event & 24U) switch
+    {
+        8 => PgTriggerTiming.Before,
+        16 => PgTriggerTiming.InsteadOf,
+        _ => PgTriggerTiming.After,
+    };
 
     /// <summary>
     /// Gets whether this invocation operates on one row or the entire statement.
     /// </summary>
-    public PgTriggerLevel Level { get; }
+    public PgTriggerLevel Level => (Event & 4U) != 0 ? PgTriggerLevel.Row : PgTriggerLevel.Statement;
 
     /// <summary>
     /// Gets the owned original row for row-level UPDATE and DELETE invocations, otherwise null.
@@ -171,30 +156,30 @@ public sealed class PgTriggerContext
     /// <summary>
     /// Gets the immutable target relation descriptor, including physical dropped slots.
     /// </summary>
-    public PgTupleDescriptor Descriptor { get; }
+    public PgTupleDescriptor Descriptor => _definition.Descriptor;
 
     /// <summary>
     /// Gets the immutable trigger arguments in declaration order, including empty strings.
     /// </summary>
-    public IReadOnlyList<string> Arguments { get; }
+    public IReadOnlyList<string> Arguments => _definition.Arguments;
 
     /// <summary>
     /// Gets the OLD transition relation name, or null when none was declared.
     /// The relation itself is only available during the trigger callback.
     /// </summary>
-    public string? OldTransitionTableName { get; }
+    public string? OldTransitionTableName => _definition.OldTransitionTableName;
 
     /// <summary>
     /// Gets the NEW transition relation name, or null when none was declared.
     /// The relation itself is only available during the trigger callback.
     /// </summary>
-    public string? NewTransitionTableName { get; }
+    public string? NewTransitionTableName => _definition.NewTransitionTableName;
 
     /// <summary>
     /// Gets the zero-based ordinals of the columns named by the trigger's <c>UPDATE OF</c> list, or an empty list when the
     /// trigger is not column-specific.
     /// </summary>
-    public IReadOnlyList<int> UpdateOfColumns { get; }
+    public IReadOnlyList<int> UpdateOfColumns => _definition.UpdateOfColumns;
 
     /// <summary>
     /// Gets the zero-based ordinals of the columns the triggering <c>UPDATE</c> assigns, or null for other operations.
@@ -269,7 +254,7 @@ public sealed class PgTriggerContext
     {
         for (int index = 0; index < columns.Count; index++)
         {
-            if (columns[index] < 0 || columns[index] >= descriptor.Attributes.Count)
+            if (columns[index] < 0 || columns[index] >= descriptor.AttributeSpan.Length)
             {
                 throw new InvalidOperationException("Trigger column ordinals must identify the target relation's attributes.");
             }
@@ -285,15 +270,15 @@ public sealed class PgTriggerContext
         }
 
         if (row.Descriptor.BaseTypeOid != descriptor.BaseTypeOid ||
-            row.Descriptor.TypeModifier != descriptor.TypeModifier || row.Count != descriptor.Attributes.Count)
+            row.Descriptor.TypeModifier != descriptor.TypeModifier || row.Count != descriptor.AttributeSpan.Length)
         {
             throw new InvalidOperationException("The trigger row has a different tuple descriptor from the target relation.");
         }
 
         for (int index = 0; index < row.Count; index++)
         {
-            PgTupleAttributeInfo expected = descriptor.Attributes[index];
-            PgTupleAttributeInfo actual = row.Descriptor.Attributes[index];
+            PgTupleAttributeInfo expected = descriptor.AttributeSpan[index];
+            PgTupleAttributeInfo actual = row.Descriptor.AttributeSpan[index];
             if (actual.Name != expected.Name || actual.TypeOid != expected.TypeOid || actual.BaseTypeOid != expected.BaseTypeOid ||
                 actual.TypeModifier != expected.TypeModifier || actual.CollationOid != expected.CollationOid ||
                 actual.IsDropped != expected.IsDropped || actual.IsNotNull != expected.IsNotNull || actual.IsComposite != expected.IsComposite)

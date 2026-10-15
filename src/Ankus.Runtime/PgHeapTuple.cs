@@ -10,13 +10,19 @@ public sealed class PgHeapTuple
 {
     private readonly object?[] _values;
 
+    // Replaced cells among the first 64, and beyond them in a row that has more.
+    private ulong _replacedMask;
+
     private bool[]? _replaced;
 
     /// <summary>
-    /// Takes ownership of an array of cells a reader has just converted, without copying it.
+    /// Takes ownership of an array of cells a native reader has just converted, without copying or checking it.
     /// </summary>
     /// <param name="descriptor">The tuple's immutable descriptor metadata.</param>
-    /// <param name="values">The converted cells, referenced by nothing else.</param>
+    /// <param name="values">
+    /// The converted cells, referenced by nothing else. As a native reader guarantees, there is one per attribute, dropped
+    /// and unavailable attributes are SQL NULL, and no cell holds an open relation.
+    /// </param>
     /// <returns>The tuple that owns the cells.</returns>
     internal static PgHeapTuple FromOwnedCells(PgTupleDescriptor descriptor, object?[] values) => new(descriptor, values, owned: true);
 
@@ -27,7 +33,7 @@ public sealed class PgHeapTuple
     internal PgHeapTuple(PgTupleDescriptor descriptor)
     {
         Descriptor = descriptor;
-        _values = new object?[descriptor.Attributes.Count];
+        _values = new object?[descriptor.AttributeSpan.Length];
     }
 
     /// <summary>
@@ -39,28 +45,36 @@ public sealed class PgHeapTuple
     }
 
     /// <summary>
-    /// Validates converted cells and retains immutable descriptor metadata, copying the cells unless the caller
-    /// transfers an array nothing else references.
+    /// Validates and copies converted cells and retains immutable descriptor metadata, or takes an array of cells a
+    /// native reader has already checked.
     /// </summary>
     private PgHeapTuple(PgTupleDescriptor descriptor, object?[] values, bool owned)
     {
+        if (owned)
+        {
+            Descriptor = descriptor;
+            _values = values;
+            return;
+        }
+
         ArgumentNullException.ThrowIfNull(descriptor);
         ArgumentNullException.ThrowIfNull(values);
-        if (values.Length != descriptor.Attributes.Count)
+        ReadOnlySpan<PgTupleAttributeInfo> attributes = descriptor.AttributeSpan;
+        if (values.Length != attributes.Length)
         {
             throw new ArgumentException("Tuple cells must match the descriptor's physical attribute count.", nameof(values));
         }
 
         for (int index = 0; index < values.Length; index++)
         {
-            if ((descriptor.Attributes[index].IsDropped || descriptor.Attributes[index].IsUnavailable) && values[index] is not null)
+            if ((attributes[index].IsDropped || attributes[index].IsUnavailable) && values[index] is not null)
             {
                 throw new ArgumentException("Dropped and unavailable tuple attributes cannot contain a value.", nameof(values));
             }
         }
 
         Descriptor = descriptor;
-        _values = owned ? values : [.. values];
+        _values = [.. values];
         for (int index = 0; index < _values.Length; index++)
         {
             _values[index] = PgRelationIdentity.Snapshot(_values[index]);
@@ -106,7 +120,7 @@ public sealed class PgHeapTuple
         object? cell = GetStoredCell(ordinal);
         if (typeof(T) == typeof(PgDatum))
         {
-            PgTupleAttributeInfo attribute = Descriptor.Attributes[ordinal];
+            PgTupleAttributeInfo attribute = Descriptor.AttributeSpan[ordinal];
             return attribute.IsDropped
                 ? throw new InvalidOperationException("A dropped tuple attribute has no PostgreSQL type to read.")
                 : GenericValue.As<T>(SpiRow.ReadRaw(cell, attribute.TypeOid));
@@ -120,12 +134,12 @@ public sealed class PgHeapTuple
 
         if (PgDatumRegistry.Find(typeof(T)) is { } mapping)
         {
-            return SpiRow.Convert<T>(mapping.ReadCell(cell, Descriptor.Attributes[ordinal].TypeOid));
+            return SpiRow.Convert<T>(mapping.ReadCell(cell, Descriptor.AttributeSpan[ordinal].TypeOid));
         }
 
         if (PgDatumRegistry.FindArray(typeof(T)) is { } arrays)
         {
-            return (T)arrays.ReadCell(cell, Descriptor.Attributes[ordinal].TypeOid, typeof(T))!;
+            return (T)arrays.ReadCell(cell, Descriptor.AttributeSpan[ordinal].TypeOid, typeof(T))!;
         }
 
         return SpiRow.Convert<T>(cell);
@@ -157,7 +171,7 @@ public sealed class PgHeapTuple
             return;
         }
 
-        PgTupleAttributeInfo attribute = Descriptor.Attributes[ValidateOrdinal(ordinal)];
+        PgTupleAttributeInfo attribute = Descriptor.AttributeSpan[ValidateOrdinal(ordinal)];
         ValidateAvailable(ordinal);
         if (attribute.IsDropped)
         {
@@ -325,14 +339,15 @@ public sealed class PgHeapTuple
     /// <summary>
     /// Gets whether any cell has been replaced since the tuple was created or read.
     /// </summary>
-    internal bool IsModified => _replaced is not null;
+    internal bool IsModified => _replacedMask != 0 || _replaced is not null;
 
     /// <summary>
     /// Gets whether a cell has been replaced since the tuple was created or read.
     /// </summary>
     /// <param name="ordinal">The zero-based physical ordinal.</param>
     /// <returns>Whether the cell was replaced.</returns>
-    internal bool IsReplaced(int ordinal) => _replaced is { } replaced && replaced[ordinal];
+    internal bool IsReplaced(int ordinal)
+        => ordinal < 64 ? (_replacedMask & (1UL << ordinal)) != 0 : _replaced is { } replaced && replaced[ordinal];
 
     /// <summary>
     /// Gets a stored cell, including one that has no managed conversion, after checking that the attribute has a value.
@@ -345,6 +360,13 @@ public sealed class PgHeapTuple
         return _values[ordinal];
     }
 
+    /// <summary>
+    /// Gets a stored cell for a caller that has already checked that its attribute has a value.
+    /// </summary>
+    /// <param name="ordinal">The zero-based physical ordinal of an available attribute.</param>
+    /// <returns>The stored cell.</returns>
+    internal object? GetAvailableCell(int ordinal) => _values[ordinal];
+
     private void SetCore(int ordinal, uint oid, object? value)
     {
         RequireReplaceable(ordinal, oid);
@@ -352,7 +374,17 @@ public sealed class PgHeapTuple
         MarkReplaced(ordinal);
     }
 
-    private void MarkReplaced(int ordinal) => (_replaced ??= new bool[_values.Length])[ordinal] = true;
+    private void MarkReplaced(int ordinal)
+    {
+        if (ordinal < 64)
+        {
+            _replacedMask |= 1UL << ordinal;
+        }
+        else
+        {
+            (_replaced ??= new bool[_values.Length])[ordinal] = true;
+        }
+    }
 
     /// <summary>
     /// Caches the OID of a built-in cell type, or zero for a type that needs the registries or takes its OID from the
@@ -372,7 +404,7 @@ public sealed class PgHeapTuple
     /// </summary>
     private void RequireReplaceable(int ordinal, uint oid)
     {
-        PgTupleAttributeInfo attribute = Descriptor.Attributes[ValidateOrdinal(ordinal)];
+        PgTupleAttributeInfo attribute = Descriptor.AttributeSpan[ValidateOrdinal(ordinal)];
         ValidateAvailable(ordinal);
         if (attribute.IsDropped)
         {
@@ -395,7 +427,7 @@ public sealed class PgHeapTuple
 
     private void ValidateAvailable(int ordinal)
     {
-        if (Descriptor.Attributes[ordinal].IsUnavailable)
+        if (Descriptor.HasUnavailable && Descriptor.AttributeSpan[ordinal].IsUnavailable)
         {
             throw new InvalidOperationException("PostgreSQL has not defined this generated column's value in the current trigger row.");
         }

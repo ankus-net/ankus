@@ -12,6 +12,8 @@ internal readonly record struct PgRelationIdentity(uint Oid)
     /// </summary>
     internal static object? Snapshot(object? value) => value switch
     {
+        // The common cells are recognized with one check.
+        null or string => value,
         PgRelation relation => new PgRelationIdentity(relation.Oid),
         PgRelation?[] vector => new PgArray<PgRelationIdentity?>(vector.Select(Identify)),
         PgArray<PgRelation?> array => new PgArray<PgRelationIdentity?>(

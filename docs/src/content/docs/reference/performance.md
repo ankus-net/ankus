@@ -21,8 +21,8 @@ approaches, not as guarantees, and measure your own code with
 | A managed custom scan row with one `bigint` column | 157 ns |
 | Replacing a built-in cell of a row with `PgHeapTuple.Set` | 27 ns |
 | A function that reads a composite row and returns one, per call | 1.12 µs |
-| A `BEFORE INSERT` row trigger that trims one text column, per row | 0.75 µs, against 0.46 µs for PL/pgSQL |
-| A `BEFORE INSERT` row trigger that only checks its row, per row | 0.55 µs |
+| A `BEFORE INSERT` row trigger that trims one text column, per row | 0.55 µs, against 0.52 µs for PL/pgSQL |
+| A `BEFORE INSERT` row trigger that only checks its row, per row | 0.36 µs |
 
 ## Applying replicated changes
 

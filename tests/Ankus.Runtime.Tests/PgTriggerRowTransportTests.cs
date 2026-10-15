@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 
 namespace Ankus.Runtime.Tests;
 
@@ -53,6 +54,93 @@ public sealed unsafe class PgTriggerRowTransportTests
         {
             result.Release();
         }
+    }
+
+    /// <summary>
+    /// A returned row that fits the buffer its call site lends is written into it and needs no release, while one that
+    /// does not fit gets an allocation of its own. Both report the bytes they need, so the site can lend more.
+    /// </summary>
+    [TestMethod]
+    public void ReturnedRowsUseTheLentBufferWhenTheyFit()
+    {
+        var row = new PgHeapTuple(s_pets, [5, null, " pet ", null]);
+        var context = new PgTriggerContext(12, 8100, 8200, "trim", "pets", "public", null, null, [], null, row, s_pets);
+        row.Set(2, "pet");
+
+        // The count of written cells, four cells, and "pet" with its terminating zero.
+        int needed = sizeof(long) + (4 * sizeof(NativeValue)) + 4;
+        byte* lent = (byte*)NativeMemory.Alloc((nuint)needed);
+        try
+        {
+            NativeValue borrowed = NativeValue.FromTriggerRow(context, row, Arguments(lent, needed));
+            Assert.IsTrue(Data(ref borrowed) == lent + sizeof(long));
+            Assert.IsTrue(borrowed._release == null);
+            Assert.AreEqual(needed, Needed(ref borrowed));
+            var cells = (NativeValue*)Data(ref borrowed);
+            Assert.AreEqual(-11, Kind(ref cells[0]));
+            Assert.AreEqual("pet", cells[2].ReadString());
+            Assert.AreEqual(-11, Kind(ref cells[3]));
+
+            NativeValue owned = NativeValue.FromTriggerRow(context, row, Arguments(lent, needed - 1));
+            try
+            {
+                Assert.IsFalse(Data(ref owned) == lent + sizeof(long));
+                Assert.IsTrue(owned._release != null);
+                Assert.AreEqual(needed, Needed(ref owned));
+                Assert.AreEqual("pet", ((NativeValue*)Data(ref owned))[2].ReadString());
+            }
+            finally
+            {
+                owned.Release();
+            }
+        }
+        finally
+        {
+            NativeMemory.Free(lent);
+        }
+    }
+
+    /// <summary>
+    /// A cell that owns native memory still needs a release when its row is written into the lent buffer, and that
+    /// release leaves the buffer to the call site.
+    /// </summary>
+    [TestMethod]
+    public void LentRowsReleaseTheCellsThatOwnMemory()
+    {
+        var row = new PgHeapTuple(s_pets, [5, null, "pet", null]);
+        var context = new PgTriggerContext(12, 8100, 8200, "trim", "pets", "public", null, null, [], null, row, s_pets);
+        row.Set(3, new byte[] { 1, 2 });
+        int capacity = 1024;
+        byte* lent = (byte*)NativeMemory.Alloc((nuint)capacity);
+        try
+        {
+            NativeValue result = NativeValue.FromTriggerRow(context, row, Arguments(lent, capacity));
+            Assert.IsTrue(Data(ref result) == lent + sizeof(long));
+            Assert.IsTrue(result._release != null);
+            Assert.AreSequenceEqual<byte>([1, 2], ((NativeValue*)Data(ref result))[3].ReadBytes());
+            result.Release();
+            Assert.AreEqual(0L, *(long*)lent);
+        }
+        finally
+        {
+            NativeMemory.Free(lent);
+        }
+    }
+
+    /// <summary>
+    /// A lent buffer must have both an address and a length.
+    /// </summary>
+    [TestMethod]
+    public void MalformedLentBuffersAreRejected()
+    {
+        var row = new PgHeapTuple(s_pets, [5, null, "pet", null]);
+        var context = new PgTriggerContext(12, 8100, 8200, "trim", "pets", "public", null, null, [], null, row, s_pets);
+        byte lent = 0;
+        NativeValue[] arguments = Arguments(&lent, 0);
+        InvalidOperationException error = Assert.ThrowsExactly<InvalidOperationException>(
+            () => NativeValue.FromTriggerRow(context, row, arguments));
+        Assert.Contains("call site envelope", error.Message);
+        Assert.ThrowsExactly<InvalidOperationException>(() => NativeValue.FromTriggerRow(context, row, Arguments(null, 64)));
     }
 
     /// <summary>
@@ -146,6 +234,20 @@ public sealed unsafe class PgTriggerRowTransportTests
     private static ref int Length(ref NativeValue value) => ref value._length;
 
     private static ref byte* Data(ref NativeValue value) => ref value._data;
+
+    private static ref int Needed(ref NativeValue value) => ref value._auxiliary2;
+
+    /// <summary>
+    /// Builds an invocation envelope whose call site lends a buffer; only its last slot is read.
+    /// </summary>
+    private static NativeValue[] Arguments(byte* lent, int capacity)
+    {
+        var arguments = new NativeValue[16];
+        arguments[15] = new() { Integral = 7101 };
+        Data(ref arguments[15]) = lent;
+        Length(ref arguments[15]) = capacity;
+        return arguments;
+    }
 
     /// <summary>
     /// Owns a BEFORE INSERT invocation over <see cref="s_totals"/> whose NEW slot holds a given transport.

@@ -124,7 +124,16 @@ internal static class NativeTriggerBridge
             AnkusValue columns;
             AnkusValue named;
             AnkusTupleShape shape;
+            /* The result and error of the call running the site, and the buffer managed code writes the row it returns
+             * into when the row fits. A nested call while it runs uses its own result and error and no buffer. */
+            AnkusValue *result;
+            AnkusError *error;
+            unsigned char *row_buffer;
+            int row_capacity;
         } AnkusTriggerSite;
+
+        /* A returned row larger than this keeps an allocation of its own rather than a site buffer of its size. */
+        #define ANKUS_TRIGGER_ROW_BUFFER_LIMIT (64 * 1024)
 
         static bool
         ankus_trigger_site_matches(const AnkusTriggerSite *site, TriggerData *trigger)
@@ -169,6 +178,12 @@ internal static class NativeTriggerBridge
                 site->trigger = definition->tgoid;
                 site->relation = RelationGetRelid(trigger->tg_relation);
                 site->descriptor = descriptor;
+                site->result = palloc(sizeof(AnkusValue));
+                site->error = palloc(sizeof(AnkusError));
+                /* Room for the cells and some text; a larger row enlarges it. */
+                site->row_capacity = (int) Min(sizeof(int64) + sizeof(AnkusValue) * Max(descriptor->natts, 1) + 1024,
+                    ANKUS_TRIGGER_ROW_BUFFER_LIMIT);
+                site->row_buffer = palloc(site->row_capacity);
             }
             PG_CATCH();
             {
@@ -389,6 +404,7 @@ internal static class NativeTriggerBridge
             MemoryContext caller = CurrentMemoryContext;
             AnkusValue arguments[16] = {0};
             AnkusTriggerSite *volatile site = NULL;
+            bool lend;
             AnkusValue *result;
             AnkusError *error;
             volatile HeapTuple output = NULL;
@@ -415,9 +431,22 @@ internal static class NativeTriggerBridge
             }
             PG_END_TRY();
             scope.identity = ++ankus_next_trigger_id;
-            /* These mutable headers are read during cleanup after ERROR/longjmp. */
-            result = MemoryContextAllocZero(scope.context, sizeof(AnkusValue));
-            error = MemoryContextAlloc(scope.context, sizeof(AnkusError));
+            /* These mutable headers are read during cleanup after ERROR/longjmp, so they live outside this frame. A
+             * site no other call is running lends its own, which saves allocating an error buffer larger than the
+             * scope context's blocks for every row. */
+            lend = site->busy == 0;
+            if (lend)
+            {
+                result = site->result;
+                error = site->error;
+            }
+            else
+            {
+                result = MemoryContextAlloc(scope.context, sizeof(AnkusValue));
+                error = MemoryContextAlloc(scope.context, sizeof(AnkusError));
+            }
+
+            memset(result, 0, sizeof(AnkusValue));
             ankus_error_clear(error);
             ankus_trigger_scope = &scope;
             ankus_function_oid = fcinfo->flinfo->fn_oid;
@@ -452,6 +481,12 @@ internal static class NativeTriggerBridge
                 arguments[14].integral = trigger->tg_trigger->tgconstraint;
                 arguments[14].auxiliary1 = (trigger->tg_trigger->tgdeferrable ? 1 : 0) | (trigger->tg_trigger->tginitdeferred ? 2 : 0);
                 arguments[15].integral = site->identity;
+                if (lend)
+                {
+                    arguments[15].data = site->row_buffer;
+                    arguments[15].length = site->row_capacity;
+                }
+
                 ANKUS_MANAGED_INVOKE(status, error, callback(arguments, result, error, ankus_spi_execute, &memory));
                 if (status != 0)
                     ankus_raise_error(error);
@@ -469,15 +504,27 @@ internal static class NativeTriggerBridge
                     else
                         output = ankus_trigger_result(result, trigger, &site->shape, caller);
                 }
+
+                /* A row that did not fit reports the bytes it needed, so the site's later rows can use the buffer. */
+                if (lend && result->auxiliary1 == -10 && result->auxiliary2 > site->row_capacity &&
+                    result->auxiliary2 <= ANKUS_TRIGGER_ROW_BUFFER_LIMIT)
+                {
+                    pfree(site->row_buffer);
+                    site->row_buffer = NULL;
+                    site->row_capacity = 0;
+                    site->row_buffer = MemoryContextAlloc(site->context, result->auxiliary2);
+                    site->row_capacity = result->auxiliary2;
+                }
             }
             PG_FINALLY();
             {
                 ANKUS_FINALLY_RESTORE(caller);
-                /* A nested call's private site lives in the scope context deleted below. */
-                site->busy--;
                 if (result->release != NULL)
                     result->release(result->data);
                 ankus_release_error(error);
+                /* The site's result and error are free once released. A nested call's private site lives in the
+                 * scope context deleted below. */
+                site->busy--;
                 ANKUS_PG_TRY_INNER();
                 {
                     /* Iterator disposal can still query this invocation's transition tables.

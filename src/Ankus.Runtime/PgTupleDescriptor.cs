@@ -5,6 +5,8 @@ namespace Ankus;
 /// </summary>
 public sealed class PgTupleDescriptor
 {
+    private readonly PgTupleAttributeInfo[] _attributes;
+
     /// <summary>
     /// Copies physical attributes, optionally retaining relation metadata without a row type.
     /// </summary>
@@ -26,7 +28,9 @@ public sealed class PgTupleDescriptor
         TypeOid = typeOid;
         BaseTypeOid = baseTypeOid == 0 ? typeOid : baseTypeOid;
         TypeModifier = typeModifier;
-        Attributes = Array.AsReadOnly<PgTupleAttributeInfo>([.. attributes]);
+        _attributes = [.. attributes];
+        Attributes = Array.AsReadOnly(_attributes);
+        HasUnavailable = Array.Exists(_attributes, static attribute => attribute.IsUnavailable);
     }
 
     /// <summary>
@@ -50,6 +54,16 @@ public sealed class PgTupleDescriptor
     /// Gets the immutable physical attribute list, including dropped slots.
     /// </summary>
     public IReadOnlyList<PgTupleAttributeInfo> Attributes { get; }
+
+    /// <summary>
+    /// Gets the physical attribute list as a span, which per-row paths index without an interface call.
+    /// </summary>
+    internal ReadOnlySpan<PgTupleAttributeInfo> AttributeSpan => _attributes;
+
+    /// <summary>
+    /// Gets whether any attribute is a generated column PostgreSQL has not computed for this row.
+    /// </summary>
+    internal bool HasUnavailable { get; }
 
     /// <summary>
     /// Loads a current composite descriptor using PostgreSQL's identifier and search-path rules.
@@ -146,9 +160,10 @@ public sealed class PgTupleDescriptor
     public int GetOrdinal(string name)
     {
         ArgumentNullException.ThrowIfNull(name);
-        for (int index = 0; index < Attributes.Count; index++)
+        ReadOnlySpan<PgTupleAttributeInfo> attributes = _attributes;
+        for (int index = 0; index < attributes.Length; index++)
         {
-            PgTupleAttributeInfo attribute = Attributes[index];
+            PgTupleAttributeInfo attribute = attributes[index];
             if (!attribute.IsDropped && attribute.Name == name)
             {
                 return index;

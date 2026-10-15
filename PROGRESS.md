@@ -518,6 +518,30 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   three such GUC tests now accept a reset there and read the report from the
   server log. On macOS, a worker restart check waited for a nonzero PID, but a
   worker PostgreSQL has not recorded yet reports none at all, which is not zero.
+- A `BEFORE INSERT` row trigger now costs the same as PL/pgSQL. `perf` on
+  Linux x64, comparing the trimming sample with a PL/pgSQL trigger that does
+  the same, found five Ankus-only costs:
+  - interface calls for every descriptor attribute access;
+  - a native error buffer per call large enough to need `malloc`;
+  - two native allocations and a managed release callback for every returned
+    row;
+  - eleven write-barriered references copied into each context;
+  - an array for each modified row's replaced cells.
+  Per-row paths now index a span. A call site that no other call is running
+  lends its error buffer and a row buffer, which the returned row is written
+  into when it fits. Contexts share one definition with their site, and
+  replaced cells are a bitmask. In medians of five alternated rounds of
+  1,000,000 rows in a UTF-8 PostgreSQL 18.6 database, the trimming trigger's
+  overhead fell from 0.94 µs to 0.72 µs per row, equal to PL/pgSQL's 0.72 µs,
+  and a trigger that only checks the name fell from 0.67 µs to 0.49 µs. On a
+  second, noisier Linux x64 host it fell from 0.69 µs to 0.55 µs against
+  0.52 µs for PL/pgSQL, and the checking trigger from 0.51 µs to 0.36 µs.
+  Unit tests cover rows that fit the lent buffer, rows that do not, cells that
+  own memory, and malformed buffers. Runtime and generator unit tests pass
+  (2,493 and 5,033), and the 177 trigger, detached-cell, cleanup-owner and
+  relation-writer integration tests pass on the PostgreSQL 19 build that
+  overwrites freed contexts. The complete suite passes on PostgreSQL 18.6,
+  Linux x64: 14,976 passed and 52 platform skips.
 - GitHub flagged the C# scan's quality: read from source alone, it resolved only
   81% of calls. Nearly all the misses were MSTest calls in the test projects,
   whose global `using` MSTest's package adds through MSBuild, which a scan of the
@@ -1757,7 +1781,7 @@ review's findings are fixed or kept by documented design.
 1. Resolve discovered correctness and CI failures before accepting affected work. The macOS ARM64 test-host crashes are a suspected macOS bug, not yet reported: on 2026-10-14 the build-tool tests' host died after 698 of 1,346 tests, and its crash report shows `fork()`, called by .NET's `Process.Start`, aborting in libmalloc's xzone allocator (`_malloc_fork_parent`: unlock of an `os_unfair_lock` the thread does not own) while two other threads waited on xzone's fork lock to allocate. macOS 26 uses xzone for every ARM64 process, with no setting to turn it off outside Apple, and Intel Macs never use it. Rerun a job that ends this way and record it. If it happens once more, a maintainer files the report with Apple and .NET.
 2. Keep the pgrx 0.19.3 [release-delta gates](docs/contributing/evidence/parity-requirements.md#pgrx-0193-release-delta-and-refresh-gates) satisfied: each has implementation and complete-suite evidence on runtime 10.0.13-ankus.1, which must be refreshed on each later serviced runtime.
 3. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
-4. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees. The latest trigger profile is in the [guard-tier evidence](docs/contributing/evidence/guard-tiers.md#row-triggers). `Set` no longer consults the registries for built-in types, so the remaining managed cost is mostly the detached row's allocations.
+4. Measured hot paths are done: a trimming row trigger costs about the same as PL/pgSQL (0.72 µs against 0.72 µs per row on one host, 0.55 µs against 0.52 µs on another), as the [guard-tier evidence](docs/contributing/evidence/guard-tiers.md#row-triggers) shows. Keep the in-backend baseline, and measure again when boundary code changes, preserving recovery and ownership guarantees.
 5. Keep samples and guides current with API changes, and recheck changed guides before release. Test discovery for MSTest, xUnit and NUnit consumers and samples for all 37 pgrx examples are complete.
 6. Keep the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) current as a pglogical port exercises it; every planned capability is done.
 7. Support .NET 11 as an extension target (required, in progress). The runtime fork's changes over 10.0.13 are ported onto .NET 11 RC2 as fork commit `34f19a015e3` on branch `ankus/runtime-11.0-rc2`, and every fork probe passes on Linux x64; rebase onto GA when it ships. `Ankus.Sdk` selects the `net11.0` line, `ankus new` and the templates take `--framework net11.0`, and CI and releases build both lines. The complete suite passes on every PostgreSQL major on Linux x64, macOS ARM64, Windows x64 and Intel macOS. Remaining: the rebase onto the .NET 11 release in November, which ships as a servicing update.

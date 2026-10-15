@@ -128,7 +128,7 @@ public unsafe partial struct NativeValue
             WriteInt(buffer, value.Count);
             for (int index = 0; index < value.Count; index++)
             {
-                PgTupleAttributeInfo attribute = value.Descriptor.Attributes[index];
+                PgTupleAttributeInfo attribute = value.Descriptor.AttributeSpan[index];
                 ReadOnlySpan<byte> name = attribute.Utf8Name;
                 if (name.Length > 252)
                 {
@@ -198,7 +198,7 @@ public unsafe partial struct NativeValue
         for (int index = 0; index < value.Count; index++)
         {
             // An unavailable generated column has no value to write.
-            if (value.Descriptor.Attributes[index].IsUnavailable)
+            if (value.Descriptor.AttributeSpan[index].IsUnavailable)
             {
                 continue;
             }
@@ -235,7 +235,7 @@ public unsafe partial struct NativeValue
 
         uint baseTypeOid = _integer == 0 ? oid : (uint)_integer;
         bool reuse = expected is not null && expected.TypeOid == oid && expected.TypeModifier == typeModifier &&
-            expected.BaseTypeOid == baseTypeOid && expected.Attributes.Count == count;
+            expected.BaseTypeOid == baseTypeOid && expected.AttributeSpan.Length == count;
         PgTupleAttributeInfo[]? attributes = reuse ? null : new PgTupleAttributeInfo[count];
         values = new object?[count];
         int offset = 12;
@@ -267,7 +267,7 @@ public unsafe partial struct NativeValue
             PgTupleAttributeInfo? attribute = null;
             if (reuse)
             {
-                PgTupleAttributeInfo known = expected!.Attributes[index];
+                PgTupleAttributeInfo known = expected!.AttributeSpan[index];
                 if (known.TypeOid == declaredOid && known.BaseTypeOid == baseOid && known.TypeModifier == modifier &&
                     known.CollationOid == collation && known.IsDropped == dropped && known.IsNotNull == ((flags & 2) != 0) &&
                     known.IsComposite == composite && known.IsUnavailable == unavailable && nameBytes.SequenceEqual(known.Utf8Name))
@@ -281,7 +281,7 @@ public unsafe partial struct NativeValue
                     attributes = new PgTupleAttributeInfo[count];
                     for (int prior = 0; prior < index; prior++)
                     {
-                        attributes[prior] = expected.Attributes[prior];
+                        attributes[prior] = expected.AttributeSpan[prior];
                     }
                 }
             }

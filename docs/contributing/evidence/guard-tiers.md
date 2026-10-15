@@ -302,6 +302,43 @@ contexts. Triggers therefore keep a context per call. In alternated runs of
 500,000 rows on the same day, the trimming trigger's overhead was about 0.75 µs
 per row against 0.46 µs for PL/pgSQL, medians of six rounds on a shared host.
 
+On 2026-10-15, `perf` sampled about 40,000 stacks of the same insert on a Linux
+x64 host with a UTF-8 database, and the same for the PL/pgSQL trigger.
+Comparing the two showed where the extra time went:
+
+- Each `Descriptor.Attributes[i]` went through `IReadOnlyList<T>`, an interface
+  call per access, about 45 ns per row in all. Per-row paths now index the
+  descriptor's array as a span.
+- Every call allocated its native error buffer in the call's memory context.
+  The buffer is larger than that context's blocks, so PostgreSQL called
+  `malloc` and `free` for it on every row. A call site that no other call is
+  running now lends its own buffer.
+- The returned row took a native block, plus another buffer for its text, and
+  both were freed through a managed callback. The call site now lends a buffer
+  as well, and the row is written into it when it fits. A row whose cells own
+  no memory then needs neither an allocation nor a release. A row that does
+  not fit reports its size, and the site enlarges the buffer, up to 64 KB, for
+  the rows after it.
+- The context copied eleven references from the call site, each behind a GC
+  write barrier. It now shares one definition object with the site.
+- Replaced cells are tracked in a bitmask instead of an array.
+
+Medians of five alternated rounds of 1,000,000 rows on that host:
+
+| Trigger overhead per row | Before | After |
+| --- | ---: | ---: |
+| Trims the name | 0.94 µs | 0.72 µs |
+| Only checks the name | 0.67 µs | 0.49 µs |
+| PL/pgSQL, trims the name | 0.72 µs | 0.72 µs |
+
+The trimming trigger now costs the same as PL/pgSQL there. On the shared host
+behind the [boundary-cost table](../../src/content/docs/reference/performance.md),
+whose runs spread more, the same rounds in a UTF-8 database put it at 0.55 µs
+per row (0.69 µs before) against 0.52 µs for PL/pgSQL, and the checking
+trigger at 0.36 µs (0.51 µs before). What remains is mostly the detached
+context, row and strings that a trigger may keep after it returns, and
+decoding the row's text into .NET strings.
+
 ### Composite arguments and results
 
 Calling the `ankus_composites` sample's `scritch_dog`, which reads a `dog`

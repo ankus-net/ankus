@@ -74,7 +74,8 @@ internal static class PgTriggerEmitter
         managed.AppendLine("                return 0;");
         managed.AppendLine("            }");
         managed.AppendLine();
-        managed.AppendLine("            *result = global::Ankus.CompilerServices.NativeValue.FromTriggerRow(context, value);");
+        managed.AppendLine("            *result = global::Ankus.CompilerServices.NativeValue.FromTriggerRow(context, value, " +
+            "new global::System.ReadOnlySpan<global::Ankus.CompilerServices.NativeValue>(arguments, 16));");
         managed.AppendLine("            return 0;");
         managed.AppendLine("        }");
         managed.AppendLine("        catch (global::System.Exception exception)");
