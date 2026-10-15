@@ -10,7 +10,7 @@ internal static class CallbackDeclarationDiagnostics
     /// <summary>
     /// Links both callback contracts to their shared declaration guidance.
     /// </summary>
-    private const string HelpLink = "https://willibrandon.github.io/ankus/triggers/#declaration-diagnostics";
+    private const string HelpLink = "https://ankus.net/triggers/#declaration-diagnostics";
     /// <summary>
     /// Stores the error for postgresql callback must be static.
     /// </summary>

@@ -12,7 +12,7 @@ internal static class NumericConstraint
         "ANKUS003", "Invalid numeric precision constraint",
         "PgNumericPrecision requires a PgNumeric or decimal value, precision from 1 through 1000, and scale from -1000 through 1000",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/numeric/#function-constraints");
+        helpLinkUri: "https://ankus.net/numeric/#function-constraints");
 
     /// <summary>
     /// Validates numeric precision attributes on a function's parameters and result, reporting each invalid declaration.

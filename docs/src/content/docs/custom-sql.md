@@ -473,7 +473,7 @@ There can be one bootstrap block and one final block, including file-based
 blocks. Bootstrap precedes generated schemas; final SQL follows all generated
 and custom declarations.
 
-The [custom SQL sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.CustomSql)
+The [custom SQL sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.CustomSql)
 ports pgrx's `custom_sql` example. Its bootstrap, inline, file and final blocks
 insert their names into a table, showing the order that their dependencies on
 SQL blocks, a schema, an enum and a custom type produce.

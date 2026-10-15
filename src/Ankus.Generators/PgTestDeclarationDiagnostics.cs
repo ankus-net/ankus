@@ -10,7 +10,7 @@ internal static class PgTestDeclarationDiagnostics
     /// <summary>
     /// Links backend-test diagnostics to their declaration requirements.
     /// </summary>
-    private const string HelpLink = "https://willibrandon.github.io/ankus/getting-started/testing/#declaration-diagnostics";
+    private const string HelpLink = "https://ankus.net/getting-started/testing/#declaration-diagnostics";
 
     /// <summary>
     /// Stores the error for PostgreSQL backend test must be static.

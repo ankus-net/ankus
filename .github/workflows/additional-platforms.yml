@@ -30,7 +30,7 @@ env:
 
 jobs:
   runtime:
-    if: github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main'
+    if: github.repository == 'ankus-net/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main'
     runs-on: [self-hosted, macOS, X64, ankus-macos-x64]
     timeout-minutes: 60
     steps:
@@ -81,7 +81,7 @@ jobs:
 
   macos-x64:
     needs: runtime
-    if: github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main' && inputs.jobs != 'target'
+    if: github.repository == 'ankus-net/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main' && inputs.jobs != 'target'
     strategy:
       fail-fast: false
       # One Intel runner serves every major in turn.
@@ -187,7 +187,7 @@ jobs:
   # runner builds the Hello sample from it without Clang or libclang, and the Intel runner loads the result.
   target-export:
     needs: runtime
-    if: github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main' && inputs.jobs != 'tests'
+    if: github.repository == 'ankus-net/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main' && inputs.jobs != 'tests'
     name: target export (osx-x64)
     runs-on: [self-hosted, macOS, X64, ankus-macos-x64]
     # The first export, with a cold binding source cache, took 94 seconds.
@@ -220,7 +220,7 @@ jobs:
 
   target-build:
     needs: [runtime, target-export]
-    if: github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main' && inputs.jobs != 'tests'
+    if: github.repository == 'ankus-net/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main' && inputs.jobs != 'tests'
     name: target build (osx-x64 on osx-arm64)
     runs-on: ankus-macos-arm64
     # The first cross build took 67 seconds.
@@ -270,7 +270,7 @@ jobs:
 
   target-verify:
     needs: target-build
-    if: github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main' && inputs.jobs != 'tests'
+    if: github.repository == 'ankus-net/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main' && inputs.jobs != 'tests'
     name: target verify (osx-x64)
     runs-on: [self-hosted, macOS, X64, ankus-macos-x64]
     # The first load check took 32 seconds.

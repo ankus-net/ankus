@@ -11,7 +11,7 @@ internal sealed class AggregateDeclaration(INamedTypeSymbol type, AttributeData 
         "ANKUS029", "Missing PostgreSQL aggregate contract",
         "'{0}' must implement IPgAggregate<TState, TArgs>; declare optional callbacks through their aggregate capability interfaces",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/aggregates/#compiler-checked-aggregate-contracts");
+        helpLinkUri: "https://ankus.net/aggregates/#compiler-checked-aggregate-contracts");
     private static readonly string[] s_roles = ["Transition", "Final", "Combine", "Serialize", "Deserialize", "MovingTransition", "MovingInverse", "MovingFinal"];
 
     /// <summary>

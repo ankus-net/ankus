@@ -121,8 +121,8 @@ internal sealed record SqlReferenceProblem(SqlReferenceProblemKind Kind, string?
 /// </summary>
 internal static class SqlReferenceDiagnostics
 {
-    private const string ReferenceHelp = "https://willibrandon.github.io/ankus/custom-sql/#reference-managed-declarations";
-    private const string SupportHelp = "https://willibrandon.github.io/ankus/function-declarations/#planner-support-functions";
+    private const string ReferenceHelp = "https://ankus.net/custom-sql/#reference-managed-declarations";
+    private const string SupportHelp = "https://ankus.net/function-declarations/#planner-support-functions";
 
     private static readonly DiagnosticDescriptor s_supportMethodName = Support("ANKUS470", "Planner support requires a method name",
         "Supply a non-null planner-support method name");

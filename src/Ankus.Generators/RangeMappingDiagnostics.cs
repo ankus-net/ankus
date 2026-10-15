@@ -7,7 +7,7 @@ namespace Ankus.Generators;
 /// </summary>
 internal static class RangeMappingDiagnostics
 {
-    private const string HelpLink = "https://willibrandon.github.io/ankus/ranges/#mapping-diagnostics";
+    private const string HelpLink = "https://ankus.net/ranges/#mapping-diagnostics";
 
     private static readonly DiagnosticDescriptor s_carrier = new("ANKUS158", "Invalid mapped range bound",
         "PgRangeType requires a non-ref-like value type carrying PgDatumType for its scalar bounds",

@@ -36,7 +36,7 @@ env:
 
 jobs:
   runtime:
-    if: github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main'
+    if: github.repository == 'ankus-net/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main'
     strategy:
       fail-fast: false
       matrix:
@@ -102,7 +102,7 @@ jobs:
         run: dotnet run --file ./eng/Ankus.Ci.cs -- runner-cleanup
 
   test:
-    if: github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main'
+    if: github.repository == 'ankus-net/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main'
     needs: runtime
     strategy:
       fail-fast: false

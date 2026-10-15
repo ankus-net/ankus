@@ -10,7 +10,7 @@ internal static class WorkerDeclarationDiagnostics
     /// <summary>
     /// Links errors to extension-author worker declaration guidance.
     /// </summary>
-    private const string HelpLink = "https://willibrandon.github.io/ankus/background-workers/#declaration-diagnostics";
+    private const string HelpLink = "https://ankus.net/background-workers/#declaration-diagnostics";
     /// <summary>
     /// Stores the error for worker entry requires an ordinary method.
     /// </summary>

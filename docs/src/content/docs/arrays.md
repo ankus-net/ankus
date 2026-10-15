@@ -7,7 +7,7 @@ Use `T[]` for one-dimensional arrays with the usual PostgreSQL lower bound of on
 Use `PgArray<T>` when dimensions or lower bounds matter. Both support the scalar
 types listed in [Write a function](/getting-started/functions/#types).
 
-The [arrays sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Arrays)
+The [arrays sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Arrays)
 ports pgrx's array examples: borrowed iteration, mutable copies, nullable names,
 set-returning arrays and a generated custom-type array. Its `vectors` schema
 compares iteration, copied cells, native spans and sixteen-lane accumulation.

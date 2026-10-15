@@ -30,10 +30,10 @@ internal enum InstallationGraphLimit
 /// </summary>
 internal static class SqlGraphDiagnostics
 {
-    private const string GraphHelp = "https://willibrandon.github.io/ankus/custom-sql/#dependency-graph-diagnostics";
-    private const string ReplacementHelp = "https://willibrandon.github.io/ankus/custom-sql/#sql-replacement-diagnostics";
-    private const string OperatorHelp = "https://willibrandon.github.io/ankus/operators-and-casts/#declaration-diagnostics";
-    private const string GeneratedOperatorHelp = "https://willibrandon.github.io/ankus/operators-and-casts/#generated-type-operators";
+    private const string GraphHelp = "https://ankus.net/custom-sql/#dependency-graph-diagnostics";
+    private const string ReplacementHelp = "https://ankus.net/custom-sql/#sql-replacement-diagnostics";
+    private const string OperatorHelp = "https://ankus.net/operators-and-casts/#declaration-diagnostics";
+    private const string GeneratedOperatorHelp = "https://ankus.net/operators-and-casts/#generated-type-operators";
 
     /// <summary>
     /// Requires a nonblank explicit dependency identifier.
@@ -162,14 +162,14 @@ internal static class SqlGraphDiagnostics
     /// </summary>
     internal static readonly DiagnosticDescriptor s_duplicateEnumType = Create("ANKUS506", "Duplicate PostgreSQL enum type name",
         "PostgreSQL type {0} is already generated in this extension; give this enum a distinct PgEnum Name or Schema",
-        "https://willibrandon.github.io/ankus/enums/#declaration-diagnostics");
+        "https://ankus.net/enums/#declaration-diagnostics");
 
     /// <summary>
     /// Requires distinct generated base type identities.
     /// </summary>
     internal static readonly DiagnosticDescriptor s_duplicateBaseType = Create("ANKUS507", "Duplicate PostgreSQL base type name",
         "PostgreSQL type {0} is already generated in this extension; give this type a distinct PgType Name or Schema",
-        "https://willibrandon.github.io/ankus/custom-types/#declaration-diagnostics");
+        "https://ankus.net/custom-types/#declaration-diagnostics");
 
     /// <summary>
     /// Requires distinct operator name and operand signatures.

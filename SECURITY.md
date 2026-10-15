@@ -1,6 +1,6 @@
 # Security
 
-Report a vulnerability privately through GitHub Security Advisories for the `willibrandon/ankus` repository: open the
+Report a vulnerability privately through GitHub Security Advisories for the `ankus-net/ankus` repository: open the
 Security tab and choose "Report a vulnerability". Please do not open a public issue for one. Until 0.1.0 is released,
 fixes go into `main`; after that, into the latest release.
 
@@ -22,7 +22,7 @@ when Ankus itself does something the author did not ask for, for example when:
 
 Each extension embeds Ankus's patched .NET Native AOT runtime, so a .NET security release reaches an extension only
 when it is rebuilt with an Ankus release that carries that servicing update. Rebuild and redeploy your extensions after
-each Ankus servicing release. [.NET support](https://willibrandon.github.io/ankus/reference/dotnet-support/) explains how Ankus
+each Ankus servicing release. [.NET support](https://ankus.net/reference/dotnet-support/) explains how Ankus
 follows .NET servicing.
 
 ## Network use

@@ -41,7 +41,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(expected, error.Id);
         Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
         Assert.AreEqual(highlight, error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/configuration/#prefix-declaration-diagnostics", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/configuration/#prefix-declaration-diagnostics", error.Descriptor.HelpLinkUri);
         Assert.IsEmpty(output.GetDiagnostics(context.CancellationToken).Where(static diagnostic => diagnostic.Severity >= DiagnosticSeverity.Warning));
         Assert.DoesNotContain("ankus_reserve_guc_prefix(", ManifestValue(output, "Ankus.NativeSource"));
         Assert.AreSequenceEqual(["Pg_magic_func"], ManifestValue(output, "Ankus.Exports").Split('\n', StringSplitOptions.RemoveEmptyEntries));

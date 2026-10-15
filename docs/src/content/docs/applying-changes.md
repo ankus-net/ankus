@@ -13,7 +13,7 @@ pgrx has no equivalent. A pgrx extension builds executor state and calls the
 `pg_sys` replication functions itself, as pglogical's C code does, and must follow
 the signature changes between PostgreSQL versions.
 
-The [subscriber sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Subscriber)
+The [subscriber sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Subscriber)
 puts these together with [replication connections](/replication-connections/):
 a background worker copies a publication's tables, then streams and applies the
 provider's changes.
@@ -84,7 +84,7 @@ Writers for a table share one `Descriptor` instance until the table's
 definition changes. An apply loop can keep its column positions and rows
 across transactions while `ReferenceEquals(saved, writer.Descriptor)`, and
 rebuild them when the table changes. The
-[subscriber sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Subscriber)
+[subscriber sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Subscriber)
 does this.
 
 ## Detecting conflicts

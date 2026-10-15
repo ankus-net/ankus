@@ -40,7 +40,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(expected, error.Id);
         Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
         Assert.AreEqual(highlight, error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/enums/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/enums/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
         Assert.Contains("'Mood'", error.GetMessage(CultureInfo.InvariantCulture));
         if (expected == "ANKUS289")
         {
@@ -132,7 +132,7 @@ public sealed partial class PgFunctionGeneratorTests
         Diagnostic error = Assert.ContainsSingle(errors.Where(diagnostic => diagnostic.Id == expected));
         Assert.AreEqual(expression, error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
         Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
-        Assert.AreEqual("https://willibrandon.github.io/ankus/enums/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/enums/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
         Assert.Contains("'Mood'", error.GetMessage(CultureInfo.InvariantCulture));
         Assert.AreSequenceEqual(new[] { "ANKUS050", expected }.Order(StringComparer.Ordinal), errors.Select(static item => item.Id).Order(StringComparer.Ordinal));
         Assert.DoesNotContain("CREATE TYPE", InstallationBody(output));

@@ -27,7 +27,7 @@ For a manually declared SQL type or an existing external type, use
 [`PgDatumType` with reader and writer converters](/raw-values/#reusable-scalar-mappings)
 to control scalar storage conversion independently of type DDL and serialization.
 
-The [type variants sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.TypeVariants)
+The [type variants sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.TypeVariants)
 ports pgrx's `postgres_type_variants` example and compares these choices side by
 side: generated JSON, a custom text codec, native struct storage, a hand-written
 datum mapping and arrays of a custom type.
@@ -321,7 +321,7 @@ storage codec if you need additional binary validation.
 Changing field order, field types, packing or byte order requires a data
 migration. Using the struct directly in functions, SPI, arrays and sets copies
 values into independent managed storage. See the compiled
-[custom-type sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.CustomTypes).
+[custom-type sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.CustomTypes).
 
 ## Native borrowing and ownership
 

@@ -12,7 +12,7 @@ namespace Ankus.Generators;
 /// <param name="IsArray">Whether the binding identifies an array type.</param>
 internal sealed record SqlTypeReference(string Name, string? Schema, bool IsRaw = false, bool IsArray = false)
 {
-    private const string HelpLink = "https://willibrandon.github.io/ankus/function-declarations/#named-sql-type-bindings";
+    private const string HelpLink = "https://ankus.net/function-declarations/#named-sql-type-bindings";
 
     private static readonly DiagnosticDescriptor s_invalidIdentifier = new(
         "ANKUS401", "Invalid PostgreSQL type-binding identifier",

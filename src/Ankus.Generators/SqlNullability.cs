@@ -12,7 +12,7 @@ internal static class SqlNullability
         "ANKUS024", "Ambiguous PostgreSQL nullability",
         "'{0}' uses reference type '{1}' without nullable annotations; enable nullable annotations and choose a nullable or non-nullable SQL contract",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/function-declarations/#sql-nullability");
+        helpLinkUri: "https://ankus.net/function-declarations/#sql-nullability");
 
     /// <summary>
     /// Checks SQL parameters and result columns without inspecting unrelated managed payload members.

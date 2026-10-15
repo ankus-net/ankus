@@ -158,7 +158,7 @@ use `PgTransaction.RunInSubtransaction` around work that must roll back. A plain
 `catch (Exception)` cannot make an unrecovered raw native failure successful.
 Cancellation, `Fatal` and `Panic` remain pending even after a catch or rollback.
 See [recoverable work](/transaction-callbacks/#recoverable-work) and the
-[try and catch sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.TryCatch),
+[try and catch sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.TryCatch),
 which maps `catch_when`, `catch_rust_panic`, `rethrow` and `finally` to C#.
 
 Use `PgInterrupts.Check()` where Rust code would use `check_for_interrupts!` in
@@ -255,7 +255,7 @@ library names and versioned libraries.
 Rust's `#![no_std]` has no .NET counterpart: a Native AOT library always contains
 the .NET runtime, which Ankus's managed boundary relies on. Native AOT feature
 switches such as `InvariantGlobalization` remove optional runtime features; the
-[minimal runtime sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.MinimalRuntime)
+[minimal runtime sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.MinimalRuntime)
 shows the generated declarations working without them.
 
 When migrating an existing extension, preserve SQL identity and review its

@@ -40,7 +40,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreSame(initial.SyntaxTrees.Single(), error.Location.SourceTree);
         Assert.AreEqual(parameter, error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
         Assert.Contains("Parameter 'values' uses '" + passing + "'", error.GetMessage(CultureInfo.InvariantCulture));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/getting-started/functions/#function-signatures", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/getting-started/functions/#function-signatures", error.Descriptor.HelpLinkUri);
         Assert.IsNull(Assert.ContainsSingle(driver.GetRunResult().Results).Exception);
         Assert.AreSequenceEqual(["Pg_magic_func"], ManifestValue(output, "Ankus.Exports").Split('\n', StringSplitOptions.RemoveEmptyEntries));
         Assert.AreEqual("-- No installable objects declared.\n", InstallationBody(output));

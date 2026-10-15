@@ -78,7 +78,7 @@ public sealed partial class PgFunctionGeneratorTests
         (Compilation compilation, ImmutableArray<Diagnostic> diagnostics) = Generate("[assembly: Ankus.PgGucPrefix(" + expression + ")]");
         Diagnostic diagnostic = Assert.ContainsSingle(diagnostics);
         Assert.AreEqual(expected, diagnostic.Id);
-        Assert.AreEqual("https://willibrandon.github.io/ankus/configuration/#prefix-declaration-diagnostics", diagnostic.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/configuration/#prefix-declaration-diagnostics", diagnostic.Descriptor.HelpLinkUri);
         Assert.AreEqual(DiagnosticSeverity.Error, diagnostic.Severity);
         Assert.IsTrue(diagnostic.Location.IsInSource);
         Assert.AreEqual(expression, diagnostic.Location.SourceTree!.GetText(context.CancellationToken)

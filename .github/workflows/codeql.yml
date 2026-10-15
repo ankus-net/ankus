@@ -82,7 +82,7 @@ jobs:
   # PostgreSQL's headers that only the dedicated Linux runners hold, so pull requests do not run this job.
   analyze-native:
     name: Analyze c-cpp
-    if: github.event_name != 'pull_request' && github.repository == 'willibrandon/ankus'
+    if: github.event_name != 'pull_request' && github.repository == 'ankus-net/ankus'
     runs-on: [self-hosted, Linux, X64, ankus-linux-x64]
     timeout-minutes: 120
     permissions:

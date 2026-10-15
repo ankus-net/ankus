@@ -9,7 +9,7 @@ namespace Ankus.Generators;
 /// </summary>
 internal static class FunctionSignature
 {
-    private const string HelpLink = "https://willibrandon.github.io/ankus/getting-started/functions/#function-signatures";
+    private const string HelpLink = "https://ankus.net/getting-started/functions/#function-signatures";
 
     private static readonly DiagnosticDescriptor s_instance = new(
         "ANKUS033", "PostgreSQL function must be static",

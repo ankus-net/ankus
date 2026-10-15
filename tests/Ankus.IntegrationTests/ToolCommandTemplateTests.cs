@@ -162,7 +162,7 @@ public sealed partial class ToolCommandTests
         Assert.AreEqual("MIT", document.Descendants(ns + "license").Single().Value);
         Assert.AreEqual("Brandon Williams", document.Descendants(ns + "authors").Single().Value);
         Assert.AreEqual("Template", document.Descendants(ns + "packageType").Single().Attribute("name")!.Value);
-        Assert.AreEqual("https://github.com/willibrandon/ankus", document.Descendants(ns + "repository").Single().Attribute("url")!.Value);
+        Assert.AreEqual("https://github.com/ankus-net/ankus", document.Descendants(ns + "repository").Single().Attribute("url")!.Value);
         Assert.IsEmpty(package.Entries.Where(static entry => entry.FullName.StartsWith("lib/", StringComparison.Ordinal)));
         string[] templates = ["ankus", "ankus-worker"];
         foreach (string name in templates)

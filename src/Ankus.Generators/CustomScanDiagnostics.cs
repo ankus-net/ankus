@@ -10,7 +10,7 @@ internal static class CustomScanDiagnostics
     /// <summary>
     /// Links errors to extension-author custom scan guidance.
     /// </summary>
-    private const string HelpLink = "https://willibrandon.github.io/ankus/custom-scans/#managed-providers";
+    private const string HelpLink = "https://ankus.net/custom-scans/#managed-providers";
 
     /// <summary>
     /// Stores the error for a provider without exactly one state contract.

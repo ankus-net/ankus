@@ -45,7 +45,7 @@ multiple PostgreSQL backends can each create their own managed work. For
 long-running database work with its own transaction and shutdown lifecycle, use
 a [PostgreSQL background worker](/background-workers/).
 
-The [threads sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Threads)
+The [threads sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Threads)
 ports pgrx's `pgthread` example. Its managed thread is rejected before running
 SPI, and its tasks sum a copied array without calling PostgreSQL.
 
@@ -54,7 +54,7 @@ rethrows its exception on the backend thread, where it becomes ERROR. An excepti
 left unhandled on a thread the extension started is different: .NET terminates
 the process, so the backend exits abnormally and PostgreSQL restarts every
 session to recover. Catch exceptions inside threads you start, or use tasks and
-wait for them. The [bad ideas sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.BadIdeas)
+wait for them. The [bad ideas sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.BadIdeas)
 demonstrates both.
 
 Call `PgInterrupts.Check()` periodically in long managed loops on the backend

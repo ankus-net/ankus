@@ -35,7 +35,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(DiagnosticSeverity.Error, diagnostic.Severity);
         Assert.AreEqual(type, diagnostic.Location.SourceTree!.GetText(context.CancellationToken).ToString(diagnostic.Location.SourceSpan));
         Assert.Contains("'value'", diagnostic.GetMessage(CultureInfo.InvariantCulture));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/function-declarations/#sql-nullability", diagnostic.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/function-declarations/#sql-nullability", diagnostic.Descriptor.HelpLinkUri);
         Assert.DoesNotContain("CREATE FUNCTION", ManifestValue(compilation, "Ankus.Sql"));
     }
 

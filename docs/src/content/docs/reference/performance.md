@@ -28,7 +28,7 @@ approaches, not as guarantees, and measure your own code with
 
 The replication benchmark applies one backlog of changes through PostgreSQL's
 built-in subscriber and through the
-[subscriber sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Subscriber),
+[subscriber sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Subscriber),
 which uses [relation writers](/applying-changes/) and
 [replication connections](/replication-connections/), on the same PostgreSQL
 18.6 cluster (Linux x64, `fsync = off`). Every row is inserted and then updated;

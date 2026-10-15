@@ -528,8 +528,8 @@ Paths and anchors refer to the repository root as it was then.
   **13,365** total, zero failures. All **1,853** ordinary source inputs and the
   exact **2,038**-file evidence archive verify; ten changed/new files are promoted.
   Release, API freshness and both site gates pass. Committed/pushed as
-  **97842d3**; [primary CI](https://github.com/willibrandon/ankus/actions/runs/37480623539)
-  passes all jobs. [Docs](https://github.com/willibrandon/ankus/actions/runs/37480623554)
+  **97842d3**; [primary CI](https://github.com/ankus-net/ankus/actions/runs/37480623539)
+  passes all jobs. [Docs](https://github.com/ankus-net/ankus/actions/runs/37480623554)
   passes, including independent inspection of all eighteen platform reports.
 - Type-provider diagnostics pass **46** focused cases, **4,455** generator cases
   and complete Linux/PostgreSQL **18.6** acceptance: **13,411** total, zero
@@ -679,11 +679,11 @@ Paths and anchors refer to the repository root as it was then.
   preserving real matrix selection for the suite while testing the SDK's unselected
   PostgreSQL 18 fallback in isolation. Replacement run **37630022751** was queued
   against the preceding `c42a138` source and therefore cannot validate this fix.
-  Replacement [run **37656004533**](https://github.com/willibrandon/ankus/actions/runs/37656004533)
+  Replacement [run **37656004533**](https://github.com/ankus-net/ankus/actions/runs/37656004533)
   is active against `82503bf` and covers PostgreSQL 13–17 and 19.
 - Platform-version run **37583027994** predates the workspace cleanup, Windows
   suite admission and PostgreSQL 18 newline correction described above.
-  Replacement [run **37656015714**](https://github.com/willibrandon/ankus/actions/runs/37656015714)
+  Replacement [run **37656015714**](https://github.com/ankus-net/ankus/actions/runs/37656015714)
   is active against `82503bf` for macOS ARM64/PostgreSQL 15 and 16 and Windows
   x64/PostgreSQL 13 and 18.
 - That replacement proves macOS ARM64/PostgreSQL 15 and 16. Its Windows 18
@@ -865,7 +865,7 @@ checks or corrected Intel acceptance as passed.
 
 ## Intel macOS diagnostic retry completes — 2026-10-03
 
-[Run 37104402210, attempt two](https://github.com/willibrandon/ankus/actions/runs/37104402210/job/111173163906)
+[Run 37104402210, attempt two](https://github.com/ankus-net/ankus/actions/runs/37104402210/job/111173163906)
 finishes at **13:58:32 UTC** on **ca5ab99**, using macOS x64 and PostgreSQL
 **18.6**. The job takes **4h40m41s**, within its approved six-hour limit. Full
 tests take **4h25m13.994s**. All six retained TRX reports independently total
@@ -1660,13 +1660,13 @@ this milestone. Replacement CI remains required after publication.
 ## Native AOT GC correction and compiler packaging
 
 Commit **ca5ab99** passes the complete macOS ARM64/PostgreSQL 18 and Windows
-x64/PostgreSQL 17 jobs in [CI 37104381270](https://github.com/willibrandon/ankus/actions/runs/37104381270).
+x64/PostgreSQL 17 jobs in [CI 37104381270](https://github.com/ankus-net/ankus/actions/runs/37104381270).
 Each retains all six completed TRX modules with **11,360 total** and zero failures.
 macOS reports **11,334 passed / 26 platform skips**, **28m29s** job duration;
 Windows reports **11,335 passed / 25 platform skips**, **31m35s**. Linux
 x64/PostgreSQL 18 also completes all six modules: **11,360 total; 11,346 passed;
 zero failures; 14 platform skips**, **36m04s**. All primary runtime builds and
-quality pass; [Docs 37104381195](https://github.com/willibrandon/ankus/actions/runs/37104381195)
+quality pass; [Docs 37104381195](https://github.com/ankus-net/ankus/actions/runs/37104381195)
 passes. The Intel macOS runtime build passes and its full test job is underway
 with the approved 360-minute limit.
 
@@ -1819,7 +1819,7 @@ collection pressure; a Checked NativeAOT runtime with call-site GC stress is
 the next causal experiment. The root cause and product correction remain
 unresolved.
 
-For **0ddc6e9**, [primary CI 37084745267](https://github.com/willibrandon/ankus/actions/runs/37084745267)
+For **0ddc6e9**, [primary CI 37084745267](https://github.com/ankus-net/ankus/actions/runs/37084745267)
 passes quality, all runtime jobs and all complete primary-platform suites.
 Six downloaded TRX modules per platform independently confirm **11,359 total**:
 Linux x64/PostgreSQL 18.6 has **11,345 passed / 14 platform skips**;
@@ -1827,11 +1827,11 @@ Windows x64/PostgreSQL 17.11 has **11,334 / 25**;
 macOS ARM64/PostgreSQL 18.6 has **11,333 / 26**. All have zero failures.
 Platform job durations, including setup and cleanup, are **36m07s**, **30m58s**
 and **26m45s**, respectively.
-[Docs 37084745237](https://github.com/willibrandon/ankus/actions/runs/37084745237)
+[Docs 37084745237](https://github.com/ankus-net/ankus/actions/runs/37084745237)
 also passes. Independent compiler root-cause work and Intel macOS acceptance
 remain open.
 
-The same commit's Intel macOS [run 37084785806](https://github.com/willibrandon/ankus/actions/runs/37084785806)
+The same commit's Intel macOS [run 37084785806](https://github.com/ankus-net/ankus/actions/runs/37084785806)
 uses two package-test slots and exceeds its **60-minute** limit, confirmed by
 the job annotation. Its total duration including cleanup is **61m45s**.
 The initial test build takes **6m48s**; the full test step runs **50m37s**.
@@ -1997,14 +1997,14 @@ their original intermittent Native AOT compiler exception remains unresolved.
 
 ## Compiler namespace migration: primary CI acceptance
 
-Committed **71095c9** passes [primary CI 37079091457](https://github.com/willibrandon/ankus/actions/runs/37079091457):
+Committed **71095c9** passes [primary CI 37079091457](https://github.com/ankus-net/ankus/actions/runs/37079091457):
 quality, all three runtime jobs and every complete platform suite. Six downloaded
 TRX modules per platform report **11,347 total** each: Linux x64/PostgreSQL 18
 has **11,333 passed / 14 platform skips**, macOS ARM64/PostgreSQL 18 has
 **11,321 passed / 26 skips**, and Windows x64/PostgreSQL 17 has
 **11,322 passed / 25 skips**. All have zero failures. Platform job durations are
 **35m58s**, **26m37s** and **30m51s**, respectively.
-[Docs 37079091438](https://github.com/willibrandon/ankus/actions/runs/37079091438)
+[Docs 37079091438](https://github.com/ankus-net/ankus/actions/runs/37079091438)
 also passes. These results close the namespace migration's pending primary CI;
 they do not identify the root cause of the separately retained intermittent
 Native AOT compiler failure or establish Intel macOS acceptance.
@@ -2115,14 +2115,14 @@ Fresh primary CI is required after publishing this namespace change.
 ## Binding source-cache generator identity
 
 The published source-cache correction is **e7fe4d0**.
-[CI 37071000257](https://github.com/willibrandon/ankus/actions/runs/37071000257)
+[CI 37071000257](https://github.com/ankus-net/ankus/actions/runs/37071000257)
 passes quality, runtime and all three complete platform suites.
 All six downloaded TRX modules per platform confirm **11,346 total**:
 Linux x64/PostgreSQL 18 has **11,332 passed, 14 skips, 35m48s**;
 macOS ARM64/PostgreSQL 18 has **11,320 passed, 26 skips, 26m31s**;
 Windows x64/PostgreSQL 17 has **11,321 passed, 25 skips, 31m30s**.
 All have zero failures; durations are complete job times.
-[Docs 37071000284](https://github.com/willibrandon/ankus/actions/runs/37071000284)
+[Docs 37071000284](https://github.com/ankus-net/ankus/actions/runs/37071000284)
 also passes. These results do not establish Intel macOS acceptance.
 
 The source-cache key included the generator's absolute installation path, and
@@ -2177,13 +2177,13 @@ does not establish an isolated speedup or resolve the Intel timeout.
 ## Relative Ankus home across build and test processes
 
 The milestone is committed and pushed as **2446e3c**.
-[CI 37066979915](https://github.com/willibrandon/ankus/actions/runs/37066979915)
+[CI 37066979915](https://github.com/ankus-net/ankus/actions/runs/37066979915)
 passes quality, all runtime jobs and all three complete primary-platform suites.
 Six downloaded TRX modules per platform report **11,345 total**, with zero
 failures: Linux x64/PostgreSQL 18 has **11,331 passed / 14 skips, 36m26s** job
 time; macOS ARM64/18 has **11,319 passed / 26 skips, 26m54s**; Windows x64/17
 has **11,320 passed / 25 skips, 31m21s**.
-[Docs 37066979878](https://github.com/willibrandon/ankus/actions/runs/37066979878)
+[Docs 37066979878](https://github.com/ankus-net/ankus/actions/runs/37066979878)
 passes. The separate Intel timeout remains unresolved.
 
 The unchanged-product regression fails both cases: a native build started from
@@ -2250,13 +2250,13 @@ run is active. Intel macOS **37003910952** retains its unresolved timeout.
 ## Evaluated extension selection, aggregate capabilities and framework templates
 
 The milestone is committed and pushed as **d78e49c**. Replacement
-[CI 37061338668](https://github.com/willibrandon/ankus/actions/runs/37061338668)
+[CI 37061338668](https://github.com/ankus-net/ankus/actions/runs/37061338668)
 passes quality, all runtime jobs and all three complete suites. Six downloaded
 TRX modules per platform report **11,341 total** with zero failures:
 Linux x64/PostgreSQL 18 has **11,327 passed / 14 skips, 34m54s** job time;
 macOS ARM64/18 has **11,315 passed / 26 skips, 26m18s**; Windows x64/17 has
 **11,316 passed / 25 skips, 30m06s**.
-[Docs 37061338568](https://github.com/willibrandon/ankus/actions/runs/37061338568)
+[Docs 37061338568](https://github.com/ankus-net/ankus/actions/runs/37061338568)
 also passes. The previous Windows failures are resolved. Intel macOS still needs
 complete acceptance; this primary-platform result does not close that gap.
 
@@ -2299,14 +2299,14 @@ uses shorter distinct cache directories and requires its own complete evidence.
 
 ### Windows CI repair
 
-[CI 37046774035](https://github.com/willibrandon/ankus/actions/runs/37046774035),
+[CI 37046774035](https://github.com/ankus-net/ankus/actions/runs/37046774035),
 **c4a092d**, passes quality, all runtime jobs and complete Linux/macOS ARM64
 suites. Linux/PostgreSQL 18 reports **11,303 total / 11,289 passed / 14 skips**,
 zero failures, **26m55s** job time; macOS ARM64/18 reports **11,303 / 11,277 / 26**,
 zero failures, **20m15s**. Windows/PostgreSQL 17 fails after **25m15s**: four
 completed modules report **8,792 total / 8,764 passed / three failures / 25 skips**.
 The remaining unit modules do not execute after the generator module fails, so
-this is explicitly partial evidence. [Docs 37046774045](https://github.com/willibrandon/ankus/actions/runs/37046774045)
+this is explicitly partial evidence. [Docs 37046774045](https://github.com/ankus-net/ankus/actions/runs/37046774045)
 passes.
 
 Two new assertions incorrectly require exact installation-path casing on
@@ -2428,8 +2428,8 @@ and are acceptance evidence, not performance comparisons. Final main-composition
 gates and fresh primary-platform CI remain required.
 
 The preceding **68fd2de** passes
-[CI 37041069194](https://github.com/willibrandon/ankus/actions/runs/37041069194) and
-[Docs 37041069249](https://github.com/willibrandon/ankus/actions/runs/37041069249).
+[CI 37041069194](https://github.com/ankus-net/ankus/actions/runs/37041069194) and
+[Docs 37041069249](https://github.com/ankus-net/ankus/actions/runs/37041069249).
 Six completed downloaded TRX modules per platform establish **11,250 total**,
 zero failures: Linux x64/PostgreSQL 18 has **11,236 passed / 14 skips**, **27m00s**
 job time; macOS ARM64/18 **11,224 passed / 26 skips**, **20m14s**; Windows x64/17
@@ -2491,8 +2491,8 @@ the older Intel run retains its cancelled timeout. Fresh primary-platform CI
 remains required; Intel and complete version/platform acceptance remain open.
 
 The preceding direct-decimal milestone **e38dce4** passes primary CI
-[37030652354](https://github.com/willibrandon/ankus/actions/runs/37030652354) and
-[Docs 37030652372](https://github.com/willibrandon/ankus/actions/runs/37030652372).
+[37030652354](https://github.com/ankus-net/ankus/actions/runs/37030652354) and
+[Docs 37030652372](https://github.com/ankus-net/ankus/actions/runs/37030652372).
 Six completed TRX modules per platform establish **11,248 total**, zero failures:
 Linux x64/PostgreSQL 18 has **11,234 passed / 14 skips**, **26m39s** job time;
 macOS ARM64/18 has **11,222 passed / 26 skips**, **20m12s**;
@@ -2622,7 +2622,7 @@ version validation and the rest of the review remain open.
 
 ## Primary CI and PostgreSQL 19 acceptance for typed SPI commands
 
-Commit **c3db5ed** passes [primary CI 37016083898](https://github.com/willibrandon/ankus/actions/runs/37016083898),
+Commit **c3db5ed** passes [primary CI 37016083898](https://github.com/ankus-net/ankus/actions/runs/37016083898),
 including quality, all patched-runtime jobs and all three unsharded complete
 platform suites. Downloaded TRX reports contain six completed modules per platform:
 
@@ -2633,9 +2633,9 @@ platform suites. Downloaded TRX reports contain six completed modules per platfo
 | Windows x64 / 17 | 11,120 | 11,095 | 0 | 25 | 25m22s |
 | Linux x64 / 19 beta 4 | 11,120 | 11,106 | 0 | 14 | 28m12s |
 
-The PostgreSQL 19 row is [replacement version CI 37016275325](https://github.com/willibrandon/ankus/actions/runs/37016275325)
+The PostgreSQL 19 row is [replacement version CI 37016275325](https://github.com/ankus-net/ankus/actions/runs/37016275325)
 on the same commit, including both corrected fixtures and the SPI command APIs.
-[Docs 37016083680](https://github.com/willibrandon/ankus/actions/runs/37016083680)
+[Docs 37016083680](https://github.com/ankus-net/ankus/actions/runs/37016083680)
 also passes. These terminal results supersede pending outcomes in earlier entries.
 Intel macOS's timeout and remaining supported-version/platform gaps remain open.
 
@@ -3637,7 +3637,7 @@ running. Their terminal outcomes remain required; no earlier result is attribute
 to this new commit. Combined authoring native acceptance is confirmed live on
 its own unchanged source.
 
-Search-path CI [36945901018](https://github.com/willibrandon/ankus/actions/runs/36945901018)
+Search-path CI [36945901018](https://github.com/ankus-net/ankus/actions/runs/36945901018)
 now succeeds completely: Linux x64/PostgreSQL 18 **25m01s**, macOS ARM64/PostgreSQL
 18 **20m23s**, Windows x64/PostgreSQL 17 **26m31s**. Quality and all three
 runtime jobs succeed; Docs **36945900803** succeeds. No job times out or is
@@ -4320,9 +4320,9 @@ fixture isolation **5254c71**, package prefixes **780ecae**, and compiler-input
 hashing **b9942a0**. Before push, the same eight preceding CI outcomes are
 checked and retained once more, all unchanged and terminal; all **202** source
 hashes still match the committed primary checkout. Fresh primary CI
-[36964760599](https://github.com/willibrandon/ankus/actions/runs/36964760599),
+[36964760599](https://github.com/ankus-net/ankus/actions/runs/36964760599),
 Docs **36964760249**, and explicitly dispatched hosted Intel validation
-[36964760110](https://github.com/willibrandon/ankus/actions/runs/36964760110)
+[36964760110](https://github.com/ankus-net/ankus/actions/runs/36964760110)
 have started on that exact revision. Their outcomes remain pending. No run
 is canceled, and the independent scaffold validator retains its unchanged source.
 
@@ -7147,7 +7147,7 @@ remains pending. The full generator conversion, wider version/platform matrix an
 remaining review requirements stay open.
 
 The milestone is committed and pushed as **da3da9e**. CI
-[36786103805](https://github.com/willibrandon/ankus/actions/runs/36786103805)
+[36786103805](https://github.com/ankus-net/ankus/actions/runs/36786103805)
 and Docs **36786103797** both succeed for that exact commit. Quality and all
 three runtime jobs pass. Complete platform jobs pass on Windows x64/PostgreSQL
 17 (**20m38s**), Linux x64/PostgreSQL 18 (**22m45s**) and macOS ARM64/PostgreSQL
@@ -7905,7 +7905,7 @@ with zero warnings/errors on
 Linux and Windows; API freshness verifies 200 pages/2,437 members, and the site
 builds 244 pages and checks with zero errors/warnings/hints.
 
-The macOS failure in [CI 36352480777](https://github.com/willibrandon/ankus/actions/runs/36352480777/job/108713921584)
+The macOS failure in [CI 36352480777](https://github.com/ankus-net/ankus/actions/runs/36352480777/job/108713921584)
 comes from the allocation test worker's signal handler: Clang rejects the unused
 `postgres_signal_arg` parameter with warnings treated as errors. This prevents
 assembly initialization, producing 3,332 failed integration cases and two
@@ -7914,7 +7914,7 @@ and accounts for PostgreSQL 19's additional signal metadata while retaining the
 selected-header signature. The exact strict Clang command fails before the fix
 and passes afterwards; all four allocation cases pass on Linux x64/PostgreSQL
 18.6 (1m34.949s) and Windows x64/PostgreSQL 17.11 (3m11.515s). The subsequent
-macOS ARM64/PostgreSQL 18 [job 108729659266](https://github.com/willibrandon/ankus/actions/runs/36357983412/job/108729659266)
+macOS ARM64/PostgreSQL 18 [job 108729659266](https://github.com/ankus-net/ankus/actions/runs/36357983412/job/108729659266)
 passes the complete suite at `c01ed61`: 8,116 passed, zero failed and nine
 platform-specific skips, 8,125 total, in a 52m55s job (integration 45m16.124s).
 This confirms the fixture repair on macOS; that run predates the custom-scan
@@ -7922,7 +7922,7 @@ sample. Its later hosted validation is recorded below. No diagnostic is
 suppressed or relaxed. In the original
 hosted run, quality, all runtime jobs and Ubuntu's full suite (41m27s) pass;
 Windows remains in progress at the 2026-09-27 22:28 UTC pre-commit check.
-[Docs 36352480612](https://github.com/willibrandon/ankus/actions/runs/36352480612)
+[Docs 36352480612](https://github.com/ankus-net/ankus/actions/runs/36352480612)
 passes.
 The subsequent callback milestone push superseded that run's Windows job after
 50m09s; it is cancelled and supplies no complete platform result.
@@ -7987,9 +7987,9 @@ on Linux (1m05.38s) and Windows (1m30.16s); the final Windows test rebuild also
 passes. API freshness verifies 200 pages/2,437 members; the site builds 244 pages
 and checks with zero errors/warnings/hints.
 
-The preceding [worker CI 36344340281](https://github.com/willibrandon/ankus/actions/runs/36344340281)
+The preceding [worker CI 36344340281](https://github.com/ankus-net/ankus/actions/runs/36344340281)
 passes quality, every runtime-package job and the complete macOS suite (42m39s).
-[Docs 36344340280](https://github.com/willibrandon/ankus/actions/runs/36344340280)
+[Docs 36344340280](https://github.com/ankus-net/ankus/actions/runs/36344340280)
 passes. Ubuntu (30m39s) and Windows (59m48s) each fail only
 `BackgroundWorkersRegisterAndShareState`: a detached worker had written its final
 value before it exited and PostgreSQL reclaimed its slot. Ubuntu reports 3,327
@@ -8004,10 +8004,10 @@ The complete PostgreSQL 13–19/platform matrix remains required, along with the
 remaining full-port inventory below. This
 milestone does not establish complete worker or full-port parity.
 
-The preceding mutation [CI 36338481778](https://github.com/willibrandon/ankus/actions/runs/36338481778)
+The preceding mutation [CI 36338481778](https://github.com/ankus-net/ankus/actions/runs/36338481778)
 passes quality, all runtime jobs and the complete Linux (36m22s), macOS
 (47m17s) and Windows (56m50s) suites.
-[Docs 36338481755](https://github.com/willibrandon/ankus/actions/runs/36338481755)
+[Docs 36338481755](https://github.com/ankus-net/ankus/actions/runs/36338481755)
 passes. All jobs are terminal and successful at the 2026-09-27 18:49 UTC check.
 The first local worker attempts stopped during native fixture compilation;
 signal parameters now match the selected headers, and the worker bridge declares
@@ -8035,26 +8035,26 @@ warnings/errors: Linux 1m30.99s and Windows 3m35.90s. API freshness verifies
 errors/warnings/hints. README, public shared-memory guidance and generated API
 pages describe mutation, readonly access and guard lifetime rules.
 
-The preceding lightweight-lock reader [CI 36335688901](https://github.com/willibrandon/ankus/actions/runs/36335688901)
+The preceding lightweight-lock reader [CI 36335688901](https://github.com/ankus-net/ankus/actions/runs/36335688901)
 passes every runtime build, quality and full Linux (35m12s). macOS and Windows
 were superseded by the mutation push after 42m43s and 42m33s respectively; their
 retained logs contain no failed test, but their full results remain unverified.
-[Docs 36335688785](https://github.com/willibrandon/ankus/actions/runs/36335688785)
+[Docs 36335688785](https://github.com/ankus-net/ankus/actions/runs/36335688785)
 passes. A running job is not counted as platform proof.
 
-The preceding scoped-spinlock [CI 36333403089](https://github.com/willibrandon/ankus/actions/runs/36333403089)
+The preceding scoped-spinlock [CI 36333403089](https://github.com/ankus-net/ankus/actions/runs/36333403089)
 passes every runtime build, quality, full Linux (31m18s) and full macOS
 (30m04s); Windows was still running at the pre-commit check and was subsequently
 superseded by the lightweight-lock reader push.
-[Docs 36333403092](https://github.com/willibrandon/ankus/actions/runs/36333403092)
+[Docs 36333403092](https://github.com/ankus-net/ankus/actions/runs/36333403092)
 passes. Complete hosted Windows validation was pending at that milestone;
 the subsequent mutation run passes. A running or superseded job is not counted
 as platform proof.
 
-The preceding collection [CI 36325012375](https://github.com/willibrandon/ankus/actions/runs/36325012375)
+The preceding collection [CI 36325012375](https://github.com/ankus-net/ankus/actions/runs/36325012375)
 passes quality, every runtime job and macOS (34m41s). Linux fails during backend
 crash recovery; Windows reports a GUC FATAL transport mismatch and reaches its
-one-hour timeout (60m09s). [Docs 36325012376](https://github.com/willibrandon/ankus/actions/runs/36325012376)
+one-hour timeout (60m09s). [Docs 36325012376](https://github.com/ankus-net/ankus/actions/runs/36325012376)
 passes. Runtime fork commit `134b853ff766627327405b2fb1f5c0d74266e4b6`, selected
 by payload `10.0.11-ankus.4`, repairs the finalizer retirement request ordering.
 It passes the Linux native recovery pair, the complete Linux suite and 2,048
@@ -8287,7 +8287,7 @@ errors. This is runtime engineering work, not a declaration-only or
 delayed-initialization substitute for postmaster callbacks.
 
 The user replaced the runtime reference with a clone of
-`https://github.com/willibrandon/runtime`. The existing owned runtime working tree
+`https://github.com/ankus-net/runtime`. The existing owned runtime working tree
 now has its own Git metadata and local `ankus/fork-support` branch based on the
 exact v10.0.11 commit, with that fork as `origin` and dotnet/runtime as `upstream`.
 The first runtime milestone is committed locally as
@@ -10021,7 +10021,7 @@ Prerequisite installation is currently manual.
   `REL_13_23`…`REL_18_6`, `REL_19_BETA3`. Key files are `src/include/fmgr.h`,
   `src/backend/utils/fmgr/dfmgr.c`, `src/backend/utils/fmgr/fmgr.c`, and
   `src/include/utils/elog.h`.
-- **[runtime](https://github.com/willibrandon/runtime)** — .NET runtime source (Native AOT: `src/coreclr/nativeaot/`, PAL: `src/coreclr/pal/src/`).
+- **[runtime](https://github.com/ankus-net/runtime)** — .NET runtime source (Native AOT: `src/coreclr/nativeaot/`, PAL: `src/coreclr/pal/src/`).
 - **[roslyn](https://github.com/dotnet/roslyn)** — compiler source (function-pointer grammar, source generators).
 - **[msbuild](https://github.com/dotnet/msbuild)** — build conventions and type-style rules, compared with `runtime`.
 - **[sdk](https://github.com/dotnet/sdk)** — .NET SDK and CLI conventions.
@@ -10788,7 +10788,7 @@ source-case-level mapping to named .NET tests and any additional boundary cases 
 | Full runtime/macro/CLI parity | Source API/option inventory mapped to implemented APIs, behavior tests and examples | Family inventory above; most implementation pending |
 | Native AOT safety | Trim/AOT-clean consumers; deterministic cleanup on exceptions, native errors, cancellation and recursive callbacks | Implemented suites pass Linux x64/PG18, macOS ARM64/PG18 and Windows x64/PG17 at `cbd0fdd`; remaining APIs/targets pending |
 | PostgreSQL 13, 14, 15, 16, 17, 18, 19 beta | Per-major builds against that server's headers, version-specific APIs/gating and complete backend tests | PG18 on Linux/macOS and PG17 on Windows verified at `cbd0fdd`; complete major/platform combinations pending |
-| Windows, Linux, macOS | Native builds, exports/loading, lifecycle, encoding, toolchain and installer tests for each supported RID | Linux x64, macOS ARM64 and Windows x64 pass [CI run 36043147127](https://github.com/willibrandon/ankus/actions/runs/36043147127); macOS x64 and the full version matrix remain pending |
+| Windows, Linux, macOS | Native builds, exports/loading, lifecycle, encoding, toolchain and installer tests for each supported RID | Linux x64, macOS ARM64 and Windows x64 pass [CI run 36043147127](https://github.com/ankus-net/ankus/actions/runs/36043147127); macOS x64 and the full version matrix remain pending |
 | Ordinary .NET usage | One NuGet reference, attributed methods, `dotnet publish`, discoverable plain `dotnet test` and working tool commands | NuGet project SDK, cold isolated consumers, CPM/global.json, installed-tool and direct publishing, plus an external MSTest consumer verified on Linux/PG18; remaining CLI commands pending |
 | .NET support and runtime servicing | Explicit SDK/TFM/compiler/runtime/RID identities, current upstream patches, complete backend validation for each declared runtime major and documented rebuild instructions | .NET 10 patched runtime exists; servicing rebase and .NET 11 acceptance remain required under the [support plan](#net-support-and-servicing-plan) |
 | Installation and upgrades | Clean install, relocation, removal, versioned-library coexistence, upgrade scripts and data compatibility | Basic PG18 `CREATE/DROP EXTENSION` and schema relocation pass |
@@ -11464,7 +11464,7 @@ The phases track implementation of the complete pgrx feature surface.
   so the immediate fallback correctly found no running postmaster but returned exit
   code 1. The harness now checks `pg_ctl status` and accepts its documented exit code 3
   when that race proves the server has stopped.
-  [Hosted CI run 35992682774](https://github.com/willibrandon/ankus/actions/runs/35992682774)
+  [Hosted CI run 35992682774](https://github.com/ankus-net/ankus/actions/runs/35992682774)
   passes every job: Linux x64/PostgreSQL 18 passes 4,142/4,142 in 9m28s; macOS
   ARM64/PostgreSQL 18 passes 4,140 with two Linux-only skips in 7m38s; macOS
   x64/PostgreSQL 18 passes 2,088/2,088 unit cases in 4m59s and 2,052 integration
@@ -11473,7 +11473,7 @@ The phases track implementation of the complete pgrx feature surface.
   exceeded the 15-minute job limit during cleanup. A diagnostic run split the
   integration suite into six complete, disjoint shards containing 646, 804, 554,
   16, 5 and 29 tests.
-  [Hosted CI run 35999926137](https://github.com/willibrandon/ankus/actions/runs/35999926137)
+  [Hosted CI run 35999926137](https://github.com/ankus-net/ankus/actions/runs/35999926137)
   passes every job and all 2,054 macOS x64 integration cases; the slowest shard
   completes in 11m07s. Windows repeats the full suite successfully in 14m18s. The
   intermediate four-shard configuration combined the 50 tool tests and included
@@ -11488,7 +11488,7 @@ The phases track implementation of the complete pgrx feature surface.
   its release build and runtime package remain included. CI runs on Linux x64,
   macOS ARM64, and Windows x64. Runtime and full-suite jobs now allow 20 minutes;
   test sharding remains removed. The preceding full-suite run
-  [36013556684](https://github.com/willibrandon/ankus/actions/runs/36013556684)
+  [36013556684](https://github.com/ankus-net/ankus/actions/runs/36013556684)
   passed Linux x64/PostgreSQL 18, macOS ARM64/PostgreSQL 18, Windows x64/PostgreSQL
   17, and quality checks; macOS Intel reached its former 15-minute timeout.
   Local Release compilation, runtime metadata validation, API freshness, and
@@ -11571,7 +11571,7 @@ The phases track implementation of the complete pgrx feature surface.
   18.6/Linux x64. Release compilation has zero warnings/errors. API freshness
   (125 pages/1,297 members), `pnpm build` (157 pages), and `pnpm check` pass.
   The preceding raw-query milestone also passed hosted Linux, macOS ARM64, and
-  Windows CI in [run 36023629516](https://github.com/willibrandon/ankus/actions/runs/36023629516).
+  Windows CI in [run 36023629516](https://github.com/ankus-net/ankus/actions/runs/36023629516).
 
   | Requirement | Evidence |
   | --- | --- |
@@ -11614,7 +11614,7 @@ The phases track implementation of the complete pgrx feature surface.
   raw/polymorphic signatures, custom base types, the remaining backend APIs,
   and complete PostgreSQL/platform validation remain required. The preceding
   raw-cursor milestone passes all jobs in
-  [CI run 36026412947](https://github.com/willibrandon/ankus/actions/runs/36026412947).
+  [CI run 36026412947](https://github.com/ankus-net/ankus/actions/runs/36026412947).
 
 - 2026-09-24 — Added `PgFunctionContext.GetOrCreateState<T>` for pgrx's
   `pg_func_extra` behavior. Each PostgreSQL expression initializes its state once
@@ -11656,7 +11656,7 @@ The phases track implementation of the complete pgrx feature surface.
   remaining backend APIs, and complete PostgreSQL/platform validation remain
   required. The preceding function-context milestone passed all jobs on Linux,
   macOS ARM64, and Windows in
-  [CI run 36029314830](https://github.com/willibrandon/ankus/actions/runs/36029314830).
+  [CI run 36029314830](https://github.com/ankus-net/ankus/actions/runs/36029314830).
 
 - 2026-09-24 — Added `PgFunctions` with named and OID scalar calls, void calls,
   caller-owned raw results, and explicit native entry-point calls corresponding
@@ -11698,7 +11698,7 @@ The phases track implementation of the complete pgrx feature surface.
   Raw/polymorphic extension signatures, custom base types, remaining backend
   APIs and full PostgreSQL/platform validation remain required. The cached-state
   milestone passed all Linux, macOS ARM64, and Windows CI jobs in
-  [run 36032194319](https://github.com/willibrandon/ankus/actions/runs/36032194319).
+  [run 36032194319](https://github.com/ankus-net/ankus/actions/runs/36032194319).
 
 - 2026-09-24 — Added `PgAnyElement` and `PgAnyArray` for PostgreSQL `anyelement`
   and `anyarray` signatures. Generated scalar, SETOF, and TABLE functions resolve
@@ -11742,7 +11742,7 @@ The phases track implementation of the complete pgrx feature surface.
   APIs, and full PostgreSQL/platform validation remain required.
   The preceding function-invocation milestone passed Linux x64/PostgreSQL 18,
   macOS ARM64/PostgreSQL 18, and Windows x64/PostgreSQL 17 in
-  [CI run 36036454638](https://github.com/willibrandon/ankus/actions/runs/36036454638).
+  [CI run 36036454638](https://github.com/ankus-net/ankus/actions/runs/36036454638).
 
 - 2026-09-24 — Added typed `PgAnyElement` and `PgAnyArray` results to scalar and
   tuple SPI calls, sessions, prepared statements, and named/OID catalog calls.
@@ -11771,7 +11771,7 @@ The phases track implementation of the complete pgrx feature surface.
   members), `pnpm build` (165 pages), and `pnpm check` pass without diagnostics.
   The preceding polymorphic-signature milestone passed
   Linux x64/PostgreSQL 18, macOS ARM64/PostgreSQL 18, and Windows x64/PostgreSQL 17
-  in [CI run 36039713933](https://github.com/willibrandon/ankus/actions/runs/36039713933).
+  in [CI run 36039713933](https://github.com/ankus-net/ankus/actions/runs/36039713933).
 
   | Requirement | Evidence |
   | --- | --- |
@@ -11824,10 +11824,10 @@ The phases track implementation of the complete pgrx feature surface.
   base types, remaining backend APIs, and full PostgreSQL/platform validation
   remain required. The preceding typed-query milestone passed Linux x64/PostgreSQL
   18, macOS ARM64/PostgreSQL 18, and Windows x64/PostgreSQL 17 in
-  [CI run 36043147127](https://github.com/willibrandon/ankus/actions/runs/36043147127).
+  [CI run 36043147127](https://github.com/ankus-net/ankus/actions/runs/36043147127).
 
 - 2026-09-24 — Fixed two Windows test races found in
-  [CI run 36046783192](https://github.com/willibrandon/ankus/actions/runs/36046783192).
+  [CI run 36046783192](https://github.com/ankus-net/ankus/actions/runs/36046783192).
   The cleanup-error test filtered a shared server log by operating-system process
   ID, which Windows had reused for another session. It now assigns a unique
   application name and checks only that session's diagnostics. An intentional
@@ -11849,7 +11849,7 @@ The phases track implementation of the complete pgrx feature surface.
   macOS ARM64/PostgreSQL 18, runtime builds, and quality checks.
 
   The repair then passed all seven jobs in
-  [CI run 36050481428](https://github.com/willibrandon/ankus/actions/runs/36050481428)
+  [CI run 36050481428](https://github.com/ankus-net/ankus/actions/runs/36050481428)
   at `bfd931c`. Linux x64/PostgreSQL 18 passed all 2,463 integration cases;
   macOS ARM64/PostgreSQL 18 and Windows x64/PostgreSQL 17 each passed 2,461 with
   only the two existing Linux allocator checks skipped. All other test modules
@@ -11886,7 +11886,7 @@ The phases track implementation of the complete pgrx feature surface.
   build passes with zero warnings and errors in 5.64s. API freshness (132 pages,
   1,354 members), `pnpm build` (167 pages), and `pnpm check` pass without
   diagnostics. This milestone then passed all seven jobs in
-  [CI run 36055390473](https://github.com/willibrandon/ankus/actions/runs/36055390473)
+  [CI run 36055390473](https://github.com/ankus-net/ankus/actions/runs/36055390473)
   at `574f106`. Linux x64/PostgreSQL 18 passed all 2,483 integration cases;
   macOS ARM64/PostgreSQL 18 and Windows x64/PostgreSQL 17 each passed 2,481 with
   only the two existing Linux allocator cases skipped. All other modules and
@@ -12032,7 +12032,7 @@ The phases track implementation of the complete pgrx feature surface.
   skips in 3m17.706s; Release builds with zero warnings and errors in 12.91s.
   API freshness (135 pages, 1,371 members), `pnpm build` (172 pages), and
   `pnpm check` pass without diagnostics. Hosted run
-  [36070618730](https://github.com/willibrandon/ankus/actions/runs/36070618730)
+  [36070618730](https://github.com/ankus-net/ankus/actions/runs/36070618730)
   is green: Linux x64/PostgreSQL 18 passes 4,741; macOS ARM64/PostgreSQL 18 and
   Windows x64/PostgreSQL 17.11 each pass 4,739 with the two existing Linux-only
   allocator cases skipped. Quality, runtime packaging, and documentation also
@@ -12089,7 +12089,7 @@ The phases track implementation of the complete pgrx feature surface.
   in 3m11.777s on that platform/version. Release builds with zero warnings and
   errors in 2.59s. API freshness (135 pages, 1,371 members), `pnpm build`
   (172 pages), and `pnpm check` pass without diagnostics. Hosted
-  [CI run 36077748480](https://github.com/willibrandon/ankus/actions/runs/36077748480)
+  [CI run 36077748480](https://github.com/ankus-net/ankus/actions/runs/36077748480)
   at `0b4b57a` subsequently passed the complete suite on Linux x64/PostgreSQL
   18.6 (4,913 passed, zero skips), macOS ARM64/PostgreSQL 18.6 and Windows
   x64/PostgreSQL 17.11 (4,911 passed and two explicitly Linux-only allocation
@@ -12152,7 +12152,7 @@ The phases track implementation of the complete pgrx feature surface.
   `pnpm build` (172 pages) and `pnpm check` passed without diagnostics.
   An earlier targeted attempt aborted in the Native AOT compiler while a separate
   check rebuilt a shared assembly; exclusive targeted and full-suite reruns passed.
-  Hosted [CI run 36080645199](https://github.com/willibrandon/ankus/actions/runs/36080645199)
+  Hosted [CI run 36080645199](https://github.com/ankus-net/ankus/actions/runs/36080645199)
   at `89a74d2` passed the complete suite: Linux x64/PostgreSQL 18.6 passed
   5,060 with zero skips; macOS ARM64/PostgreSQL 18.6 and Windows x64/PostgreSQL
   17.11 each passed 5,058 with the two explicitly Linux-only allocation cases
@@ -12217,9 +12217,9 @@ The phases track implementation of the complete pgrx feature surface.
   PostgreSQL suites: Linux x64/PostgreSQL 18.6 passed 5,156 with zero skips;
   macOS ARM64/PostgreSQL 18.6 and Windows x64/PostgreSQL 17.11 each passed 5,154
   with the two explicit Linux-only allocation checks skipped. CI run
-  [36082900587](https://github.com/willibrandon/ankus/actions/runs/36082900587)
+  [36082900587](https://github.com/ankus-net/ankus/actions/runs/36082900587)
   and documentation run
-  [36082900624](https://github.com/willibrandon/ankus/actions/runs/36082900624)
+  [36082900624](https://github.com/ankus-net/ankus/actions/runs/36082900624)
   both completed successfully.
   Additional framework/collection shapes, zero-copy storage and all unresolved
   full-port/platform requirements remain required.
@@ -12273,7 +12273,7 @@ The phases track implementation of the complete pgrx feature surface.
   generation and freshness passed (136 pages, 1,375 members), as did `pnpm build`
   (173 pages) and `pnpm check` (zero errors, warnings or hints). Independent
   source/assertion review found no unresolved defect. Commit `ef2e28b` passed
-  [hosted CI](https://github.com/willibrandon/ankus/actions/runs/36085657783):
+  [hosted CI](https://github.com/ankus-net/ankus/actions/runs/36085657783):
   Linux x64/PostgreSQL 18.6 passed 5,262 tests with no skips; macOS
   ARM64/PostgreSQL 18.6 and Windows x64/PostgreSQL 17.11 each passed 5,260
   with the two existing Linux-only allocation-injection cases skipped. Quality,
@@ -12345,7 +12345,7 @@ The phases track implementation of the complete pgrx feature surface.
   14.02s. API generation and freshness passed (137 pages, 1,383 members), as did
   `pnpm build` (174 pages) and `pnpm check` (zero errors, warnings or hints).
   Independent source/assertion review found no unresolved ownership defect.
-  Hosted [CI run 36089023397](https://github.com/willibrandon/ankus/actions/runs/36089023397)
+  Hosted [CI run 36089023397](https://github.com/ankus-net/ankus/actions/runs/36089023397)
   and the documentation workflow passed for commit `bf34b7e`. The complete suite
   passed on Linux x64/PostgreSQL 18.6 (5,365 passed, zero skipped), macOS
   ARM64/PostgreSQL 18.6 (5,363 passed, two existing Linux-only skips), and Windows
@@ -12405,7 +12405,7 @@ The phases track implementation of the complete pgrx feature surface.
   3m11.785s on Linux x64/PostgreSQL 18.6. The Release build passes with zero
   warnings/errors in 15.41s. API generation/freshness passes (142 pages, 1,396
   members), as do `pnpm build` (179 pages) and `pnpm check` (zero errors, warnings
-  or hints). [Hosted CI](https://github.com/willibrandon/ankus/actions/runs/36092985059)
+  or hints). [Hosted CI](https://github.com/ankus-net/ankus/actions/runs/36092985059)
   subsequently passed: Linux x64/PostgreSQL 18.6 ran all 5,484 tests with no skips
   in a 7m37s job; macOS ARM64/PostgreSQL 18.6 and Windows x64/PostgreSQL 17.11
   each passed 5,482 with the two existing Linux-only allocation cases skipped,
@@ -12464,7 +12464,7 @@ The phases track implementation of the complete pgrx feature surface.
   in 3m43.970s on Linux x64/PostgreSQL 18.6. The Release build passes with zero
   warnings/errors in 14.95s. API generation/freshness passes (142 pages, 1,399
   members), as do `pnpm build` (179 pages) and `pnpm check` (zero errors,
-  warnings or hints). [Hosted CI](https://github.com/willibrandon/ankus/actions/runs/36095871876)
+  warnings or hints). [Hosted CI](https://github.com/ankus-net/ankus/actions/runs/36095871876)
   passed for commit `d6984ae`: Linux x64/PostgreSQL 18.6 passed all 5,561 tests
   with zero skips in a 9m41s job; macOS ARM64/PostgreSQL 18.6 and Windows
   x64/PostgreSQL 17.11 each passed 5,559 with the two existing Linux-only
@@ -12542,12 +12542,12 @@ The phases track implementation of the complete pgrx feature surface.
   x64/PostgreSQL 18.6. The Release build passes with zero warnings/errors in
   15.94s. API generation/freshness passes (142 pages, 1,414 members), as do
   `pnpm build` (179 pages) and `pnpm check` (zero errors, warnings or hints).
-  Commit `47ee3c7` passed [CI run 36098297661](https://github.com/willibrandon/ankus/actions/runs/36098297661):
+  Commit `47ee3c7` passed [CI run 36098297661](https://github.com/ankus-net/ankus/actions/runs/36098297661):
   Linux x64/PostgreSQL 18.6 passed 5,649 cases with zero skips in a 9m55s job;
   macOS ARM64/PostgreSQL 18.6 passed 5,647 with two existing Linux-only allocation
   skips in 8m57s; Windows x64/PostgreSQL 17.11 passed 5,647 with those same two
   skips in 17m47s. Every new declaration-control case executed. Runtime preparation,
-  quality checks and [documentation deployment](https://github.com/willibrandon/ankus/actions/runs/36098297659)
+  quality checks and [documentation deployment](https://github.com/ankus-net/ankus/actions/runs/36098297659)
   also passed. These runtime-cache-hit jobs do not establish a cold-runtime-build
   baseline. Windows remains above the preferred ten-minute budget and below the
   hard twenty-minute timeout. Reusable managed-to-SQL mappings, declared type
@@ -12699,8 +12699,8 @@ The phases track implementation of the complete pgrx feature surface.
   147 pages/1,429 members; `pnpm check` reports zero errors, warnings or hints,
   and `pnpm build` produces 184 pages. Native fixture publication and these
   Release/documentation builds ran sequentially. Commit `ab971bc` is pushed;
-  [full CI](https://github.com/willibrandon/ankus/actions/runs/36105331492) and
-  [documentation deployment](https://github.com/willibrandon/ankus/actions/runs/36105331394)
+  [full CI](https://github.com/ankus-net/ankus/actions/runs/36105331492) and
+  [documentation deployment](https://github.com/ankus-net/ankus/actions/runs/36105331394)
   passed. Each platform executed the complete suite against PostgreSQL:
 
   | Platform | PostgreSQL | Passed | Skipped | Platform job |
@@ -12781,8 +12781,8 @@ The phases track implementation of the complete pgrx feature surface.
   API generation and freshness pass (147 pages, 1,429 members); `pnpm check`
   reports zero errors, warnings or hints, and `pnpm build` produces 184 pages.
   Native fixture publication and Release/documentation builds ran sequentially.
-  Commit `1b5d6cb` passes [full CI](https://github.com/willibrandon/ankus/actions/runs/36108254178)
-  and [documentation deployment](https://github.com/willibrandon/ankus/actions/runs/36108254145).
+  Commit `1b5d6cb` passes [full CI](https://github.com/ankus-net/ankus/actions/runs/36108254178)
+  and [documentation deployment](https://github.com/ankus-net/ankus/actions/runs/36108254145).
   Each platform executed the complete suite against PostgreSQL:
 
   | Platform | PostgreSQL | Passed | Skipped | Platform job |
@@ -12868,8 +12868,8 @@ The phases track implementation of the complete pgrx feature surface.
   build passes in 17.19s with zero warnings/errors. API generation and freshness
   checks pass for 147 pages/1,429 members; `pnpm check` reports zero
   errors/warnings/hints and `pnpm build` produces 184 pages. Commit `ad49b1f`
-  passes [full CI](https://github.com/willibrandon/ankus/actions/runs/36112546321)
-  and [documentation deployment](https://github.com/willibrandon/ankus/actions/runs/36112546302).
+  passes [full CI](https://github.com/ankus-net/ankus/actions/runs/36112546321)
+  and [documentation deployment](https://github.com/ankus-net/ankus/actions/runs/36112546302).
   Each platform ran the complete suite against a real PostgreSQL server:
 
   | Platform | PostgreSQL | Passed | Skipped | Platform job |
@@ -12924,8 +12924,8 @@ The phases track implementation of the complete pgrx feature surface.
   147 pages/1,429 members; `pnpm check` reports zero errors/warnings/hints and
   `pnpm build` produces 184 pages. Native publication and Release/documentation
   builds ran sequentially. Commit `caf6887` passes
-  [full CI](https://github.com/willibrandon/ankus/actions/runs/36115969341) and
-  [documentation deployment](https://github.com/willibrandon/ankus/actions/runs/36115969361).
+  [full CI](https://github.com/ankus-net/ankus/actions/runs/36115969341) and
+  [documentation deployment](https://github.com/ankus-net/ankus/actions/runs/36115969361).
   Every platform ran the complete suite against a real PostgreSQL server:
 
   | Platform | PostgreSQL | Passed | Skipped | Platform job |
@@ -12986,8 +12986,8 @@ The phases track implementation of the complete pgrx feature surface.
   1,429 members; `pnpm check` reports zero errors/warnings/hints and `pnpm build`
   produces 184 pages. Native publication and Release/documentation builds ran
   sequentially. Commit `06398c0` passes
-  [documentation deployment](https://github.com/willibrandon/ankus/actions/runs/36118564664).
-  Its [full CI](https://github.com/willibrandon/ankus/actions/runs/36118564543)
+  [documentation deployment](https://github.com/ankus-net/ankus/actions/runs/36118564664).
+  Its [full CI](https://github.com/ankus-net/ankus/actions/runs/36118564543)
   also passes. Every platform ran the complete suite against a real PostgreSQL
   server:
 
@@ -13037,8 +13037,8 @@ The phases track implementation of the complete pgrx feature surface.
   non-incremental Release build passes in 16.25s with zero warnings/errors.
   API generation and freshness pass for 147 pages and 1,429 members; `pnpm check`
   reports zero errors/warnings/hints and `pnpm build` produces 184 pages.
-  Commit `86c6de3` passes [documentation build/deployment](https://github.com/willibrandon/ankus/actions/runs/36127621131)
-  and [full CI](https://github.com/willibrandon/ankus/actions/runs/36127621091).
+  Commit `86c6de3` passes [documentation build/deployment](https://github.com/ankus-net/ankus/actions/runs/36127621131)
+  and [full CI](https://github.com/ankus-net/ankus/actions/runs/36127621091).
   Every platform ran the complete suite against a real PostgreSQL server:
 
   | Platform | PostgreSQL | Passed | Skipped | Platform job |
@@ -13092,8 +13092,8 @@ The phases track implementation of the complete pgrx feature surface.
   build passes in 18.23s with zero warnings/errors. API generation and freshness
   pass for 147 pages/1,429 members; `pnpm check` reports zero errors, warnings or
   hints and `pnpm build` produces 184 pages. Commit `e512065` passes
-  [full CI](https://github.com/willibrandon/ankus/actions/runs/36131126510) and
-  [documentation build/deployment](https://github.com/willibrandon/ankus/actions/runs/36131126618).
+  [full CI](https://github.com/ankus-net/ankus/actions/runs/36131126510) and
+  [documentation build/deployment](https://github.com/ankus-net/ankus/actions/runs/36131126618).
   Each platform executed the complete suite against a real PostgreSQL server:
 
   | Platform | PostgreSQL | Passed | Skipped | Platform job |
@@ -13161,8 +13161,8 @@ The phases track implementation of the complete pgrx feature surface.
   warnings/errors. API generation and freshness pass for 147 pages/1,431 members;
   `pnpm check` reports zero errors, warnings or hints and `pnpm build` produces
   184 pages. Commit `3db9d68` passes
-  [full CI](https://github.com/willibrandon/ankus/actions/runs/36133461545) and
-  [documentation build/deployment](https://github.com/willibrandon/ankus/actions/runs/36133461338).
+  [full CI](https://github.com/ankus-net/ankus/actions/runs/36133461545) and
+  [documentation build/deployment](https://github.com/ankus-net/ankus/actions/runs/36133461338).
   Each platform executed the complete suite against a real PostgreSQL server:
 
   | Platform | PostgreSQL | Passed | Skipped | Platform job |
@@ -13218,8 +13218,8 @@ The phases track implementation of the complete pgrx feature surface.
   Release build passes in 10.04s with zero warnings/errors. API generation and
   freshness pass for 147 pages/1,431 members; `pnpm check` reports zero errors,
   warnings or hints and `pnpm build` produces 184 pages. Commit `bffacbb` passes
-  [full CI](https://github.com/willibrandon/ankus/actions/runs/36137204278) and
-  [documentation build/deployment](https://github.com/willibrandon/ankus/actions/runs/36137204255).
+  [full CI](https://github.com/ankus-net/ankus/actions/runs/36137204278) and
+  [documentation build/deployment](https://github.com/ankus-net/ankus/actions/runs/36137204255).
   Each platform executed the complete suite against a real PostgreSQL server:
 
   | Platform | PostgreSQL | Passed | Skipped | Platform job |
@@ -13264,8 +13264,8 @@ The phases track implementation of the complete pgrx feature surface.
   for `bffacbb` above.
 
   The documentation-only successor `ae228be` also passes
-  [full CI](https://github.com/willibrandon/ankus/actions/runs/36139710757) and
-  [documentation build/deployment](https://github.com/willibrandon/ankus/actions/runs/36139710686).
+  [full CI](https://github.com/ankus-net/ankus/actions/runs/36139710757) and
+  [documentation build/deployment](https://github.com/ankus-net/ankus/actions/runs/36139710686).
   Linux x64/PostgreSQL 18.6 passes 6,317 tests with zero failures/skips in a
   10m59s job; macOS ARM64/PostgreSQL 18.6 passes 6,315 with two existing
   Linux-only allocation skips in 11m08s; Windows x64/PostgreSQL 17.11 passes
@@ -13316,8 +13316,8 @@ The phases track implementation of the complete pgrx feature surface.
   Release build passes in 12.76s with zero warnings/errors. API generation and
   freshness pass for 148 pages/1,437 members; `pnpm check` reports zero errors,
   warnings or hints and `pnpm build` produces 185 pages. Commit `4aef0ee` passes
-  [full CI](https://github.com/willibrandon/ankus/actions/runs/36143177033) and
-  [documentation build/deployment](https://github.com/willibrandon/ankus/actions/runs/36143177185).
+  [full CI](https://github.com/ankus-net/ankus/actions/runs/36143177033) and
+  [documentation build/deployment](https://github.com/ankus-net/ankus/actions/runs/36143177185).
   Each platform executed the complete suite against a real PostgreSQL server:
 
   | Platform | PostgreSQL | Passed | Skipped | Platform job |
@@ -13359,8 +13359,8 @@ The phases track implementation of the complete pgrx feature surface.
   warnings or hints and `pnpm build` produces 185 pages. Static assertion and
   public-outcome pseudo-mutation review is Strong for this example contract;
   no empirical mutation or measured coverage claim is made. Commit `2914219`
-  passes [full CI](https://github.com/willibrandon/ankus/actions/runs/36145489482)
-  and [documentation build/deployment](https://github.com/willibrandon/ankus/actions/runs/36145489500).
+  passes [full CI](https://github.com/ankus-net/ankus/actions/runs/36145489482)
+  and [documentation build/deployment](https://github.com/ankus-net/ankus/actions/runs/36145489500).
   Each platform executed the complete suite against a real PostgreSQL server:
 
   | Platform | PostgreSQL | Passed | Skipped | Platform job |
@@ -13411,13 +13411,13 @@ The phases track implementation of the complete pgrx feature surface.
   Commit `b2cb27d` passed Linux x64/PostgreSQL 18.6 (6,375 passed, no skips;
   11m04s) and macOS ARM64/PostgreSQL 18.6 (6,373 passed, two existing Linux-only
   allocation-accounting skips; 10m08s), plus quality, cached runtime preparation
-  and [documentation build/deployment](https://github.com/willibrandon/ankus/actions/runs/36147748823).
+  and [documentation build/deployment](https://github.com/ankus-net/ankus/actions/runs/36147748823).
   The first Windows x64/PostgreSQL 17.11 attempt finished in 18m02s with 6,372
   passed, one failed, and two existing skips. `ShowFatalPreservesTerminalSeverity`
   received a connection-reset exception instead of a client PostgreSQL error;
   the retained server log shows its managed finally notice followed by the
   expected FATAL message and detail, without a related backend crash. The
-  [full Windows job rerun](https://github.com/willibrandon/ankus/actions/runs/36147748841)
+  [full Windows job rerun](https://github.com/ankus-net/ankus/actions/runs/36147748841)
   passed all 6,373 eligible cases with the same two skips in 15m55s, with
   diagnostic assertions unchanged. The first failure was not a timeout;
   transient wire delivery remains an observation, not a proven root cause.
@@ -13518,7 +13518,7 @@ The phases track implementation of the complete pgrx feature surface.
   remain required.
 
 - 2026-09-25 — Hosted list milestone `ec6ce3a` passes complete CI run
-  [36157519749](https://github.com/willibrandon/ankus/actions/runs/36157519749).
+  [36157519749](https://github.com/ankus-net/ankus/actions/runs/36157519749).
   Linux x64/PostgreSQL 18.6 passes 6,465 tests with zero failures/skips in an
   11m23s test job. macOS ARM64/PostgreSQL 18.6 and Windows x64/PostgreSQL 17.11
   each pass 6,463 tests with zero failures and two existing Linux-only native
@@ -13526,7 +13526,7 @@ The phases track implementation of the complete pgrx feature surface.
   18m57s respectively. All three jobs run the entire suite against a real
   server. Runtime preparation uses cached fork builds, so this is not cold
   runtime-build evidence. Quality and documentation deployment run
-  [36157519829](https://github.com/willibrandon/ankus/actions/runs/36157519829)
+  [36157519829](https://github.com/ankus-net/ankus/actions/runs/36157519829)
   also pass. Windows retains its authorized 25-minute timeout. Complete
   PostgreSQL 13–19/platform proof and the remaining port inventory stay open.
 
@@ -13581,14 +13581,14 @@ The phases track implementation of the complete pgrx feature surface.
 
 - 2026-09-25 — Hosted tuple-location milestone `ec5624d`, including the preceding
   `151bc1d` auto-property cleanup, passes complete CI run
-  [36163435123](https://github.com/willibrandon/ankus/actions/runs/36163435123).
+  [36163435123](https://github.com/ankus-net/ankus/actions/runs/36163435123).
   Linux x64/PostgreSQL 18.6 passes 6,523 tests with zero failures/skips in a
   10m58s test job. macOS ARM64/PostgreSQL 18.6 and Windows x64/PostgreSQL 17.11
   each pass 6,521 tests with zero failures and two existing Linux-only allocation
   measurements skipped, in 12m25s and 19m43s test jobs respectively. Every
   platform runs the entire suite against a real server. Quality and runtime
   preparation pass; documentation deployment
-  [36163435184](https://github.com/willibrandon/ankus/actions/runs/36163435184)
+  [36163435184](https://github.com/ankus-net/ankus/actions/runs/36163435184)
   also passes. Windows retains its authorized 25-minute limit. These runs do not
   establish cold runtime-build or complete PostgreSQL 13–19/platform evidence.
 
@@ -13637,14 +13637,14 @@ The phases track implementation of the complete pgrx feature surface.
   inventory remain required.
 
 - 2026-09-25 — Hosted lookup milestone `5900d77` passes complete CI run
-  [36166435027](https://github.com/willibrandon/ankus/actions/runs/36166435027).
+  [36166435027](https://github.com/ankus-net/ankus/actions/runs/36166435027).
   Linux x64/PostgreSQL 18.6 passes 6,564 tests with zero failures/skips in an
   11m17s test job. macOS ARM64/PostgreSQL 18.6 and Windows x64/PostgreSQL 17.11
   each pass 6,562 tests with zero failures and the two existing Linux-only
   allocation measurements skipped, in 12m55s and 24m17s jobs respectively.
   Each platform executes the entire suite against a real server. Quality and
   runtime preparation pass; documentation deployment
-  [36166435119](https://github.com/willibrandon/ankus/actions/runs/36166435119)
+  [36166435119](https://github.com/ankus-net/ankus/actions/runs/36166435119)
   also passes. Windows completed only 43 seconds below its 25-minute cap, so
   its next CI run uses the user's authorized 30-minute timeout. Linux and macOS
   retain 20 minutes. This is not cold runtime-build or full version-matrix proof.
@@ -13697,9 +13697,9 @@ The phases track implementation of the complete pgrx feature surface.
   required.
 
 - 2026-09-25 — OID milestone `13b3443` passes complete hosted CI
-  [36169851187](https://github.com/willibrandon/ankus/actions/runs/36169851187)
+  [36169851187](https://github.com/ankus-net/ankus/actions/runs/36169851187)
   and documentation deployment
-  [36169851249](https://github.com/willibrandon/ankus/actions/runs/36169851249).
+  [36169851249](https://github.com/ankus-net/ankus/actions/runs/36169851249).
   Linux x64/PostgreSQL 18.6 passes 6,595 tests with zero failures/skips in an
   11m31s job. macOS ARM64/PostgreSQL 18.6 and Windows x64/PostgreSQL 17.11
   each pass 6,593 tests with zero failures and the two existing Linux-only
@@ -13762,9 +13762,9 @@ The phases track implementation of the complete pgrx feature surface.
   the broader full-port inventory remain required.
 
 - 2026-09-25 — Function-catalog milestone `393ae99` passes complete hosted CI
-  [36173100001](https://github.com/willibrandon/ankus/actions/runs/36173100001)
+  [36173100001](https://github.com/ankus-net/ankus/actions/runs/36173100001)
   and documentation deployment
-  [36173100000](https://github.com/willibrandon/ankus/actions/runs/36173100000).
+  [36173100000](https://github.com/ankus-net/ankus/actions/runs/36173100000).
   Linux x64/PostgreSQL 18.6 passes 6,622 tests with zero failures/skips in an
   11m51s job. macOS ARM64/PostgreSQL 18.6 and Windows x64/PostgreSQL 17.11
   each pass 6,620 tests with zero failures and the two existing Linux-only
@@ -13830,9 +13830,9 @@ The phases track implementation of the complete pgrx feature surface.
   and the wider full-port inventory remain required.
 
 - 2026-09-25 — Relation milestone `2677e2f` passes complete hosted CI
-  [36181839807](https://github.com/willibrandon/ankus/actions/runs/36181839807)
+  [36181839807](https://github.com/ankus-net/ankus/actions/runs/36181839807)
   and documentation deployment
-  [36181839751](https://github.com/willibrandon/ankus/actions/runs/36181839751).
+  [36181839751](https://github.com/ankus-net/ankus/actions/runs/36181839751).
   Linux x64/PostgreSQL 18.6 passes 6,703 tests with zero failures/skips in a
   12m22s job. macOS ARM64/PostgreSQL 18.6 and Windows x64/PostgreSQL 17.11
   each pass 6,701 tests with zero failures and the two existing Linux-only
@@ -13879,7 +13879,7 @@ The phases track implementation of the complete pgrx feature surface.
   remain 20 minutes for Linux/macOS and 30 minutes for Windows.
 
 - 2026-09-25 — Investigated the Ubuntu failure at `6006b80` in
-  [CI 36185939545](https://github.com/willibrandon/ankus/actions/runs/36185939545).
+  [CI 36185939545](https://github.com/ankus-net/ankus/actions/runs/36185939545).
   Linux x64/PostgreSQL 18.6 passed 6,718 tests and failed one, with no skips:
   `GucPreloadTests.ClientDefaultsAndBackendSettingsRetainSources` failed during
   postmaster startup because another process claimed its reserved loopback port
@@ -13888,7 +13888,7 @@ The phases track implementation of the complete pgrx feature surface.
   x64/PostgreSQL 17.11 each passed 6,717 tests with zero failures and the two
   existing Linux-only allocation measurements skipped, in 13m09s and 17m40s
   jobs respectively. Quality, runtime preparation and
-  [documentation deployment](https://github.com/willibrandon/ankus/actions/runs/36185939499)
+  [documentation deployment](https://github.com/ankus-net/ankus/actions/runs/36185939499)
   also passed.
 
   Cluster startup now retries only a confirmed PostgreSQL address-in-use
@@ -13922,8 +13922,8 @@ The phases track implementation of the complete pgrx feature surface.
   inventory remain required.
 
 - 2026-09-25 — Port-handoff repair `dce1ede` passes complete hosted
-  [CI 36189350482](https://github.com/willibrandon/ankus/actions/runs/36189350482)
-  and [documentation deployment](https://github.com/willibrandon/ankus/actions/runs/36189350500).
+  [CI 36189350482](https://github.com/ankus-net/ankus/actions/runs/36189350482)
+  and [documentation deployment](https://github.com/ankus-net/ankus/actions/runs/36189350500).
   Linux x64/PostgreSQL 18.6 passes all 6,723 tests with zero failures/skips in
   a 7m43s job. macOS ARM64/PostgreSQL 18.6 and Windows x64/PostgreSQL 17.11 each
   pass 6,721 tests with zero failures and the two existing Linux-only allocation
@@ -13983,7 +13983,7 @@ The phases track implementation of the complete pgrx feature surface.
   remain required. `eng/README.md` documents the command and host-only scope.
 
 - 2026-09-25 — Repaired two failures from selected-header layout
-  [CI 36192015621](https://github.com/willibrandon/ankus/actions/runs/36192015621).
+  [CI 36192015621](https://github.com/ankus-net/ankus/actions/runs/36192015621).
   Windows x64/PostgreSQL 17.11 rejected the probe's expression operand to
   MSVC `__alignof`; the emitter now supplies its native type through
   `__typeof__`. The development guide records the Visual Studio 17.9 minimum
@@ -14012,8 +14012,8 @@ The phases track implementation of the complete pgrx feature surface.
   remain open.
 
 - 2026-09-25 — Repair `947efd5` passes complete hosted
-  [CI 36194691946](https://github.com/willibrandon/ankus/actions/runs/36194691946)
-  and [documentation deployment](https://github.com/willibrandon/ankus/actions/runs/36194691928).
+  [CI 36194691946](https://github.com/ankus-net/ankus/actions/runs/36194691946)
+  and [documentation deployment](https://github.com/ankus-net/ankus/actions/runs/36194691928).
   Linux x64/PostgreSQL 18.6 passes all 6,784 tests with zero failures/skips in
   an 11m57s job. macOS ARM64/PostgreSQL 18.6 and Windows x64/PostgreSQL 17.11
   each pass 6,782 tests with zero failures and the two existing Linux-only
@@ -14087,7 +14087,7 @@ The phases track implementation of the complete pgrx feature surface.
 
 - 2026-09-25 — Repair selected-header integer typedef widths and native field
   names. The Windows job for `a43c448` in
-  [CI 36200868194](https://github.com/willibrandon/ankus/actions/runs/36200868194)
+  [CI 36200868194](https://github.com/ankus-net/ankus/actions/runs/36200868194)
   exposed a Linux bindgen typedef assumption: `uint64` resolves to `c_ulong`
   in the pinned declarations, but Windows uses eight-byte storage while C
   `unsigned long` is four bytes. Managed emission now uses each selected-header
@@ -14142,7 +14142,7 @@ The phases track implementation of the complete pgrx feature surface.
   PostgreSQL version inventory are still open.
 
 - 2026-09-25 — Stop physical-directory traversal before resolving a filesystem
-  root. Windows in [CI 36203633498](https://github.com/willibrandon/ankus/actions/runs/36203633498)
+  root. Windows in [CI 36203633498](https://github.com/ankus-net/ankus/actions/runs/36203633498)
   gets past the integer-width failure but exposes `ResolveLinkTarget` querying
   the drive root through Win32 file enumeration, which rejects that root path.
   Both managed-binding generation and the installed-SDK fixture now return a
@@ -14156,7 +14156,7 @@ The phases track implementation of the complete pgrx feature surface.
   timeouts are unchanged.
 
 - 2026-09-25 — Separate binding compiler discovery from Native AOT linker setup.
-  Windows in [CI 36204730752](https://github.com/willibrandon/ankus/actions/runs/36204730752)
+  Windows in [CI 36204730752](https://github.com/ankus-net/ankus/actions/runs/36204730752)
   now completes the managed build. Its full test execution exposes nine enum
   fixtures retaining CRLF endings and a Native AOT SourceLink input captured
   before `ManagedBinary` exists. Enum fixtures now normalize their line endings
@@ -14187,7 +14187,7 @@ The phases track implementation of the complete pgrx feature surface.
 
 - 2026-09-25 — Hosted verification of the binding/Windows repairs is complete.
   Commit `94c0e61` passes all seven jobs in
-  [CI 36206527276](https://github.com/willibrandon/ankus/actions/runs/36206527276).
+  [CI 36206527276](https://github.com/ankus-net/ankus/actions/runs/36206527276).
   Linux x64/Ubuntu 24.04/PostgreSQL 18.6 passes all 6,834 tests with no failures
   or skips in a 17m 08s job. macOS ARM64/macOS 15/PostgreSQL 18.6 passes 6,832
   tests with no failures and the two existing Linux-only memory-measurement
@@ -14242,7 +14242,7 @@ The phases track implementation of the complete pgrx feature surface.
   suppressions or production friend assemblies.
 
 - 2026-09-25 — Checked node views in `b510a08` pass all seven jobs in
-  [CI 36210282542](https://github.com/willibrandon/ankus/actions/runs/36210282542)
+  [CI 36210282542](https://github.com/ankus-net/ankus/actions/runs/36210282542)
   and the separate documentation deployment. Linux x64/Ubuntu 24.04/PostgreSQL
   18.6 passes 6,876 tests with zero failures/skips in a 17m 29s job. macOS
   ARM64/macOS 15/PostgreSQL 18.6 passes 6,874 tests with no failures and the two
@@ -14301,7 +14301,7 @@ The phases track implementation of the complete pgrx feature surface.
   production assembly boundaries and CI timeouts are unchanged.
 
 - 2026-09-25 — Node allocation and formatting in `d000135` pass all seven jobs
-  in [CI 36212131890](https://github.com/willibrandon/ankus/actions/runs/36212131890)
+  in [CI 36212131890](https://github.com/ankus-net/ankus/actions/runs/36212131890)
   and documentation deployment. Linux x64/Ubuntu 24.04/PostgreSQL 18.6 passes
   6,918 tests with no failures or skips in a 16m 51s job. macOS ARM64/macOS
   15/PostgreSQL 18.6 and Windows x64/Windows Server 2025/PostgreSQL 17.11 each
@@ -14717,7 +14717,7 @@ The phases track implementation of the complete pgrx feature surface.
   with zero errors, warnings or hints. Plain root `dotnet test` passes all six
   modules against PostgreSQL 18.6 on Linux x64: 7,264 passed, zero failed and the
   existing Windows-only cleanup case skipped in 7m 36.924s. Hosted CI
-  [36232029901](https://github.com/willibrandon/ankus/actions/runs/36232029901)
+  [36232029901](https://github.com/ankus-net/ankus/actions/runs/36232029901)
   and docs deployment `36232029943` pass for `52673cc`. All six test modules
   execute against real PostgreSQL installations with Clang 20.1.8: Ubuntu 24.04
   x64/PostgreSQL 18.6 passes 7,264 cases with one existing Windows-only skip in a
@@ -14802,7 +14802,7 @@ The phases track implementation of the complete pgrx feature surface.
   Consumer guides retain their current supported capabilities and limitations.
   `AGENTS.md` now records that internal maintenance commands belong in engineering
   or contributor documentation. Hosted CI
-  [36235088328](https://github.com/willibrandon/ankus/actions/runs/36235088328)
+  [36235088328](https://github.com/ankus-net/ankus/actions/runs/36235088328)
   passes for `d21a8c1`. All six modules run against real servers with Clang
   20.1.8: Ubuntu 24.04 x64/PostgreSQL 18.6 passes 7,283 cases with one existing
   Windows-only skip in a 14m 04s job; macOS 15 ARM64/PostgreSQL 18.6 passes
@@ -14853,7 +14853,7 @@ The phases track implementation of the complete pgrx feature surface.
   against PostgreSQL 18.6 on Linux x64: 7,310 passed, zero failed and one existing
   Windows-only cleanup skip in 7m 12.253s. Contributor documentation describes
   the protocol and the successful-call state contract. Hosted CI
-  [36237785959](https://github.com/willibrandon/ankus/actions/runs/36237785959)
+  [36237785959](https://github.com/ankus-net/ankus/actions/runs/36237785959)
   and docs deployment `36237785929` pass for `8964473`. All six modules run with
   real servers and Clang 20.1.8: Ubuntu 24.04 x64/PostgreSQL 18.6 passes 7,310
   cases with one existing Windows-only skip in a 17m 50s job; macOS 15 ARM64/
@@ -14906,7 +14906,7 @@ The phases track implementation of the complete pgrx feature surface.
   or hints. Plain root `dotnet test` passes all six modules against PostgreSQL
   18.6 on Linux x64: 7,384 passed, zero failed and one existing Windows-only
   cleanup skip in 7m 32.510s. Hosted CI
-  [36239866856](https://github.com/willibrandon/ankus/actions/runs/36239866856)
+  [36239866856](https://github.com/ankus-net/ankus/actions/runs/36239866856)
   passes the quality job and Linux Build module (558 passed, one existing skip),
   but its Ubuntu integration fixture fails before backend execution: Native AOT
   10.0.11 throws `IndexOutOfRangeException` in
@@ -14936,7 +14936,7 @@ The phases track implementation of the complete pgrx feature surface.
   7,384 passed, zero failed, one existing Windows-only skip in 7m 30.016s.
   API freshness retains 170 pages/2,254 members; the site builds 212 pages and
   checks with zero errors, warnings or hints. Follow-up hosted CI
-  [36241459031](https://github.com/willibrandon/ankus/actions/runs/36241459031)
+  [36241459031](https://github.com/ankus-net/ankus/actions/runs/36241459031)
   passes the Ubuntu 24.04 x64/PostgreSQL 18.6 full suite (7,384 passed, one
   existing Windows-only skip) in an 18m 22s job. macOS 15 ARM64/PostgreSQL 18.6
   passes 7,382 cases with three existing platform skips in 22m 49s. Windows
@@ -14994,7 +14994,7 @@ The phases track implementation of the complete pgrx feature surface.
   against PostgreSQL 18.6 on Linux x64: 7,416 passed, zero failed and one existing
   Windows-only cleanup skip in 7m 31.199s.
 
-  Hosted CI [36243164812](https://github.com/willibrandon/ankus/actions/runs/36243164812)
+  Hosted CI [36243164812](https://github.com/ankus-net/ankus/actions/runs/36243164812)
   passes for `016b926`, including quality and all three complete platform suites
   with Clang 20.1.8. Ubuntu 24.04 x64/PostgreSQL 18.6 passes 7,416 cases with
   one existing platform skip in a 14m 28s job; macOS 15 ARM64/PostgreSQL 18.6
@@ -15067,7 +15067,7 @@ The phases track implementation of the complete pgrx feature surface.
   identity, failed worker cleanup and deterministic recovery. The CI quality job
   now configures the same Clang frontend as the platform jobs; its automation
   app builds successfully. Hosted CI
-  [36245904717](https://github.com/willibrandon/ankus/actions/runs/36245904717)
+  [36245904717](https://github.com/ankus-net/ankus/actions/runs/36245904717)
   passes quality, all runtime jobs and the macOS 15 ARM64/PostgreSQL 18.6 full
   suite: 7,457 passed and three existing platform skips in a 21m 43s job, with
   Clang 20.1.8. Documentation deployment passes. Ubuntu's five other modules
@@ -15282,7 +15282,7 @@ The phases track implementation of the complete pgrx feature surface.
 
 - 2026-09-26 — Raised the Windows full-suite CI timeout from 35 to the
   authorized maximum of 40 minutes after
-  [CI run 36252581940](https://github.com/willibrandon/ankus/actions/runs/36252581940)
+  [CI run 36252581940](https://github.com/ankus-net/ankus/actions/runs/36252581940)
   for `c05209a` hit that limit while executing the PostgreSQL suite. Its five
   completed Windows modules passed; integration did not finish, so that run
   supplies no complete Windows backend validation. Linux passed 7,499 cases with
@@ -15331,7 +15331,7 @@ The phases track implementation of the complete pgrx feature surface.
   PostgreSQL 18.6/Linux x64: 7,539 passed, zero failed and two existing Windows-only
   skips in 10m 14.319s, including the packaged Native AOT/backend paths.
 
-  Prior hosted [CI run 36254734532](https://github.com/willibrandon/ankus/actions/runs/36254734532)
+  Prior hosted [CI run 36254734532](https://github.com/ankus-net/ankus/actions/runs/36254734532)
   for `a666022` passes Linux x64/PostgreSQL 18.6 with 7,512 cases and two existing
   platform skips in a 23m 03s job, and macOS ARM64/PostgreSQL 18.6 with 7,510 cases
   and four existing platform skips in a 20m 52s job. Both have zero failures.
@@ -15351,8 +15351,8 @@ The phases track implementation of the complete pgrx feature surface.
   internal boundary; public guides retain the supported consumer surface.
 
 - 2026-09-26 — Recorded the completed hosted checks for `97d6431` before the
-  next milestone. [CI run 36256704901](https://github.com/willibrandon/ankus/actions/runs/36256704901)
-  and [documentation run 36256704952](https://github.com/willibrandon/ankus/actions/runs/36256704952)
+  next milestone. [CI run 36256704901](https://github.com/ankus-net/ankus/actions/runs/36256704901)
+  and [documentation run 36256704952](https://github.com/ankus-net/ankus/actions/runs/36256704952)
   both pass, including quality and all three runtime jobs.
 
   | Full-suite platform | PostgreSQL | Passed | Failed | Existing platform skips | Job duration |
@@ -15368,7 +15368,7 @@ The phases track implementation of the complete pgrx feature surface.
   surface, not completion of the unresolved full-port requirements above.
 
   The preceding `a666022` Windows job in
-  [run 36254734532](https://github.com/willibrandon/ankus/actions/runs/36254734532)
+  [run 36254734532](https://github.com/ankus-net/ankus/actions/runs/36254734532)
   was superseded by the `97d6431` push after 30m 43s. Its five completed modules
   passed; its unfinished integration module did not establish backend parity.
   The completed `97d6431` run now supplies that milestone's Windows evidence.
@@ -15842,8 +15842,8 @@ The phases track implementation of the complete pgrx feature surface.
   improvement is not established, and the Windows cold measurement is slower.
 
   Immediately before this milestone's commit, the previous hosted outcomes were
-  checked again: [CI run 36274752988](https://github.com/willibrandon/ankus/actions/runs/36274752988)
-  and [documentation run 36274753012](https://github.com/willibrandon/ankus/actions/runs/36274753012)
+  checked again: [CI run 36274752988](https://github.com/ankus-net/ankus/actions/runs/36274752988)
+  and [documentation run 36274753012](https://github.com/ankus-net/ankus/actions/runs/36274753012)
   for `de46baf` are successful, with every quality, runtime and full platform job
   green. The complete Linux/macOS/Windows counts and versions are recorded in
   the preceding cleanup milestone; the earlier Windows failure is resolved.
@@ -15875,7 +15875,7 @@ The phases track implementation of the complete pgrx feature surface.
 
 ### Selected-platform declaration kinds and block formatting
 
-[The macOS ARM64 job in CI run 36282996348](https://github.com/willibrandon/ankus/actions/runs/36282996348/job/108518475322)
+[The macOS ARM64 job in CI run 36282996348](https://github.com/ankus-net/ankus/actions/runs/36282996348/job/108518475322)
 for `d46a308` failed during the build, before the full tests could run. PostgreSQL
 18 declares `pg_popcount32` as a function on ARM64 and can expose it as a mutable
 dispatch-pointer global on x64. Availability discovery incorrectly required the
@@ -15938,10 +15938,10 @@ The 7,663 cases span six projects: 4,343 across the five unit/generator projects
 and 3,320 integration cases. All six modules pass in the complete local run above.
 
 Immediately before committing this repair, prior hosted outcomes were checked
-again: [CI run 36282996348](https://github.com/willibrandon/ankus/actions/runs/36282996348)
+again: [CI run 36282996348](https://github.com/ankus-net/ankus/actions/runs/36282996348)
 is terminal with the macOS declaration failure and the Linux/Windows timeout
 outcomes described above. Quality and all three runtime jobs succeeded.
-[Documentation run 36282996370](https://github.com/willibrandon/ankus/actions/runs/36282996370)
+[Documentation run 36282996370](https://github.com/ankus-net/ankus/actions/runs/36282996370)
 succeeded, including deployment. No newer run is pending. New hosted suites must
 establish the repaired complete platform outcomes; the local regression witnesses
 do not replace macOS or Windows platform evidence. The remaining full-port scope
@@ -16036,7 +16036,7 @@ zero errors, warnings or hints. The same fourteen version/validity cases pass on
 Windows x64 in 995ms. Final API freshness covers 170 pages/2,256 members, and the
 complete whitespace verification passes.
 
-The preceding repair's [CI run 36285915891](https://github.com/willibrandon/ankus/actions/runs/36285915891)
+The preceding repair's [CI run 36285915891](https://github.com/ankus-net/ankus/actions/runs/36285915891)
 has passed quality and all runtime jobs, but macOS reached its 30-minute limit
 after a 26m 10.15s Release build. Its unit module also reported
 `CompiledCompanionsShareAcrossProcessesAndConsumerCleanup` and
@@ -16071,7 +16071,7 @@ directories, and repository build outputs are not cached. The first successful
 run populates the package caches; savings need a later hosted cache-hit run.
 The existing pinned Native AOT runtime cache remains in place. No sharding or
 additional CI jobs are introduced.
-[Documentation run 36285915863](https://github.com/willibrandon/ankus/actions/runs/36285915863)
+[Documentation run 36285915863](https://github.com/ankus-net/ankus/actions/runs/36285915863)
 passed. Immediately before committing, both preceding run outcomes were checked
 again; all jobs are terminal and no newer run is pending. Fresh hosted execution
 must establish complete platform outcomes and cache savings. The full port
@@ -16143,12 +16143,12 @@ x64 in 9m 20.328s, with zero failures or skips. This exercises actual imported
 PostgreSQL global storage and the native guard under MSVC, as well as the shared
 managed declarations, SQL-observed mutation, restoration and session recovery.
 
-During this milestone, [CI run 36288886694](https://github.com/willibrandon/ankus/actions/runs/36288886694)
+During this milestone, [CI run 36288886694](https://github.com/ankus-net/ankus/actions/runs/36288886694)
 passed quality and all three runtime jobs. Its full PostgreSQL 18/Linux x64 job
 passed all 7,687 executable cases with zero failures and six Windows-only skips
 (7,693 total), finishing in 36m 29s. Release took 4m 50.98s and integration took
 30m 21.872s. This was a NuGet cache miss; the job saved the package cache after
-success. [Documentation run 36288886773](https://github.com/willibrandon/ankus/actions/runs/36288886773)
+success. [Documentation run 36288886773](https://github.com/ankus-net/ankus/actions/runs/36288886773)
 also passed.
 
 The same run's macOS ARM64 job reached its 35-minute limit during integration.
@@ -16198,12 +16198,12 @@ PostgreSQL/platform matrix remain required.
 
 ### CI package-cache restore correction
 
-[CI run 36292247916](https://github.com/willibrandon/ankus/actions/runs/36292247916)
+[CI run 36292247916](https://github.com/ankus-net/ankus/actions/runs/36292247916)
 reused the Linux test and quality NuGet caches. The macOS ARM64 test job restored
 packages in 26 seconds and saved its first package cache in 16 seconds before
 starting the full suite. The cache service confirms the 836,369,566-byte entry;
 its reuse and complete-job savings still need measurement. All three runtime
-jobs and [documentation run 36292247845](https://github.com/willibrandon/ankus/actions/runs/36292247845)
+jobs and [documentation run 36292247845](https://github.com/ankus-net/ankus/actions/runs/36292247845)
 passed.
 
 The Windows test job failed before running tests: the new standalone solution
@@ -16328,7 +16328,7 @@ The focused Windows runs establish their stated scope; a complete hosted run
 is still required for each platform.
 
 The cache-first CI measurement now has a complete Linux result. [CI run
-36293364770](https://github.com/willibrandon/ankus/actions/runs/36293364770) for
+36293364770](https://github.com/ankus-net/ankus/actions/runs/36293364770) for
 `9269e72` passes the complete PostgreSQL 18.6/Linux x64 suite: **7,698 passed,
 zero failed, six Windows-only skips, 7,704 total**. The job takes 31m 02s,
 including a 4m 11.29s Release build and 25m 31.834s integration module. The earlier
@@ -16361,10 +16361,10 @@ Linux/macOS jobs cancelled. Documentation run 36292247845 passed. Cancelled and
 timed-out suites are not counted as passing platform validation.
 
 Immediately before this milestone's commit, [CI run
-36296260478](https://github.com/willibrandon/ankus/actions/runs/36296260478) for
+36296260478](https://github.com/ankus-net/ankus/actions/runs/36296260478) for
 the timeout-only commit `aed39c7` has all three runtime jobs passing, with quality
 and all platform suites still running. No failed check is reported. Its
-[documentation run](https://github.com/willibrandon/ankus/actions/runs/36296260503)
+[documentation run](https://github.com/ankus-net/ankus/actions/runs/36296260503)
 has passed. These live outcomes were checked and recorded; development proceeds
 without treating unfinished platform suites as successful evidence.
 
@@ -16668,8 +16668,8 @@ introduced. Full-port requirements and the remaining platform/version matrix
 remain open.
 
 Immediately before committing this milestone, the previous `95031c5` runs are
-checked again: [CI 36296692977](https://github.com/willibrandon/ankus/actions/runs/36296692977)
-and [Docs 36296693000](https://github.com/willibrandon/ankus/actions/runs/36296693000)
+checked again: [CI 36296692977](https://github.com/ankus-net/ankus/actions/runs/36296692977)
+and [Docs 36296693000](https://github.com/ankus-net/ankus/actions/runs/36296693000)
 are both completed successfully. The prior timeout-only commit's documentation
 run passed and its superseded CI run was cancelled. Cancelled runs are not
 counted as passing validation. These outcomes are recorded before the commit;
@@ -16786,10 +16786,10 @@ containers, spinlocks, high-level workers and the complete PostgreSQL/platform
 matrix remain required; the faithful port is not complete.
 
 Immediately before committing, the previous hosted outcomes are checked again:
-[CI 36304890457](https://github.com/willibrandon/ankus/actions/runs/36304890457)
+[CI 36304890457](https://github.com/ankus-net/ankus/actions/runs/36304890457)
 remains cancelled because Windows exceeded one hour; its quality, runtime,
 Linux and macOS jobs passed.
-[Docs 36304890456](https://github.com/willibrandon/ankus/actions/runs/36304890456)
+[Docs 36304890456](https://github.com/ankus-net/ankus/actions/runs/36304890456)
 passed. The preceding `95031c5` CI and Docs runs also passed. The unresolved
 Windows timeout is recorded without treating it as successful validation.
 Local binary-log analysis identifies native binding preparation as the dominant
@@ -16879,9 +16879,9 @@ sharded or suppressed. Atomics, bounded shared collections, spinlocks, high-leve
 workers and the complete PostgreSQL/platform matrix remain required full-port work.
 
 Immediately before committing, hosted outcomes are refreshed and recorded:
-[CI 36309864480](https://github.com/willibrandon/ankus/actions/runs/36309864480)
+[CI 36309864480](https://github.com/ankus-net/ankus/actions/runs/36309864480)
 is cancelled because Windows exceeded one hour; its quality, runtime, Linux and
-macOS jobs passed. [Docs 36309864488](https://github.com/willibrandon/ankus/actions/runs/36309864488)
+macOS jobs passed. [Docs 36309864488](https://github.com/ankus-net/ankus/actions/runs/36309864488)
 passed. The preceding `8f2d1e0` CI also timed out on Windows while its Docs passed;
 the `95031c5` CI and Docs passed. These outcomes will be checked and recorded again
 immediately before pushing. The next hosted run must validate the full platform
@@ -16961,8 +16961,8 @@ required. Scalar support and these focused platform witnesses do not complete
 the faithful port.
 
 Immediately before this milestone's commit, hosted outcomes were refreshed:
-[CI 36313857919](https://github.com/willibrandon/ankus/actions/runs/36313857919)
-and [Docs 36313857910](https://github.com/willibrandon/ankus/actions/runs/36313857910)
+[CI 36313857919](https://github.com/ankus-net/ankus/actions/runs/36313857919)
+and [Docs 36313857910](https://github.com/ankus-net/ankus/actions/runs/36313857910)
 for `d6b5cd5` both pass. The preceding `9a8e907` and `8f2d1e0` CI runs remain
 recorded as Windows timeouts; their Docs runs passed. Outcomes are checked and
 recorded again immediately before pushing. The new run must establish the scalar
@@ -17031,9 +17031,9 @@ workers and the complete PostgreSQL/platform matrix remain required. Passing thi
 shared-memory milestone does not establish completion of the faithful port.
 
 Immediately before committing, hosted outcomes were refreshed and recorded:
-[CI 36318146632](https://github.com/willibrandon/ankus/actions/runs/36318146632)
+[CI 36318146632](https://github.com/ankus-net/ankus/actions/runs/36318146632)
 for `77e9965` has passed quality, all runtime jobs, Linux in 21m56s and macOS in
-34m54s; its full Windows job remains active. [Docs 36318146663](https://github.com/willibrandon/ankus/actions/runs/36318146663)
+34m54s; its full Windows job remains active. [Docs 36318146663](https://github.com/ankus-net/ankus/actions/runs/36318146663)
 passed. The preceding `d6b5cd5` CI/Docs runs both passed; the older `9a8e907`
 Windows timeout remains recorded as cancelled, not successful. These outcomes
 are checked and recorded again immediately before pushing. Development continues
@@ -17100,8 +17100,8 @@ Embedded spinlocks, high-level background workers and the complete
 PostgreSQL/platform matrix remain required for the full port.
 
 Immediately before committing, hosted outcomes were refreshed and recorded:
-aggregate [CI 36320463333](https://github.com/willibrandon/ankus/actions/runs/36320463333)
-and [Docs 36320463356](https://github.com/willibrandon/ankus/actions/runs/36320463356)
+aggregate [CI 36320463333](https://github.com/ankus-net/ankus/actions/runs/36320463333)
+and [Docs 36320463356](https://github.com/ankus-net/ankus/actions/runs/36320463356)
 both pass. CI includes the full Linux suite in 33m42s, macOS in 38m01s and Windows
 in 40m04s, plus quality and every runtime job. The preceding scalar CI's Windows
 job was superseded and cancelled; its other jobs and Docs passed. Older Windows
@@ -17173,11 +17173,11 @@ disk-backed temporary storage freed 2.2 GB. No user files or processes were
 removed. The final Release build passes in 1m03.11s with zero warnings/errors.
 
 The preceding collection milestone's hosted
-[CI 36325012375](https://github.com/willibrandon/ankus/actions/runs/36325012375)
+[CI 36325012375](https://github.com/ankus-net/ankus/actions/runs/36325012375)
 passes quality, all runtime jobs and the full macOS suite (34m41s). Linux fails
 the shared-memory recovery witness (34m32s job); Windows reports the GUC assign
 termination mismatch and reaches its one-hour job timeout (60m09s).
-[Docs 36325012376](https://github.com/willibrandon/ankus/actions/runs/36325012376)
+[Docs 36325012376](https://github.com/ankus-net/ankus/actions/runs/36325012376)
 passes. These failures are recorded separately from local passing evidence.
 
 The Linux server log identifies a finalizer retirement acknowledgement failure.
@@ -17289,9 +17289,9 @@ high-level background workers and the complete PostgreSQL 13–19/platform matri
 remain full-port requirements.
 
 Immediately before committing, hosted outcomes were checked and recorded:
-[CI 36330404311](https://github.com/willibrandon/ankus/actions/runs/36330404311)
+[CI 36330404311](https://github.com/ankus-net/ankus/actions/runs/36330404311)
 passes all runtime builds, quality, Linux (36m11s) and macOS (39m56s); Windows
-is still running. [Docs 36330404255](https://github.com/willibrandon/ankus/actions/runs/36330404255)
+is still running. [Docs 36330404255](https://github.com/ankus-net/ankus/actions/runs/36330404255)
 passes. The older collection CI's Linux recovery and Windows transport/timeout
 failures remain recorded above. The subsequent hosted Linux pass and local
 Windows full integration pass provide repair evidence; the hosted Windows
@@ -17353,9 +17353,9 @@ Safe mutable guard composition, high-level background workers and the complete
 PostgreSQL 13–19/platform matrix remain required for full parity.
 
 Immediately before committing, hosted outcomes were checked and recorded:
-[CI 36333403089](https://github.com/willibrandon/ankus/actions/runs/36333403089)
+[CI 36333403089](https://github.com/ankus-net/ankus/actions/runs/36333403089)
 passes every runtime build, quality, full Linux (31m18s) and full macOS
-(30m04s); Windows is still running. [Docs 36333403092](https://github.com/willibrandon/ankus/actions/runs/36333403092)
+(30m04s); Windows is still running. [Docs 36333403092](https://github.com/ankus-net/ankus/actions/runs/36333403092)
 passes. The previous Windows transport/timeout failure remains visible above,
 with local repair evidence and full hosted validation explicitly separated.
 Outcomes are checked and recorded again immediately before push. All jobs keep
@@ -17415,9 +17415,9 @@ values, ownership changes or errors. No executed mutation campaign or coverage
 percentage is claimed. No assertion or diagnostic severity was reduced.
 
 Immediately before committing, the preceding reader
-[CI 36335688901](https://github.com/willibrandon/ankus/actions/runs/36335688901)
+[CI 36335688901](https://github.com/ankus-net/ankus/actions/runs/36335688901)
 passes quality, all runtime jobs and full Linux (35m12s); full macOS and Windows
-remain in progress. [Docs 36335688785](https://github.com/willibrandon/ankus/actions/runs/36335688785)
+remain in progress. [Docs 36335688785](https://github.com/ankus-net/ankus/actions/runs/36335688785)
 passes. Earlier superseded runs and the prior Windows timeout/repair evidence
 remain recorded above. Outcomes are checked and recorded again before push;
 running or cancelled jobs do not establish full platform proof. All workflow
@@ -17498,8 +17498,8 @@ registration allocation faults and the complete PostgreSQL 13–19/platform matr
 remain required, alongside the full-port feature inventory above.
 
 Immediately before committing, the 2026-09-27 19:25 UTC check confirms preceding
-[CI 36338481778](https://github.com/willibrandon/ankus/actions/runs/36338481778)
-and [Docs 36338481755](https://github.com/willibrandon/ankus/actions/runs/36338481755)
+[CI 36338481778](https://github.com/ankus-net/ankus/actions/runs/36338481778)
+and [Docs 36338481755](https://github.com/ankus-net/ankus/actions/runs/36338481755)
 are terminal and successful. Quality, every runtime job and the complete Linux
 (36m22s), macOS (47m17s) and Windows (56m50s) suites pass. Outcomes are checked
 and recorded again immediately before push. All workflow jobs retain the
@@ -17557,8 +17557,8 @@ PostgreSQL 13–19/platform matrix remain required. No warning or analyzer
 severity is suppressed or reduced.
 
 Immediately before committing, the 2026-09-27 21:00 UTC check confirms
-[CI 36344340281](https://github.com/willibrandon/ankus/actions/runs/36344340281)
-and [Docs 36344340280](https://github.com/willibrandon/ankus/actions/runs/36344340280)
+[CI 36344340281](https://github.com/ankus-net/ankus/actions/runs/36344340281)
+and [Docs 36344340280](https://github.com/ankus-net/ankus/actions/runs/36344340280)
 are terminal. Docs, quality, every runtime-package job and macOS pass; Ubuntu
 and Windows fail only the detached-worker capacity assertion repaired in this
 milestone. Both job logs were inspected, and the exact final assertion now
@@ -17614,10 +17614,10 @@ skips, 8,100 total**, in 14m03.413s (integration 14m02.799s). The complete
 PostgreSQL 13–19/platform matrix and remaining full-port inventory remain required.
 
 Immediately before committing, the 2026-09-27 21:38 UTC check confirms that
-[CI 36350125488](https://github.com/willibrandon/ankus/actions/runs/36350125488)
+[CI 36350125488](https://github.com/ankus-net/ankus/actions/runs/36350125488)
 has passed quality and every runtime-package job; the full Linux, macOS and
 Windows suites remain in progress without a reported failed job.
-[Docs 36350125478](https://github.com/willibrandon/ankus/actions/runs/36350125478)
+[Docs 36350125478](https://github.com/ankus-net/ankus/actions/runs/36350125478)
 passes. Pending suites are not counted as platform proof. Outcomes are checked
 and recorded again immediately before push. All jobs retain the requested
 one-hour timeout and full unsharded suites.
@@ -17650,7 +17650,7 @@ the three affected cases on Linux in 2m17.312s and Windows in 3m43.067s.
 The public transaction guide documents preparation lifetime, durability after
 cleanup failure and parallel callback phases.
 
-The user-reported macOS [job 108713921584](https://github.com/willibrandon/ankus/actions/runs/36352480777/job/108713921584)
+The user-reported macOS [job 108713921584](https://github.com/ankus-net/ankus/actions/runs/36352480777/job/108713921584)
 fails after 16m55s when strict Clang compiles the allocation fixture. Its
 `SIGNAL_ARGS` handler ignored `postgres_signal_arg`, which produced
 `-Werror,-Wunused-parameter`. Assembly initialization therefore fails 3,332
@@ -17663,10 +17663,10 @@ repair. Actual allocation cases pass 4/4 on Linux x64/PostgreSQL 18.6
 and the runtime fork/package are unchanged. Fresh macOS backend execution is
 still required.
 
-The preceding [CI 36350125488](https://github.com/willibrandon/ankus/actions/runs/36350125488)
+The preceding [CI 36350125488](https://github.com/ankus-net/ankus/actions/runs/36350125488)
 was superseded by the allocation milestone push: Linux, macOS and Windows were
 cancelled after 36m37s, 36m39s and 36m29s respectively. Quality, every runtime
-job and [Docs 36350125478](https://github.com/willibrandon/ankus/actions/runs/36350125478)
+job and [Docs 36350125478](https://github.com/ankus-net/ankus/actions/runs/36350125478)
 passed. Cancelled platform suites are not counted as platform proof.
 
 Final Release passes with zero warnings/errors in 55.95s. API freshness verifies
@@ -17681,10 +17681,10 @@ The complete PostgreSQL 13–19/platform matrix and remaining full-port inventor
 remain required.
 
 Immediately before committing, the 2026-09-27 22:28 UTC check of
-[CI 36352480777](https://github.com/willibrandon/ankus/actions/runs/36352480777)
+[CI 36352480777](https://github.com/ankus-net/ankus/actions/runs/36352480777)
 confirms quality, every runtime-package job and the complete Ubuntu suite
 (41m27s) pass. macOS fails only during the fixture compilation repaired here;
-Windows is still running. [Docs 36352480612](https://github.com/willibrandon/ankus/actions/runs/36352480612)
+Windows is still running. [Docs 36352480612](https://github.com/ankus-net/ankus/actions/runs/36352480612)
 passes. The failed macOS job log was inspected and its exact diagnostic was
 reproduced and repaired without suppression. Pending Windows and new macOS
 execution are not counted as platform proof. Outcomes are checked and recorded
@@ -17743,10 +17743,10 @@ remaining raw API inventory and complete PostgreSQL 13–19/platform matrix.
 All analyzer requirements and one-hour full-suite platform jobs remain intact.
 
 Immediately before committing, the 2026-09-27 23:13 UTC check of
-[CI 36355439020](https://github.com/willibrandon/ankus/actions/runs/36355439020),
+[CI 36355439020](https://github.com/ankus-net/ankus/actions/runs/36355439020),
 for the macOS fixture repair at `2dbdb3e`, confirms quality and every runtime
 package job pass; all three platform suites are still running without a reported
-failure. [Docs 36355439000](https://github.com/willibrandon/ankus/actions/runs/36355439000)
+failure. [Docs 36355439000](https://github.com/ankus-net/ankus/actions/runs/36355439000)
 passes. No pending platform suite is counted as completed evidence. The prior
 run's Windows cancellation and repaired macOS failure are recorded above.
 Outcomes are checked and recorded again immediately before push.
@@ -17817,17 +17817,17 @@ predecessor-hook/registry-error witnesses, the remaining raw API inventory and
 the complete PostgreSQL 13–19/platform matrix remain required full-port work.
 No analyzer standard, warning severity, runtime patch or CI timeout changes.
 
-The preceding [CI 36355439020](https://github.com/willibrandon/ankus/actions/runs/36355439020)
+The preceding [CI 36355439020](https://github.com/ankus-net/ankus/actions/runs/36355439020)
 was superseded by the field-callback milestone push. Linux, macOS and Windows
 jobs conclude cancelled after 42m25s, 42m28s and 42m24s respectively. Ubuntu's
 retained log prints all six passing module summaries (8,108 passed, six skips),
 including 3,344 integration cases in 36m03.476s, before cancellation; its job
 conclusion remains cancelled. The other two platform logs have no final
 integration summary, so no complete platform pass is claimed. Quality, all
-runtime jobs and [Docs 36355439000](https://github.com/willibrandon/ankus/actions/runs/36355439000)
+runtime jobs and [Docs 36355439000](https://github.com/ankus-net/ankus/actions/runs/36355439000)
 pass.
 
-For `c01ed61`, [CI 36357983412](https://github.com/willibrandon/ankus/actions/runs/36357983412)
+For `c01ed61`, [CI 36357983412](https://github.com/ankus-net/ankus/actions/runs/36357983412)
 now has complete Ubuntu and macOS passes. Ubuntu reports 8,119 passed and six
 platform-specific skips in a 42m37s job (integration 35m53.990s). macOS reports
 8,116 passed and nine platform-specific skips in a 52m55s job (integration
@@ -17839,7 +17839,7 @@ maximum. The build passes with zero warnings/errors in 15m28.99s; every unit
 module passes, but the integration suite has no final result. Its two Linux-only
 skips are not evidence that the remaining integration cases completed.
 Quality, all runtime-package jobs and
-[Docs 36357983399](https://github.com/willibrandon/ankus/actions/runs/36357983399)
+[Docs 36357983399](https://github.com/ankus-net/ankus/actions/runs/36357983399)
 pass.
 
 The Windows build log shows roughly five minutes of cold native-header
@@ -17917,14 +17917,14 @@ binding caches on all three platforms before testing; a later restored-cache
 run is still needed to measure the timing benefit.
 
 Immediately before committing, the 2026-09-28 01:03 UTC check of
-[CI 36361967411](https://github.com/willibrandon/ankus/actions/runs/36361967411)
+[CI 36361967411](https://github.com/ankus-net/ankus/actions/runs/36361967411)
 at `d42ddcc` confirms quality, every runtime-package job and the complete macOS
 ARM64/PostgreSQL 18 suite pass. macOS reports 8,129 passed, zero failures and
 nine platform-specific skips, 8,138 total, in a 37m19s job (integration
 30m23.987s). Its Release build passes in 5m24.82s. This validates the initial
 standalone trace provider on macOS; the new DSM change still requires its own
 hosted macOS result. Ubuntu and Windows remain in progress without a reported
-failure. [Docs 36361967454](https://github.com/willibrandon/ankus/actions/runs/36361967454)
+failure. [Docs 36361967454](https://github.com/ankus-net/ankus/actions/runs/36361967454)
 passes. All three newly saved binding-cache entries are present in GitHub;
 this first cold run does not prove a restored-cache speedup. Outcomes are
 checked and recorded again immediately before push.
@@ -17963,13 +17963,13 @@ working tree, passes **8,153 tests, zero failures and six Windows-only skips,
 is claimed.
 
 After the prior milestone's push, the complete Ubuntu x64/PostgreSQL 18 suite
-at `d42ddcc` also passed in [CI 36361967411](https://github.com/willibrandon/ankus/actions/runs/36361967411):
+at `d42ddcc` also passed in [CI 36361967411](https://github.com/ankus-net/ankus/actions/runs/36361967411):
 8,132 passed, zero failures, six platform-specific skips, 8,138 total, with
 a 40m54s job and 34m45.965s integration module. Its macOS result above remains
 successful. Windows was superseded after 41m25s, without a completed integration
 result; this was cancellation, not a timeout or platform pass. The newer
 `35c7970` platform suites are still running at the 2026-09-28 01:26 UTC check;
-quality, runtime jobs and [Docs 36364593994](https://github.com/willibrandon/ankus/actions/runs/36364593994)
+quality, runtime jobs and [Docs 36364593994](https://github.com/ankus-net/ankus/actions/runs/36364593994)
 pass. This run's build steps took 5m27s on Ubuntu, 7m41s on macOS and
 13m51s on Windows; these observations do not establish a cache speedup.
 
@@ -17979,7 +17979,7 @@ and registry-error witnesses, remaining raw APIs and the complete PostgreSQL
 analyzers are unchanged.
 
 The 2026-09-28 01:48 UTC pre-commit check of
-[CI 36364594021](https://github.com/willibrandon/ankus/actions/runs/36364594021)
+[CI 36364594021](https://github.com/ankus-net/ankus/actions/runs/36364594021)
 at `35c7970` confirms quality, every runtime job and the complete Ubuntu
 x64/PostgreSQL 18 suite pass: 8,141 passed, zero failures, six platform skips,
 8,147 total, in a 41m49s job (integration 35m42.554s). macOS and Windows
@@ -18038,7 +18038,7 @@ repeated work within a test run without weakening production cache validation;
 its hosted timing effect remains to be measured.
 
 Immediately before this commit, the 2026-09-28 01:49 UTC recheck of
-[CI 36364594021](https://github.com/willibrandon/ankus/actions/runs/36364594021)
+[CI 36364594021](https://github.com/ankus-net/ankus/actions/runs/36364594021)
 still has successful quality, runtime and full Ubuntu jobs, with macOS and
 Windows in progress and no reported failure. Docs 36364593994 passes. The
 preceding index milestone is committed separately as `4b32cc3`; this fixture
@@ -18093,10 +18093,10 @@ Runtime identity, analyzer standards, full unsharded CI suites and the one-hour
 job limit are unchanged.
 
 Immediately before committing, the 2026-09-28 02:19 UTC check of
-[CI 36367477559](https://github.com/willibrandon/ankus/actions/runs/36367477559)
+[CI 36367477559](https://github.com/ankus-net/ankus/actions/runs/36367477559)
 at `8d23bc0` confirms successful quality and all three runtime jobs. Its full
 Linux, macOS and Windows suites are still running without a reported failure;
-[Docs 36367477538](https://github.com/willibrandon/ankus/actions/runs/36367477538)
+[Docs 36367477538](https://github.com/ankus-net/ankus/actions/runs/36367477538)
 passes. Hosted savings from package-directory reuse are not yet measured.
 The previous `35c7970` run finished as cancelled overall: its full Ubuntu result
 above passed, while macOS and Windows were superseded, not timed out or proven
@@ -18141,10 +18141,10 @@ Final plain full Linux `dotnet test` passes **8,179 tests, zero failures and six
 Windows-only skips, 8,185 total**, in 10m46.793s (integration 10m46.216s).
 
 The documentation hosting checklist was stale. The current
-[Docs 36369419508](https://github.com/willibrandon/ankus/actions/runs/36369419508)
+[Docs 36369419508](https://github.com/ankus-net/ankus/actions/runs/36369419508)
 has successful build and deployment jobs. Direct HTTP checks on 2026-09-28
-confirm the [public site](https://willibrandon.github.io/ankus/) returns 200 with
-the matching canonical URL; its [sitemap index](https://willibrandon.github.io/ankus/sitemap-index.xml)
+confirm the [public site](https://ankus.net/) returns 200 with
+the matching canonical URL; its [sitemap index](https://ankus.net/sitemap-index.xml)
 references a live sitemap containing 244 URLs under that canonical base.
 The tracker now marks this existing hosting requirement verified.
 
@@ -18154,7 +18154,7 @@ Runtime identity, analyzer standards, complete unsharded CI suites and their
 one-hour job limit are unchanged.
 
 Immediately before committing, the 2026-09-28 03:16 UTC check of
-[CI 36369419494](https://github.com/willibrandon/ankus/actions/runs/36369419494)
+[CI 36369419494](https://github.com/ankus-net/ankus/actions/runs/36369419494)
 at `2ea0de1` confirms quality, all runtime jobs and both full Ubuntu and macOS
 suites pass. Ubuntu x64/PostgreSQL 18 reports 8,162 passed, zero failures and
 six platform skips in a 34m57s job (integration 28m02.838s). macOS
@@ -18247,7 +18247,7 @@ The full PostgreSQL/platform matrix and all other full-port requirements remain
 required work.
 
 The completed macOS job in
-[CI 36373174861](https://github.com/willibrandon/ankus/actions/runs/36373174861)
+[CI 36373174861](https://github.com/ankus-net/ankus/actions/runs/36373174861)
 emits Homebrew's warning that LLVM 20 was installed without replacing LLVM 18's
 global links. Its log explicitly verifies Homebrew Clang 20.1.8 from the LLVM 20
 installation. `ConfigureHeaderFrontend` verifies the required frontend option
@@ -18257,14 +18257,14 @@ relinking is unnecessary, and no warning filtering or diagnostic suppression is
 introduced.
 
 The 2026-09-28 04:16 UTC check immediately before committing observes
-[CI 36373174861](https://github.com/willibrandon/ankus/actions/runs/36373174861)
+[CI 36373174861](https://github.com/ankus-net/ankus/actions/runs/36373174861)
 at `bd83955` with successful quality, all three runtime jobs, and full Ubuntu
 and macOS jobs. Ubuntu x64/PostgreSQL 18 reports 8,179 passed, zero failures
 and six skips in a 33m24s job (integration 27m05.286s). macOS ARM64/PostgreSQL
 18 reports 8,176 passed, zero failures and nine skips in a 45m56s job
 (integration 36m34.937s). Both completed job logs were inspected. Windows
 x64/PostgreSQL 17 remains in progress without a reported failure;
-[Docs 36373174857](https://github.com/willibrandon/ankus/actions/runs/36373174857)
+[Docs 36373174857](https://github.com/ankus-net/ankus/actions/runs/36373174857)
 passes. These hosted results cover the preceding hook/registry milestone;
 the local evidence above covers this change. CI is checked and recorded again
 immediately before pushing. The bounded CI timing investigation remains closed;
@@ -18326,12 +18326,12 @@ The full PostgreSQL 13–19/platform matrix and other full-port requirements rem
 required work; this milestone does not defer or replace them.
 
 The preceding hosted run
-[CI 36373174861](https://github.com/willibrandon/ankus/actions/runs/36373174861)
+[CI 36373174861](https://github.com/ankus-net/ankus/actions/runs/36373174861)
 was superseded after `8de4aaf` was pushed: its previously successful Ubuntu and
 macOS results stand, but the Windows integration job was cancelled while still
 running, without a final successful integration summary. This was cancellation,
 not a timeout or complete Windows proof. The replacement
-[CI 36377069223](https://github.com/willibrandon/ankus/actions/runs/36377069223)
+[CI 36377069223](https://github.com/ankus-net/ankus/actions/runs/36377069223)
 had successful runtime, quality, Ubuntu and macOS jobs at the recovery commit;
 Windows was still running and its documentation deployment passed. Ubuntu passes
 8,195 tests with six platform skips in 32m48s; macOS passes 8,192 with nine platform skips in
@@ -18346,7 +18346,7 @@ changes or runtime patch changes are part of this work.
 ### SDK default-symbol fixture isolation
 
 The mandatory pre-push check then found the completed Windows failure in
-[CI 36377069223](https://github.com/willibrandon/ankus/actions/runs/36377069223):
+[CI 36377069223](https://github.com/ankus-net/ankus/actions/runs/36377069223):
 `SelectedMajorRetainsConsumerConstants` expected the unset SDK default
 `ANKUS_PG18`, but its temporary MSBuild project inherited CI's
 `AnkusPostgresMajor=17`. The SDK correctly honored that environment value.
@@ -18473,11 +18473,11 @@ in a separate checkout and is not a cold-cache performance measurement. No
 runtime patch, CI timeout, sharding or diagnostic-standard changes are included.
 
 The 2026-09-28 06:17 UTC pre-commit check records
-[CI 36382510666](https://github.com/willibrandon/ankus/actions/runs/36382510666)
+[CI 36382510666](https://github.com/ankus-net/ankus/actions/runs/36382510666)
 at `4c7fe76` with successful quality, all three runtime jobs, Ubuntu and macOS;
 Windows remains in progress without a reported failure. Ubuntu's completed log
 reports 8,203 passes, zero failures and six platform skips in a 34m07s job
-(integration 27m38.273s). [Docs 36382510680](https://github.com/willibrandon/ankus/actions/runs/36382510680)
+(integration 27m38.273s). [Docs 36382510680](https://github.com/ankus-net/ankus/actions/runs/36382510680)
 also passes. These hosted results cover the preceding recovery/SDK-fixture
 commit; the local evidence above covers this milestone. Previous run outcomes
 are checked and recorded again immediately before pushing.
@@ -18527,12 +18527,12 @@ validate the next, separate memory-test corrections in an isolated checkout;
 those follow-up changes are not part of this GUC milestone.
 
 The 2026-09-28 06:58 UTC pre-commit check records
-[CI 36385855551](https://github.com/willibrandon/ankus/actions/runs/36385855551)
+[CI 36385855551](https://github.com/ankus-net/ankus/actions/runs/36385855551)
 at `40bdb22` with successful quality, all three runtime jobs and Ubuntu;
 macOS and Windows remain in progress without a reported failure. Ubuntu's
 completed log confirms 8,203 passes, zero failures and six platform skips in
 a 32m07s job (integration 25m51.688s).
-[Docs 36385855549](https://github.com/willibrandon/ankus/actions/runs/36385855549)
+[Docs 36385855549](https://github.com/ankus-net/ankus/actions/runs/36385855549)
 passes. The earlier `4c7fe76` run was superseded: its completed Ubuntu and macOS
 results stand, while Windows was cancelled without a completed-suite result.
 Previous outcomes are checked and recorded again immediately before pushing.
@@ -18593,10 +18593,10 @@ and remain under investigation. Those results do not establish a completed
 temporal or full older-version milestone.
 
 The 2026-09-28 07:34 UTC pre-commit check records
-[CI 36389229425](https://github.com/willibrandon/ankus/actions/runs/36389229425)
+[CI 36389229425](https://github.com/ankus-net/ankus/actions/runs/36389229425)
 at `f972fdd`: quality and all three runtime jobs pass; Ubuntu, macOS and Windows
 test jobs remain in progress without a reported failure.
-[Docs 36389229439](https://github.com/willibrandon/ankus/actions/runs/36389229439)
+[Docs 36389229439](https://github.com/ankus-net/ankus/actions/runs/36389229439)
 passes. The earlier `40bdb22` macOS job subsequently passed in 37m52s
 (integration 29m19.177s); its Windows job was cancelled when superseded and
 does not supply a completed-suite result. Previous outcomes are checked and
@@ -18653,10 +18653,10 @@ older-version work and is not a cold-cache benchmark. Other full-port
 requirements and the complete PostgreSQL 13–19/platform matrix remain required.
 
 The 2026-09-28 07:58 UTC pre-commit check records
-[CI 36392466233](https://github.com/willibrandon/ankus/actions/runs/36392466233)
+[CI 36392466233](https://github.com/ankus-net/ankus/actions/runs/36392466233)
 at `277b031`: quality and all three runtime jobs pass; Ubuntu, macOS and Windows
 test jobs remain in progress without a reported failure.
-[Docs 36392466283](https://github.com/willibrandon/ankus/actions/runs/36392466283)
+[Docs 36392466283](https://github.com/ankus-net/ankus/actions/runs/36392466283)
 passes. The preceding `f972fdd` platform jobs were cancelled when superseded and
 provide no completed-suite evidence. Previous outcomes are checked and recorded
 again immediately before pushing.
@@ -18708,10 +18708,10 @@ That patch and a full-range date-oracle correction remain separate from this
 descriptor milestone; neither establishes a complete older-version result.
 
 The 2026-09-28 08:21 UTC pre-commit check records
-[CI 36394682622](https://github.com/willibrandon/ankus/actions/runs/36394682622)
+[CI 36394682622](https://github.com/ankus-net/ankus/actions/runs/36394682622)
 at `bfa6bcc`: quality and all three runtime jobs pass; Ubuntu, macOS and Windows
 test jobs remain in progress without a reported failure.
-[Docs 36394682505](https://github.com/willibrandon/ankus/actions/runs/36394682505)
+[Docs 36394682505](https://github.com/ankus-net/ankus/actions/runs/36394682505)
 passes. The preceding `277b031` platform jobs were cancelled when superseded
 and do not provide completed-suite evidence. Previous outcomes are checked and
 recorded again immediately before pushing.
@@ -18766,10 +18766,10 @@ The complete PostgreSQL 13–19/platform matrix and other faithful-port work
 remain required.
 
 The 2026-09-28 08:43 UTC pre-commit check records
-[CI 36396998055](https://github.com/willibrandon/ankus/actions/runs/36396998055)
+[CI 36396998055](https://github.com/ankus-net/ankus/actions/runs/36396998055)
 at `85e00bc`: quality and all three runtime jobs pass; Ubuntu, macOS and Windows
 test jobs remain in progress without a reported failure.
-[Docs 36396998230](https://github.com/willibrandon/ankus/actions/runs/36396998230)
+[Docs 36396998230](https://github.com/ankus-net/ankus/actions/runs/36396998230)
 passes. The preceding `bfa6bcc` platform jobs were cancelled when superseded
 and do not provide completed-suite evidence. Previous outcomes are checked and
 recorded again immediately before pushing.
@@ -18820,10 +18820,10 @@ The complete PostgreSQL 13–19/platform matrix and other port requirements rema
 open; focused passes do not replace the earlier complete diagnostic inventory.
 
 The 2026-09-28 09:03 UTC pre-commit check records
-[CI 36399145420](https://github.com/willibrandon/ankus/actions/runs/36399145420)
+[CI 36399145420](https://github.com/ankus-net/ankus/actions/runs/36399145420)
 at `9df3bdc`: quality and all three runtime jobs pass; Ubuntu, macOS and Windows
 test jobs remain in progress without a reported failure.
-[Docs 36399145419](https://github.com/willibrandon/ankus/actions/runs/36399145419)
+[Docs 36399145419](https://github.com/ankus-net/ankus/actions/runs/36399145419)
 passes. The preceding `85e00bc` platform jobs were cancelled when superseded
 and do not provide completed-suite evidence. Previous outcomes are checked and
 recorded again immediately before pushing.
@@ -18958,10 +18958,10 @@ runs are not a cold-cache timing baseline. The full PostgreSQL 13–19/platform
 matrix and other faithful-port requirements remain open.
 
 The immediate pre-commit check records `0360620`
-[CI 36407464525](https://github.com/willibrandon/ankus/actions/runs/36407464525)
+[CI 36407464525](https://github.com/ankus-net/ankus/actions/runs/36407464525)
 with successful quality and all three runtime jobs; all three full platform
 test jobs remain in progress without a reported failure.
-[Docs 36407464523](https://github.com/willibrandon/ankus/actions/runs/36407464523)
+[Docs 36407464523](https://github.com/ankus-net/ankus/actions/runs/36407464523)
 passes. The superseded `d51e4e5` CI run `36404648450` is cancelled: quality and
 runtime jobs passed, and the three unfinished platform jobs were cancelled.
 Those cancelled suites do not supply completed platform evidence. Previous
@@ -19003,10 +19003,10 @@ are suppressed. Other older-version contracts, a refreshed complete PostgreSQL
 remain open.
 
 Immediately before committing, `e401d77`
-[CI 36409892102](https://github.com/willibrandon/ankus/actions/runs/36409892102)
+[CI 36409892102](https://github.com/ankus-net/ankus/actions/runs/36409892102)
 has successful quality and all three runtime jobs; all three full platform test
 jobs remain in progress without a reported failure.
-[Docs 36409891997](https://github.com/willibrandon/ankus/actions/runs/36409891997)
+[Docs 36409891997](https://github.com/ankus-net/ankus/actions/runs/36409891997)
 passes. Superseded `0360620` CI run `36407464525` is cancelled: quality/runtime
 jobs passed and all three unfinished platform suites were cancelled, which does
 not supply completed platform evidence. Outcomes are checked and recorded again
@@ -19056,10 +19056,10 @@ is underway; the remaining PostgreSQL 13–19/platform matrix, intermittent GUC
 stall investigation and other full-port requirements remain open.
 
 Immediately before this commit, `9597c0c`
-[CI 36411852707](https://github.com/willibrandon/ankus/actions/runs/36411852707)
+[CI 36411852707](https://github.com/ankus-net/ankus/actions/runs/36411852707)
 has successful quality and all three runtime jobs; all three full platform
 test jobs remain in progress without a reported failure.
-[Docs 36411852844](https://github.com/willibrandon/ankus/actions/runs/36411852844)
+[Docs 36411852844](https://github.com/ankus-net/ankus/actions/runs/36411852844)
 passes. Superseded `e401d77` CI run `36409892102` is cancelled: quality/runtime
 jobs passed and the three unfinished platform suites were cancelled. Cancelled
 suites do not supply completed platform evidence. Outcomes are checked and
@@ -19139,11 +19139,11 @@ bindgen-identifier corrections, the earlier intermittent GUC stall, borrowed
 array/text/bytea APIs and the other full-port requirements remain open.
 
 Immediately before this commit, `47028f9`
-[CI 36413984303](https://github.com/willibrandon/ankus/actions/runs/36413984303)
+[CI 36413984303](https://github.com/ankus-net/ankus/actions/runs/36413984303)
 has successful quality, all three runtime jobs, Linux/PostgreSQL 18 and
 macOS ARM64/PostgreSQL 18 full suites. Windows/PostgreSQL 17 remains in progress
 without a reported failure.
-[Docs 36413984308](https://github.com/willibrandon/ankus/actions/runs/36413984308)
+[Docs 36413984308](https://github.com/ankus-net/ankus/actions/runs/36413984308)
 passes. Older superseded CI runs remain cancelled, with their documentation runs
 successful; cancelled suites do not establish completed platform evidence.
 Outcomes are checked and recorded again immediately before pushing.
@@ -19223,11 +19223,11 @@ GUC stall and other full-port requirements remain open. The public native guide
 states the beta limitation.
 
 Immediately before this commit, `035b5f4`
-[CI 36419540256](https://github.com/willibrandon/ankus/actions/runs/36419540256)
+[CI 36419540256](https://github.com/ankus-net/ankus/actions/runs/36419540256)
 has successful quality, all three runtime jobs, Linux/PostgreSQL 18 and
 macOS ARM64/PostgreSQL 18 full suites. Windows/PostgreSQL 17 remains in progress
 without a reported failure.
-[Docs 36419540357](https://github.com/willibrandon/ankus/actions/runs/36419540357)
+[Docs 36419540357](https://github.com/ankus-net/ankus/actions/runs/36419540357)
 passes. The older superseded CI runs remain cancelled and their documentation
 runs successful; cancelled suites do not establish completed platform evidence.
 Outcomes are checked and recorded again immediately before pushing.
@@ -19300,10 +19300,10 @@ cold-cache performance measurements. The beta backend suite, full PostgreSQL
 APIs and other faithful-port requirements remain open.
 
 Immediately before this commit, `7666bbb`
-[CI 36424836822](https://github.com/willibrandon/ankus/actions/runs/36424836822)
+[CI 36424836822](https://github.com/ankus-net/ankus/actions/runs/36424836822)
 has successful quality and all three runtime jobs. All three complete platform
 suites remain in progress without a reported failure.
-[Docs 36424836833](https://github.com/willibrandon/ankus/actions/runs/36424836833)
+[Docs 36424836833](https://github.com/ankus-net/ankus/actions/runs/36424836833)
 passes. Older superseded CI runs are cancelled; cancelled suites do not establish
 completed platform evidence. Outcomes are checked and recorded again before
 pushing, without waiting for the active hosted suites.
@@ -19384,11 +19384,11 @@ The full platform/version matrix, intermittent GUC query stall, borrowed
 array/text/bytea APIs and other full-port requirements remain open.
 
 Immediately before this commit, `721d5bf`
-[CI 36429362472](https://github.com/willibrandon/ankus/actions/runs/36429362472)
+[CI 36429362472](https://github.com/ankus-net/ankus/actions/runs/36429362472)
 has successful quality and all three runtime jobs. The complete Linux/PostgreSQL
 18, macOS ARM64/PostgreSQL 18 and Windows/PostgreSQL 17 suites remain in progress
 without a reported failure.
-[Docs 36429362373](https://github.com/willibrandon/ankus/actions/runs/36429362373)
+[Docs 36429362373](https://github.com/ankus-net/ankus/actions/runs/36429362373)
 passes. Older superseded CI runs are cancelled and their documentation runs
 successful; cancellation is not completed platform evidence. Outcomes are checked
 and recorded again immediately before pushing, without waiting for hosted CI.
@@ -19470,7 +19470,7 @@ or a claim of full-port parity; typed borrowed arrays/slices, text/bytea views
 and the other visible full-port requirements remain required.
 
 Immediately before this commit, `7e0cd61`
-[CI 36433752947](https://github.com/willibrandon/ankus/actions/runs/36433752947)
+[CI 36433752947](https://github.com/ankus-net/ankus/actions/runs/36433752947)
 has successful quality, all three runtime jobs, and complete macOS
 ARM64/PostgreSQL 18 and Windows x64/PostgreSQL 17 suites. Their downloaded test
 reports each contain 8,353 cases: macOS has **8,344 passes, zero failures and
@@ -19482,7 +19482,7 @@ report is available. The seven native compiler failures use
 `__typeof_unqual__`, unsupported by the runner's older GCC. The repair and
 complete local revalidation are recorded below; the cancelled Linux run is
 not counted as completed platform proof.
-[Docs 36433752989](https://github.com/willibrandon/ankus/actions/runs/36433752989)
+[Docs 36433752989](https://github.com/ankus-net/ankus/actions/runs/36433752989)
 passes. Older superseded CI runs are cancelled and their documentation runs
 successful. These are preceding-commit outcomes, separate from the borrowed-array
 candidate's local verification. Outcomes are checked and recorded again
@@ -19535,7 +19535,7 @@ mode or runtime patch changed.
 
 ## MSVC native qualifier compatibility
 
-The replacement [Windows job](https://github.com/willibrandon/ankus/actions/runs/36446187352/job/109009908584)
+The replacement [Windows job](https://github.com/ankus-net/ankus/actions/runs/36446187352/job/109009908584)
 fails during native record verification, before its test suite starts. MSVC
 retains top-level qualifiers in the comma expression used by the preceding
 GCC 13 repair. Reapplying the measured qualifiers therefore produces duplicate
@@ -21606,10 +21606,10 @@ The probe uses the replacement library's generated export names; changing
 `AssemblyName` also changes that export identity. Public publishing, build
 settings, CLI and README guidance now cover the author workflow.
 
-Previous [CI 36560285848](https://github.com/willibrandon/ankus/actions/runs/36560285848)
+Previous [CI 36560285848](https://github.com/ankus-net/ankus/actions/runs/36560285848)
 for `79cb0c7` finished: Linux/PostgreSQL 18 passed in **23m34s**, macOS/PostgreSQL
 18 passed in **9m49s**, and Windows/PostgreSQL 17 failed in **18m20s**. Quality,
-runtime jobs and [Docs 36560285858](https://github.com/willibrandon/ankus/actions/runs/36560285858)
+runtime jobs and [Docs 36560285858](https://github.com/ankus-net/ankus/actions/runs/36560285858)
 passed. No job timed out. The Windows failure was
 `GucLoggingTests.AssignmentReportsTerminateTheAffectedBackend(668)`: its client
 received the precise Windows connection-reset exception instead of a readable
@@ -24662,7 +24662,7 @@ full-port/review gaps remain open.
 
 ## Windows probe isolation and exact database-name transport
 
-Refresh CI [36762725364](https://github.com/willibrandon/ankus/actions/runs/36762725364)
+Refresh CI [36762725364](https://github.com/ankus-net/ankus/actions/runs/36762725364)
 completed with quality and Linux/macOS success, but Windows failed three tests.
 Platform job durations were **22m40s** on Linux x64/PostgreSQL 18, **18m24s** on
 macOS ARM64/PostgreSQL 18 and **24m18s** on Windows x64/PostgreSQL 17. No platform
@@ -24764,78 +24764,78 @@ tests or binding-only probes. Counts supplement the native behavior assertions.
 | --- | --- | --- | --- |
 | 3c5ab73 composition | Linux x64 / 13.23 | 10,978 total; 10,964 passed; 14 platform skips; zero failures | 23m02.233s |
 | 99660ea template composition | Linux x64 / 17.11 | 10,984 total; 10,970 passed; 14 platform skips; zero failures | 24m20.771s |
-| [CI 36983211444](https://github.com/willibrandon/ankus/actions/runs/36983211444), 3c5ab73 | Linux x64 / 18 | 10,978 total; 10,964 passed; 14 platform skips; zero failures | 26m00s job |
+| [CI 36983211444](https://github.com/ankus-net/ankus/actions/runs/36983211444), 3c5ab73 | Linux x64 / 18 | 10,978 total; 10,964 passed; 14 platform skips; zero failures | 26m00s job |
 | Same CI / revision | macOS ARM64 / 18 | 10,978 total; 10,952 passed; 26 platform skips; zero failures | 19m38s job |
 | Same CI / revision | Windows x64 / 17 | 10,978 total; 10,953 passed; 25 platform skips; zero failures | 24m25s job |
-| [CI 36988584773](https://github.com/willibrandon/ankus/actions/runs/36988584773), 99660ea | Linux x64 / 18 | 10,984 total; 10,970 passed; 14 platform skips; zero failures | 26m40s job |
+| [CI 36988584773](https://github.com/ankus-net/ankus/actions/runs/36988584773), 99660ea | Linux x64 / 18 | 10,984 total; 10,970 passed; 14 platform skips; zero failures | 26m40s job |
 | Same CI / revision | macOS ARM64 / 18 | 10,984 total; 10,958 passed; 26 platform skips; zero failures | 20m12s job |
 | Same CI / revision | Windows x64 / 17 | 10,984 total; 10,959 passed; 25 platform skips; zero failures | 24m59s job |
-| [Version CI 36988634319](https://github.com/willibrandon/ankus/actions/runs/36988634319), 99660ea | Linux x64 / 13 | 10,984 total; 10,970 passed; 14 platform skips; zero failures | 26m15s job |
+| [Version CI 36988634319](https://github.com/ankus-net/ankus/actions/runs/36988634319), 99660ea | Linux x64 / 13 | 10,984 total; 10,970 passed; 14 platform skips; zero failures | 26m15s job |
 | Same CI / revision | Linux x64 / 14 | 10,984 total; 10,970 passed; 14 platform skips; zero failures | 27m06s job |
 | Same CI / revision | Linux x64 / 15 | 10,984 total; 10,970 passed; 14 platform skips; zero failures | 26m57s job |
 | Same CI / revision | Linux x64 / 16 | 10,984 total; 10,970 passed; 14 platform skips; zero failures | 27m12s job |
 | Same CI / revision | Linux x64 / 17 | 10,984 total; 10,970 passed; 14 platform skips; zero failures | 27m28s job |
 | 0e0db27 logging composition | Linux x64 / 18.6 | 11,027 total; 11,013 passed; 14 platform skips; zero failures | 24m57.780s tests |
-| [CI 36998501676](https://github.com/willibrandon/ankus/actions/runs/36998501676), 0e0db27 | Linux x64 / 18 | 11,027 total; 11,013 passed; 14 platform skips; zero failures | 26m39s job |
+| [CI 36998501676](https://github.com/ankus-net/ankus/actions/runs/36998501676), 0e0db27 | Linux x64 / 18 | 11,027 total; 11,013 passed; 14 platform skips; zero failures | 26m39s job |
 | Same CI / revision | macOS ARM64 / 18 | 11,027 total; 11,001 passed; 26 platform skips; zero failures | 20m05s job |
 | Same CI / revision | Windows x64 / 17 | 11,027 total; 11,002 passed; 25 platform skips; zero failures | 25m20s job |
-| [CI 37003911215](https://github.com/willibrandon/ankus/actions/runs/37003911215), 906b752 | Linux x64 / 18 | 11,027 total; 11,013 passed; 14 platform skips; zero failures | 26m43s job |
+| [CI 37003911215](https://github.com/ankus-net/ankus/actions/runs/37003911215), 906b752 | Linux x64 / 18 | 11,027 total; 11,013 passed; 14 platform skips; zero failures | 26m43s job |
 | Same CI / revision | macOS ARM64 / 18 | 11,027 total; 11,001 passed; 26 platform skips; zero failures | 20m05s job |
 | Same CI / revision | Windows x64 / 17 | 11,027 total; 11,002 passed; 25 platform skips; zero failures | 25m23s job |
 | 906b752 with both regression-fixture corrections | Linux x64 / 19 beta 4 | 11,027 total; 11,013 passed; 14 platform skips; zero failures | 26m39.146s tests |
 | 7b6ce06 source composition with parameterized SPI commands | Linux x64 / 18.6 | 11,120 total; 11,106 passed; 14 platform skips; zero failures | 24m31.735s tests |
-| [CI 37016083898](https://github.com/willibrandon/ankus/actions/runs/37016083898), c3db5ed | Linux x64 / 18 | 11,120 total; 11,106 passed; 14 platform skips; zero failures | 26m36s job |
+| [CI 37016083898](https://github.com/ankus-net/ankus/actions/runs/37016083898), c3db5ed | Linux x64 / 18 | 11,120 total; 11,106 passed; 14 platform skips; zero failures | 26m36s job |
 | Same CI / revision | macOS ARM64 / 18 | 11,120 total; 11,094 passed; 26 platform skips; zero failures | 20m12s job |
 | Same CI / revision | Windows x64 / 17 | 11,120 total; 11,095 passed; 25 platform skips; zero failures | 25m22s job |
-| [Version CI 37016275325](https://github.com/willibrandon/ankus/actions/runs/37016275325), c3db5ed | Linux x64 / 19 beta 4 | 11,120 total; 11,106 passed; 14 platform skips; zero failures | 28m12s job |
+| [Version CI 37016275325](https://github.com/ankus-net/ankus/actions/runs/37016275325), c3db5ed | Linux x64 / 19 beta 4 | 11,120 total; 11,106 passed; 14 platform skips; zero failures | 28m12s job |
 | c3db5ed composition with owned binary numeric | Linux x64 / 18.6 | 11,202 total; 11,188 passed; 14 platform skips; zero failures | 26m26.659s tests |
-| [CI 37024581268](https://github.com/willibrandon/ankus/actions/runs/37024581268), ac01b4b | Linux x64 / 18 | 11,202 total; 11,188 passed; 14 platform skips; zero failures | 26m50s job |
+| [CI 37024581268](https://github.com/ankus-net/ankus/actions/runs/37024581268), ac01b4b | Linux x64 / 18 | 11,202 total; 11,188 passed; 14 platform skips; zero failures | 26m50s job |
 | Same CI / revision | macOS ARM64 / 18 | 11,202 total; 11,176 passed; 26 platform skips; zero failures | 20m18s job |
 | Same CI / revision | Windows x64 / 17 | 11,202 total; 11,177 passed; 25 platform skips; zero failures | 26m59s job |
 | ac01b4b composition with direct decimal encoding | Linux x64 / 18.6 | 11,248 total; 11,234 passed; 14 platform skips; zero failures | 25m08.623s tests |
-| [CI 37030652354](https://github.com/willibrandon/ankus/actions/runs/37030652354), e38dce4 | Linux x64 / 18 | 11,248 total; 11,234 passed; 14 platform skips; zero failures | 26m39s job |
+| [CI 37030652354](https://github.com/ankus-net/ankus/actions/runs/37030652354), e38dce4 | Linux x64 / 18 | 11,248 total; 11,234 passed; 14 platform skips; zero failures | 26m39s job |
 | Same CI / revision | macOS ARM64 / 18 | 11,248 total; 11,222 passed; 26 platform skips; zero failures | 20m12s job |
 | Same CI / revision | Windows x64 / 17 | 11,248 total; 11,223 passed; 25 platform skips; zero failures | 26m49s job |
 | e38dce4 composition with worker/interval corrections | Linux x64 / 18.6 | 11,250 total; 11,236 passed; 14 platform skips; zero failures | 34m47.341s tests |
-| [CI 37041069194](https://github.com/willibrandon/ankus/actions/runs/37041069194), 68fd2de | Linux x64 / 18 | 11,250 total; 11,236 passed; 14 platform skips; zero failures | 27m00s job |
+| [CI 37041069194](https://github.com/ankus-net/ankus/actions/runs/37041069194), 68fd2de | Linux x64 / 18 | 11,250 total; 11,236 passed; 14 platform skips; zero failures | 27m00s job |
 | Same CI / revision | macOS ARM64 / 18 | 11,250 total; 11,224 passed; 26 platform skips; zero failures | 20m14s job |
 | Same CI / revision | Windows x64 / 17 | 11,250 total; 11,225 passed; 25 platform skips; zero failures | 25m39s job |
 | 68fd2de with compiler/selection corrections | Linux x64 / 18.6 | 11,303 total; 11,289 passed; 14 platform skips; zero failures | 30m14.890s tests |
 | c4a092d with resolver, aggregate and framework templates | Linux x64 / 18.6 | 11,341 total; 11,327 passed; 14 platform skips; zero failures | 44m09.185s tests |
 | Same composition with final Windows fixture corrections | Windows x64 / 17.11 | 11,341 total; 11,316 passed; 25 platform skips; zero failures | 39m26.748s tests |
-| [CI 37061338668](https://github.com/willibrandon/ankus/actions/runs/37061338668), d78e49c | Linux x64 / 18 | 11,341 total; 11,327 passed; 14 platform skips; zero failures | 34m54s job |
+| [CI 37061338668](https://github.com/ankus-net/ankus/actions/runs/37061338668), d78e49c | Linux x64 / 18 | 11,341 total; 11,327 passed; 14 platform skips; zero failures | 34m54s job |
 | Same CI / revision | macOS ARM64 / 18 | 11,341 total; 11,315 passed; 26 platform skips; zero failures | 26m18s job |
 | Same CI / revision | Windows x64 / 17 | 11,341 total; 11,316 passed; 25 platform skips; zero failures | 30m06s job |
 | Review composition with relative-home correction | Linux x64 / 18.6 | 11,345 total; 11,331 passed; 14 platform skips; zero failures | 37m52.033s tests |
-| [CI 37066979915](https://github.com/willibrandon/ankus/actions/runs/37066979915), 2446e3c | Linux x64 / 18 | 11,345 total; 11,331 passed; 14 platform skips; zero failures | 36m26s job |
+| [CI 37066979915](https://github.com/ankus-net/ankus/actions/runs/37066979915), 2446e3c | Linux x64 / 18 | 11,345 total; 11,331 passed; 14 platform skips; zero failures | 36m26s job |
 | Same CI / revision | macOS ARM64 / 18 | 11,345 total; 11,319 passed; 26 platform skips; zero failures | 26m54s job |
 | Same CI / revision | Windows x64 / 17 | 11,345 total; 11,320 passed; 25 platform skips; zero failures | 31m21s job |
 | 2446e3c composition with source-cache relocation correction | Linux x64 / 18.6 | 11,346 total; 11,332 passed; 14 platform skips; zero failures | 39m21.504s tests |
-| [CI 37071000257](https://github.com/willibrandon/ankus/actions/runs/37071000257), e7fe4d0 | Linux x64 / 18 | 11,346 total; 11,332 passed; 14 platform skips; zero failures | 35m48s job |
+| [CI 37071000257](https://github.com/ankus-net/ankus/actions/runs/37071000257), e7fe4d0 | Linux x64 / 18 | 11,346 total; 11,332 passed; 14 platform skips; zero failures | 35m48s job |
 | Same CI / revision | macOS ARM64 / 18 | 11,346 total; 11,320 passed; 26 platform skips; zero failures | 26m31s job |
 | Same CI / revision | Windows x64 / 17 | 11,346 total; 11,321 passed; 25 platform skips; zero failures | 31m30s job |
 | e7fe4d0 with compiler-helper namespace migration | Linux x64 / 18.6 | 11,347 total; 11,333 passed; 14 platform skips; zero failures | 36m51.794s tests |
 | Same production composition | Windows x64 / 17.11 | 11,347 total; 11,322 passed; 25 platform skips; zero failures | 42m56.468s tests |
-| [CI 37079091457](https://github.com/willibrandon/ankus/actions/runs/37079091457), 71095c9 | Linux x64 / 18 | 11,347 total; 11,333 passed; 14 platform skips; zero failures | 35m58s job |
+| [CI 37079091457](https://github.com/ankus-net/ankus/actions/runs/37079091457), 71095c9 | Linux x64 / 18 | 11,347 total; 11,333 passed; 14 platform skips; zero failures | 35m58s job |
 | Same CI / revision | macOS ARM64 / 18 | 11,347 total; 11,321 passed; 26 platform skips; zero failures | 26m37s job |
 | Same CI / revision | Windows x64 / 17 | 11,347 total; 11,322 passed; 25 platform skips; zero failures | 30m51s job |
 | 71095c9 composition with compiled-cache relocation and SPI examples | macOS ARM64 / 18.6 | 11,359 total; 11,333 passed; 26 platform skips; zero failures | 24m33.576s tests |
 | Same composition | Linux x64 / 18.6 | 11,359 total; 11,345 passed; 14 platform skips; zero failures | 42m26.793s tests |
 | Same composition | Windows x64 / 17.11 | 11,359 total; 11,334 passed; 25 platform skips; zero failures | 42m38.142s tests |
 | 0ddc6e9 with corrected runtime/compiler packages | Linux x64 / 18.6 | 11,360 total; 11,346 passed; 14 platform skips; zero failures | 33m32.502s tests |
-| [CI 37104381270](https://github.com/willibrandon/ankus/actions/runs/37104381270), ca5ab99 | macOS ARM64 / 18 | 11,360 total; 11,334 passed; 26 platform skips; zero failures | 28m29s job |
+| [CI 37104381270](https://github.com/ankus-net/ankus/actions/runs/37104381270), ca5ab99 | macOS ARM64 / 18 | 11,360 total; 11,334 passed; 26 platform skips; zero failures | 28m29s job |
 | Same CI / revision | Windows x64 / 17 | 11,360 total; 11,335 passed; 25 platform skips; zero failures | 31m35s job |
 | Same CI / revision | Linux x64 / 18 | 11,360 total; 11,346 passed; 14 platform skips; zero failures | 36m04s job |
 | ca5ab99 with assembly-access corrections | Linux x64 / 18.6 | 11,413 total; 11,399 passed; 14 platform skips; zero failures | 38m58.713s tests |
-| [CI 37107730859](https://github.com/willibrandon/ankus/actions/runs/37107730859), c285382 | Linux x64 / 18 | 11,413 total; 11,399 passed; 14 platform skips; zero failures | 36m06s job |
+| [CI 37107730859](https://github.com/ankus-net/ankus/actions/runs/37107730859), c285382 | Linux x64 / 18 | 11,413 total; 11,399 passed; 14 platform skips; zero failures | 36m06s job |
 | Same CI / revision | macOS ARM64 / 18 | 11,413 total; 11,387 passed; 26 platform skips; zero failures | 26m55s job |
 | Same CI / revision | Windows x64 / 17 | 11,413 total; 11,388 passed; 25 platform skips; zero failures | 31m28s job |
 | c285382 with precise function/schema diagnostics | Linux x64 / 18.6 | 11,441 total; 11,427 passed; 14 platform skips; zero failures | 38m38.584s tests |
-| [CI 37110157303](https://github.com/willibrandon/ankus/actions/runs/37110157303), c981d16 | Linux x64 / 18 | 11,441 total; 11,427 passed; 14 platform skips; zero failures | 36m03s job |
+| [CI 37110157303](https://github.com/ankus-net/ankus/actions/runs/37110157303), c981d16 | Linux x64 / 18 | 11,441 total; 11,427 passed; 14 platform skips; zero failures | 36m03s job |
 | Same CI / revision | macOS ARM64 / 18 | 11,441 total; 11,415 passed; 26 platform skips; zero failures | 26m52s job |
 | Same CI / revision | Windows x64 / 17 | 11,441 total; 11,416 passed; 25 platform skips; zero failures | 31m13s job |
 | c981d16 with precise operator/cast diagnostics | Linux x64 / 18.6 | 11,476 total; 11,462 passed; 14 platform skips; zero failures | 38m54.065s tests |
-| [CI 37112627277](https://github.com/willibrandon/ankus/actions/runs/37112627277), 71c8fd6 | Linux x64 / 18 | 11,476 total; 11,462 passed; 14 platform skips; zero failures | 36m10s job |
+| [CI 37112627277](https://github.com/ankus-net/ankus/actions/runs/37112627277), 71c8fd6 | Linux x64 / 18 | 11,476 total; 11,462 passed; 14 platform skips; zero failures | 36m10s job |
 | Same CI / revision | macOS ARM64 / 18 | 11,476 total; 11,450 passed; 26 platform skips; zero failures | 26m51s job |
 | Same CI / revision | Windows x64 / 17 | 11,476 total; 11,451 passed; 25 platform skips; zero failures | 31m51s job |
 | 71c8fd6 with precise aggregate diagnostics | Linux x64 / 18.6 | 11,514 total; 11,500 passed; 14 platform skips; zero failures | 40m01.535s tests |
@@ -24844,7 +24844,7 @@ The accepted template composition passes Release with **zero warnings/errors,
 1m38.33s**. API freshness verifies **235 pages / 2,700 members**; the site builds
 **283 pages in 2.98s**, with zero check errors, warnings or hints. All **251**
 owned source identities match the tested draft, validator and committed source.
-[Docs 36988584868](https://github.com/willibrandon/ankus/actions/runs/36988584868)
+[Docs 36988584868](https://github.com/ankus-net/ankus/actions/runs/36988584868)
 also passes on 99660ea.
 
 The original Windows regression-output failure is corrected by 5ea18b9, with
@@ -24860,36 +24860,36 @@ primary-platform CI pass without weakening the original assertions.
 - An isolated editor fix for `ANKUS056` removes SQL metadata from injected contexts while preserving ordinary SQL parameters and method bodies. Fourteen workspace cases pass, including real generator diagnostics, project-wide fixing, cancellation and composition discovery. Normal and `--no-build` packages pass fresh-cache consumer compilation and dependency checks. The draft also supplies the **19** remaining diagnostic help links and documents function-name corrections. Its final complete generator module passes **3,264/3,264**, zero failures/skips, **1m56.153s**. Release has zero warnings/errors (**3m04.15s**), API/site gates pass, all 25 distinct literal help destinations resolve to rendered pages/anchors, and all 50 source identities match. Its ordinary complete native suite is running; other semantic fixes remain pending.
 - The isolated platform-version workflow draft covers complete macOS ARM64/PostgreSQL 15–16 and Windows x64/PostgreSQL 13 and 18 suites. Workflow validation passes with the real runner labels. macOS has PostgreSQL **15.19** and **16.15** installed; Windows installations and explicit per-major selection still require preparation before publication. No new platform acceptance is claimed. Intel's diagnostic retry has fresh passing integration output through **10:06:33 UTC**, beyond the last custom-operator case previously reported; the original runner disconnect remains unexplained.
 - Backported the upstream Native AOT universal-transition GC root correction as runtime commit **a20021d**. The rebuilt compiler explicitly embeds this runtime; its machine code verifies the flag clear, and **128/128** complete retained-input compilations pass. The initial source-only compiler rebuild still linked the stock runtime and is not counted as patched evidence. New **10.0.12-ankus.3** compiler-host and target-runtime packages are wired into the SDK. All nine focused installed-package cases and the complete **Linux x64/PostgreSQL 18.6** suite pass: **11,360 total / 11,346 passed / 14 platform skips / zero failures, 33m32.502s**. Release/API/site, native shutdown and artifact-permission checks pass. Primary CI **37104381270** passes quality, runtime builds and all three complete platform suites; Docs **37104381195** passes. Intel's runtime build passes. Its first six-hour test attempt fails after **2h00m14s** because GitHub loses communication with the hosted runner; this is not a timeout. No test reports or final diagnostics upload. A diagnostic rerun of the same job is submitted, and the disconnect's cause remains unproven. The link to the original intermittent compiler crash is supported by upstream history; no local failing GC root was captured. See [correction and evidence](#native-aot-gc-correction-and-compiler-packaging).
-- [Primary CI 37084745267](https://github.com/willibrandon/ankus/actions/runs/37084745267), **0ddc6e9**, passes quality, all runtime jobs and all three complete platform suites. Six downloaded TRX modules per platform confirm **11,359 total** each: Linux **11,345 passed / 14 skips**, Windows **11,334 / 25**, macOS ARM64 **11,333 / 26**, with zero failures. Platform job durations are **36m07s**, **30m58s** and **26m45s**, respectively. [Docs 37084745237](https://github.com/willibrandon/ankus/actions/runs/37084745237) passes. These successful runs do not resolve the separate intermittent compiler failure or establish Intel macOS acceptance.
-- Intel macOS [37084785806](https://github.com/willibrandon/ankus/actions/runs/37084785806), **0ddc6e9 / two package slots**, exceeds the former 60-minute limit; total job time including cleanup is **61m45s**. Initial test build takes **6m48s**, and full tests run **50m37s** before cancellation. Five completed TRX modules report **6,821 total / 6,812 passed / nine skips / zero failures**; integration has no completed report. Both Intel jobs now allow GitHub's six-hour hosted-job maximum so the unchanged full suite can finish and provide complete evidence.
+- [Primary CI 37084745267](https://github.com/ankus-net/ankus/actions/runs/37084745267), **0ddc6e9**, passes quality, all runtime jobs and all three complete platform suites. Six downloaded TRX modules per platform confirm **11,359 total** each: Linux **11,345 passed / 14 skips**, Windows **11,334 / 25**, macOS ARM64 **11,333 / 26**, with zero failures. Platform job durations are **36m07s**, **30m58s** and **26m45s**, respectively. [Docs 37084745237](https://github.com/ankus-net/ankus/actions/runs/37084745237) passes. These successful runs do not resolve the separate intermittent compiler failure or establish Intel macOS acceptance.
+- Intel macOS [37084785806](https://github.com/ankus-net/ankus/actions/runs/37084785806), **0ddc6e9 / two package slots**, exceeds the former 60-minute limit; total job time including cleanup is **61m45s**. Initial test build takes **6m48s**, and full tests run **50m37s** before cancellation. Five completed TRX modules report **6,821 total / 6,812 passed / nine skips / zero failures**; integration has no completed report. Both Intel jobs now allow GitHub's six-hour hosted-job maximum so the unchanged full suite can finish and provide complete evidence.
 - The compiled-companion cache and SPI example composition passes complete **Linux x64 and macOS ARM64/PostgreSQL 18.6**, and **Windows x64/PostgreSQL 17.11** suites: **11,359 total per platform**, zero failures, with platform counts and durations above. All **430** source identities and the respective **26/24/52** runtime identities verify afterward. The sample preserves pgrx's shared input/TABLE-output names after correcting an overly strict generator rule. Its **nine** corrected native Linux cases and **3,098** generator cases pass. Release has zero warnings/errors; API freshness verifies **238 pages / 2,757 members**, and site build/check passes with zero diagnostics. Before committing, prior primary CI **37079091457** and Docs **37079091438** remain successful, with no active runs. Replacement CI and complete Intel acceptance remain required. Detailed earlier failures, corrections and focused platform evidence remain in the history.
 - Compiled-companion reuse now stages the selected runtime at an owned logical location and keys the generator by content. Current helper/runtime bytes are checked before lookup, publication and reuse; consumer restore policy is unchanged. The new regression fails against unchanged production and passes after correction. Linux x64 build-tool checks pass **1,204 total; 1,195 passed; zero failures; nine platform skips; 1m18.984s**. A real binding probe reduces three compilations/entries to one while preserving every DLL/PDB/XML byte against the original baseline, including relocation and producer cleanup. Complete composed acceptance, platform checks and final gates remain required; the Intel timeout is not yet resolved.
-- Published compiler-helper namespace migration **71095c9** passes [primary CI 37079091457](https://github.com/willibrandon/ankus/actions/runs/37079091457) and [Docs 37079091438](https://github.com/willibrandon/ankus/actions/runs/37079091438). All runtime jobs and quality pass; six downloaded TRX modules per platform independently confirm the complete counters above. This supersedes the pending primary-CI requirement in the namespace entry below. The independent intermittent Native AOT compiler failure and Intel timeout remain unresolved.
+- Published compiler-helper namespace migration **71095c9** passes [primary CI 37079091457](https://github.com/ankus-net/ankus/actions/runs/37079091457) and [Docs 37079091438](https://github.com/ankus-net/ankus/actions/runs/37079091438). All runtime jobs and quality pass; six downloaded TRX modules per platform independently confirm the complete counters above. This supersedes the pending primary-CI requirement in the namespace entry below. The independent intermittent Native AOT compiler failure and Intel timeout remain unresolved.
 
 - Compiler-only runtime helpers move to `Ankus.CompilerServices`, including partial declarations, generator references and callback metadata matching. All sixteen public helpers remain hidden from IntelliSense; author APIs and PostgreSQL bindings keep their namespaces and native contracts. Complete plain suites pass **11,347 total** each: **Linux x64/PostgreSQL 18.6**, 11,333 passed / 14 platform skips / **36m51.794s**; **Windows x64/PostgreSQL 17.11**, 11,322 passed / 25 platform skips / **42m56.468s**. Both have zero failures and all six modules complete. All **421** source identities and **26 / 52** runtime files verify; 419 non-evidence files agree across platforms apart from line endings. Release/API/site gates pass. Fresh primary CI remains required. The earlier intermittent Native AOT compiler failure remains unresolved and retained separately; passing replacements do not establish its root cause.
-- Binding source-cache identity uses generator content rather than its installation path. Identical helper copies reuse one entry after relocation and producer removal; changed bytes still invalidate it. Compiler/header/ABI verification remains intact. Published **e7fe4d0** passes [CI 37071000257](https://github.com/willibrandon/ankus/actions/runs/37071000257) on all three primary platforms and [Docs 37071000284](https://github.com/willibrandon/ankus/actions/runs/37071000284); six downloaded reports per platform confirm the counters above. Compiled-companion relocation separately causes confirmed duplicate builds and remains open; no Intel timeout improvement is claimed.
-- The framework/resolver milestone is committed and pushed as **d78e49c**. [CI 37061338668](https://github.com/willibrandon/ankus/actions/runs/37061338668) passes quality, all runtime jobs and all three complete primary-platform suites. Six downloaded TRX modules per platform confirm the counters above. [Docs 37061338568](https://github.com/willibrandon/ankus/actions/runs/37061338568) passes. This replaces the Windows failures in **37046774035**; the independent Intel timeout remains open.
-- Relative `ANKUS_HOME` is resolved from the build invocation directory and carried into native processes and test-host configuration. Registration and managed-installation discovery use that same home. Focused discovery and native build/test-host checks pass **2/2 each** on Linux x64/PostgreSQL **18.6** and Windows x64/**17.11**, with zero skips; native checks take **6m36.800s** and **7m11.359s**, respectively. The complete local Linux suite and final Release/API/site gates pass. Committed **2446e3c** also passes [CI 37066979915](https://github.com/willibrandon/ankus/actions/runs/37066979915) and [Docs 37066979878](https://github.com/willibrandon/ankus/actions/runs/37066979878); six downloaded reports per primary platform confirm the counters above.
+- Binding source-cache identity uses generator content rather than its installation path. Identical helper copies reuse one entry after relocation and producer removal; changed bytes still invalidate it. Compiler/header/ABI verification remains intact. Published **e7fe4d0** passes [CI 37071000257](https://github.com/ankus-net/ankus/actions/runs/37071000257) on all three primary platforms and [Docs 37071000284](https://github.com/ankus-net/ankus/actions/runs/37071000284); six downloaded reports per platform confirm the counters above. Compiled-companion relocation separately causes confirmed duplicate builds and remains open; no Intel timeout improvement is claimed.
+- The framework/resolver milestone is committed and pushed as **d78e49c**. [CI 37061338668](https://github.com/ankus-net/ankus/actions/runs/37061338668) passes quality, all runtime jobs and all three complete primary-platform suites. Six downloaded TRX modules per platform confirm the counters above. [Docs 37061338568](https://github.com/ankus-net/ankus/actions/runs/37061338568) passes. This replaces the Windows failures in **37046774035**; the independent Intel timeout remains open.
+- Relative `ANKUS_HOME` is resolved from the build invocation directory and carried into native processes and test-host configuration. Registration and managed-installation discovery use that same home. Focused discovery and native build/test-host checks pass **2/2 each** on Linux x64/PostgreSQL **18.6** and Windows x64/**17.11**, with zero skips; native checks take **6m36.800s** and **7m11.359s**, respectively. The complete local Linux suite and final Release/API/site gates pass. Committed **2446e3c** also passes [CI 37066979915](https://github.com/ankus-net/ankus/actions/runs/37066979915) and [Docs 37066979878](https://github.com/ankus-net/ankus/actions/runs/37066979878); six downloaded reports per primary platform confirm the counters above.
 - Final review-composition acceptance passes the complete Windows x64/PostgreSQL **17.11** suite: **11,341 total; 11,316 passed; zero failures; 25 platform skips; 39m26.748s**. This verifies both reported path-case failures and the concurrent consumer restore correction, plus the new resolver, inherited aggregate and xUnit/NUnit template contracts. All **327** source and **52** runtime identities verify afterward. The **325** non-evidence files match the final Linux-validated composition apart from Git line endings. The earlier complete Linux run used longer consumer cache paths; corrected Linux template checks and final Release/API/site gates also pass. Replacement primary CI passes on d78e49c.
-- The direct-decimal milestone is committed and pushed as **e38dce4**. [CI 37030652354](https://github.com/willibrandon/ankus/actions/runs/37030652354) passes quality, all runtime jobs and all three complete primary-platform suites; counts above come from six completed TRX modules per platform. [Docs 37030652372](https://github.com/willibrandon/ankus/actions/runs/37030652372) passes. Previous primary/docs/version outcomes were checked and retained before both commit and push; the Intel timeout remains unresolved.
-- The worker/interval corrections are committed as **68fd2de**. [CI 37041069194](https://github.com/willibrandon/ankus/actions/runs/37041069194) passes quality, runtime and all three complete primary-platform suites; six downloaded TRX modules confirm each platform's counters above. [Docs 37041069249](https://github.com/willibrandon/ankus/actions/runs/37041069249) passes. The earlier native red/green, complete local acceptance and final gates remain in the history.
+- The direct-decimal milestone is committed and pushed as **e38dce4**. [CI 37030652354](https://github.com/ankus-net/ankus/actions/runs/37030652354) passes quality, all runtime jobs and all three complete primary-platform suites; counts above come from six completed TRX modules per platform. [Docs 37030652372](https://github.com/ankus-net/ankus/actions/runs/37030652372) passes. Previous primary/docs/version outcomes were checked and retained before both commit and push; the Intel timeout remains unresolved.
+- The worker/interval corrections are committed as **68fd2de**. [CI 37041069194](https://github.com/ankus-net/ankus/actions/runs/37041069194) passes quality, runtime and all three complete primary-platform suites; six downloaded TRX modules confirm each platform's counters above. [Docs 37041069249](https://github.com/ankus-net/ankus/actions/runs/37041069249) passes. The earlier native red/green, complete local acceptance and final gates remain in the history.
 - The composed compiler/selection corrections pass literal plain `dotnet test` against PostgreSQL **18.6/Linux x64**: **11,303 total; 11,289 passed; zero failures; 14 platform skips; 30m14.890s**. The generator module passes **3,083/3,083**, zero skips. Multi-declaration body edits and earlier file insertion preserve actual final output caches; cached diagnostics bind to current exact spans. ANKUS044 rejects direct nonconstant SPI string interpolation without changing raw-string or typed-parameter contracts. Selected SQL files are read without losing full-path ambiguity checks. Conflicting project selections fail explicitly, while overrides and absent-project defaults remain supported. All 307 source and 26 runtime hashes verify after success; the additional pipeline file matches the frozen transfer archive. Final composed gates and fresh CI remain required.
 - Extension commands share evaluated SDK-project resolution for `.sln`, `.slnx`, child SDK elements and imported SDK selection. Visible inherited aggregate roles require their capability interfaces. Focused resolver checks pass **15/15** and inherited capability checks **13/13**. Installed CLI/template framework combinations pass **13/13** with real managed/backend tests. Complete Linux and corrected Windows acceptance pass as recorded above. Environment, diagnostics, namespace, performance and platform-coverage work remains open.
-- [CI 37046774035](https://github.com/willibrandon/ankus/actions/runs/37046774035), **c4a092d**: quality, all runtime jobs and complete Linux/macOS ARM64 suites pass; Windows fails two path-case assertions and one concurrent local-tool restore. Linux reports **11,303 total / 11,289 passed / 14 skips**, and macOS **11,303 / 11,277 / 26**, with zero failures. Windows reports only four completed modules, **8,792 total / 8,764 passed / three failures / 25 skips**; this is not complete Windows acceptance. Both path cases and both original installed consumers pass the focused Windows repair. [Docs 37046774045](https://github.com/willibrandon/ankus/actions/runs/37046774045) passes. Detailed root causes, corrections and validation outcomes are retained in the history.
-- Owned binary numeric is committed and pushed as **ac01b4b**. [Primary CI 37024581268](https://github.com/willibrandon/ankus/actions/runs/37024581268) passes quality, runtime and all three complete primary-platform suites. Counts above come from six completed TRX modules per platform. [Docs 37024581449](https://github.com/willibrandon/ankus/actions/runs/37024581449) passes.
+- [CI 37046774035](https://github.com/ankus-net/ankus/actions/runs/37046774035), **c4a092d**: quality, all runtime jobs and complete Linux/macOS ARM64 suites pass; Windows fails two path-case assertions and one concurrent local-tool restore. Linux reports **11,303 total / 11,289 passed / 14 skips**, and macOS **11,303 / 11,277 / 26**, with zero failures. Windows reports only four completed modules, **8,792 total / 8,764 passed / three failures / 25 skips**; this is not complete Windows acceptance. Both path cases and both original installed consumers pass the focused Windows repair. [Docs 37046774045](https://github.com/ankus-net/ankus/actions/runs/37046774045) passes. Detailed root causes, corrections and validation outcomes are retained in the history.
+- Owned binary numeric is committed and pushed as **ac01b4b**. [Primary CI 37024581268](https://github.com/ankus-net/ankus/actions/runs/37024581268) passes quality, runtime and all three complete primary-platform suites. Counts above come from six completed TRX modules per platform. [Docs 37024581449](https://github.com/ankus-net/ankus/actions/runs/37024581449) passes.
 - Direct-decimal encoding preserves coefficient/sign/scale without intermediate text. Focused runtime checks pass **136/136**, and PostgreSQL **18.6/Linux x64** numeric/range/tuple checks pass **271/271**, with zero skips. The plain complete suite passes **11,248 total; 11,234 passed; zero failures; 14 platform skips; 25m08.623s**. All 293 source and 26 runtime hashes verify afterward. Same-toolchain warm ABBA query comparisons reduce the managed-decimal median from **7.921ms to 5.720ms**, ratio **0.722**, with 20,000 rows and 22 measured samples per variant; all sums match independent PostgreSQL expressions. These are query timings, not isolated arithmetic/guard evidence. Final composed Release passes with zero warnings/errors (**1m22.56s**), API freshness verifies **238 pages / 2,756 members**, and site build/check passes (**286 pages, 3.27s; zero diagnostics**). All 290 applicable promoted identities match. Fresh platform CI remains required after publishing.
-- PostgreSQL 19 fixture corrections are committed as **7b6ce06**, followed by parameterized SPI commands as **c3db5ed**; both are pushed. [Primary CI 37016083898](https://github.com/willibrandon/ankus/actions/runs/37016083898) passes quality, all runtime jobs and all three complete platform suites. [Docs 37016083680](https://github.com/willibrandon/ankus/actions/runs/37016083680) and [PostgreSQL 19 replacement CI 37016275325](https://github.com/willibrandon/ankus/actions/runs/37016275325) also pass. Each of the four platform/version suites has six downloaded TRX modules independently confirming the counters above.
+- PostgreSQL 19 fixture corrections are committed as **7b6ce06**, followed by parameterized SPI commands as **c3db5ed**; both are pushed. [Primary CI 37016083898](https://github.com/ankus-net/ankus/actions/runs/37016083898) passes quality, all runtime jobs and all three complete platform suites. [Docs 37016083680](https://github.com/ankus-net/ankus/actions/runs/37016083680) and [PostgreSQL 19 replacement CI 37016275325](https://github.com/ankus-net/ankus/actions/runs/37016275325) also pass. Each of the four platform/version suites has six downloaded TRX modules independently confirming the counters above.
 - Owned binary numeric passes the plain complete PostgreSQL **18.6/Linux x64** suite: **11,202 total; 11,188 passed; zero failures; 14 platform skips; 26m26.659s**. All six module summaries finish successfully and all **293** frozen source identities verify afterward. Focused managed checks pass **81/81**, and focused numeric/range/tuple checks pass **271/271** on both PostgreSQL **18.6** and **13.23**, with no skips. The latter also verifies all **26** accepted runtime files after completion. Release/API/site gates pass. Measured 20,000-row comparisons retain independent SQL checksums and 22 samples per variant: binary/text median ratios are **0.850** for small identity, **0.940** for small addition, **0.505** for 1,024-digit identity and **0.581** for wide addition; the native SQL control is **1.009**. Managed decimal returns regress to **1.133** and need direct binary encoding rather than intermediate text. These are query timings, not isolated arithmetic/allocation or guard-tier claims. Fresh complete platform CI remains required after committing, and pure guards, array costs, permanent benchmarks and complete version/platform acceptance remain open. Detailed failures, corrections and timings are retained in the history.
 - Explicit `Spi.Sql` interpolation and typed `SpiCommand` overloads now pass the final complete PostgreSQL **18.6/Linux x64** composition: **11,120 total; 11,106 passed; zero failures; 14 platform skips; 24m31.735s**. All six completed TRX modules confirm the counters and all 279 frozen source identities verify afterward. The final Release build has zero warnings/errors (**31.37s**); API freshness verifies **238 pages / 2,756 members**, and site build/check passes with zero diagnostics. Native guards, transaction snapshots and original string APIs remain intact. Fresh primary-platform CI remains required after publishing.
 - Current-helper isolated PostgreSQL **18.6/Linux x64** diagnostics preserve all ten native artifacts and all three managed companion artifacts across cold and two warm calls. Source collection takes **12.151s**, then **3.355s / 3.340s**; companion compilation takes **37.862s**, then **1.568s / 1.579s**. A representative warm source call spends **1.236s** on native declaration verification and **0.727s** on layout measurement; SDK/runtime hashing in a warm companion call takes **0.140s**. This narrows the investigation without establishing Intel's cause or a performance correction. The diagnostic instrumentation remains isolated and is not promoted.
 - Both PostgreSQL 19 regression-fixture corrections now pass the complete six-module Native AOT suite: **11,027 total; 11,013 passed; zero failures; 14 platform skips; 26m39.146s**. All 267 frozen source identities verify after completion. Final composed Release passes with zero warnings/errors (**1m28.83s**); API freshness verifies **235 pages / 2,726 members**; site build/check passes with zero diagnostics. No ambient major override or relaxed CLI validation is used. The focused property fixture also passes against PostgreSQL 18.6. Replacement compatibility CI remains required after publishing the fixes.
 - The final CLI property fixture correction also passes in the SPI composition against PostgreSQL **18.6/Linux x64**: **one selected case; zero failures/skips; 4m42.686s**, including real native publication, installation and query assertions. All 279 frozen source identities verify after completion. Final composed Release/documentation and complete-suite acceptance remain required before committing.
-- Binding timing automation is committed and pushed as **906b752**. [Primary CI 37003911215](https://github.com/willibrandon/ankus/actions/runs/37003911215) passes quality, runtime and all three complete primary-platform suites; counts above come from six completed TRX modules per platform. [Docs 37003911206](https://github.com/willibrandon/ankus/actions/runs/37003911206) passes. [Intel macOS 37003910952](https://github.com/willibrandon/ankus/actions/runs/37003910952) completes preparation and reaches the full suite with two package-consumer slots and the new early task timings. No performance correction or Intel acceptance is claimed before completed evidence.
-- [Template CI 36988584773](https://github.com/willibrandon/ankus/actions/runs/36988584773), **99660ea**: quality, all runtime jobs and all three complete platform suites pass. Counts above come from all six completed TRX modules per platform.
-- [Additional-major CI 36988634319](https://github.com/willibrandon/ankus/actions/runs/36988634319), **99660ea**: runtime and complete PostgreSQL 13–17 suites pass. PostgreSQL 19 completes all six modules with **10,984 total; 10,969 passed; one failure; 14 platform skips**. Database-removal setup enables `standard_conforming_strings=off`, which PostgreSQL 19 rejects with **0A000**. An isolated repair retains and verifies the older setting on 13–18, asserts 19's exact rejection and `on` setting, and preserves every database name/data/recovery check. Focused Linux x64 checks pass **4/4** each on PostgreSQL **19 beta 4** (**2m26.599s**) and **18.6** (**3m02.058s**), with zero skips and all 267 frozen source identities verified afterward. Composed-source Release passes with zero warnings/errors (**1m20.35s**), API freshness verifies **235 pages / 2,726 members**, and site build/check passes with zero diagnostics. The final complete PostgreSQL 19 repair composition passes, as recorded above. Every job retains the 60-minute timeout.
-- [Logging CI 36998501676](https://github.com/willibrandon/ankus/actions/runs/36998501676), **0e0db27**: quality, all three runtime jobs and all three full primary-platform suites pass. Counts above come from all six completed TRX modules per platform. [Docs 36998501642](https://github.com/willibrandon/ankus/actions/runs/36998501642) also passes.
-- Intel macOS [two-slot 36986333238](https://github.com/willibrandon/ankus/actions/runs/36986333238) and [four-slot 36986335992](https://github.com/willibrandon/ankus/actions/runs/36986335992) compare the same **3c5ab73** code. Both exceed the 60-minute limit; job durations including cleanup are 61m00s and 62m22s. Each retains five completed modules: 6,597 total, 6,588 passed, nine skips, zero failures; neither has a completed integration report. Both restore the same NuGet and native binding cache baseline and use LLVM 20.1.8. Initial builds take 8m53s and 12m04s. Retained publication timings require root-cause analysis; neither is full platform acceptance.
-- The prior Intel [two-slot run 36977693891](https://github.com/willibrandon/ankus/actions/runs/36977693891) timed out at 60 minutes. Five completed modules report 6,578 total, 6,569 passed, nine skips and zero failures; integration has no completed report. This is not Intel platform acceptance. Its 67 retained build-timing reports overlap and include initial solution preparation.
+- Binding timing automation is committed and pushed as **906b752**. [Primary CI 37003911215](https://github.com/ankus-net/ankus/actions/runs/37003911215) passes quality, runtime and all three complete primary-platform suites; counts above come from six completed TRX modules per platform. [Docs 37003911206](https://github.com/ankus-net/ankus/actions/runs/37003911206) passes. [Intel macOS 37003910952](https://github.com/ankus-net/ankus/actions/runs/37003910952) completes preparation and reaches the full suite with two package-consumer slots and the new early task timings. No performance correction or Intel acceptance is claimed before completed evidence.
+- [Template CI 36988584773](https://github.com/ankus-net/ankus/actions/runs/36988584773), **99660ea**: quality, all runtime jobs and all three complete platform suites pass. Counts above come from all six completed TRX modules per platform.
+- [Additional-major CI 36988634319](https://github.com/ankus-net/ankus/actions/runs/36988634319), **99660ea**: runtime and complete PostgreSQL 13–17 suites pass. PostgreSQL 19 completes all six modules with **10,984 total; 10,969 passed; one failure; 14 platform skips**. Database-removal setup enables `standard_conforming_strings=off`, which PostgreSQL 19 rejects with **0A000**. An isolated repair retains and verifies the older setting on 13–18, asserts 19's exact rejection and `on` setting, and preserves every database name/data/recovery check. Focused Linux x64 checks pass **4/4** each on PostgreSQL **19 beta 4** (**2m26.599s**) and **18.6** (**3m02.058s**), with zero skips and all 267 frozen source identities verified afterward. Composed-source Release passes with zero warnings/errors (**1m20.35s**), API freshness verifies **235 pages / 2,726 members**, and site build/check passes with zero diagnostics. The final complete PostgreSQL 19 repair composition passes, as recorded above. Every job retains the 60-minute timeout.
+- [Logging CI 36998501676](https://github.com/ankus-net/ankus/actions/runs/36998501676), **0e0db27**: quality, all three runtime jobs and all three full primary-platform suites pass. Counts above come from all six completed TRX modules per platform. [Docs 36998501642](https://github.com/ankus-net/ankus/actions/runs/36998501642) also passes.
+- Intel macOS [two-slot 36986333238](https://github.com/ankus-net/ankus/actions/runs/36986333238) and [four-slot 36986335992](https://github.com/ankus-net/ankus/actions/runs/36986335992) compare the same **3c5ab73** code. Both exceed the 60-minute limit; job durations including cleanup are 61m00s and 62m22s. Each retains five completed modules: 6,597 total, 6,588 passed, nine skips, zero failures; neither has a completed integration report. Both restore the same NuGet and native binding cache baseline and use LLVM 20.1.8. Initial builds take 8m53s and 12m04s. Retained publication timings require root-cause analysis; neither is full platform acceptance.
+- The prior Intel [two-slot run 36977693891](https://github.com/ankus-net/ankus/actions/runs/36977693891) timed out at 60 minutes. Five completed modules report 6,578 total, 6,569 passed, nine skips and zero failures; integration has no completed report. This is not Intel platform acceptance. Its 67 retained build-timing reports overlap and include initial solution preparation.
 - Logging helpers provide literal/structured severity methods and genuine nonreturning terminal contracts. Managed checks pass 75/75, and focused PostgreSQL 18.6/Linux x64 checks pass 58/58, including same-backend recovery with PostgreSQL's own client. The complete unchanged-source suite and fresh full primary-platform CI pass. Release passes with zero warnings/errors; API freshness verifies 235 pages / 2,726 members and the site check has zero diagnostics.
 - Earlier complete local logging runs fail from missing staged runtime prerequisites and exhausted RAM-backed temporary storage. The matching CI runtime payload is verified and the complete disk-backed rerun passes. All negative outcomes and corrections remain in [the retained history](#current-logging-and-evidence-validation); contributor prerequisites document temporary build capacity.
 - Intel timing investigation retains raw job logs, which show progress omitted by ordinary searches that stop at embedded NUL test values. Completed consumer cases can take several minutes. A private reader extracts individual binding-task durations from existing binlogs without printing paths or command arguments; Actual Intel phase measurements now exist; finer verification/compilation measurements and a verified correction remain required.
@@ -24898,7 +24898,7 @@ primary-platform CI pass without weakening the original assertions.
 - The accepted SPI command composition preserves declared types/SQL NULL, original string APIs, snapshot roles and native guards. Compiler support lives in `Ankus.CompilerServices`. Focused managed/compiler/native checks pass **15/15**, **8/8** and **70/70**; complete final acceptance and final Release/API/site evidence are recorded above. Both unsuccessful validation-launch attempts are retained in the history, with zero product assertions executed by those invalid launches.
 - The first complete PostgreSQL 19 repair run exposes a second fixture defect after the original database-removal repair passes. Both defects are corrected and the final complete suite passes, as recorded above; the original one-failure outcome remains in the retained history.
 - Focused final PostgreSQL 19 checks pass **five cases, zero failures/skips, 4m58.563s**, including database prerequisites and CLI property forwarding. The same property fixture passes against PostgreSQL **18.6/Linux x64**, with **one selected case, zero failures/skips, 4m42.686s**.
-- Intel macOS [37003910952](https://github.com/willibrandon/ankus/actions/runs/37003910952), **906b752 / two package slots**, exceeds the 60-minute limit again; total job duration including cleanup is **61m23s**. Five completed modules report **6,621 total; 6,612 passed; nine skips; zero failures**; integration has no completed report. Preparation takes **13m57s**, and full tests run **43m27s** before timeout. Individual phase evidence now proves initial source production **111.159s** and companion production **219.510s**, with overlapping cache readers waiting; representative later source/companion reuse takes **29.489s / 17.669s** and **15.579s / 9.618s**. These are command durations, including verification and waiting, not isolated CPU costs. A measured correction and complete Intel acceptance remain required.
+- Intel macOS [37003910952](https://github.com/ankus-net/ankus/actions/runs/37003910952), **906b752 / two package slots**, exceeds the 60-minute limit again; total job duration including cleanup is **61m23s**. Five completed modules report **6,621 total; 6,612 passed; nine skips; zero failures**; integration has no completed report. Preparation takes **13m57s**, and full tests run **43m27s** before timeout. Individual phase evidence now proves initial source production **111.159s** and companion production **219.510s**, with overlapping cache readers waiting; representative later source/companion reuse takes **29.489s / 17.669s** and **15.579s / 9.618s**. These are command durations, including verification and waiting, not isolated CPU costs. A measured correction and complete Intel acceptance remain required.
 - A read-only compiler-contract namespace audit identifies **53 helper types across 81 declarations**, including **16 public types, all hidden from IntelliSense**, and **211 generated/fixture literal reference sites**. This confirms that file count overstates the public surface. Deliberate relocation of compiler-only contracts and complete generator/consumer validation remain open; author APIs and native behavior must be preserved.
 
 Keep complete version/platform gaps visible. The scheduled workflow, labels,
@@ -24927,7 +24927,7 @@ pass. An earlier full run also found a stale expected compiler-helper list;
 its namespace and editor-visibility assertion now includes the new unsafe
 contract attribute. The original failures remain retained.
 
-[Windows 13 job 111227003190](https://github.com/willibrandon/ankus/actions/runs/37131055805/job/111227003190)
+[Windows 13 job 111227003190](https://github.com/ankus-net/ankus/actions/runs/37131055805/job/111227003190)
 on **04f0a8a / ankus.4** reports **11,568 total / 11,463 passed / 80 failures /
 25 skips**, **34m23s job**, with all 125 retained server logs empty. PostgreSQL
 13's service-token path sends stderr diagnostics to Windows Application events;
@@ -24986,7 +24986,7 @@ version/platform acceptance are still required.
 
 ### Replacement CI and Intel acceptance
 
-On **2026-10-03**, [primary CI 37145034638](https://github.com/willibrandon/ankus/actions/runs/37145034638)
+On **2026-10-03**, [primary CI 37145034638](https://github.com/ankus-net/ankus/actions/runs/37145034638)
 on **b9b7eb5 / ankus.4** passes quality, the runtime jobs and all six modules on
 each primary platform. All eighteen reports were retained and independently
 counted: Linux x64/PostgreSQL 18 has **11,592 passed / 17 platform skips**;
@@ -24995,7 +24995,7 @@ macOS ARM64/PostgreSQL 18 has **11,580 passed / 29 skips**; Windows x64/PostgreS
 Job durations are **36m31s, 26m35s and 31m43s**, respectively. The matching docs
 run also passes.
 
-[Intel CI 37131051660](https://github.com/willibrandon/ankus/actions/runs/37131051660)
+[Intel CI 37131051660](https://github.com/ankus-net/ankus/actions/runs/37131051660)
 on **04f0a8a / ankus.4 / PostgreSQL 18.6** now completes successfully:
 **11,568 total / 11,541 passed / 27 skips / zero failures**, **3h59m34s job**.
 All six reports were retained and independently counted. This confirms the
@@ -25004,7 +25004,7 @@ It uses two package-consumer slots and the approved six-hour limit. This is
 acceptance of the recorded revision, not evidence for later changes. The first
 attempt's hosted-runner communication loss still has no established cause.
 
-[Version CI 37145038020](https://github.com/willibrandon/ankus/actions/runs/37145038020)
+[Version CI 37145038020](https://github.com/ankus-net/ankus/actions/runs/37145038020)
 on **b9b7eb5** also passes the complete macOS ARM64/PostgreSQL 16 suite:
 **11,609 total / 11,580 passed / 29 skips / zero failures**, **26m32s job**.
 Its six reports were independently counted. The replacement Windows 13 job
@@ -25055,7 +25055,7 @@ under development and is not included in this milestone.
 ## Shared persistent server diagnostics and completed version acceptance
 
 On **2026-10-03**, platform-version run
-[37145038020](https://github.com/willibrandon/ankus/actions/runs/37145038020)
+[37145038020](https://github.com/ankus-net/ankus/actions/runs/37145038020)
 finishes successfully on **b9b7eb5 / 10.0.12-ankus.4**. Every platform writes all
 six TRX reports; all twenty-four were retained and independently counted:
 
@@ -25068,7 +25068,7 @@ six TRX reports; all twenty-four were retained and independently counted:
 
 This accepts the named revision, including the actual Windows runner service
 context and the macOS library-suffix boundary. The prior Intel result remains
-[37131051660](https://github.com/willibrandon/ankus/actions/runs/37131051660)
+[37131051660](https://github.com/ankus-net/ankus/actions/runs/37131051660)
 on **04f0a8a**: all six modules pass, 11,568 total / 11,541 passed / 27 platform
 skips / zero failures, 3h59m34s job. Neither result establishes acceptance of a
 later untested source composition.
@@ -25139,11 +25139,11 @@ all six modules. The complete outcome snapshot is retained with the validation e
 - Repairs and validation evidence are pushed through **b9b7eb5**, including the
   Apple object-fixture correction **7fb9700**, Windows diagnostic/selected-installation
   correction **7251034**, and checked raw-pointer contracts **b9b7eb5**.
-  [Primary CI 37145034638](https://github.com/willibrandon/ankus/actions/runs/37145034638)
+  [Primary CI 37145034638](https://github.com/ankus-net/ankus/actions/runs/37145034638)
   passes quality, all runtime jobs and all three complete suites. All eighteen
   TRX reports were retained and independently counted above.
-  [Docs 37145034604](https://github.com/willibrandon/ankus/actions/runs/37145034604)
-  passes. [Platform versions 37145038020](https://github.com/willibrandon/ankus/actions/runs/37145038020)
+  [Docs 37145034604](https://github.com/ankus-net/ankus/actions/runs/37145034604)
+  passes. [Platform versions 37145038020](https://github.com/ankus-net/ankus/actions/runs/37145038020)
   passes both runtime jobs and all four complete macOS 15/16 and Windows 13/18 suites;
   all twenty-four reports were independently counted. Windows 13 passes in the
   required service context: **11,609 total / 11,584 passed / 25 skips / zero
@@ -25153,10 +25153,10 @@ all six modules. The complete outcome snapshot is retained with the validation e
   runtime jobs pass; all three complete primary suites are running. Those live
   jobs do not yet establish acceptance of the editor milestone.
   Earlier
-  [primary CI 37131029131](https://github.com/willibrandon/ankus/actions/runs/37131029131),
-  [docs 37131029115](https://github.com/willibrandon/ankus/actions/runs/37131029115),
-  [platform versions 37131055805](https://github.com/willibrandon/ankus/actions/runs/37131055805)
-  and [Intel macOS 37131051660](https://github.com/willibrandon/ankus/actions/runs/37131051660)
+  [primary CI 37131029131](https://github.com/ankus-net/ankus/actions/runs/37131029131),
+  [docs 37131029115](https://github.com/ankus-net/ankus/actions/runs/37131029115),
+  [platform versions 37131055805](https://github.com/ankus-net/ankus/actions/runs/37131055805)
+  and [Intel macOS 37131051660](https://github.com/ankus-net/ankus/actions/runs/37131051660)
   have passed docs, quality, all three primary runtime builds and all three
   complete primary suites. Their 18 TRX reports are retained and independently
   counted above. The additional macOS 15/16 and Windows 18 suites also pass; all
@@ -25247,7 +25247,7 @@ all six modules. The complete outcome snapshot is retained with the validation e
   from its parent PATH; resuming those gates with its installed absolute path
   passes, without repeating the successful native suite. No runtime, analyzer
   severity or warning suppression changes.
-- Intel macOS [37104402210](https://github.com/willibrandon/ankus/actions/runs/37104402210)
+- Intel macOS [37104402210](https://github.com/ankus-net/ankus/actions/runs/37104402210)
   retains its six-hour limit. Attempt one loses communication with its hosted
   runner after **2h00m14s**, without final integration reports. Attempt two
   completes all six modules on **ca5ab99 / PostgreSQL 18.6**: **11,360 total /
@@ -25262,7 +25262,7 @@ all six modules. The complete outcome snapshot is retained with the validation e
   disconnect cause remains unresolved. All six reports from each Intel attempt,
   final logs and build timings are retained; no further timeout increase is needed
   to let this measured run finish.
-- [Platform-version CI 37117650497](https://github.com/willibrandon/ankus/actions/runs/37117650497)
+- [Platform-version CI 37117650497](https://github.com/ankus-net/ankus/actions/runs/37117650497)
   passes both runtime jobs and the old-source macOS ARM64/PostgreSQL 16 suite.
   Its three failures are repaired in the current composition: macOS PostgreSQL
   15 now publishes `.so` before linking/control generation; Windows PostgreSQL
@@ -25319,14 +25319,14 @@ all six modules. The complete outcome snapshot is retained with the validation e
 
 ## Primary CI acceptance for c24297f
 
-[CI 37149579835](https://github.com/willibrandon/ankus/actions/runs/37149579835)
+[CI 37149579835](https://github.com/ankus-net/ankus/actions/runs/37149579835)
 completed successfully on **c24297f / runtime 10.0.12-ankus.4**. All six TRX
 reports were checked independently for each platform; every result is passed or
 an explicitly reported platform skip. Linux x64/PostgreSQL 18 records **11,640
 total / 11,623 passed / 17 skips / zero failures**, with a **36m33s** job. macOS
 ARM64/PostgreSQL 18 records **11,640 / 11,611 / 29 / zero**, **26m54s**. Windows
 x64/PostgreSQL 17 records **11,640 / 11,615 / 25 / zero**, **32m40s**. Quality and
-all runtime build jobs also pass. [Docs 37149579838](https://github.com/willibrandon/ankus/actions/runs/37149579838)
+all runtime build jobs also pass. [Docs 37149579838](https://github.com/ankus-net/ankus/actions/runs/37149579838)
 passes. These results establish their committed source; the shared diagnostic
 collector and subsequent review corrections remain uncommitted and require
 their own acceptance.
@@ -25353,13 +25353,13 @@ are asserted directly. These results precede the diagnostic-failure cleanup
 correction and further review fixes; they do not establish acceptance for those
 changed sources.
 
-[Linux version CI 37154140634](https://github.com/willibrandon/ankus/actions/runs/37154140634)
+[Linux version CI 37154140634](https://github.com/ankus-net/ankus/actions/runs/37154140634)
 was dispatched on **c24297f / ankus.4** after the dedicated validator finished.
 It runs complete unsharded PostgreSQL 13–17 and 19 suites; outcomes are pending.
 
 ## Current-runtime Linux version refresh: PostgreSQL 13 and 14
 
-Version CI [37154140634](https://github.com/willibrandon/ankus/actions/runs/37154140634)
+Version CI [37154140634](https://github.com/ankus-net/ankus/actions/runs/37154140634)
 on **c24297f / 10.0.12-ankus.4** passes the full Linux x64 suites for
 PostgreSQL **13** and **14**. Job durations are **38m20s** and **39m15s**.
 All six retained reports were checked independently for each major:
@@ -25473,7 +25473,7 @@ later partial-generation work has a separate source identity and acceptance.
 
 ## Current-runtime Linux PostgreSQL 15 refresh
 
-[Version CI 37154140634](https://github.com/willibrandon/ankus/actions/runs/37154140634)
+[Version CI 37154140634](https://github.com/ankus-net/ankus/actions/runs/37154140634)
 also passes PostgreSQL 15 on **c24297f / 10.0.12-ankus.4**, **39m10s** job.
 All six reports are independently checked: **11,640 total / 11,623 passed /
 17 platform skips / zero failures**. PostgreSQL 16 remains in progress and
@@ -25563,7 +25563,7 @@ from this correctness composition.
 
 ## Complete current-runtime Linux major refresh
 
-[Version CI 37154140634](https://github.com/willibrandon/ankus/actions/runs/37154140634)
+[Version CI 37154140634](https://github.com/ankus-net/ankus/actions/runs/37154140634)
 finishes green on **c24297f / 10.0.12-ankus.4**. PostgreSQL **13–17 and 19 beta 4**
 each pass the complete six-module suite: **11,640 total / 11,623 passed /
 17 platform skips / zero failures**. Every individual case and all counters are
@@ -25595,13 +25595,13 @@ site checks in **3.774s** both pass with zero diagnostics. The corrected Windows
 module reports and gates documented above are independently retained and checked.
 
 The accepted composition is committed as **596a8af**. Its [primary CI
-37169593738](https://github.com/willibrandon/ankus/actions/runs/37169593738) passes
+37169593738](https://github.com/ankus-net/ankus/actions/runs/37169593738) passes
 quality, all three runtime jobs and the complete suite on every primary platform
 using **10.0.12-ankus.4**. Each platform executes **11,816 cases** across six
 independently verified reports: Linux/18 passes **11,768** with **48 platform
 skips** in **36m32s** job; macOS ARM64/18 passes **11,756** with **60 skips** in
 **26m44s**; Windows/17 passes **11,788** with **28 skips** in **33m14s**. All have
-zero failures. [Docs CI 37169593785](https://github.com/willibrandon/ankus/actions/runs/37169593785)
+zero failures. [Docs CI 37169593785](https://github.com/ankus-net/ankus/actions/runs/37169593785)
 also passes. These results cover the committed correctness milestone, separately
 from subsequent discovery/cache and persistent logging-hook validation.
 
@@ -25837,10 +25837,10 @@ newer workflow running.
   48 platform skips / zero failures** in **50m23s**. All 137 recorded authored
   inputs remain unchanged. Corrected Windows/13.23 generator, build and native
   lifecycle modules pass; Release, API freshness and site checks pass.
-  [Primary CI 37169593738](https://github.com/willibrandon/ankus/actions/runs/37169593738)
+  [Primary CI 37169593738](https://github.com/ankus-net/ankus/actions/runs/37169593738)
   passes quality, all runtime jobs and all three complete platform suites.
   All six report modules were independently verified for each platform.
-  [Docs CI 37169593785](https://github.com/willibrandon/ankus/actions/runs/37169593785)
+  [Docs CI 37169593785](https://github.com/ankus-net/ankus/actions/runs/37169593785)
   passes. Original failed attempts and subsequent corrections remain archived.
 - Generator discovery now uses semantic attribute indexes and independently
   cached reference metadata. Physical SQL line attribution is separate from
@@ -25850,10 +25850,10 @@ newer workflow running.
   passes **11,830 total / 11,782 passed / 48 platform skips / zero failures**
   in **50m29.932s**. All six reports are independently verified; all 1,648
   recorded authored inputs remain unchanged. Release and API freshness pass.
-  Committed as **811f8d0**. [Primary CI 37174019108](https://github.com/willibrandon/ankus/actions/runs/37174019108)
+  Committed as **811f8d0**. [Primary CI 37174019108](https://github.com/ankus-net/ankus/actions/runs/37174019108)
   passes quality, all runtime jobs and all three complete platform suites.
   All six reports are independently verified for each platform.
-  [Docs CI 37174019056](https://github.com/willibrandon/ankus/actions/runs/37174019056)
+  [Docs CI 37174019056](https://github.com/ankus-net/ankus/actions/runs/37174019056)
   passes.
 - CLI environment and invocation selection now follows pgrx's `PG_VERSION`,
   `DBNAME` and SQL-client defaults while retaining explicit and publication
@@ -25869,7 +25869,7 @@ newer workflow running.
   and Unicode through both creation paths. Their native filenames use the
   normalized extension identity, and complete acceptance passes.
 - Current-runtime Linux/13–17 and 19 acceptance is green on **c24297f** in
-  [version CI 37154140634](https://github.com/willibrandon/ankus/actions/runs/37154140634).
+  [version CI 37154140634](https://github.com/ankus-net/ankus/actions/runs/37154140634).
   Later review fixes still require refreshed version/platform evidence.
 - Persistent generated `emit_log_hook` coverage exposed diagnostic cleanup
   after PostgreSQL resets `ErrorContext`. The generated dispatcher allocated
@@ -25891,11 +25891,11 @@ newer workflow running.
   passes with zero warnings/errors in **2m05.832s**; API freshness passes in
   **10.037s**. Site build produces 287 pages and site checks report zero errors,
   warnings or hints.
-- Windows/17 in [primary CI 37183879367](https://github.com/willibrandon/ankus/actions/runs/37183879367)
-  and Windows/13 in [version CI 37183984954](https://github.com/willibrandon/ankus/actions/runs/37183984954)
+- Windows/17 in [primary CI 37183879367](https://github.com/ankus-net/ankus/actions/runs/37183879367)
+  and Windows/13 in [version CI 37183984954](https://github.com/ankus-net/ankus/actions/runs/37183984954)
   exposed MSVC reading generated Unicode C with code page 1252. **b602b32**
   selects UTF-8 and compiles the native library. Replacement
-  [CI 37188103763](https://github.com/willibrandon/ankus/actions/runs/37188103763)
+  [CI 37188103763](https://github.com/ankus-net/ankus/actions/runs/37188103763)
   passes Linux/18 and macOS ARM64/18, then exposes PostgreSQL's Windows
   `pg_regress` converting its Unicode working directory through the active ANSI
   code page. The driver now runs only that native boundary in an ASCII staging
@@ -25906,7 +25906,7 @@ newer workflow running.
   classifies those vendor directories as system headers while retaining
   warnings-as-errors for generated and Ankus-owned C. Native binding tests pass
   **1,061**, with nine platform skips. Replacement primary CI remains required.
-- [Additional-platform CI 37183985269](https://github.com/willibrandon/ankus/actions/runs/37183985269)
+- [Additional-platform CI 37183985269](https://github.com/ankus-net/ankus/actions/runs/37183985269)
   completes the macOS x64/PostgreSQL 18 full suite on **7b65e23**. Its test step
   passes in **4h25m01s**. Later benchmark and recovery work still requires
   replacement platform evidence.
@@ -25920,7 +25920,7 @@ newer workflow running.
   API freshness passes at **244 pages / 2,791 members**; site checks report zero
   diagnostics and the site builds **293 pages**. The final Windows compiler-name
   contract passes **4/4** after that complete run.
-- [Primary CI 37202027663](https://github.com/willibrandon/ankus/actions/runs/37202027663)
+- [Primary CI 37202027663](https://github.com/ankus-net/ankus/actions/runs/37202027663)
   passes quality, all runtime jobs and macOS ARM64/18, then exposes three
   independent acceptance defects. PostgreSQL 18 benchmarks attempted to copy
   into a root-owned system installation on Linux; one generator test used an LF
@@ -25935,9 +25935,9 @@ newer workflow running.
   skips / zero failures** in **33m55.690s**. The final Release build has zero
   warnings/errors in **1m23.56s**; documentation checks have zero diagnostics,
   API generation reports **244 pages / 2,791 members**, and the site builds
-  **293 pages**. [Replacement primary CI 37209084748](https://github.com/willibrandon/ankus/actions/runs/37209084748)
+  **293 pages**. [Replacement primary CI 37209084748](https://github.com/ankus-net/ankus/actions/runs/37209084748)
   passes quality, all runtime jobs and all three complete platform suites;
-  [docs CI 37209084764](https://github.com/willibrandon/ankus/actions/runs/37209084764)
+  [docs CI 37209084764](https://github.com/ankus-net/ankus/actions/runs/37209084764)
   passes build and deployment.
 - The pgrx `errors` example now has a runnable C# sample and real PostgreSQL
   coverage for nullable arrays, managed exceptions, guarded native errors,
@@ -25968,10 +25968,10 @@ newer workflow running.
   remain unchanged. Release passes with zero warnings/errors in **50.63s**;
   API freshness reports **244 pages / 2,791 members**, and site checks have zero
   errors, warnings or hints. The site builds **293 pages** in **3.41s**.
-  Before this milestone, [CI 37214601834](https://github.com/willibrandon/ankus/actions/runs/37214601834)
+  Before this milestone, [CI 37214601834](https://github.com/ankus-net/ankus/actions/runs/37214601834)
   passes quality, all runtime jobs and all three complete platform suites.
   All six report modules were independently verified for each platform.
-  [Docs 37214601835](https://github.com/willibrandon/ankus/actions/runs/37214601835)
+  [Docs 37214601835](https://github.com/ankus-net/ankus/actions/runs/37214601835)
   passes build and deployment.
 - Remaining review work includes precise diagnostics and useful code fixes,
   remaining CLI/account contracts, representative samples and final platform
@@ -26389,8 +26389,8 @@ validation checkout afterward, and its **39** runtime files also match.
 | Ankus.Runtime.Tests | 2,134 | 2,134 | 0 | 0 |
 
 Before committing, the previous **a04f6ed** primary
-[CI 37244724738](https://github.com/willibrandon/ankus/actions/runs/37244724738)
-and [Docs 37244724710](https://github.com/willibrandon/ankus/actions/runs/37244724710)
+[CI 37244724738](https://github.com/ankus-net/ankus/actions/runs/37244724738)
+and [Docs 37244724710](https://github.com/ankus-net/ankus/actions/runs/37244724710)
 are checked green. This local complete acceptance does not establish the new
 composition's other-platform acceptance or full-port completion.
 
@@ -26459,8 +26459,8 @@ the single validation checkout and selected runtime payload remain available.
 | Ankus.Runtime.Tests | 2,134 | 2,134 | 0 | 0 |
 
 Before committing, previous primary
-[CI 37256732695](https://github.com/willibrandon/ankus/actions/runs/37256732695)
-and [Docs 37256732723](https://github.com/willibrandon/ankus/actions/runs/37256732723)
+[CI 37256732695](https://github.com/ankus-net/ankus/actions/runs/37256732695)
+and [Docs 37256732723](https://github.com/ankus-net/ankus/actions/runs/37256732723)
 are checked green on **063011d**. They precede this new composition and do not
 establish its other-platform acceptance. Exact mutable-borrow signature and
 ten-thousand-string/top-five lifetime source cases remain separate pending
@@ -26510,10 +26510,10 @@ cancellation behavior. Historical passing suites do not validate that repair.
   passes **12,260 total / 12,212 passed / 48 skips**, with zero failures; all six
   reports, **1,669** source inputs and **39** runtime files are post-verified.
   Release, API freshness and site checks/build pass. Committed as **a04f6ed**;
-  replacement [CI 37244724738](https://github.com/willibrandon/ankus/actions/runs/37244724738)
+  replacement [CI 37244724738](https://github.com/ankus-net/ankus/actions/runs/37244724738)
   passes quality, all runtime jobs and all three complete platform suites.
   All six reports are independently checked per platform, with results and
-  durations above; no timeouts. [Docs 37244724710](https://github.com/willibrandon/ankus/actions/runs/37244724710)
+  durations above; no timeouts. [Docs 37244724710](https://github.com/ankus-net/ankus/actions/runs/37244724710)
   passes.
 - Transaction-completion cleanup preserves the primary error, complete secondary
   warnings, callback drain and cancellation. Terminal-only transport retains
@@ -26527,11 +26527,11 @@ cancellation behavior. Historical passing suites do not validate that repair.
   API freshness and site checks/build pass. Exact rejected sources/reports and
   their assertion corrections remain in the evidence archive. Other-platform
   acceptance now passes on all three primary platforms. Committed as **063011d**;
-  replacement [CI 37256732695](https://github.com/willibrandon/ankus/actions/runs/37256732695)
+  replacement [CI 37256732695](https://github.com/ankus-net/ankus/actions/runs/37256732695)
   passes quality, all runtime jobs and all three complete platform suites.
   All six reports are independently verified per platform, with counts and
   durations above; no failures or timeouts.
-  [Docs 37256732723](https://github.com/willibrandon/ankus/actions/runs/37256732723)
+  [Docs 37256732723](https://github.com/ankus-net/ankus/actions/runs/37256732723)
   passes. Previous primary CI and docs were checked green before committing.
 - The array and borrowed-JSON examples now join ordinary solution builds and
   native integration publication. They preserve pgrx's nullable cells, copied
@@ -26553,11 +26553,11 @@ cancellation behavior. Historical passing suites do not validate that repair.
   combinations and the remaining array source cases are still required; this is not full
   array source parity. Previous primary CI and docs are green on **063011d**.
   Committed and pushed as **73c83db**; replacement
-  [CI 37261359905](https://github.com/willibrandon/ankus/actions/runs/37261359905)
+  [CI 37261359905](https://github.com/ankus-net/ankus/actions/runs/37261359905)
   passes quality, all three runtime jobs and all three complete platform suites.
   All six reports per platform and their individual outcomes/execution identities
   are independently verified, with counts and measured durations above.
-  [Docs 37261359962](https://github.com/willibrandon/ankus/actions/runs/37261359962)
+  [Docs 37261359962](https://github.com/ankus-net/ankus/actions/runs/37261359962)
   passes.
 - Exact upstream mutable-borrow and ten-thousand-string/top-five source cases
   now have ordinary generator/native regressions. All **eight** concrete
@@ -26572,7 +26572,7 @@ cancellation behavior. Historical passing suites do not validate that repair.
   source inputs / **39** runtime files are independently post-verified.
   All **1,715** archived source/evidence files are byte-verified before bounded
   completed-output cleanup. Primary CI and docs are green on **73c83db**;
-  [CI 37265430538](https://github.com/willibrandon/ankus/actions/runs/37265430538)
+  [CI 37265430538](https://github.com/ankus-net/ankus/actions/runs/37265430538)
   now passes all three complete primary-platform suites, quality and runtime jobs.
   All six reports per platform are independently verified; no failures/timeouts.
 - The numeric example now joins ordinary solution builds and published native
@@ -26590,29 +26590,29 @@ cancellation behavior. Historical passing suites do not validate that repair.
   all **1,723** archived source/evidence files are byte-verified before completed
   output cleanup. Previous primary CI is green on **708d93a**, and the latest
   docs run is green on **73c83db**. Numeric platform acceptance remains required.
-- [CI 37236731631](https://github.com/willibrandon/ankus/actions/runs/37236731631)
+- [CI 37236731631](https://github.com/ankus-net/ankus/actions/runs/37236731631)
   on **a78be2c** passes quality, all runtime jobs and all three complete platform
   suites. All six reports are independently verified per platform, with counts
   and durations above; no timeouts.
-  [Docs 37236731662](https://github.com/willibrandon/ankus/actions/runs/37236731662)
+  [Docs 37236731662](https://github.com/ankus-net/ankus/actions/runs/37236731662)
   passes. This revision precedes the enum/serialization milestone.
 - The enum/serialization milestone is committed as **dc48724**.
-  Replacement [CI 37241377151](https://github.com/willibrandon/ankus/actions/runs/37241377151)
+  Replacement [CI 37241377151](https://github.com/ankus-net/ankus/actions/runs/37241377151)
   passes quality, all runtime jobs and all three complete primary-platform
   suites. All six reports are independently verified per platform; counts and
   durations are above, with zero failures/timeouts.
-  [Docs 37241377228](https://github.com/willibrandon/ankus/actions/runs/37241377228)
+  [Docs 37241377228](https://github.com/ankus-net/ankus/actions/runs/37241377228)
   passes. This revision precedes the pending reader/cleanup corrections.
-- [CI 37229162897](https://github.com/willibrandon/ankus/actions/runs/37229162897)
+- [CI 37229162897](https://github.com/ankus-net/ankus/actions/runs/37229162897)
   on **e456e92** passes quality, all runtime jobs, macOS ARM64/18 and
   Windows/17 and Linux/18. All six reports are independently verified per
   platform: **11,993 total / 11,933 passed / 60 skips** on macOS,
   **11,993 total / 11,965 passed / 28 skips** on Windows, and
   **11,993 total / 11,945 passed / 48 skips** on Linux. Job durations are
   **28m03s**, **34m33s** and **37m53s**, respectively; no timeouts.
-  [Docs 37229162983](https://github.com/willibrandon/ankus/actions/runs/37229162983)
+  [Docs 37229162983](https://github.com/ankus-net/ankus/actions/runs/37229162983)
   passes. Previous **CI 37224209715** and its docs run pass all required jobs.
-- [Platform-version CI 37218985660](https://github.com/willibrandon/ankus/actions/runs/37218985660)
+- [Platform-version CI 37218985660](https://github.com/ankus-net/ankus/actions/runs/37218985660)
   passes Windows/13 and 18 and macOS ARM64/15 and 16 on **4c9cc43**.
   All six reports are verified per cell; durations and results appear above.
   These older revisions do not establish current-source acceptance for every
@@ -27105,9 +27105,9 @@ workflow is still running. The current local repair passes both complete
 platform suites; its replacement primary-platform CI remains required.
 
 The repair is committed and pushed as **7dca056**. Replacement
-[CI 37361236252](https://github.com/willibrandon/ankus/actions/runs/37361236252)
+[CI 37361236252](https://github.com/ankus-net/ankus/actions/runs/37361236252)
 passes quality, all three runtime jobs and all three complete platform suites;
-[Docs 37361236408](https://github.com/willibrandon/ankus/actions/runs/37361236408)
+[Docs 37361236408](https://github.com/ankus-net/ankus/actions/runs/37361236408)
 passes. All eighteen actual uploaded reports independently verify, including
 unique executions, counters and zero failures. Each platform executes **12,561**
 cases: Linux x64/PostgreSQL **18** passes **12,513**, skipping **48**; macOS
@@ -27130,69 +27130,69 @@ extensions. Counts supplement the backend, ownership and recovery assertions.
 | Frozen raw transport / crash-recovery readiness composition, runtime **ankus.4** | Linux x64 / 18.6 | 12,561 total; 12,513 passed; 48 platform skips; zero failures | 41m19.728s tests |
 | Same composition and runtime | Windows x64 / 17.11 | 12,561 total; 12,533 passed; 28 platform skips; zero failures | 47m38.639s tests; 48m23.936s command |
 | Frozen metadata image / editor scope composition, runtime **ankus.4** | Linux x64 / 18.6 | 12,540 total; 12,492 passed; 48 platform skips; zero failures | 40m52.575s tests |
-| [CI 37335229927](https://github.com/willibrandon/ankus/actions/runs/37335229927), b9eb9db / runtime **ankus.4** | Linux x64 / 18 | 12,524 total; 12,476 passed; 48 platform skips; zero failures | 39m16s job |
+| [CI 37335229927](https://github.com/ankus-net/ankus/actions/runs/37335229927), b9eb9db / runtime **ankus.4** | Linux x64 / 18 | 12,524 total; 12,476 passed; 48 platform skips; zero failures | 39m16s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 12,524 total; 12,464 passed; 60 platform skips; zero failures | 29m14s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 12,524 total; 12,496 passed; 28 platform skips; zero failures | 35m03s job |
 | Frozen native input/resource recovery composition, runtime **ankus.4** | Linux x64 / 18.6 | 12,524 total; 12,476 passed; 48 platform skips; zero failures | 41m15.595s tests |
-| [CI 37313742483](https://github.com/willibrandon/ankus/actions/runs/37313742483), ff7e07c / runtime **ankus.4** | Linux x64 / 18 | 12,453 total; 12,405 passed; 48 platform skips; zero failures | 39m21s job |
+| [CI 37313742483](https://github.com/ankus-net/ankus/actions/runs/37313742483), ff7e07c / runtime **ankus.4** | Linux x64 / 18 | 12,453 total; 12,405 passed; 48 platform skips; zero failures | 39m21s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 12,453 total; 12,393 passed; 60 platform skips; zero failures | 28m59s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 12,453 total; 12,425 passed; 28 platform skips; zero failures | 35m11s job |
 | Frozen command-specific copy assertions, runtime **ankus.4** | Linux x64 / 18.6 | 12,453 total; 12,405 passed; 48 platform skips; zero failures | 36m05.545s tests |
-| [CI 37302379250](https://github.com/willibrandon/ankus/actions/runs/37302379250), afb59ae / runtime **ankus.4** | Linux x64 / 18 | 12,453 total; 12,405 passed; 48 platform skips; zero failures | 39m15s job |
+| [CI 37302379250](https://github.com/ankus-net/ankus/actions/runs/37302379250), afb59ae / runtime **ankus.4** | Linux x64 / 18 | 12,453 total; 12,405 passed; 48 platform skips; zero failures | 39m15s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 12,453 total; 12,393 passed; 60 platform skips; zero failures | 28m58s job |
 | Frozen diagnostic-allocation / CLI / JSON composition, runtime **ankus.4** | Linux x64 / 18.6 | 12,453 total; 12,405 passed; 48 platform skips; zero failures | 36m21.402s tests |
-| [CI 37286283685](https://github.com/willibrandon/ankus/actions/runs/37286283685), fd79e24 / runtime **ankus.4** | Linux x64 / 18 | 12,438 total; 12,390 passed; 48 platform skips; zero failures | 39m03s job |
+| [CI 37286283685](https://github.com/ankus-net/ankus/actions/runs/37286283685), fd79e24 / runtime **ankus.4** | Linux x64 / 18 | 12,438 total; 12,390 passed; 48 platform skips; zero failures | 39m03s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 12,438 total; 12,378 passed; 60 platform skips; zero failures | 28m54s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 12,438 total; 12,410 passed; 28 platform skips; zero failures | 34m27s job |
 | Frozen cleanup-reporter / benchmark composition, runtime **ankus.4** | Windows x64 / 17.11 | 12,438 total; 12,410 passed; 28 platform skips; zero failures | 41m41.075s tests |
 | Frozen numeric-example composition / runtime **ankus.4** | Linux x64 / 18.6 | 12,422 total; 12,374 passed; 48 platform skips; zero failures | 39m51.287s tests; 40m18.80s command |
-| [CI 37265430538](https://github.com/willibrandon/ankus/actions/runs/37265430538), 708d93a / runtime **ankus.4** | Linux x64 / 18 | 12,389 total; 12,341 passed; 48 platform skips; zero failures | 38m24s job |
+| [CI 37265430538](https://github.com/ankus-net/ankus/actions/runs/37265430538), 708d93a / runtime **ankus.4** | Linux x64 / 18 | 12,389 total; 12,341 passed; 48 platform skips; zero failures | 38m24s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 12,389 total; 12,361 passed; 28 platform skips; zero failures | 35m51s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 12,389 total; 12,329 passed; 60 platform skips; zero failures | 29m41s job |
-| [CI 37261359905](https://github.com/willibrandon/ankus/actions/runs/37261359905), 73c83db / runtime **ankus.4** | Linux x64 / 18 | 12,377 total; 12,329 passed; 48 platform skips; zero failures | 38m18s job |
-| [CI 37261359905](https://github.com/willibrandon/ankus/actions/runs/37261359905), 73c83db / runtime **ankus.4** | Windows x64 / 17 | 12,377 total; 12,349 passed; 28 platform skips; zero failures | 35m19s job |
+| [CI 37261359905](https://github.com/ankus-net/ankus/actions/runs/37261359905), 73c83db / runtime **ankus.4** | Linux x64 / 18 | 12,377 total; 12,329 passed; 48 platform skips; zero failures | 38m18s job |
+| [CI 37261359905](https://github.com/ankus-net/ankus/actions/runs/37261359905), 73c83db / runtime **ankus.4** | Windows x64 / 17 | 12,377 total; 12,349 passed; 28 platform skips; zero failures | 35m19s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 12,377 total; 12,317 passed; 60 platform skips; zero failures | 36m06s job |
 | Frozen borrowed-array signature/lifetime composition / runtime **ankus.4** | Linux x64 / 18.6 | 12,389 total; 12,341 passed; 48 platform skips; zero failures | 39m35.194s tests; 40m02.50s command |
-| [CI 37256732695](https://github.com/willibrandon/ankus/actions/runs/37256732695), 063011d / runtime **ankus.4** | Linux x64 / 18 | 12,289 total; 12,241 passed; 48 platform skips; zero failures | 38m04s job |
+| [CI 37256732695](https://github.com/ankus-net/ankus/actions/runs/37256732695), 063011d / runtime **ankus.4** | Linux x64 / 18 | 12,289 total; 12,241 passed; 48 platform skips; zero failures | 38m04s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 12,289 total; 12,261 passed; 28 platform skips; zero failures | 35m29s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 12,289 total; 12,229 passed; 60 platform skips; zero failures | 28m05s job |
 | Frozen array/JSON composition / runtime **ankus.4** | Linux x64 / 18.6 | 12,377 total; 12,329 passed; 48 platform skips; zero failures | 39m48.005s tests; 40m15.68s command |
 | Frozen transaction-completion cleanup composition / runtime **ankus.4** | Linux x64 / 18.6 | 12,289 total; 12,241 passed; 48 platform skips; zero failures | 39m18.598s tests; 39m41.40s command |
 | Frozen remaining-reader composition / runtime **ankus.4** | Linux x64 / 18.6 | 12,260 total; 12,212 passed; 48 platform skips; zero failures | 39m21.681s tests; 39m44.06s command |
-| [CI 37244724738](https://github.com/willibrandon/ankus/actions/runs/37244724738), a04f6ed / runtime **ankus.4** | Linux x64 / 18 | 12,260 total; 12,212 passed; 48 platform skips; zero failures | 37m58s job |
+| [CI 37244724738](https://github.com/ankus-net/ankus/actions/runs/37244724738), a04f6ed / runtime **ankus.4** | Linux x64 / 18 | 12,260 total; 12,212 passed; 48 platform skips; zero failures | 37m58s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 12,260 total; 12,232 passed; 28 platform skips; zero failures | 36m27s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 12,260 total; 12,200 passed; 60 platform skips; zero failures | 28m23s job |
-| [CI 37241377151](https://github.com/willibrandon/ankus/actions/runs/37241377151), dc48724 / runtime **ankus.4** | Linux x64 / 18 | 12,244 total; 12,196 passed; 48 platform skips; zero failures | 37m56s job |
+| [CI 37241377151](https://github.com/ankus-net/ankus/actions/runs/37241377151), dc48724 / runtime **ankus.4** | Linux x64 / 18 | 12,244 total; 12,196 passed; 48 platform skips; zero failures | 37m56s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 12,244 total; 12,216 passed; 28 platform skips; zero failures | 34m39s job |
-| [CI 37241377151](https://github.com/willibrandon/ankus/actions/runs/37241377151), dc48724 / runtime **ankus.4** | macOS ARM64 / 18 | 12,244 total; 12,184 passed; 60 platform skips; zero failures | 28m58s job |
-| [CI 37236731631](https://github.com/willibrandon/ankus/actions/runs/37236731631), a78be2c / runtime **ankus.4** | Linux x64 / 18 | 12,078 total; 12,030 passed; 48 platform skips; zero failures | 37m58s job |
+| [CI 37241377151](https://github.com/ankus-net/ankus/actions/runs/37241377151), dc48724 / runtime **ankus.4** | macOS ARM64 / 18 | 12,244 total; 12,184 passed; 60 platform skips; zero failures | 28m58s job |
+| [CI 37236731631](https://github.com/ankus-net/ankus/actions/runs/37236731631), a78be2c / runtime **ankus.4** | Linux x64 / 18 | 12,078 total; 12,030 passed; 48 platform skips; zero failures | 37m58s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 12,078 total; 12,018 passed; 60 platform skips; zero failures | 34m45s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 12,078 total; 12,050 passed; 28 platform skips; zero failures | 35m30s job |
 | Frozen enum/serialization composition / runtime **ankus.4** | Linux x64 / 18.6 | 12,244 total; 12,196 passed; 48 platform skips; zero failures | 39m27.245s tests; 39m48.86s command |
 | Frozen referenced-identity/namespace composition / runtime **ankus.4** | Linux x64 / 18.6 | 12,078 total; 12,030 passed; 48 platform skips; zero failures | 39m27.651s tests; 39m50.14s command |
 | Frozen cold-editor/reload composition / runtime **ankus.4** | Linux x64 / 18.6 | 11,993 total; 11,945 passed; 48 platform skips; zero failures | 39m16.950s tests; 39m40.34s command |
-| [CI 37224209715](https://github.com/willibrandon/ankus/actions/runs/37224209715), bed79ab / runtime **ankus.4** | Linux x64 / 18 | 11,991 total; 11,943 passed; 48 platform skips; zero failures | 37m52s job |
+| [CI 37224209715](https://github.com/ankus-net/ankus/actions/runs/37224209715), bed79ab / runtime **ankus.4** | Linux x64 / 18 | 11,991 total; 11,943 passed; 48 platform skips; zero failures | 37m52s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 11,991 total; 11,931 passed; 60 platform skips; zero failures | 28m08s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 11,991 total; 11,963 passed; 28 platform skips; zero failures | 33m54s job |
 | Datum mapping diagnostic milestone / runtime **ankus.4** | Linux x64 / 18.6 | 11,927 total; 11,879 passed; 48 platform skips; zero failures | 42m37.991s tests; 44m55s command |
-| [CI 37218726638](https://github.com/willibrandon/ankus/actions/runs/37218726638), 4c9cc43 / runtime **ankus.4** | Linux x64 / 18 | 11,927 total; 11,879 passed; 48 platform skips; zero failures | 37m47s job |
+| [CI 37218726638](https://github.com/ankus-net/ankus/actions/runs/37218726638), 4c9cc43 / runtime **ankus.4** | Linux x64 / 18 | 11,927 total; 11,879 passed; 48 platform skips; zero failures | 37m47s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 11,927 total; 11,867 passed; 60 platform skips; zero failures | 28m21s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 11,927 total; 11,899 passed; 28 platform skips; zero failures | 35m55s job |
-| [CI 37214601834](https://github.com/willibrandon/ankus/actions/runs/37214601834), a5690d4 / runtime **ankus.4** | Linux x64 / 18 | 11,906 total; 11,858 passed; 48 platform skips; zero failures | 37m56s job |
+| [CI 37214601834](https://github.com/ankus-net/ankus/actions/runs/37214601834), a5690d4 / runtime **ankus.4** | Linux x64 / 18 | 11,906 total; 11,858 passed; 48 platform skips; zero failures | 37m56s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 11,906 total; 11,846 passed; 60 platform skips; zero failures | 30m25s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 11,906 total; 11,878 passed; 28 platform skips; zero failures | 40m18s job |
 | Frozen CLI/template/reporting-hook composition / runtime **ankus.4** | Linux x64 / 18.6 | 11,840 total; 11,792 passed; 48 platform skips; zero failures | 51m13.968s command |
 | Frozen generator-discovery composition / runtime **ankus.4** | Linux x64 / 18.6 | 11,830 total; 11,782 passed; 48 platform skips; zero failures | 50m29.932s command |
-| [CI 37174019108](https://github.com/willibrandon/ankus/actions/runs/37174019108), 811f8d0 / runtime **ankus.4** | macOS ARM64 / 18 | 11,830 total; 11,770 passed; 60 platform skips; zero failures | 26m56s job |
+| [CI 37174019108](https://github.com/ankus-net/ankus/actions/runs/37174019108), 811f8d0 / runtime **ankus.4** | macOS ARM64 / 18 | 11,830 total; 11,770 passed; 60 platform skips; zero failures | 26m56s job |
 | Same CI / revision / runtime | Linux x64 / 18 | 11,830 total; 11,782 passed; 48 platform skips; zero failures | 36m27s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 11,830 total; 11,802 passed; 28 platform skips; zero failures | 33m59s job |
-| [CI 37169593738](https://github.com/willibrandon/ankus/actions/runs/37169593738), 596a8af / runtime **ankus.4** | Linux x64 / 18 | 11,816 total; 11,768 passed; 48 platform skips; zero failures | 36m32s job |
+| [CI 37169593738](https://github.com/ankus-net/ankus/actions/runs/37169593738), 596a8af / runtime **ankus.4** | Linux x64 / 18 | 11,816 total; 11,768 passed; 48 platform skips; zero failures | 36m32s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 11,816 total; 11,756 passed; 60 platform skips; zero failures | 26m44s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 11,816 total; 11,788 passed; 28 platform skips; zero failures | 33m14s job |
-| [CI 37149579835](https://github.com/willibrandon/ankus/actions/runs/37149579835), c24297f / runtime **ankus.4** | Linux x64 / 18 | 11,640 total; 11,623 passed; 17 platform skips; zero failures | 36m33s job |
+| [CI 37149579835](https://github.com/ankus-net/ankus/actions/runs/37149579835), c24297f / runtime **ankus.4** | Linux x64 / 18 | 11,640 total; 11,623 passed; 17 platform skips; zero failures | 36m33s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 11,640 total; 11,611 passed; 29 platform skips; zero failures | 26m54s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 11,640 total; 11,615 passed; 25 platform skips; zero failures | 32m40s job |
-| [Version CI 37154140634](https://github.com/willibrandon/ankus/actions/runs/37154140634), c24297f / runtime **ankus.4** | Linux x64 / 13 | 11,640 total; 11,623 passed; 17 platform skips; zero failures | 38m20s job |
+| [Version CI 37154140634](https://github.com/ankus-net/ankus/actions/runs/37154140634), c24297f / runtime **ankus.4** | Linux x64 / 13 | 11,640 total; 11,623 passed; 17 platform skips; zero failures | 38m20s job |
 | Same version CI / revision / runtime | Linux x64 / 14 | 11,640 total; 11,623 passed; 17 platform skips; zero failures | 39m15s job |
 | Same version CI / revision / runtime | Linux x64 / 15 | 11,640 total; 11,623 passed; 17 platform skips; zero failures | 39m10s job |
 | Same version CI / revision / runtime | Linux x64 / 16 | 11,640 total; 11,623 passed; 17 platform skips; zero failures | 39m29s job |
@@ -27204,21 +27204,21 @@ extensions. Counts supplement the backend, ownership and recovery assertions.
 | Same frozen composition / runtime | macOS ARM64 / 18.6 | 11,609 total; 11,580 passed; 29 platform skips; zero failures | 22m29.195s tests |
 | Same frozen composition / runtime | Windows x64 / 13.23 | 11,609 total; 11,584 passed; 25 platform skips; zero failures | 38m42.708s tests |
 | Frozen 66-file composition with ANKUS129 editor correction / runtime **ankus.4** | Linux x64 / 18.6 | 11,640 total; 11,623 passed; 17 platform skips; zero failures | 50m45.859s tests |
-| [CI 37145034638](https://github.com/willibrandon/ankus/actions/runs/37145034638), b9b7eb5 / runtime **ankus.4** | Linux x64 / 18 | 11,609 total; 11,592 passed; 17 platform skips; zero failures | 36m31s job |
+| [CI 37145034638](https://github.com/ankus-net/ankus/actions/runs/37145034638), b9b7eb5 / runtime **ankus.4** | Linux x64 / 18 | 11,609 total; 11,592 passed; 17 platform skips; zero failures | 36m31s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 11,609 total; 11,580 passed; 29 platform skips; zero failures | 26m35s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 11,609 total; 11,584 passed; 25 platform skips; zero failures | 31m43s job |
-| [Version CI 37145038020](https://github.com/willibrandon/ankus/actions/runs/37145038020), b9b7eb5 / runtime **ankus.4** | macOS ARM64 / 16 | 11,609 total; 11,580 passed; 29 platform skips; zero failures | 26m32s job |
+| [Version CI 37145038020](https://github.com/ankus-net/ankus/actions/runs/37145038020), b9b7eb5 / runtime **ankus.4** | macOS ARM64 / 16 | 11,609 total; 11,580 passed; 29 platform skips; zero failures | 26m32s job |
 | Same version CI / revision / runtime | Windows x64 / 13 | 11,609 total; 11,584 passed; 25 platform skips; zero failures | 33m51s job |
 | Same version CI / revision / runtime | macOS ARM64 / 15 | 11,609 total; 11,580 passed; 29 platform skips; zero failures | 26m17s job |
 | Same version CI / revision / runtime | Windows x64 / 18 | 11,609 total; 11,584 passed; 25 platform skips; zero failures | 31m46s job |
-| [Intel CI 37131051660](https://github.com/willibrandon/ankus/actions/runs/37131051660), 04f0a8a / runtime **ankus.4** | macOS x64 / 18.6 | 11,568 total; 11,541 passed; 27 platform skips; zero failures | 3h59m34s job |
-| [CI 37131029131](https://github.com/willibrandon/ankus/actions/runs/37131029131), 04f0a8a / runtime **ankus.4** | Linux x64 / 18 | 11,568 total; 11,553 passed; 15 platform skips; zero failures | 36m04s job |
+| [Intel CI 37131051660](https://github.com/ankus-net/ankus/actions/runs/37131051660), 04f0a8a / runtime **ankus.4** | macOS x64 / 18.6 | 11,568 total; 11,541 passed; 27 platform skips; zero failures | 3h59m34s job |
+| [CI 37131029131](https://github.com/ankus-net/ankus/actions/runs/37131029131), 04f0a8a / runtime **ankus.4** | Linux x64 / 18 | 11,568 total; 11,553 passed; 15 platform skips; zero failures | 36m04s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 11,568 total; 11,541 passed; 27 platform skips; zero failures | 26m50s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 11,568 total; 11,543 passed; 25 platform skips; zero failures | 32m10s job |
-| [Version CI 37131055805](https://github.com/willibrandon/ankus/actions/runs/37131055805), 04f0a8a / runtime **ankus.4** | macOS ARM64 / 16 | 11,568 total; 11,541 passed; 27 platform skips; zero failures | 26m32s job |
+| [Version CI 37131055805](https://github.com/ankus-net/ankus/actions/runs/37131055805), 04f0a8a / runtime **ankus.4** | macOS ARM64 / 16 | 11,568 total; 11,541 passed; 27 platform skips; zero failures | 26m32s job |
 | Same version CI / revision / runtime | Windows x64 / 18 | 11,568 total; 11,543 passed; 25 platform skips; zero failures | 31m18s job |
 | Same version CI / revision / runtime | macOS ARM64 / 15 | 11,568 total; 11,541 passed; 27 platform skips; zero failures | 26m18s job |
-| [CI 37117515450](https://github.com/willibrandon/ankus/actions/runs/37117515450), 7f58d03 | Linux x64 / 18 | 11,528 total; 11,514 passed; 14 platform skips; zero failures | 36m09s job |
+| [CI 37117515450](https://github.com/ankus-net/ankus/actions/runs/37117515450), 7f58d03 | Linux x64 / 18 | 11,528 total; 11,514 passed; 14 platform skips; zero failures | 36m09s job |
 | Same CI / revision | macOS ARM64 / 18 | 11,528 total; 11,502 passed; 26 platform skips; zero failures | 27m09s job |
 | Same CI / revision | Windows x64 / 17 | 11,528 total; 11,503 passed; 25 platform skips; zero failures | 32m02s job |
 | Current compatibility, array/editor and runtime/compiler **ankus.4** changes | macOS ARM64 / 15.19 | 11,568 total; 11,541 passed; 27 platform skips; zero failures | 25m20.803s tests |
@@ -27226,8 +27226,8 @@ extensions. Counts supplement the backend, ownership and recovery assertions.
 | Same source and runtime/compiler **ankus.4** changes | Linux x64 / 18.6 | 11,568 total; 11,553 passed; 15 platform skips; zero failures | 48m57.583s tests |
 | Current compatibility and array/editor changes, runtime/compiler **ankus.3** | Windows x64 / 13.23 | 11,568 total; 11,543 passed; 25 platform skips; zero failures | 41m49.962s tests |
 | 3a06bd9 with editor correction and diagnostic help links | Linux x64 / 18.6 | 11,528 total; 11,514 passed; 14 platform skips; zero failures | 36m50.035s tests |
-| [Version CI 36988634319](https://github.com/willibrandon/ankus/actions/runs/36988634319), 99660ea | Linux x64 / each of 13–17 | 10,984 total per major; 10,970 passed; 14 platform skips; zero failures | 26m15s–27m28s jobs |
-| [Version CI 37016275325](https://github.com/willibrandon/ankus/actions/runs/37016275325), c3db5ed | Linux x64 / 19 beta 4 | 11,120 total; 11,106 passed; 14 platform skips; zero failures | 28m12s job |
+| [Version CI 36988634319](https://github.com/ankus-net/ankus/actions/runs/36988634319), 99660ea | Linux x64 / each of 13–17 | 10,984 total per major; 10,970 passed; 14 platform skips; zero failures | 26m15s–27m28s jobs |
+| [Version CI 37016275325](https://github.com/ankus-net/ankus/actions/runs/37016275325), c3db5ed | Linux x64 / 19 beta 4 | 11,120 total; 11,106 passed; 14 platform skips; zero failures | 28m12s job |
 
 All six TRX reports were independently checked for each current primary
 platform, including the **04f0a8a / ankus.4** CI run, and the editor composition.
@@ -27240,10 +27240,10 @@ current-source acceptance for every advertised combination.
 
 Earlier platform results, timings and failures remain in the
 [evidence archive](docs/contributing/evidence/port-history.md#progress-snapshot-before-editor-acceptance).
-[Docs 37114971196](https://github.com/willibrandon/ankus/actions/runs/37114971196)
+[Docs 37114971196](https://github.com/ankus-net/ankus/actions/runs/37114971196)
 passes on 3a06bd9. The editor change is committed as **21d586f** and the version
-workflow as **7f58d03**. Replacement [CI 37117515450](https://github.com/willibrandon/ankus/actions/runs/37117515450)
-passes quality, all runtime jobs and all three complete suites. [Docs 37117515453](https://github.com/willibrandon/ankus/actions/runs/37117515453)
+workflow as **7f58d03**. Replacement [CI 37117515450](https://github.com/ankus-net/ankus/actions/runs/37117515450)
+passes quality, all runtime jobs and all three complete suites. [Docs 37117515453](https://github.com/ankus-net/ankus/actions/runs/37117515453)
 passes.
 
 ## Rejected SPI flow composition, 2026-10-05
@@ -27799,7 +27799,7 @@ and reruns complete acceptance with the enforced severity unchanged.
 
 ### Crash-isolation replacement CI and allocation investigation — 2026-10-05
 
-[CI 37410596204](https://github.com/willibrandon/ankus/actions/runs/37410596204),
+[CI 37410596204](https://github.com/ankus-net/ankus/actions/runs/37410596204),
 source **b2fe3e7**, passes quality and all three runtime jobs. Windows x64/PostgreSQL
 17 completes **12,799** cases: **12,771** passed, **28** platform skips and no
 failures, in **37m11s** job duration. Linux x64/PostgreSQL 18 completes **12,799**
@@ -28057,8 +28057,8 @@ acceptance above. Fresh primary CI for the combined source remains required.
 
 The coherent compiler milestone is committed and pushed as **ec19b55**. Prior
 CI outcomes are rechecked and unchanged before push. New primary
-[CI 37426534475](https://github.com/willibrandon/ankus/actions/runs/37426534475)
-and [Docs 37426534451](https://github.com/willibrandon/ankus/actions/runs/37426534451)
+[CI 37426534475](https://github.com/ankus-net/ankus/actions/runs/37426534475)
+and [Docs 37426534451](https://github.com/ankus-net/ankus/actions/runs/37426534451)
 are in progress; no success or combined-platform acceptance is claimed yet.
 The independent enum native composition remains under validation. Unrelated
 user changes and ignored review material are not committed.
@@ -28133,8 +28133,8 @@ misreported as a new correctness defect.
 
 Source **ec19b552fec6057681f3c067e294ef5696c3cb2f**, runtime
 **10.0.12-ankus.4**, passes
-[CI 37426534475](https://github.com/willibrandon/ankus/actions/runs/37426534475)
-and [Docs 37426534451](https://github.com/willibrandon/ankus/actions/runs/37426534451).
+[CI 37426534475](https://github.com/ankus-net/ankus/actions/runs/37426534475)
+and [Docs 37426534451](https://github.com/ankus-net/ankus/actions/runs/37426534451).
 Quality, all three runtime jobs and all three complete native platform suites
 succeed. The eighteen actual TRX reports are retained and independently checked
 for module totals, outcome counts and unique execution identities. Each platform
@@ -28521,10 +28521,10 @@ native validation is still running.
 The coherent milestone is committed and pushed as **a177cfc**. Previous outcomes
 are checked again immediately before pushing and remain unchanged: latest primary
 CI and Docs are green, and no earlier run is live. Replacement
-[CI 37448633288](https://github.com/willibrandon/ankus/actions/runs/37448633288)
+[CI 37448633288](https://github.com/ankus-net/ankus/actions/runs/37448633288)
 starts on that exact revision. All three runtime jobs pass; quality and all three
 complete platform suites remain running. The matching
-[Docs 37448633273](https://github.com/willibrandon/ankus/actions/runs/37448633273)
+[Docs 37448633273](https://github.com/ankus-net/ankus/actions/runs/37448633273)
 builds and deploys successfully. No pending platform outcome is recorded as a pass.
 
 The quality job subsequently passes in **9m46s**, ending at **10:25:48 UTC**;
@@ -28589,8 +28589,8 @@ as accepted or included in this module source milestone.
 The coherent module milestone is committed and pushed as **e41c687**. Previous
 outcomes are checked again immediately before pushing and remain unchanged:
 latest primary CI/Docs pass, with no previous live run. Replacement
-[CI 37454418329](https://github.com/willibrandon/ankus/actions/runs/37454418329)
-and [Docs 37454418510](https://github.com/willibrandon/ankus/actions/runs/37454418510)
+[CI 37454418329](https://github.com/ankus-net/ankus/actions/runs/37454418329)
+and [Docs 37454418510](https://github.com/ankus-net/ankus/actions/runs/37454418510)
 start on that exact revision. Their pending outcomes remain unaccepted.
 
 ### Datetime normal-source focused acceptance, 2026-10-06
@@ -28802,10 +28802,10 @@ No source promotion or complete acceptance is claimed for the corrected child.
 | Earlier primary CI, **f86e0ac / ankus.4** | Linux x64 / 18 | 12,630 total; 12,582 passed; 48 platform skips; zero failures | 39m27s job |
 | Same CI / revision / runtime | macOS ARM64 / 18 | 12,630 total; 12,570 passed; 60 platform skips; zero failures | 34m10s job |
 | Same CI / revision / runtime | Windows x64 / 17 | 12,630 total; 12,602 passed; 28 platform skips; zero failures | 35m21s job |
-| [New primary CI](https://github.com/willibrandon/ankus/actions/runs/37401674049), **15efe37 / ankus.4** | macOS ARM64 / 18 | 12,799 total; 12,739 passed; 60 platform skips; zero failures | 29m40s job |
+| [New primary CI](https://github.com/ankus-net/ankus/actions/runs/37401674049), **15efe37 / ankus.4** | macOS ARM64 / 18 | 12,799 total; 12,739 passed; 60 platform skips; zero failures | 29m40s job |
 | Same CI / revision / runtime | Linux x64 / 18 | 12,799 total; 12,751 passed; 48 platform skips; zero failures | 39m40s job |
 | Same CI / revision / runtime, rejected | Windows x64 / 17.11 | 12,799 total; 12,770 passed; 28 platform skips; one recovery timeout | 35m28s job; superseded by the successful crash-isolation replacement |
-| [Crash-isolation replacement CI](https://github.com/willibrandon/ankus/actions/runs/37410596204), **b2fe3e7 / ankus.4** | Windows x64 / 17 | 12,799 total; 12,771 passed; 28 platform skips; zero failures | 37m11s job |
+| [Crash-isolation replacement CI](https://github.com/ankus-net/ankus/actions/runs/37410596204), **b2fe3e7 / ankus.4** | Windows x64 / 17 | 12,799 total; 12,771 passed; 28 platform skips; zero failures | 37m11s job |
 | Same replacement CI / revision / runtime | Linux x64 / 18 | 12,799 total; 12,751 passed; 48 platform skips; zero failures | 40m11s job |
 | Same replacement CI, rejected | macOS ARM64 / 18 | Generator allocation regression fails; only four of six module reports exist | 30m43s job; superseded by the successful declaration/cache CI milestone |
 | Allocation workload reproduction, **b2fe3e7 / ankus.4**, private phase observations | macOS ARM64 / 18.6 | 12,799 total; 12,739 passed; 60 platform skips; zero failures | 28m37.771s tests; 29m33.377s command; does not reproduce the CI failure |
@@ -28846,11 +28846,11 @@ named source and PostgreSQL/platform combinations, not the complete port.
   runtime payload inputs match after execution. The exact **1,851**-file archive
   is retained, and all **12** changed/new files are promoted byte-for-byte.
   Normal Release, API freshness and both site checks pass.
-  [Replacement CI 37448633288](https://github.com/willibrandon/ankus/actions/runs/37448633288)
+  [Replacement CI 37448633288](https://github.com/ankus-net/ankus/actions/runs/37448633288)
   passes on all three platforms. All eighteen actual reports, **67** native
   recovery cases, **158** callback cases and **54** prefix cases per platform
   independently verify. The matching
-  [docs deployment](https://github.com/willibrandon/ankus/actions/runs/37448633273)
+  [docs deployment](https://github.com/ankus-net/ankus/actions/runs/37448633273)
   passes. Separate callback-only
   Linux acceptance has **13,165** total, **13,117** passed, **48** skips and zero failures;
   its rejected setup run remains recorded separately.
@@ -28868,9 +28868,9 @@ named source and PostgreSQL/platform combinations, not the complete port.
   source/report archive matches every byte; all **6** changed/new files are
   promoted with **1,839** accepted inputs unchanged after the final gates.
   Normal Release, API freshness and both site checks pass. Committed/pushed as
-  **e41c687**; [CI 37454418329](https://github.com/willibrandon/ankus/actions/runs/37454418329)
+  **e41c687**; [CI 37454418329](https://github.com/ankus-net/ankus/actions/runs/37454418329)
   passes quality, all runtime jobs and all three full platform suites.
-  [Docs 37454418510](https://github.com/willibrandon/ankus/actions/runs/37454418510)
+  [Docs 37454418510](https://github.com/ankus-net/ankus/actions/runs/37454418510)
   passes. The first macOS attempt failed after concurrent private validation
   exhausted disk space. Completed owned outputs are removed, validation is
   separated from CI, and macOS-only attempt **2** passes in **28m29s**.
@@ -28977,11 +28977,11 @@ source inputs still match after these gates. Only the two generated API pages
 required by the updated XML comments change.
 
 The precommit check records primary
-[CI 37454418329](https://github.com/willibrandon/ankus/actions/runs/37454418329)
-and [Docs 37454418510](https://github.com/willibrandon/ankus/actions/runs/37454418510)
+[CI 37454418329](https://github.com/ankus-net/ankus/actions/runs/37454418329)
+and [Docs 37454418510](https://github.com/ankus-net/ankus/actions/runs/37454418510)
 on **e41c687** as successful. Earlier failed runs **37401674049** and
 **37410596204** remain retained and are superseded by the corrected complete
-primary evidence. [Intel refresh 37460600236](https://github.com/willibrandon/ankus/actions/runs/37460600236)
+primary evidence. [Intel refresh 37460600236](https://github.com/ankus-net/ankus/actions/runs/37460600236)
 has a successful runtime job and is still running its complete platform job.
 The completed private Linux run leaves no active test processes; **461** empty
 owned temporary directories are removed without recursion, preserving all files,
@@ -28992,10 +28992,10 @@ it does not establish complete version/platform or full-port acceptance.
 The accepted SQL/datetime milestone is committed and pushed as **4da0bec**.
 The prepush check again records the previous primary CI/docs as successful and
 Intel refresh as running. New
-[CI 37472689738](https://github.com/willibrandon/ankus/actions/runs/37472689738)
+[CI 37472689738](https://github.com/ankus-net/ankus/actions/runs/37472689738)
 has passed all three runtime jobs; quality and all three complete platform
 suites are running.
-[Docs 37472689525](https://github.com/willibrandon/ankus/actions/runs/37472689525)
+[Docs 37472689525](https://github.com/ankus-net/ankus/actions/runs/37472689525)
 passes build and deployment. The next function-provider correction has **1,853**
 ordinary inputs frozen and is executing the complete Linux/PostgreSQL **18.6**
 suite independently of primary CI. Its exact generator evidence remains valid;
@@ -29310,7 +29310,7 @@ run competes for a private platform runner.
 The first dedicated run exposed two machine prerequisites in sequence. The
 runtime prerequisites check first rejected the absent `pkg-config`; the package
 was installed and its command now resolves from the runner path. The retry,
-[Intel run 37518305139](https://github.com/willibrandon/ankus/actions/runs/37518305139),
+[Intel run 37518305139](https://github.com/ankus-net/ankus/actions/runs/37518305139),
 then built the runtime but failed while linking the Native AOT compiler because
 direct Clang invocation had no macOS SDK root and could not resolve `-ldl`.
 
@@ -29327,7 +29327,7 @@ and successful. Primary run **37518295419** has successful quality and all three
 runtime jobs; its Linux, macOS ARM64 and Windows complete test jobs remain in
 progress. The failed dedicated run above is the failure addressed by this change.
 
-The first corrected [Intel run 37521646285](https://github.com/willibrandon/ankus/actions/runs/37521646285)
+The first corrected [Intel run 37521646285](https://github.com/ankus-net/ankus/actions/runs/37521646285)
 passes the runtime and ILCompiler builds but exposes one missed environment
 handoff: the Native AOT host-probe `dotnet publish` still runs without the selected
 SDK root and fails to resolve `-ldl`. Passing the same toolchain environment to
@@ -29340,7 +29340,7 @@ Primary **37518295419** remains in progress with quality, all runtime jobs and
 macOS ARM64 complete; docs **37518295279** succeeds. Replacement primary
 **37521629720** is queued and docs **37521629544** is waiting.
 
-The next [Intel run 37523293619](https://github.com/willibrandon/ankus/actions/runs/37523293619)
+The next [Intel run 37523293619](https://github.com/ankus-net/ankus/actions/runs/37523293619)
 passes the complete runtime job in **8m21s**, including the corrected Native AOT
 host probe. Its full test job builds successfully, then fails during generated
 consumer work because the active SDK root was scoped to the earlier runtime job.
@@ -29409,7 +29409,7 @@ consumes no runner.
 
 ## Intel macOS timeout correction — 2026-10-06
 
-[Additional-platform run 37529141287](https://github.com/willibrandon/ankus/actions/runs/37529141287)
+[Additional-platform run 37529141287](https://github.com/ankus-net/ankus/actions/runs/37529141287)
 proves the SDK correction reached the complete Intel suite. The runtime job passed
 in **54s**, and the test job completed its build in **5m39s**. The full test step
 then ran for **54m26s** until the workflow's inherited 60-minute job limit cancelled
@@ -29471,7 +29471,7 @@ change an enum label before installation. Generated literals now emit explicit
 publication regression and all four cached-plan cases pass **5/5** on PostgreSQL
 18 after a zero-warning rebuild.
 
-[Intel run 37536883192](https://github.com/willibrandon/ankus/actions/runs/37536883192)
+[Intel run 37536883192](https://github.com/ankus-net/ankus/actions/runs/37536883192)
 provides the first complete dedicated macOS x64/PostgreSQL **18.6** result at
 source **8b7e33b**: **13,422** total, **13,362** passed, **60** platform skips and
 zero failures. The integration module completed in **1h39m56.422s**, and the job
@@ -29556,7 +29556,7 @@ now an adjustable dispatch/repository limit. Three eligible services can execute
 independent version cells concurrently while retaining one complete unsharded
 suite per cell. Replacement supported-major evidence remains pending.
 
-[Platform-version run 37553505757](https://github.com/willibrandon/ankus/actions/runs/37553505757)
+[Platform-version run 37553505757](https://github.com/ankus-net/ankus/actions/runs/37553505757)
 at **9ecf554** passes both macOS ARM64 cells and Windows/PostgreSQL 13, then
 exposes two independent Windows/PostgreSQL 18 fixture failures. An installed
 template's Native AOT Source Link input reached exactly **260 characters** under
@@ -29680,16 +29680,16 @@ and errors. API freshness verifies **244** pages and **2,793** members;
 documentation checks report no errors, warnings or hints, and the production
 site builds all **295** pages.
 
-Primary run [37644853764](https://github.com/willibrandon/ankus/actions/runs/37644853764)
+Primary run [37644853764](https://github.com/ankus-net/ankus/actions/runs/37644853764)
 at preceding source **82503bf** passes quality, all three runtime builds and the
 complete Linux/PostgreSQL 18, macOS ARM64/PostgreSQL 18 and Windows/PostgreSQL 17
-suites. Its matching [documentation run](https://github.com/willibrandon/ankus/actions/runs/37644853500)
+suites. Its matching [documentation run](https://github.com/ankus-net/ankus/actions/runs/37644853500)
 also passes. This records the required previous-run outcome before the diagnostic
 milestone is committed; replacement CI remains required for the new diagnostics.
 
 ## Deterministic benchmark comparison fixture — 2026-10-07
 
-Platform-version run [37656015714](https://github.com/willibrandon/ankus/actions/runs/37656015714)
+Platform-version run [37656015714](https://github.com/ankus-net/ankus/actions/runs/37656015714)
 passes the complete macOS ARM64/PostgreSQL 15 and 16 jobs. Windows/PostgreSQL 18
 passes its **5,029/5,029** integration tests but fails the Runtime module because
 `RunnerComparesPersistedSamplesWithConfiguredResampling` measured a constant
@@ -29724,7 +29724,7 @@ no current failure was hidden or cancelled.
 
 ## Unified CI publication concurrency — 2026-10-07
 
-Linux version run [37656004533](https://github.com/willibrandon/ankus/actions/runs/37656004533)
+Linux version run [37656004533](https://github.com/ankus-net/ankus/actions/runs/37656004533)
 showed that PostgreSQL 15 passed all **13,485** reported cases with **13,437**
 passes, **48** platform skips and zero failures, but its 10-processor runner took
 **1h40m41s**. The job used only two package-consumer slots. Initial publication
@@ -29789,7 +29789,7 @@ and the production site builds all **295** pages.
 
 ## Windows development-port exclusion — 2026-10-08
 
-Primary run [37766380749](https://github.com/willibrandon/ankus/actions/runs/37766380749)
+Primary run [37766380749](https://github.com/ankus-net/ankus/actions/runs/37766380749)
 at **a04472b** passed quality, all runtime jobs and the complete
 Linux/PostgreSQL 18 and macOS ARM64/PostgreSQL 18 suites. Windows x64/PostgreSQL
 17 completed **5,068** integration cases with one failure:
@@ -29995,14 +29995,14 @@ return `1|1` after it; repeated rows through one executor `FmgrInfo` still share
 state (`1|2|3`). Function-state and diagnostic-encoding cases pass **26/26** on
 Linux x64/PostgreSQL **18.6**.
 
-Primary run [37778899670](https://github.com/willibrandon/ankus/actions/runs/37778899670)
+Primary run [37778899670](https://github.com/ankus-net/ankus/actions/runs/37778899670)
 at **1504d0d** passed quality, runtime and the complete Linux and macOS suites.
 Windows/PostgreSQL 17 exposed two test-only defects. The scaffolder test compared
 generated SQL with LF text, but a Windows checkout's templates use CRLF and
 scaffolding preserves them; it now compares normalized lines. The LATIN1
 commit-callback case read `LogFilePath`, which on Windows is a UTF-8 snapshot
 that `ReadServerLog()` decodes from `pg_ctl`'s raw `.stderr.log`; the LATIN1
-byte became U+FFFD there. Run [37782541757](https://github.com/willibrandon/ankus/actions/runs/37782541757)
+byte became U+FFFD there. Run [37782541757](https://github.com/ankus-net/ankus/actions/runs/37782541757)
 at **d5f27a0** confirmed that diagnosis: every other Windows module and the
 complete Linux and macOS suites passed. The case now reads the raw native file,
 where PostgreSQL's redirected stderr keeps database-encoded bytes on every
@@ -30010,7 +30010,7 @@ platform.
 
 ## Primary CI superseded by e0e469a — 2026-10-08
 
-[CI 37741393964](https://github.com/willibrandon/ankus/actions/runs/37741393964) on
+[CI 37741393964](https://github.com/ankus-net/ankus/actions/runs/37741393964) on
 **67c9cb5 / ankus.4** was the last green primary run before **e0e469a**.
 Primary CI then failed on Windows from **a04472b** through **e05d946**; the
 causes and repairs are recorded in PROGRESS.md.

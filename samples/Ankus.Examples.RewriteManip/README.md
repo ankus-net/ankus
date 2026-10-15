@@ -67,5 +67,5 @@ return `false`.
   and add boundary indexes, NULL arguments, the installed signatures and the
   PostgreSQL 16 error with recovery in the same backend.
 
-See [native PostgreSQL declarations](https://willibrandon.github.io/ankus/raw-values/#native-postgresql-declarations)
+See [native PostgreSQL declarations](https://ankus.net/raw-values/#native-postgresql-declarations)
 for raw node pointers, `NativeMethods` and the native error guard.

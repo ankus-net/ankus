@@ -57,7 +57,7 @@ public sealed partial class SpiInterpolationAnalyzerTests
         Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
         Assert.AreEqual(argument, error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
         Assert.Contains("Spi.Sql", error.GetMessage(System.Globalization.CultureInfo.InvariantCulture));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/spi/#parameterized-interpolation", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/spi/#parameterized-interpolation", error.Descriptor.HelpLinkUri);
     }
 
     /// <summary>

@@ -48,7 +48,7 @@ dotnet test
 
 The generated backend fixture preloads the extension and verifies a worker's
 committed query result from another PostgreSQL process. The
-[database observer sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.BackgroundWorkers)
+[database observer sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.BackgroundWorkers)
 also publishes shared counters for SQL sessions.
 
 ## Declaration diagnostics

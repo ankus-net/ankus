@@ -19,13 +19,13 @@ public sealed class PgFunctionGenerator : IIncrementalGenerator
         "ANKUS002", "Invalid PostgreSQL function name",
         "SQL name '{0}' must start with a lowercase ASCII letter or underscore and contain 1-63 lowercase ASCII letters, digits, or underscores",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/function-declarations/#function-names");
+        helpLinkUri: "https://ankus.net/function-declarations/#function-names");
 
     private static readonly DiagnosticDescriptor s_duplicateSqlSignature = new(
         "ANKUS207", "Duplicate PostgreSQL input signature",
         "SQL input signature '{0}' is already declared in this extension; use a different SQL name, schema, or input parameter types",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/function-declarations/#function-names");
+        helpLinkUri: "https://ankus.net/function-declarations/#function-names");
 
     /// <summary>
     /// Registers semantic attribute discovery and deterministic extension source generation.

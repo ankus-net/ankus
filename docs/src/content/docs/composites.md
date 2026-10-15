@@ -163,7 +163,7 @@ SpiParameter absent = SpiParameter.Create(null, descriptor);
 SpiParameter absentArray = SpiParameter.CreateArray(null, descriptor);
 ```
 
-The [composites sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Composites)
+The [composites sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Composites)
 ports pgrx's `composite_type` example. Bootstrap SQL creates the types, and C#
 functions create, copy and nest them, add an operator over a composite and
 aggregate composite inputs. It also covers arrays, SETOF and anonymous record

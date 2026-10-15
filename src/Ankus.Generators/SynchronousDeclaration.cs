@@ -9,7 +9,7 @@ namespace Ankus.Generators;
 /// </summary>
 internal static class SynchronousDeclaration
 {
-    private const string HelpLink = "https://willibrandon.github.io/ankus/reference/execution/#backend-threads-and-tasks";
+    private const string HelpLink = "https://ankus.net/reference/execution/#backend-threads-and-tasks";
     private static readonly DiagnosticDescriptor s_async = new(
         "ANKUS030", "Asynchronous PostgreSQL function",
         "'{0}' cannot use async: PostgreSQL backend access ends when the callback returns; keep the entry method synchronous and complete its work before returning",

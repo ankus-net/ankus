@@ -193,5 +193,5 @@ Editors offer **Make static** for `ANKUS130`, **Make synchronous** for
 parameter** or **Change the type** for `ANKUS532`, and **Pass by value** for an
 `in` or `ref readonly` bencher (`ANKUS533`).
 
-The [benchmark sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Benchmarks)
+The [benchmark sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Benchmarks)
 shows value operations, batched setup and SPI writes.

@@ -43,4 +43,4 @@ Later versions install beside it and update as described in the
 - The other differences are those of the
   [versioned library sample](../Ankus.Examples.VersionedLibrary/#deliberate-differences).
 
-See [build settings](https://willibrandon.github.io/ankus/reference/build-settings/#native-library-names).
+See [build settings](https://ankus.net/reference/build-settings/#native-library-names).

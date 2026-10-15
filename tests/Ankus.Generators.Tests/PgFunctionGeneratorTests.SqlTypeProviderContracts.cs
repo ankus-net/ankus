@@ -290,7 +290,7 @@ public sealed partial class PgFunctionGeneratorTests
             Diagnostic error = Assert.ContainsSingle(errors.Where(item => item.Id == id));
             Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
             Assert.AreEqual(expression, error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
-            Assert.AreEqual("https://willibrandon.github.io/ankus/custom-sql/#type-provider-diagnostics", error.Descriptor.HelpLinkUri);
+            Assert.AreEqual("https://ankus.net/custom-sql/#type-provider-diagnostics", error.Descriptor.HelpLinkUri);
         }
 
         Assert.IsEmpty(output.GetDiagnostics(context.CancellationToken).Where(static diagnostic => diagnostic.Severity >= DiagnosticSeverity.Warning));

@@ -20,9 +20,9 @@ the search index. Search is generated during the production build.
 `pnpm build` also regenerates the [public API reference](api-reference.md) from
 the compiled XML documentation. Run `pnpm api` to regenerate only those pages.
 
-Set Astro's `site` URL in `astro.config.mjs` when the public host is chosen. Until
-then, the build omits its sitemap. Astro's generated `docs/.astro/` files are
-ignored by Git.
+The site is published at the root of `https://ankus.net`, the custom domain of the
+repository's GitHub Pages, so pages link each other by root-relative routes with no
+base path. Astro's generated `docs/.astro/` files are ignored by Git.
 
 Pages in `src/content/docs/` are for people writing and deploying extensions.
 Keep examples close to the behavior they explain. Prefer a short explanation
@@ -33,7 +33,7 @@ Repository development, testing, and internal design notes belong in
 Site pages link each other by their published routes, such as `/api/ankus/`,
 which do not resolve when a page's source is viewed on GitHub. The README,
 `SECURITY.md` and sample READMEs therefore link the published pages under
-`https://willibrandon.github.io/ankus/`; contributor documents may link a page's
+`https://ankus.net/`; contributor documents may link a page's
 source when they are about editing it.
 
 The site uses Astro and Starlight. TypeScript is pinned to the newest stable

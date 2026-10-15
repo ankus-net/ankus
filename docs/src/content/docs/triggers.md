@@ -159,7 +159,7 @@ in the callback after the failed operation has rolled back.
 
 The public `samples/Ankus.Examples.Triggers` extension normalizes pet names,
 skips blank rows, and demonstrates trigger arguments and ordered installation SQL.
-The [notify sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Notify)
+The [notify sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Notify)
 uses AFTER row triggers to send cache-invalidation notifications, either for every
 changed row or once per changed category at commit.
 

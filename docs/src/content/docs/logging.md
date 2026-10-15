@@ -206,8 +206,8 @@ rolls back. `Fatal` ends the backend connection.
 `Panic` aborts the backend and causes PostgreSQL to terminate peer backends and
 perform crash recovery.
 
-The [errors sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Errors)
+The [errors sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Errors)
 provides complete runnable functions for managed failures, guarded native errors,
 INFO, WARNING, ERROR, FATAL, and PANIC. The
-[bad ideas sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.BadIdeas)
+[bad ideas sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.BadIdeas)
 shows `catch` blocks that swallow an ERROR but cannot discard FATAL or PANIC.

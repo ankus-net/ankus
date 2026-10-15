@@ -20,7 +20,7 @@ public sealed class NativeUnsafeAccessAnalyzer : DiagnosticAnalyzer
         "ANKUS129", "Raw PostgreSQL access requires an unsafe context",
         "Use an unsafe block for '{0}' and preserve its native ownership, lifetime and synchronization requirements",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/raw-values/#fixed-native-functions");
+        helpLinkUri: "https://ankus.net/raw-values/#fixed-native-functions");
 
     /// <summary>
     /// Gets the error for unacknowledged raw native operations.

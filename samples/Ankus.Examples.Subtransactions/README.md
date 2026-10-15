@@ -89,5 +89,5 @@ block cannot.
 `PgTransaction.RegisterSubtransactionCallback` observes savepoints as they
 start, commit and roll back. Its `PgSubtransactionId` values are PostgreSQL's
 backend-local subtransaction counters, not the `xid` values reported here. See
-[transaction callbacks](https://willibrandon.github.io/ankus/transaction-callbacks/#savepoints-and-subtransactions)
-and [transaction IDs](https://willibrandon.github.io/ankus/transaction-ids/).
+[transaction callbacks](https://ankus.net/transaction-callbacks/#savepoints-and-subtransactions)
+and [transaction IDs](https://ankus.net/transaction-ids/).

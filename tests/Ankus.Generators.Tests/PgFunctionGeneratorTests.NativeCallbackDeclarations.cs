@@ -157,7 +157,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
         Assert.AreEqual(highlight, error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
         Assert.Contains(property.Name, error.GetMessage(CultureInfo.InvariantCulture));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/raw-values/#native-callback-declaration-diagnostics", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/raw-values/#native-callback-declaration-diagnostics", error.Descriptor.HelpLinkUri);
         return error;
     }
 }

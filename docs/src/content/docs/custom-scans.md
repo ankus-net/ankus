@@ -204,13 +204,13 @@ one of its functions first, or add it to `session_preload_libraries`.
 | ANKUS539 | A provider method is `async` |
 | ANKUS540 | The class implements `IPgParallelCustomScan` for more than one shared memory type |
 
-The sample's [`NumberScan.cs`](https://github.com/willibrandon/ankus/blob/main/samples/Ankus.Examples.CustomScans/NumberScan.cs)
+The sample's [`NumberScan.cs`](https://github.com/ankus-net/ankus/blob/main/samples/Ankus.Examples.CustomScans/NumberScan.cs)
 is a complete provider with path data, ordered rows, rescans, backward reads,
 mark and restore, parallel scans, EXPLAIN properties and disposal.
 
 ## Native providers
 
-The [trace-scan sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.CustomScans)
+The [trace-scan sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.CustomScans)
 wraps sequential, index and index-only scan paths and delegates to their real
 child plans. It keeps the original path costs, ordering, qualifications, output
 values and parameters, and adds per-node EXPLAIN observations. After installing

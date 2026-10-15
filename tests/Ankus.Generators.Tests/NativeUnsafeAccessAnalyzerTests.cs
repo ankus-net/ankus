@@ -50,7 +50,7 @@ public sealed partial class NativeUnsafeAccessAnalyzerTests(TestContext context)
         Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
         Assert.AreEqual(expression, error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
         Assert.Contains("unsafe block", error.GetMessage(System.Globalization.CultureInfo.InvariantCulture));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/raw-values/#fixed-native-functions", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/raw-values/#fixed-native-functions", error.Descriptor.HelpLinkUri);
     }
 
     /// <summary>

@@ -12,7 +12,7 @@ internal sealed record AttributeMetadataFailure(string Attribute, string Owner)
     private static readonly DiagnosticDescriptor s_diagnostic = new("ANKUS206", "Unreadable declaration attribute metadata",
         "Attribute '{0}' on '{1}' cannot be decoded exactly; rebuild its defining assembly with complete valid UTF-8 metadata",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/custom-types/#referenced-attribute-metadata");
+        helpLinkUri: "https://ankus.net/custom-types/#referenced-attribute-metadata");
 
     /// <summary>
     /// Detaches the defining declaration and selected attribute identities.

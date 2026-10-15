@@ -99,7 +99,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual("ANKUS276", error.Id);
         Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
         Assert.AreEqual(Attribute, error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/raw-values/#managed-native-callbacks-and-hooks", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/raw-values/#managed-native-callbacks-and-hooks", error.Descriptor.HelpLinkUri);
         Assert.IsEmpty(compilation.GetTypeByMetadataName("Functions")!.GetTypeMembers());
         Assert.ContainsSingle(compilation.GetTypeByMetadataName("Ankus.Generated.ExtensionDispatchers")!.GetMembers());
         Assert.Contains("value", InstallationBody(compilation));

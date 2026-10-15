@@ -73,7 +73,7 @@ hooks and managed state are not automatically rolled back; registration code own
 their cleanup. Record each hook installation as soon as it succeeds, so a retry
 does not install the same hook again and save it as its own previous hook. See
 [idempotent hook installation](/raw-values/#managed-native-callbacks-and-hooks)
-and the [hooks sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Hooks).
+and the [hooks sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Hooks).
 
 ## Database access and failure
 

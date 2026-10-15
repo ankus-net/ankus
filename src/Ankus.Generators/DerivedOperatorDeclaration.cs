@@ -7,7 +7,7 @@ namespace Ankus.Generators;
 /// </summary>
 internal static class DerivedOperatorDeclaration
 {
-    private const string HelpLink = "https://willibrandon.github.io/ankus/operators-and-casts/#generated-type-operators";
+    private const string HelpLink = "https://ankus.net/operators-and-casts/#generated-type-operators";
 
     private static readonly DiagnosticDescriptor s_root = new(
         "ANKUS413", "Generated PostgreSQL operators require a supported type",

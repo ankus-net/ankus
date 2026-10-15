@@ -8,7 +8,7 @@ namespace Ankus.Generators;
 /// </summary>
 internal static class FunctionDeclarationDiagnostics
 {
-    private const string HelpLink = "https://willibrandon.github.io/ankus/function-declarations/#declaration-diagnostics";
+    private const string HelpLink = "https://ankus.net/function-declarations/#declaration-diagnostics";
 
     private static readonly DiagnosticDescriptor s_executionOption = new("ANKUS045", "Invalid PostgreSQL execution policy",
         "'{0}' must be a defined {1} value; choose a named member of that enum",

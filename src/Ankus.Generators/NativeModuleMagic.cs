@@ -17,7 +17,7 @@ internal static class NativeModuleMagic
         "ANKUS350", "Module name cannot contain zero characters",
         "Remove embedded zero characters from PgModule.Name or its project default; PostgreSQL requires the complete null-terminated value",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/reference/build-settings/#module-identity-diagnostics");
+        helpLinkUri: "https://ankus.net/reference/build-settings/#module-identity-diagnostics");
 
     /// <summary>
     /// Identifies the independently correctable module name Unicode encoding contract.
@@ -26,7 +26,7 @@ internal static class NativeModuleMagic
         "ANKUS351", "Module name requires well-formed Unicode",
         "Replace unpaired UTF-16 surrogate characters in PgModule.Name or its project default; Ankus preserves exact UTF-8 text without replacement",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/reference/build-settings/#module-identity-diagnostics");
+        helpLinkUri: "https://ankus.net/reference/build-settings/#module-identity-diagnostics");
 
     /// <summary>
     /// Identifies the independently correctable module version C-string boundary contract.
@@ -35,7 +35,7 @@ internal static class NativeModuleMagic
         "ANKUS352", "Module version cannot contain zero characters",
         "Remove embedded zero characters from PgModule.Version or its project default; PostgreSQL requires the complete null-terminated value",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/reference/build-settings/#module-identity-diagnostics");
+        helpLinkUri: "https://ankus.net/reference/build-settings/#module-identity-diagnostics");
 
     /// <summary>
     /// Identifies the independently correctable module version Unicode encoding contract.
@@ -44,7 +44,7 @@ internal static class NativeModuleMagic
         "ANKUS353", "Module version requires well-formed Unicode",
         "Replace unpaired UTF-16 surrogate characters in PgModule.Version or its project default; Ankus preserves exact UTF-8 text without replacement",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/reference/build-settings/#module-identity-diagnostics");
+        helpLinkUri: "https://ankus.net/reference/build-settings/#module-identity-diagnostics");
 
     /// <summary>
     /// Registers semantic identity discovery, separately cached native emission and current-tree diagnostics.

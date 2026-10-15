@@ -229,7 +229,7 @@ fit PostgreSQL's 63-byte UTF-8 limit.
 Any fixed schema makes the extension non-relocatable. Ankus records this in
 the generated control file, including when all fixed schemas already exist.
 
-The [schemas sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Schemas)
+The [schemas sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Schemas)
 ports pgrx's `schemas` example. It places functions and types in the
 installation schema, an extension-owned schema, `public` and `pg_catalog`.
 

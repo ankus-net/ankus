@@ -19,7 +19,7 @@ internal sealed class NativeCallbackDeclaration(IPropertySymbol property, IMetho
         "ANKUS276", "Native callback handler cannot be conditional",
         "Native callback '{0}' cannot use conditional handler '{1}'; remove Conditional so every native invocation runs the handler",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/raw-values/#managed-native-callbacks-and-hooks");
+        helpLinkUri: "https://ankus.net/raw-values/#managed-native-callbacks-and-hooks");
 
     /// <summary>
     /// Gets the defining partial property.

@@ -14,7 +14,7 @@ internal static class ConditionalEntryDeclaration
         "ANKUS277", "PostgreSQL entry method cannot be conditional",
         "PostgreSQL entry '{0}' cannot declare Conditional; remove the attribute so every invocation executes its body",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/reference/execution/#conditional-entry-methods");
+        helpLinkUri: "https://ankus.net/reference/execution/#conditional-entry-methods");
 
     /// <summary>
     /// Rejects conditional metadata on either partial declaration before emitting its caller.

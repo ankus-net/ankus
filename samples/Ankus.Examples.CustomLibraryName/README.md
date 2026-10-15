@@ -56,5 +56,5 @@ such as `other_name` do not conflict with .NET assembly naming analyzers.
   the published filenames, the control file, the embedded schema, the function's
   `probin` and, on PostgreSQL 18 and later, the loaded module.
 
-See [build settings](https://willibrandon.github.io/ankus/reference/build-settings/#native-library-names)
+See [build settings](https://ankus.net/reference/build-settings/#native-library-names)
 and the [versioned custom library name sample](../Ankus.Examples.VersionedCustomLibraryName/).

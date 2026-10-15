@@ -10,7 +10,7 @@ internal static class NativeCallbackDeclarationDiagnostics
     /// <summary>
     /// Links native callback failures to their exact declaration requirements.
     /// </summary>
-    private const string HelpLink = "https://willibrandon.github.io/ankus/raw-values/#native-callback-declaration-diagnostics";
+    private const string HelpLink = "https://ankus.net/raw-values/#native-callback-declaration-diagnostics";
 
     /// <summary>
     /// Stores the error for native callback requires one declaration.

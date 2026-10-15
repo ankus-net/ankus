@@ -196,5 +196,5 @@ set. TABLE fields can be rescaled explicitly in the iterator. Operators and
 casts cannot return sets. SQL graph IDs, prerequisites, enum dependencies, and
 function execution options work as they do for scalar functions.
 
-See the [sets sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Sets)
+See the [sets sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Sets)
 for streaming integers and streaming/materialized word tables.

@@ -31,7 +31,7 @@ env:
 
 jobs:
   runtime:
-    if: github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main'
+    if: github.repository == 'ankus-net/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main'
     runs-on: [self-hosted, Linux, X64, ankus-linux-versions-x64]
     timeout-minutes: 60
     steps:
@@ -84,7 +84,7 @@ jobs:
           retention-days: 3
 
   test:
-    if: github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main'
+    if: github.repository == 'ankus-net/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main'
     needs: runtime
     strategy:
       fail-fast: false

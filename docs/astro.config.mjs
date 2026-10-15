@@ -3,42 +3,12 @@ import { satteri } from '@astrojs/markdown-satteri';
 import starlight from '@astrojs/starlight';
 import { documentationGrammars } from './src/syntax/grammars.mjs';
 
-const siteBase = '/ankus';
-
-function addSiteBase(url) {
-  if (
-    !url.startsWith('/') ||
-    url.startsWith('//') ||
-    url === siteBase ||
-    url.startsWith(`${siteBase}/`)
-  ) {
-    return url;
-  }
-
-  return `${siteBase}${url}`;
-}
-
-function updateUrl(node, context) {
-  const url = addSiteBase(node.url);
-  if (url !== node.url) {
-    context.setProperty(node, 'url', url);
-  }
-}
-
-const siteBaseLinks = {
-  name: 'ankus-site-base-links',
-  link: updateUrl,
-  definition: updateUrl,
-  image: updateUrl,
-};
-
 export default defineConfig({
-  site: 'https://willibrandon.github.io/ankus',
-  base: siteBase,
+  site: 'https://ankus.net',
   outDir: '../artifacts/docs',
   cacheDir: './node_modules/.astro-cache',
   markdown: {
-    processor: satteri({ mdastPlugins: [siteBaseLinks] }),
+    processor: satteri(),
   },
   integrations: [
     starlight({
@@ -47,16 +17,16 @@ export default defineConfig({
       logo: { light: './src/assets/logo-light.svg', dark: './src/assets/logo-dark.svg', alt: 'Ankus' },
       favicon: '/favicon.svg',
       head: [
-        { tag: 'link', attrs: { rel: 'icon', type: 'image/x-icon', sizes: '16x16 32x32 48x48', href: `${siteBase}/favicon.ico` } },
-        { tag: 'link', attrs: { rel: 'icon', type: 'image/png', sizes: '16x16', href: `${siteBase}/favicon-16.png` } },
-        { tag: 'link', attrs: { rel: 'apple-touch-icon', sizes: '180x180', href: `${siteBase}/apple-touch-icon.png` } },
+        { tag: 'link', attrs: { rel: 'icon', type: 'image/x-icon', sizes: '16x16 32x32 48x48', href: '/favicon.ico' } },
+        { tag: 'link', attrs: { rel: 'icon', type: 'image/png', sizes: '16x16', href: '/favicon-16.png' } },
+        { tag: 'link', attrs: { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' } },
       ],
       disable404Route: true,
       social: [
         {
           icon: 'github',
           label: 'GitHub',
-          href: 'https://github.com/willibrandon/ankus',
+          href: 'https://github.com/ankus-net/ankus',
         },
       ],
       customCss: ['./src/styles/custom.css'],

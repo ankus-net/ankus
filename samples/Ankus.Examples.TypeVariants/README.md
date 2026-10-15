@@ -71,6 +71,6 @@ and `extension_sql!` blocks do.
   round-trips, error SQLSTATEs and messages, the packed payload size, the `u24`
   catalog representation and arrays with SQL NULL elements.
 
-See [custom types](https://willibrandon.github.io/ankus/custom-types/),
-[reusable scalar mappings](https://willibrandon.github.io/ankus/raw-values/#reusable-scalar-mappings)
-and [custom SQL](https://willibrandon.github.io/ankus/custom-sql/#shell-types-and-completion).
+See [custom types](https://ankus.net/custom-types/),
+[reusable scalar mappings](https://ankus.net/raw-values/#reusable-scalar-mappings)
+and [custom SQL](https://ankus.net/custom-sql/#shell-types-and-completion).

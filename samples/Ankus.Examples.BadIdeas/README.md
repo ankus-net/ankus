@@ -32,9 +32,9 @@ Run the last three only on a disposable server.
 | `fatal` | Catch a `FATAL!` with `catch_unwind` | **Retained.** The session ends after managed frames unwind. Other sessions continue. |
 | `error` | Swallow an `error!` with `catch_unwind` | **Swallowed, as in pgrx.** `PgLog.Error` throws an ordinary `PgException`; PostgreSQL has nothing to roll back. An error raised by PostgreSQL itself is different: Ankus keeps it pending unless a subtransaction rolls it back. See the [try and catch sample](../Ankus.Examples.TryCatch/). |
 | `warning` | Report a warning | Reported; the function returns `true`. |
-| `exec` | Run a program from the backend | **Documented, not ported.** `Process.Start` installs .NET's process-wide terminal and `SIGCHLD` handling in the backend. Run programs outside PostgreSQL, or with PostgreSQL's own `COPY ... PROGRAM`. See [process signals](https://willibrandon.github.io/ankus/reference/execution/#process-signals). |
+| `exec` | Run a program from the backend | **Documented, not ported.** `Process.Start` installs .NET's process-wide terminal and `SIGCHLD` handling in the backend. Run programs outside PostgreSQL, or with PostgreSQL's own `COPY ... PROGRAM`. See [process signals](https://ankus.net/reference/execution/#process-signals). |
 | `write_file` | Write arbitrary files as the server's operating-system user | **Contained by the sample.** Ankus does not sandbox extension code. The installation script revokes `EXECUTE` from `PUBLIC`, so only superusers and roles you grant can call it. |
-| `http` | Make a blocking network request | **Documented, not ported.** A blocking call cannot observe query cancellation unless the code checks `PgInterrupts` or links a cancellation token. Use a [background worker](https://willibrandon.github.io/ankus/background-workers/) for network work. |
+| `http` | Make a blocking network request | **Documented, not ported.** A blocking call cannot observe query cancellation unless the code checks `PgInterrupts` or links a cancellation token. Use a [background worker](https://ankus.net/background-workers/) for network work. |
 | `loop_forever` | Loop forever | **Converted to an error.** `PgInterrupts.Check()` lets cancellation and `statement_timeout` stop it with `57014`; the session continues. |
 | `random_abort` | Abort commits at random from a pre-commit callback | **Converted to an error.** A `PreCommit` exception rejects the commit: PostgreSQL rolls the transaction back and reports `38000`. |
 | `_PG_init` callback | Register a transaction callback at load | **Not ported.** pgrx's callback body is commented out and does nothing. |
@@ -60,5 +60,5 @@ Two more bad ideas are specific to .NET threads:
 - pgrx's example has no tests. The Ankus integration tests check every outcome
   above, including FATAL, PANIC and the thread crash in isolated servers.
 
-See [Running .NET inside PostgreSQL](https://willibrandon.github.io/ankus/reference/execution/)
-and [logging and errors](https://willibrandon.github.io/ankus/logging/).
+See [Running .NET inside PostgreSQL](https://ankus.net/reference/execution/)
+and [logging and errors](https://ankus.net/logging/).

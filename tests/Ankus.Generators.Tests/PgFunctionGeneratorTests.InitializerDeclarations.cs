@@ -65,7 +65,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(expected, error.Id);
         Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
         Assert.AreEqual(fragment, error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/initialization/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/initialization/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
         Assert.Contains("'Start'", error.GetMessage(CultureInfo.InvariantCulture));
         Assert.IsEmpty(compilation.GetDiagnostics(context.CancellationToken).Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
         Assert.ContainsSingle(compilation.GetTypeByMetadataName("Ankus.Generated.ExtensionDispatchers")!.GetMembers());

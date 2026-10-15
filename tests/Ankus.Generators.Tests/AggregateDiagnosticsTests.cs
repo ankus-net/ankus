@@ -37,7 +37,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
         Assert.AreEqual(source.IndexOf(span, StringComparison.Ordinal), error.Location.SourceSpan.Start);
         Assert.AreEqual(span, error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/" +
+        Assert.AreEqual("https://ankus.net/" +
             (id == "ANKUS050" ? "function-declarations" : "aggregates") + "/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
         Assert.IsEmpty(output.GetDiagnostics(context.CancellationToken).Where(static value => value.Severity == DiagnosticSeverity.Error));
         string sql = InstallationBody(output);
@@ -82,7 +82,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
         Assert.AreEqual(prefix.Length + method.IndexOf(span, StringComparison.Ordinal), error.Location.SourceSpan.Start);
         Assert.AreEqual(span, error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/aggregates/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/aggregates/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
         Assert.IsEmpty(output.GetDiagnostics(context.CancellationToken).Where(static value => value.Severity == DiagnosticSeverity.Error));
         string sql = InstallationBody(output);
         Assert.Contains("CREATE AGGREGATE \"other\"", sql);
@@ -145,7 +145,7 @@ public sealed partial class PgFunctionGeneratorTests
 
         Assert.AreEqual(id, error.Id);
         Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
-        Assert.AreEqual("https://willibrandon.github.io/ankus/aggregates/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/aggregates/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
         Assert.IsEmpty(output.GetDiagnostics(context.CancellationToken).Where(static value => value.Severity == DiagnosticSeverity.Error));
         string sql = InstallationBody(output);
         Assert.Contains("CREATE AGGREGATE \"other\"", sql);

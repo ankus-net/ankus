@@ -404,7 +404,7 @@ and the other .NET readers perform checked conversions from that value.
 
 ## Datetime sample
 
-The [datetime sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.DateTime)
+The [datetime sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.DateTime)
 ports pgrx's interval arithmetic, ISO formatting, timezone conversion, bounded
 random values and transaction, statement and wall-clock reads.
 

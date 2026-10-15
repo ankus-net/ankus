@@ -43,7 +43,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(id, diagnostic.Id);
         Assert.AreEqual(DiagnosticSeverity.Error, diagnostic.Severity);
         Assert.AreEqual(span, diagnostic.Location.SourceTree!.GetText(context.CancellationToken).ToString(diagnostic.Location.SourceSpan));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/function-declarations/#declaration-diagnostics", diagnostic.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/function-declarations/#declaration-diagnostics", diagnostic.Descriptor.HelpLinkUri);
         Assert.IsEmpty(output.GetDiagnostics(context.CancellationToken).Where(static value => value.Severity == DiagnosticSeverity.Error));
         string sql = InstallationBody(output);
         Assert.Contains("FUNCTION \"good\"()", sql);

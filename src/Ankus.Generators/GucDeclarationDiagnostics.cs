@@ -7,7 +7,7 @@ namespace Ankus.Generators;
 /// </summary>
 internal static class GucDeclarationDiagnostics
 {
-    private const string HelpLink = "https://willibrandon.github.io/ankus/configuration/#declaration-diagnostics";
+    private const string HelpLink = "https://ankus.net/configuration/#declaration-diagnostics";
 
     private static readonly DiagnosticDescriptor s_attributeCount = new("ANKUS169", "Conflicting GUC declarations",
         "A property must declare exactly one typed GUC attribute",

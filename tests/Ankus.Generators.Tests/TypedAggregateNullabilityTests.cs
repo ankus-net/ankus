@@ -45,7 +45,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual("Aggregate.cs", error.Location.GetLineSpan().Path);
         Assert.AreEqual(boundary == "result" ? "string?" : "string",
             source.Substring(error.Location.SourceSpan.Start, error.Location.SourceSpan.Length));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/aggregates/#compiler-checked-aggregate-contracts", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/aggregates/#compiler-checked-aggregate-contracts", error.Descriptor.HelpLinkUri);
         Assert.DoesNotContain("CREATE AGGREGATE \"invalid\"", InstallationBody(compilation));
         Assert.IsEmpty(compilation.GetTypeByMetadataName("Ankus.Generated.ExtensionDispatchers")!
             .GetMembers().OfType<IMethodSymbol>().Where(static method => method.Name.Contains("_aggregate_", StringComparison.Ordinal)));

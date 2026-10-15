@@ -38,7 +38,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(expected, error.Id);
         Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
         Assert.AreEqual(expression, error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/reference/build-settings/#module-identity-diagnostics", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/reference/build-settings/#module-identity-diagnostics", error.Descriptor.HelpLinkUri);
         Assert.IsEmpty(output.GetDiagnostics(context.CancellationToken).Where(static diagnostic => diagnostic.Severity >= DiagnosticSeverity.Warning));
         Assert.DoesNotContain(static attribute => attribute.AttributeClass?.ToDisplayString() == "System.Reflection.AssemblyMetadataAttribute" &&
             attribute.ConstructorArguments[0].Value is "Ankus.NativeSource", output.Assembly.GetAttributes());
@@ -66,7 +66,7 @@ public sealed partial class PgFunctionGeneratorTests
         {
             Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
             Assert.AreEqual(expression, error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
-            Assert.AreEqual("https://willibrandon.github.io/ankus/reference/build-settings/#module-identity-diagnostics", error.Descriptor.HelpLinkUri);
+            Assert.AreEqual("https://ankus.net/reference/build-settings/#module-identity-diagnostics", error.Descriptor.HelpLinkUri);
         }
 
         Assert.IsEmpty(output.GetDiagnostics(context.CancellationToken).Where(static diagnostic => diagnostic.Severity >= DiagnosticSeverity.Warning));
@@ -91,7 +91,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(expected, error.Id);
         Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
         Assert.AreEqual(Location.None, error.Location);
-        Assert.AreEqual("https://willibrandon.github.io/ankus/reference/build-settings/#module-identity-diagnostics", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/reference/build-settings/#module-identity-diagnostics", error.Descriptor.HelpLinkUri);
         Assert.IsEmpty(output.GetDiagnostics(context.CancellationToken).Where(static diagnostic => diagnostic.Severity >= DiagnosticSeverity.Warning));
         Assert.DoesNotContain(static attribute => attribute.AttributeClass?.ToDisplayString() == "System.Reflection.AssemblyMetadataAttribute" &&
             attribute.ConstructorArguments[0].Value is "Ankus.NativeSource", output.Assembly.GetAttributes());

@@ -104,7 +104,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(expected, error.Id);
         Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
         Assert.AreEqual(fragment, error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/background-workers/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/background-workers/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
         Assert.DoesNotContain("CS8785", diagnostics.Select(static diagnostic => diagnostic.Id));
         Assert.IsEmpty(compilation.GetDiagnostics(context.CancellationToken).Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
         Assert.ContainsSingle(compilation.GetTypeByMetadataName("Ankus.Generated.ExtensionDispatchers")!.GetMembers());
@@ -151,7 +151,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual("ANKUS275", error.Id);
         Assert.AreEqual("Run", error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
         Assert.Contains(explicitEntry ? "'shared_entry'" : "'Run'", error.GetMessage(CultureInfo.InvariantCulture));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/background-workers/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/background-workers/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
         Assert.IsEmpty(compilation.GetDiagnostics(context.CancellationToken).Where(static diagnostic => diagnostic.Severity == DiagnosticSeverity.Error));
         Assert.ContainsSingle(ManifestValue(compilation, "Ankus.Exports").Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Where(name => name == (explicitEntry ? "shared_entry" : "Run")));

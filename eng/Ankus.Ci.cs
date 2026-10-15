@@ -13,7 +13,7 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Ankus.PgConfig;
 
-const string RuntimeRepository = "willibrandon/runtime";
+const string RuntimeRepository = "ankus-net/runtime";
 
 string repositoryRoot = FindRepositoryRoot();
 Directory.SetCurrentDirectory(repositoryRoot);
@@ -1896,7 +1896,7 @@ static string[] VerifyPackages(string repositoryRoot, string packageVersion)
             throw new InvalidOperationException($"{package} declares {Value("id")} {Value("version")}.");
         }
 
-        if (Value("license") != "MIT" || (string?)repository.Attribute("url") != "https://github.com/willibrandon/ankus")
+        if (Value("license") != "MIT" || (string?)repository.Attribute("url") != "https://github.com/ankus-net/ankus")
         {
             throw new InvalidOperationException($"{package} does not declare the MIT license and Ankus repository.");
         }

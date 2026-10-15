@@ -82,5 +82,5 @@ remains connected; other sessions are unaffected.
   and check that other sessions are unaffected and that loading again does not
   install hooks twice.
 
-See [managed native callbacks and hooks](https://willibrandon.github.io/ankus/raw-values/#managed-native-callbacks-and-hooks)
-and [native hook registration](https://willibrandon.github.io/ankus/initialization/#native-hook-and-provider-registration).
+See [managed native callbacks and hooks](https://ankus.net/raw-values/#managed-native-callbacks-and-hooks)
+and [native hook registration](https://ankus.net/initialization/#native-hook-and-provider-registration).

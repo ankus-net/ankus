@@ -208,7 +208,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(id, error.Id);
         Assert.AreEqual(fragment, error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
         Assert.Contains(detail, error.GetMessage(CultureInfo.InvariantCulture));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/custom-scans/#managed-providers", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/custom-scans/#managed-providers", error.Descriptor.HelpLinkUri);
         Assert.DoesNotContain("ankus_custom_scan_register", ManifestValue(compilation, "Ankus.NativeSource"));
         Assert.Contains("value", InstallationBody(compilation));
     }

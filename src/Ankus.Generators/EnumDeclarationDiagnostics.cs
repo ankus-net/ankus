@@ -10,7 +10,7 @@ internal static class EnumDeclarationDiagnostics
     /// <summary>
     /// Links enum declaration failures to their extension-author guidance.
     /// </summary>
-    private const string HelpLink = "https://willibrandon.github.io/ankus/enums/#declaration-diagnostics";
+    private const string HelpLink = "https://ankus.net/enums/#declaration-diagnostics";
 
     /// <summary>
     /// Stores the error for PostgreSQL enum requires an enum declaration.

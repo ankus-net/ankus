@@ -206,8 +206,8 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(expected, error.Id);
         Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
         Assert.AreEqual(fragment, error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
-        Assert.AreEqual(expected == "ANKUS277" ? "https://willibrandon.github.io/ankus/reference/execution/#conditional-entry-methods"
-            : "https://willibrandon.github.io/ankus/logical-decoding/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual(expected == "ANKUS277" ? "https://ankus.net/reference/execution/#conditional-entry-methods"
+            : "https://ankus.net/logical-decoding/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
         Assert.DoesNotContain("CS8785", diagnostics.Select(static diagnostic => diagnostic.Id));
         Assert.DoesNotContain("_PG_output_plugin_init", ManifestValue(compilation, "Ankus.Exports").Split('\n', StringSplitOptions.RemoveEmptyEntries));
         Assert.DoesNotContain("_PG_output_plugin_init", ManifestValue(compilation, "Ankus.NativeSource"));
@@ -229,7 +229,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual("ANKUS526", error.Id);
         Assert.AreEqual("Start", error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
         Assert.Contains("'First.Init(Ankus.Postgres.OutputPluginCallbacks*)'", error.GetMessage(CultureInfo.InvariantCulture));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/logical-decoding/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/logical-decoding/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
         Assert.DoesNotContain("_PG_output_plugin_init", ManifestValue(compilation, "Ankus.Exports").Split('\n', StringSplitOptions.RemoveEmptyEntries));
         Assert.Contains("value", InstallationBody(compilation));
     }

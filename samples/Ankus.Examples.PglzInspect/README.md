@@ -155,5 +155,5 @@ compressed length plus an eight-byte header. They also cover quoted names,
 and recovery, row estimates before and after `ANALYZE`, and running the
 recommended DDL.
 
-See [native PostgreSQL declarations](https://willibrandon.github.io/ankus/raw-values/#native-postgresql-declarations)
-and [SPI queries](https://willibrandon.github.io/ankus/spi/).
+See [native PostgreSQL declarations](https://ankus.net/raw-values/#native-postgresql-declarations)
+and [SPI queries](https://ankus.net/spi/).

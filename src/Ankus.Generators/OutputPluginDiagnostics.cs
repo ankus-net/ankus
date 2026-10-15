@@ -10,7 +10,7 @@ internal static class OutputPluginDiagnostics
     /// <summary>
     /// Links errors to extension-author output plugin guidance.
     /// </summary>
-    private const string HelpLink = "https://willibrandon.github.io/ankus/logical-decoding/#declaration-diagnostics";
+    private const string HelpLink = "https://ankus.net/logical-decoding/#declaration-diagnostics";
 
     /// <summary>
     /// Stores the error for an initializer that is not an ordinary method.

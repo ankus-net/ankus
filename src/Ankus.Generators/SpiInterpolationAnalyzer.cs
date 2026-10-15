@@ -15,7 +15,7 @@ public sealed partial class SpiInterpolationAnalyzer : DiagnosticAnalyzer
         "ANKUS044", "SQL interpolation must bind parameters",
         "Bind values with Spi.Sql or positional SQL parameters instead of formatting them into command text",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/spi/#parameterized-interpolation");
+        helpLinkUri: "https://ankus.net/spi/#parameterized-interpolation");
 
     /// <summary>
     /// Gets the compiler error for an interpolated raw SQL command.

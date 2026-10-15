@@ -16,7 +16,7 @@ internal static class GucPrefixDeclaration
         "ANKUS347", "Configuration prefix requires a nonnull string",
         "Supply one nonnull constant string for the configuration prefix; an empty string retains PostgreSQL's native behavior",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/configuration/#prefix-declaration-diagnostics");
+        helpLinkUri: "https://ankus.net/configuration/#prefix-declaration-diagnostics");
 
     /// <summary>
     /// Rejects zero characters that would truncate the prefix at the native boundary.
@@ -25,7 +25,7 @@ internal static class GucPrefixDeclaration
         "ANKUS348", "Configuration prefix cannot contain zero characters",
         "Remove embedded zero characters from the configuration prefix; PostgreSQL receives the complete null-terminated string",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/configuration/#prefix-declaration-diagnostics");
+        helpLinkUri: "https://ankus.net/configuration/#prefix-declaration-diagnostics");
 
     /// <summary>
     /// Rejects malformed Unicode instead of replacing it while encoding native input.
@@ -34,7 +34,7 @@ internal static class GucPrefixDeclaration
         "ANKUS349", "Configuration prefix requires well-formed Unicode",
         "Replace unpaired UTF-16 surrogate characters in the configuration prefix; Ankus preserves exact UTF-8 text without replacement",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/configuration/#prefix-declaration-diagnostics");
+        helpLinkUri: "https://ankus.net/configuration/#prefix-declaration-diagnostics");
 
     /// <summary>
     /// Reads valid prefixes without case folding or imposing SQL identifier restrictions.

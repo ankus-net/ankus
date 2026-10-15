@@ -7,7 +7,7 @@ namespace Ankus.Generators;
 /// </summary>
 internal static class AggregateDiagnostics
 {
-    private const string HelpLink = "https://willibrandon.github.io/ankus/aggregates/#declaration-diagnostics";
+    private const string HelpLink = "https://ankus.net/aggregates/#declaration-diagnostics";
 
     private static readonly DiagnosticDescriptor s_container = new("ANKUS080", "Invalid aggregate container",
         "Aggregate containers must be accessible, non-generic, non-file-local classes or structs",

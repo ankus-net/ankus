@@ -50,7 +50,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(ConditionalEntryAttribute,
             error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
         Assert.AreSame(input.SyntaxTrees.Single(), error.Location.SourceTree);
-        Assert.AreEqual("https://willibrandon.github.io/ankus/reference/execution/#conditional-entry-methods", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/reference/execution/#conditional-entry-methods", error.Descriptor.HelpLinkUri);
         Assert.Contains("Entry", error.GetMessage(CultureInfo.InvariantCulture));
         Assert.Contains("remove", error.GetMessage(CultureInfo.InvariantCulture));
         Assert.Contains("\"sibling\"", InstallationBody(output));

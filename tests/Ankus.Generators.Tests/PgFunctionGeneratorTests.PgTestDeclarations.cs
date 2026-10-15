@@ -72,7 +72,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
         Assert.AreEqual(highlight, error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
         Assert.Contains("'Test'", error.GetMessage(CultureInfo.InvariantCulture));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/getting-started/testing/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/getting-started/testing/#declaration-diagnostics", error.Descriptor.HelpLinkUri);
     }
 
     /// <summary>

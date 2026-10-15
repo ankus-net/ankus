@@ -91,6 +91,6 @@ project `Version`. Use the generated SQL of the version a script updates to.
   publishes two versions, installs and packages them side by side, and moves a
   database between them in both directions.
 
-See [build settings](https://willibrandon.github.io/ankus/reference/build-settings/#versioned-libraries),
-[upgrading an extension](https://willibrandon.github.io/ankus/getting-started/publishing/#upgrade-an-existing-extension)
+See [build settings](https://ankus.net/reference/build-settings/#versioned-libraries),
+[upgrading an extension](https://ankus.net/getting-started/publishing/#upgrade-an-existing-extension)
 and the [versioned custom library name sample](../Ankus.Examples.VersionedCustomLibraryName/).

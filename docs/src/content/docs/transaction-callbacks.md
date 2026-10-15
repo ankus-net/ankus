@@ -29,7 +29,7 @@ catch (PgException error)
 }
 ```
 
-The [try and catch sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.TryCatch)
+The [try and catch sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.TryCatch)
 ports pgrx's `PgTryBuilder` examples to filtered `catch` and `finally` blocks,
 using this scope to recover from a PostgreSQL error before returning a fallback.
 
@@ -94,7 +94,7 @@ original backend's callbacks, even when issued by that same backend. Writes made
 by `PrePrepare` belong to the prepared transaction and become visible only if it
 is committed.
 
-The [notify sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Notify)
+The [notify sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Notify)
 ports pgrx's coalesced cache invalidation. A row trigger records changed
 categories, a `PreCommit` callback sends one notification per category, an
 `Abort` callback discards them, and a `PrePrepare` callback rejects a prepared

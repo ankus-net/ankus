@@ -614,7 +614,7 @@ public sealed partial class PgFunctionGeneratorTests
     /// </summary>
     /// <param name="diagnosticId">The fixed diagnostic ID.</param>
     /// <returns>The help link carried by the diagnostic.</returns>
-    private static string GraphHelp(string diagnosticId) => "https://willibrandon.github.io/ankus/" + diagnosticId switch
+    private static string GraphHelp(string diagnosticId) => "https://ankus.net/" + diagnosticId switch
     {
         "ANKUS502" or "ANKUS503" or "ANKUS504" or "ANKUS505" => "custom-sql/#sql-replacement-diagnostics",
         "ANKUS506" => "enums/#declaration-diagnostics",

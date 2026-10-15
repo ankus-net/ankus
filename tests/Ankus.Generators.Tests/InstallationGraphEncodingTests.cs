@@ -122,7 +122,7 @@ public sealed class InstallationGraphEncodingTests
         Assert.AreEqual(id, diagnostic.Id);
         Assert.AreEqual(DiagnosticSeverity.Error, diagnostic.Severity);
         Assert.AreEqual(message, diagnostic.GetMessage(CultureInfo.InvariantCulture));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/custom-sql/#dependency-graph-diagnostics", descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/custom-sql/#dependency-graph-diagnostics", descriptor.HelpLinkUri);
         Assert.AreEqual(Location.None, diagnostic.Location);
     }
 

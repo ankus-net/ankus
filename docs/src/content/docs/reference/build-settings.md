@@ -118,7 +118,7 @@ default extension name still follow `AssemblyName` and `TargetName`. Changing
 `AssemblyName` also renames the library, but changes those identities too.
 Library names use ASCII letters, digits, `.`, `_`, `+` and `-`, without a
 directory or suffix, and cannot start with `.`. See the
-[custom library name sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.CustomLibraryName).
+[custom library name sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.CustomLibraryName).
 
 `AnkusOutputPluginAlias` items publish extra libraries that load the extension's
 output plugin under other names, as pglogical's `pglogical_output` does. See
@@ -157,7 +157,7 @@ scripts updating to that version, such as one published before this setting.
 The current version cannot set `module_pathname` in an authored control file.
 The version must be valid in a filename. `ankus get module_pathname` prints
 nothing for a versioned publication. See the
-[versioned library sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.VersionedLibrary)
+[versioned library sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.VersionedLibrary)
 and [upgrading an extension](/getting-started/publishing/#upgrade-an-existing-extension).
 
 ## Extension control settings

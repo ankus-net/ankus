@@ -7,7 +7,7 @@ description: Query PostgreSQL from C# with typed parameters, sessions, plans, an
 Calls participate in the caller's transaction and use that connection's role,
 search path, and session settings.
 
-The [SPI sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Spi)
+The [SPI sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Spi)
 combines bound lookups and inserts, cursor results that outlive their session,
 and table functions returning named C# tuples. It ports pgrx's `spi` and
 `spi_srf` examples, including their seed data.
@@ -365,7 +365,7 @@ transactions, for example to build replication commands.
 ANKUS044 accepts these direct helper calls and locals whose reaching values remain completely quoted. It
 continues to reject an unquoted runtime value mixed into the same raw command;
 bind values separately with positional parameters, as above.
-The [PGLZ inspection sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.PglzInspect)
+The [PGLZ inspection sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.PglzInspect)
 samples a caller-selected table and column this way.
 
 Quoted fragments can also be accumulated in a loop or joined after passing

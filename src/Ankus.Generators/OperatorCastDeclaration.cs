@@ -9,7 +9,7 @@ namespace Ankus.Generators;
 /// </summary>
 internal static class OperatorCastDeclaration
 {
-    private const string HelpLink = "https://willibrandon.github.io/ankus/operators-and-casts/#declaration-diagnostics";
+    private const string HelpLink = "https://ankus.net/operators-and-casts/#declaration-diagnostics";
 
     private static readonly DiagnosticDescriptor s_setResult = new("ANKUS064", "PostgreSQL operator or cast returns a set",
         "Operators and casts cannot return sets; return one value per call",

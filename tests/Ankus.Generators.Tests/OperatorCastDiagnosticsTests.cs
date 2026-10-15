@@ -58,7 +58,7 @@ public sealed partial class PgFunctionGeneratorTests
             ? declaration.LastIndexOf(span, StringComparison.Ordinal)
             : declaration.IndexOf(span, StringComparison.Ordinal);
         Assert.AreEqual("public static class Functions { ".Length + offset, diagnostic.Location.SourceSpan.Start);
-        Assert.AreEqual("https://willibrandon.github.io/ankus/operators-and-casts/#declaration-diagnostics", diagnostic.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/operators-and-casts/#declaration-diagnostics", diagnostic.Descriptor.HelpLinkUri);
         Assert.IsNull(Assert.ContainsSingle(driver.GetRunResult().Results).Exception);
         Assert.IsEmpty(output.GetDiagnostics(context.CancellationToken).Where(static value => value.Severity == DiagnosticSeverity.Error));
         string sql = InstallationBody(output);

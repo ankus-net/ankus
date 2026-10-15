@@ -29,7 +29,7 @@ public sealed partial class PgFunctionGeneratorTests
         Diagnostic error = Assert.ContainsSingle(second);
 
         Assert.AreEqual(expected, error.Id);
-        Assert.AreEqual("https://willibrandon.github.io/ankus/configuration/#prefix-declaration-diagnostics", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/configuration/#prefix-declaration-diagnostics", error.Descriptor.HelpLinkUri);
         Assert.AreSame(current, error.Location.SourceTree);
         Assert.AreEqual(expression, current.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
         Assert.AreEqual(IncrementalStepRunReason.Cached, ModuleStep(driver, "GucPrefixEmission"));

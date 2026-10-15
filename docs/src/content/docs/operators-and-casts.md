@@ -384,7 +384,7 @@ PostgreSQL owns the generated objects as extension members. `DROP EXTENSION`
 removes them, and a relocatable extension can move its enum, functions and
 operators while retaining its casts.
 
-The [operators sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Operators)
+The [operators sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Operators)
 ports pgrx's `operators` example. It declares a manual `=` operator, generated
 equality, B-tree and hash operators for a JSON-text type and a packed native
 type, and `===`/`!==` operators and a cast for its `Priority` enum.

@@ -56,7 +56,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual("ANKUS029", error.Id);
         Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
         Assert.Contains("IPgAggregate<TState, TArgs>", error.GetMessage(CultureInfo.InvariantCulture));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/aggregates/#compiler-checked-aggregate-contracts", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/aggregates/#compiler-checked-aggregate-contracts", error.Descriptor.HelpLinkUri);
         Assert.AreEqual("Untyped", error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
         Assert.DoesNotContain("CREATE AGGREGATE", InstallationBody(compilation));
         Assert.IsEmpty(compilation.GetTypeByMetadataName("Ankus.Generated.ExtensionDispatchers")!

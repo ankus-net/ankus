@@ -236,11 +236,11 @@ On PostgreSQL 13–16, parallel execution cannot start such a scope. A native
 failure there ends the current managed callback after `finally` cleanup; see
 [parallel SQL error handling](/spi/#errors-and-transactions).
 
-The [PGLZ inspection sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.PglzInspect)
+The [PGLZ inspection sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.PglzInspect)
 calls `pglz_compress` and `pglz_decompress` with checked spans, the
-[rewrite manipulation sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.RewriteManip)
+[rewrite manipulation sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.RewriteManip)
 changes `Var` nodes with `rewriteManip.h`, and the
-[notify sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Notify)
+[notify sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Notify)
 wraps `commands/async.h`.
 
 Header declarations do not guarantee that a server or loaded native library
@@ -478,14 +478,14 @@ enough once another library has chained after yours. If a callback reaches
 itself through such a cycle anyway, the native callback boundary raises
 PostgreSQL's `stack depth limit exceeded` error (SQLSTATE `54001`) instead of
 overflowing the native stack. The
-[hooks sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Hooks)
+[hooks sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Hooks)
 ports three of pgrx's four `hooks` example hooks; it omits
 `ClientAuthentication_hook`.
 
 `[PgOutputPlugin]` exports a static method as `_PG_output_plugin_init`, which
 receives PostgreSQL's logical decoding callback table and assigns callback
 properties. See [logical decoding output plugins](/logical-decoding/) and the
-[WAL decoder sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.WalDecoder).
+[WAL decoder sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.WalDecoder).
 
 An `emit_log_hook` handler receives borrowed `ErrorData*`. Copy any fields you
 need to retain before returning or invoking another hook. PostgreSQL permits

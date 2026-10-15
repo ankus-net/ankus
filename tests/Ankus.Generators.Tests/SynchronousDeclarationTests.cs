@@ -49,7 +49,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreSame(initial.SyntaxTrees.Single(), error.Location.SourceTree);
         Assert.AreEqual(expected == "ANKUS030" ? "async" : signature.Replace("async ", string.Empty, StringComparison.Ordinal),
             error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/reference/execution/#backend-threads-and-tasks", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/reference/execution/#backend-threads-and-tasks", error.Descriptor.HelpLinkUri);
         Assert.Contains(expected == "ANKUS030" ? "keep the entry method synchronous" : expected == "ANKUS031" ?
             "return the completed SQL value" : "use IEnumerable<T>", error.GetMessage(System.Globalization.CultureInfo.InvariantCulture));
         Assert.IsNull(Assert.ContainsSingle(driver.GetRunResult().Results).Exception);

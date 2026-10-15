@@ -8,7 +8,7 @@ namespace Ankus.Generators;
 /// </summary>
 internal static class DatumMappingDiagnostics
 {
-    private const string HelpLink = "https://willibrandon.github.io/ankus/raw-values/#mapping-diagnostics";
+    private const string HelpLink = "https://ankus.net/raw-values/#mapping-diagnostics";
 
     private static readonly DiagnosticDescriptor s_rootShape = new("ANKUS134", "Invalid datum mapping carrier",
         "PgDatumType requires a closed, concrete class, struct, or enum that is not static or ref-like",

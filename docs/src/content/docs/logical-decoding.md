@@ -10,7 +10,7 @@ table of callbacks. Mark one static method with `[PgOutputPlugin]` to export it
 as that initializer, then assign the callbacks the plugin implements from
 [`[PgNativeCallback]` properties](/raw-values/#managed-native-callbacks-and-hooks).
 
-The [WAL decoder sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.WalDecoder)
+The [WAL decoder sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.WalDecoder)
 ports pgrx's `wal_decoder` example: it writes each transaction's BEGIN, row
 changes and COMMIT as JSON documents.
 

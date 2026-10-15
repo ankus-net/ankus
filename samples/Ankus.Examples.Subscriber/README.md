@@ -51,5 +51,5 @@ PostgreSQL; run them with `ankus bench --pg 18` in this directory.
 The sample keeps to `pgoutput`'s protocol version 1. It does not stream large
 transactions before they commit, synchronize tables added to the publication
 later, or resolve conflicts beyond replacing a row with the same key. See
-[applying replicated changes](https://willibrandon.github.io/ankus/applying-changes/)
-and [replication connections](https://willibrandon.github.io/ankus/replication-connections/).
+[applying replicated changes](https://ankus.net/applying-changes/)
+and [replication connections](https://ankus.net/replication-connections/).

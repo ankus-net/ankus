@@ -162,7 +162,7 @@ performs the same exact conversion as a generated function adapter.
 
 ## Numeric sample
 
-The [numeric sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Numeric)
+The [numeric sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Numeric)
 ports pgrx's addition, parsing, random integer, arithmetic and fixed-scale
 constant examples. Its
 addition rounds the result after adding the full-range inputs:

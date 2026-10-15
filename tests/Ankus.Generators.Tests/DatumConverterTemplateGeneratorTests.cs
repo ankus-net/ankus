@@ -482,7 +482,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(DiagnosticSeverity.Error, diagnostic.Severity);
         Assert.AreEqual("Inferred datum converter '" + converter + "' is not a valid C# constructed type (compiler diagnostic " + rule +
             "); satisfy its type-parameter constraints or specify a closed converter", diagnostic.GetMessage(CultureInfo.InvariantCulture));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/raw-values/#mapping-diagnostics", diagnostic.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/raw-values/#mapping-diagnostics", diagnostic.Descriptor.HelpLinkUri);
         Assert.AreEqual(span, DiagnosticText(diagnostic));
     }
 

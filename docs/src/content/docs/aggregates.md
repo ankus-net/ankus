@@ -316,7 +316,7 @@ The generated extra SQL input is always NULL and does not reach the managed
 final method. Polymorphic values also work
 with moving states, ordered-set comparisons, and parallel combine methods.
 
-The [generic aggregate sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.GenericAggregates)
+The [generic aggregate sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.GenericAggregates)
 ports pgrx's `generic_agg` example. Its `count_changes(anyelement)` keeps a copy
 of the previous value in a child of `context.MemoryContext` and compares values
 with PostgreSQL's `datumIsEqual` through the generated native bindings.

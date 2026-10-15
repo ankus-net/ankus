@@ -42,7 +42,7 @@ Add the published library to `shared_preload_libraries` and restart PostgreSQL:
 shared_preload_libraries = 'MyExtension'
 ```
 
-The [shared memory sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.SharedMemory)
+The [shared memory sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.SharedMemory)
 ports pgrx's `shmem` example: a bounded list, deque and map, a struct and an
 integer behind separate lightweight locks, and an atomic Boolean.
 

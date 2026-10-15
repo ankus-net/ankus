@@ -10,26 +10,26 @@ internal sealed record SetResult
     private static readonly DiagnosticDescriptor s_columnNamesRequireSet = new(
         "ANKUS396", "PostgreSQL column names require a set result", "'{0}' uses PgColumnNames but does not return IEnumerable<T>",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/sets-and-tables/");
+        helpLinkUri: "https://ankus.net/sets-and-tables/");
     private static readonly DiagnosticDescriptor s_unsupportedColumns = new(
         "ANKUS397", "PostgreSQL set result has unsupported columns",
         "'{0}' must return supported scalar or array values, or a flat tuple of at most 1664 supported columns",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/sets-and-tables/");
+        helpLinkUri: "https://ankus.net/sets-and-tables/");
     private static readonly DiagnosticDescriptor s_nullColumnNames = new(
         "ANKUS398", "PostgreSQL table column names cannot be null", "'{0}' must pass a non-null name array to PgColumnNames",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/sets-and-tables/");
+        helpLinkUri: "https://ankus.net/sets-and-tables/");
     private static readonly DiagnosticDescriptor s_missingColumnNames = new(
         "ANKUS399", "PostgreSQL table result requires column names",
         "'{0}' must name every tuple element or apply PgColumnNames to name every TABLE column",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/sets-and-tables/");
+        helpLinkUri: "https://ankus.net/sets-and-tables/");
     private static readonly DiagnosticDescriptor s_invalidColumnNames = new(
         "ANKUS400", "Invalid PostgreSQL table column names",
         "'{0}' requires one distinct SQL identifier per TABLE column, each at most 63 UTF-8 bytes",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/sets-and-tables/");
+        helpLinkUri: "https://ankus.net/sets-and-tables/");
 
     /// <summary>
     /// Gets the managed iterator element type, including tuple names and nullable annotations.

@@ -13,7 +13,7 @@ internal static class AggregateContractNullability
         "ANKUS028", "Incompatible aggregate nullability",
         "'{0}' has an incompatible {1} nullability contract: implementation '{2}' must preserve interface '{3}'",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true,
-        helpLinkUri: "https://willibrandon.github.io/ankus/aggregates/#compiler-checked-aggregate-contracts");
+        helpLinkUri: "https://ankus.net/aggregates/#compiler-checked-aggregate-contracts");
 
     /// <summary>
     /// Checks contravariant inputs and covariant results before creating SQL helpers.

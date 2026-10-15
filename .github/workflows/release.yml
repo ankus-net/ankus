@@ -80,7 +80,7 @@ jobs:
         # Each supported target framework ships its own patched runtime and compiler host packages.
         line: [net10.0, net11.0]
         target:
-          - runner: ${{ github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && 'ankus-linux-primary-x64' || 'ubuntu-24.04' }}
+          - runner: ${{ github.repository == 'ankus-net/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && 'ankus-linux-primary-x64' || 'ubuntu-24.04' }}
             rid: linux-x64
             platform: linux
             architecture: x64
@@ -90,7 +90,7 @@ jobs:
             platform: linux
             architecture: arm64
             timeout: 180
-          - runner: ${{ github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && 'ankus-macos-arm64' || 'macos-15' }}
+          - runner: ${{ github.repository == 'ankus-net/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && 'ankus-macos-arm64' || 'macos-15' }}
             rid: osx-arm64
             platform: osx
             architecture: arm64
@@ -100,7 +100,7 @@ jobs:
             platform: osx
             architecture: x64
             timeout: 360
-          - runner: ${{ github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && 'ankus-windows-x64' || 'windows-2025' }}
+          - runner: ${{ github.repository == 'ankus-net/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && 'ankus-windows-x64' || 'windows-2025' }}
             rid: win-x64
             platform: windows
             architecture: x64

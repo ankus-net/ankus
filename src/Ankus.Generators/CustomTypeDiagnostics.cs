@@ -227,7 +227,7 @@ internal sealed record CustomTypeValidationFailure(CustomTypeDiagnosticKind Kind
 /// </summary>
 internal static class CustomTypeDiagnostics
 {
-    private const string HelpLink = "https://willibrandon.github.io/ankus/custom-types/#declaration-diagnostics";
+    private const string HelpLink = "https://ankus.net/custom-types/#declaration-diagnostics";
 
     private static readonly DiagnosticDescriptor s_alignment = new("ANKUS419", "Invalid PostgreSQL type alignment",
         "'{0}' must use PgTypeAlignment.FourBytes or PgTypeAlignment.EightBytes", "Ankus", DiagnosticSeverity.Error, true, helpLinkUri: HelpLink);

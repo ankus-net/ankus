@@ -62,7 +62,7 @@ whitespace. PostgreSQL jsonb operators provide SQL structural equality.
 
 ## Borrowed array serialization
 
-The [JSON sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Json)
+The [JSON sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Json)
 ports pgrx's borrowed `text[]` and `bytea[]` serialization examples. It writes
 each checked native cell through `Utf8JsonWriter`, producing a document with a
 `values` array without collecting an intermediate managed array.

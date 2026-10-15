@@ -183,7 +183,7 @@ public sealed partial class PgFunctionGeneratorTests
     {
         Assert.AreEqual(id, error.Id);
         Assert.AreEqual(DiagnosticSeverity.Error, error.Severity);
-        Assert.AreEqual("https://willibrandon.github.io/ankus/raw-values/#mapping-diagnostics", error.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/raw-values/#mapping-diagnostics", error.Descriptor.HelpLinkUri);
         Assert.IsTrue(error.Location.IsInSource);
         Assert.AreEqual(span, error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
     }

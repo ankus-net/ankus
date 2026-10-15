@@ -31,7 +31,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual(DiagnosticSeverity.Error, diagnostic.Severity);
         Assert.AreEqual("SQL name '" + name + "' must start with a lowercase ASCII letter or underscore and contain 1-63 lowercase ASCII letters, digits, or underscores",
             diagnostic.GetMessage(CultureInfo.InvariantCulture));
-        Assert.AreEqual("https://willibrandon.github.io/ankus/function-declarations/#function-names", diagnostic.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/function-declarations/#function-names", diagnostic.Descriptor.HelpLinkUri);
     }
 
     /// <summary>
@@ -58,7 +58,7 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual("B", diagnostic.Location.SourceTree!.GetText(context.CancellationToken).ToString(diagnostic.Location.SourceSpan));
         Assert.AreEqual(First.Length + "public static class Second { ".Length + rejected.IndexOf(" B(", StringComparison.Ordinal) + 1,
             diagnostic.Location.SourceSpan.Start);
-        Assert.AreEqual("https://willibrandon.github.io/ankus/function-declarations/#function-names", diagnostic.Descriptor.HelpLinkUri);
+        Assert.AreEqual("https://ankus.net/function-declarations/#function-names", diagnostic.Descriptor.HelpLinkUri);
         Assert.IsEmpty(compilation.GetDiagnostics(context.CancellationToken).Where(static value => value.Severity == DiagnosticSeverity.Error));
         Assert.ContainsSingle(compilation.GetTypeByMetadataName("Ankus.Generated.ExtensionDispatchers")!.GetMembers());
     }

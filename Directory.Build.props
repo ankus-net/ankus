@@ -18,8 +18,8 @@
     <Authors>Brandon Williams</Authors>
     <Copyright>Copyright (c) Brandon Williams</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://willibrandon.github.io/ankus/</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/willibrandon/ankus</RepositoryUrl>
+    <PackageProjectUrl>https://ankus.net/</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/ankus-net/ankus</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>

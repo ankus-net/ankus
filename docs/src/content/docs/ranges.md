@@ -34,7 +34,7 @@ SELECT integer_window(1, 5); -- [1,5)
 SELECT includes('[2024-01-01,2024-02-01)', '2024-01-15'); -- true
 ```
 
-The [complete range sample](https://github.com/willibrandon/ankus/tree/main/samples/Ankus.Examples.Ranges)
+The [complete range sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Ranges)
 ports pgrx's nine range example functions and its table of stored ranges. It
 includes publishable project files and SQL examples for every constructor.
 

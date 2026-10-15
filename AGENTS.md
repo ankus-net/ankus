@@ -12,7 +12,7 @@ before changing an area.
 - [willibrandon/pglogical](https://github.com/willibrandon/pglogical) is a read-only
   reference for Windows background-worker startup and shared-memory attachment.
   Preload and worker behavior must work on Linux, macOS, and Windows.
-- [willibrandon/runtime](https://github.com/willibrandon/runtime) hosts the runtime
+- [ankus-net/runtime](https://github.com/ankus-net/runtime) hosts the runtime
   fork. Keep the reference clone read-only; develop the patch in a separate checkout.
 - [apple-oss-distributions/libpthread](https://github.com/apple-oss-distributions/libpthread)
   is a read-only reference for macOS thread and fork behavior.

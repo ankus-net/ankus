@@ -10,7 +10,7 @@ internal static class InitializerDeclarationDiagnostics
     /// <summary>
     /// Links errors to extension-author initialization guidance.
     /// </summary>
-    private const string HelpLink = "https://willibrandon.github.io/ankus/initialization/#declaration-diagnostics";
+    private const string HelpLink = "https://ankus.net/initialization/#declaration-diagnostics";
     /// <summary>
     /// Stores the error for conflicting postgresql initialization phases.
     /// </summary>

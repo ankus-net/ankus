@@ -12,7 +12,7 @@ namespace Ankus.Generators;
 /// </summary>
 internal static class PgBenchmarkPipeline
 {
-    private const string Help = "https://willibrandon.github.io/ankus/benchmarks/";
+    private const string Help = "https://ankus.net/benchmarks/";
     private static readonly DiagnosticDescriptor s_static = new(
         "ANKUS130", "PostgreSQL benchmark must be static", "Benchmark '{0}' must be static; the benchmark runner calls it without an instance",
         "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: Help);
