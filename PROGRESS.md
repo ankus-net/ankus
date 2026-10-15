@@ -113,7 +113,7 @@ version jobs instead of four, and the rerun passed.
 | Runtime line | Evidence and remaining requirements |
 | --- | --- |
 | .NET 10 LTS | Patched runtime **10.0.13-ankus.1** passes complete suites for every supported PostgreSQL major on Linux x64, macOS ARM64, Windows x64 and Intel macOS. A release rehearsal on the commit to be released remains before 0.1.0. |
-| .NET 11 STS | Required. The `net11.0` line (fork `34f19a015e3` on RC2) is selected by `Ankus.Sdk`, offered by `ankus new --framework net11.0`, and built by CI and releases. Its runtime passes the fork probes on all four RIDs, and the complete suite with every repository extension on `net11.0` passes on Linux x64, macOS ARM64 and Intel macOS (PostgreSQL 18.6) and Windows x64 (17.11). The PostgreSQL major matrix and the GA rebase remain. |
+| .NET 11 STS | Required. The `net11.0` line (fork `9692d0ff7ad` on RC2) is selected by `Ankus.Sdk`, offered by `ankus new --framework net11.0`, and built by CI and releases. Its runtime passes the fork probes on all five RIDs, and the complete suite with every repository extension on `net11.0` passes for PostgreSQL 13–19 on Linux x64, macOS ARM64, Windows x64 and Intel macOS, and for 18 on Linux ARM64. The rebase onto the .NET 11 release remains. |
 | Later LTS/STS releases | Repeat explicit compiler/runtime/RID and packed-consumer acceptance, following upstream support lifecycles and servicing supported majors. |
 
 See the [public support policy](docs/src/content/docs/reference/dotnet-support.md)
@@ -404,6 +404,12 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   service and descendant cases, workstation and server active-GC with fixed and
   dynamic heaps, all eight diagnostics suites, host shutdown, signal masks and
   host signals.
+- The `net11.0` PostgreSQL major matrix is complete: with every repository
+  extension on `net11.0`, the complete suite passes for PostgreSQL 13–19 on
+  Linux x64 and macOS ARM64 (`.NET versions` runs from 8d495aa and 9f356ee),
+  Windows x64 (the same, and fd1ce1d for 16 after its GUC race fix) and Intel
+  macOS (runs 38691451402 to 38691511171 on 635ec77, one major at a time on the
+  Intel runner).
 - Extensions can target `net11.0`. `Ankus.Sdk` picks the runtime line from the
   extension's framework (e9e34eb), the package projects and CI build each line
   (c46e410), and `ankus new --framework net11.0` or the templates' `--framework`
@@ -1745,7 +1751,7 @@ review's findings are fixed or kept by documented design.
 4. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees. The latest trigger profile is in the [guard-tier evidence](docs/contributing/evidence/guard-tiers.md#row-triggers). `Set` no longer consults the registries for built-in types, so the remaining managed cost is mostly the detached row's allocations.
 5. Keep samples and guides current with API changes, and recheck changed guides before release. Test discovery for MSTest, xUnit and NUnit consumers and samples for all 37 pgrx examples are complete.
 6. Keep the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) current as a pglogical port exercises it; every planned capability is done.
-7. Support .NET 11 as an extension target (required, in progress). The runtime fork's changes over 10.0.13 are ported onto .NET 11 RC2 as fork commit `34f19a015e3` on branch `ankus/runtime-11.0-rc2`, and every fork probe passes on Linux x64; rebase onto GA when it ships. `Ankus.Sdk` selects the `net11.0` line, `ankus new` and the templates take `--framework net11.0`, and CI and releases build both lines. The runtime passes its probes and the complete suite on all four RIDs. Remaining: every PostgreSQL major, then the GA rebase.
+7. Support .NET 11 as an extension target (required, in progress). The runtime fork's changes over 10.0.13 are ported onto .NET 11 RC2 as fork commit `34f19a015e3` on branch `ankus/runtime-11.0-rc2`, and every fork probe passes on Linux x64; rebase onto GA when it ships. `Ankus.Sdk` selects the `net11.0` line, `ankus new` and the templates take `--framework net11.0`, and CI and releases build both lines. The complete suite passes on every PostgreSQL major on Linux x64, macOS ARM64, Windows x64 and Intel macOS. Remaining: the rebase onto the .NET 11 release in November, which ships as a servicing update.
 8. Before publishing 0.1.0, repeat the release rehearsal on the commit to be released. The native binding catalogs and the public API surface were audited on 2026-10-14. The .NET 10.0.13 servicing update is done and rehearsal 38600378664 passes on it.
 
 Continue independent work while CI runs. Before every commit and push, check and

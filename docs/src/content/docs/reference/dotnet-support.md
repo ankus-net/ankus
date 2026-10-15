@@ -72,13 +72,12 @@ The `net11.0` runtime carries every Ankus runtime change, adapted where .NET 11
 reorganized the collector, thread pool and diagnostics. It passes the runtime's
 own fork probes on Linux x64, Linux ARM64, macOS ARM64, Windows x64 and Intel
 macOS. With every repository extension and the framework-template consumers
-targeting `net11.0`, the complete Ankus test suite passes on Linux x64, Linux
-ARM64, macOS ARM64 and Intel macOS against PostgreSQL 18, and on Windows x64
-against PostgreSQL 17.
+targeting `net11.0`, the complete Ankus test suite passes on every supported
+PostgreSQL major, 13 through 19, on Linux x64, macOS ARM64, Windows x64 and Intel
+macOS, and on Linux ARM64.
 
-Before `net11.0` is listed as supported, it must also pass across the supported
-PostgreSQL majors, and again on the .NET 11 release that replaces the release
-candidate. Until then, treat
+Before `net11.0` is listed as supported, it must pass again on the .NET 11
+release that replaces the release candidate. Until then, treat
 `net11.0` extensions as previews and keep production extensions on `net10.0`.
 
 ## Runtime servicing and deployment
