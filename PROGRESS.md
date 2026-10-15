@@ -469,8 +469,7 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   function and records the context current when its ERROR arrives: a SQL
   function's error and an Ankus function's both arrive in `ErrorContext`, and
   before the change the Ankus one did not.
-- Linux ARM64, which pgrx supports, is being added as a fifth runtime
-  identifier. Both runtime lines enabled the collector's fork checkpoints and
+- Linux ARM64, which pgrx supports, is now a fifth runtime identifier. Both runtime lines enabled the collector's fork checkpoints and
   the runtime's fork support only on Linux x64 and macOS; that code relies on
   POSIX fork handling rather than an instruction set, so the fork now enables
   it on Linux ARM64 too (`72c3927a21d` for .NET 10, `9692d0ff7ad` for .NET 11).
@@ -478,15 +477,17 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   where the other was requested. Runtime and compiler packages, release
   verification and the release matrix gain `linux-arm64`, built on GitHub's
   hosted `ubuntu-24.04-arm` runners, and the `Linux ARM64` workflow runs the
-  complete suite there on both target frameworks. Acceptance needs that suite to
-  pass. The first run built both runtime lines and passed their fork probes on
+  complete suite there on both target frameworks. The first run built both runtime lines and passed their fork probes on
   Linux ARM64. Its tests then failed to compile: plain C `char` is unsigned
   there, and bindings followed the target, so `char *` became `byte*` on Linux
   ARM64 and `sbyte*` everywhere else, and code written for one did not compile
   on the other. Bindings now map plain `char` to `sbyte` on every target, as
   Rust's `c_char` gives portable code one name, and reject a plain `char`
   bitfield on an unsigned target, where its value would read with the other
-  sign. PostgreSQL's headers declare none.
+  sign. PostgreSQL's headers declare none. In `Linux ARM64` run 38706865565 on
+  8b8e04e, the complete suite then passes against PostgreSQL 18 on both
+  `net10.0` and `net11.0`: 14,973 passed and 52 platform skips each, in about
+  72 minutes on the hosted runner.
 - The same matrix found two test races. On Windows, a test that ends its
   backend with FATAL can see a connection reset instead of the report, so all
   three such GUC tests now accept a reset there and read the report from the
@@ -1526,7 +1527,7 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   can inspect an error and continue. Projects that enable implicit usings get
   `using Ankus` from the SDK. The `dotnet new` templates accept
   `--extension-name`, matching `ankus new`. The numeric guide notes pgrx's
-  `XX000`. Linux ARM64, the last platform gap from the audit, is in progress below.
+  `XX000`. Linux ARM64, the last platform gap from the audit, is now supported (below).
   Binding catalogs are now derived from the selected headers.
 - **2b841a3** passes the complete Linux x64 suite on PostgreSQL 18.6 with run-as
   (**14,442** total; **14,391** passed; 51 skips; zero failures; **41m03s**). Its
