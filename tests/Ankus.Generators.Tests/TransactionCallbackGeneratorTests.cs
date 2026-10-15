@@ -109,7 +109,10 @@ public sealed partial class PgFunctionGeneratorTests
         // From PostgreSQL 16, a soft input error needs no subtransaction.
         Assert.Contains("bool soft_input = request->recover_input && request->scalar_operation == 0 &&", native);
         Assert.Contains("bool recovered = false;", native);
-        Assert.Contains("if (lightweight && operation_context != NULL)", native);
+        Assert.Contains("if ((lightweight || operation_detached) && operation_context != NULL)", native);
         Assert.Contains("MemoryContextDelete((MemoryContext) operation_context);", native);
+        // An outermost report resets ErrorContext from PostgreSQL 19, so the operation's context never lives beneath it.
+        Assert.Contains("operation_detached = ankus_memory_contains(ErrorContext, CurrentMemoryContext);", native);
+        Assert.Contains("operation_context = AllocSetContextCreate(operation_detached ? TopMemoryContext : CurrentMemoryContext,", native);
     }
 }

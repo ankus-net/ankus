@@ -186,7 +186,20 @@ public static class MemoryCleanupOwnerFunctions
             int preserved = alive ? retained.Read<int>() : 0;
             return $"{enabled}|{name}|{same}|{live}|{copied}|{alive}|{preserved}|{resets}";
         });
-        return $"{state}|{PgMemoryContext.Current.Id == original.Id}|{Spi.ExecuteScalar<int>("SELECT 42")}";
+        return $"{state}|{PgMemoryContext.Current.Id == original.Id}|{Spi.ExecuteScalar<int>("SELECT 42")}|{DistinctSmallContexts()}";
+    }
+
+    /// <summary>
+    /// Creates three small contexts at once. A context deleted twice enters PostgreSQL's small-context free list twice,
+    /// and from then on that list hands the same storage to more than one live context, which Ankus registers by address.
+    /// </summary>
+    /// <returns>Whether the three contexts are distinct.</returns>
+    private static bool DistinctSmallContexts()
+    {
+        using PgMemoryContext first = PgMemoryContext.Create("free list first", options: PgMemoryContextOptions.Small);
+        using PgMemoryContext second = PgMemoryContext.Create("free list second", options: PgMemoryContextOptions.Small);
+        using PgMemoryContext third = PgMemoryContext.Create("free list third", options: PgMemoryContextOptions.Small);
+        return first.Id != second.Id && second.Id != third.Id && first.Id != third.Id;
     }
 
     /// <summary>

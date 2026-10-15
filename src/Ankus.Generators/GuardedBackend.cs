@@ -148,6 +148,7 @@ internal static class GuardedBackend
             bool recovery_subtransaction = (!direct_spi || input_recovery || (subtransaction && !ankus_parallel_without_subtransactions())) &&
                 !lightweight;
             volatile MemoryContext operation_context = NULL;
+            volatile bool operation_detached = false;
             result->release = ankus_release_result;
 
             if (request->operation == ANKUS_SPI_GUC_READ)
@@ -307,7 +308,13 @@ internal static class GuardedBackend
 
                         if ((direct || !standalone) && request->operation != ANKUS_SPI_CLOSE_SESSION && !subtransaction)
                         {
-                            operation_context = AllocSetContextCreate(CurrentMemoryContext, "Ankus SPI operation", ALLOCSET_SMALL_SIZES);
+                            /* From PostgreSQL 19 an outermost report, such as this operation's own,
+                             * resets ErrorContext and deletes every context beneath it. The operation's
+                             * context must outlive the report, so beneath ErrorContext this call owns
+                             * one under TopMemoryContext and deletes it on every path. */
+                            operation_detached = ankus_memory_contains(ErrorContext, CurrentMemoryContext);
+                            operation_context = AllocSetContextCreate(operation_detached ? TopMemoryContext : CurrentMemoryContext,
+                                "Ankus SPI operation", ALLOCSET_SMALL_SIZES);
                             MemoryContextSwitchTo(operation_context);
                         }
 
@@ -566,7 +573,8 @@ internal static class GuardedBackend
 
                     MemoryContextSwitchTo(diagnostic_context);
                     CurrentResourceOwner = caller_owner;
-                    if (lightweight && operation_context != NULL)
+                    /* A subtransaction's rollback deletes an operation context created beneath it. */
+                    if ((lightweight || operation_detached) && operation_context != NULL)
                     {
                         MemoryContextDelete((MemoryContext) operation_context);
                         operation_context = NULL;

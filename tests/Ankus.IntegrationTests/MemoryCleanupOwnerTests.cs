@@ -127,9 +127,10 @@ public sealed class MemoryCleanupOwnerTests(TestContext context)
 
                 command.CommandText = $"SELECT datatype.memory_error_context_child_notice({viaSpi})";
                 bool reclaimed = !filtered && version >= 190000;
+                // The last field shows that PostgreSQL still hands out distinct small contexts after the report.
                 string expected = reclaimed
-                    ? "True|ErrorContext|False|True|91|False|0|1|True|42"
-                    : $"{!filtered}|error context notice child|True|True|91|True|73|0|True|42";
+                    ? "True|ErrorContext|False|True|91|False|0|1|True|42|True"
+                    : $"{!filtered}|error context notice child|True|True|91|True|73|0|True|42|True";
                 for (int invocation = 0; invocation < 2; invocation++)
                 {
                     notices.Clear();

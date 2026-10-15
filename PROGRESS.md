@@ -438,6 +438,29 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   11's `dotnet test` shows the test host's live output, so a binding test's
   deliberate compiler errors became annotations; that step now runs without
   setup-dotnet's compiler matcher.
+- PostgreSQL 19 resets `ErrorContext` after every outermost report (commit
+  89d57c1fb35), and a reset deletes the contexts beneath it. A guarded backend
+  call made its per-operation context a child of the caller's, so a report
+  from code running in a child of `ErrorContext` deleted that context, and the
+  call then deleted it again. PostgreSQL keeps small deleted contexts on a free
+  list for reuse, so the second delete listed the same storage twice and later
+  contexts shared it. On Windows with PostgreSQL 19 beta 4 under `net11.0`,
+  that left a cycle in the context tree, so listing contexts requested 1 GB and
+  the next `pfree` saw an invalid pointer; the earlier macOS `AllocSetCheck`
+  fault was the same corruption. Assertion builds miss it because a recycled
+  context still looks valid. A 19 build that frees deleted contexts and
+  overwrites them failed the test every time, and symbolizing the bridge
+  showed the second delete. Beneath `ErrorContext` the operation now owns a
+  context under `TopMemoryContext` and deletes it on every path. The test also
+  creates three small contexts after the report and requires distinct ones;
+  with the old bridge a normal PostgreSQL 19 build then crashes every time,
+  and with the fix the memory classes pass on 19 under `net10.0` and
+  `net11.0`.
+- The same matrix found two test races. On Windows, a test that ends its
+  backend with FATAL can see a connection reset instead of the report, so all
+  three such GUC tests now accept a reset there and read the report from the
+  server log. On macOS, a worker restart check waited for a nonzero PID, but a
+  worker PostgreSQL has not recorded yet reports none at all, which is not zero.
 - GitHub flagged the C# scan's quality: read from source alone, it resolved only
   81% of calls. Nearly all the misses were MSTest calls in the test projects,
   whose global `using` MSTest's package adds through MSBuild, which a scan of the
@@ -1307,6 +1330,7 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   macOS suite, five macOS repeats with malloc scribbling or 20 repeats of the
   memory test classes on an assert-enabled Linux 19 build. The report bridge
   survives the reset as intended, so it remains open as an intermittent fault.
+  It is now found and fixed: see the PostgreSQL 19 `ErrorContext` entry below.
   Since then, 11 repeats of the memory test classes on the macOS 19 assert build
   and the complete macOS 19 suite in platform-versions run 38109393201 passed
   without it.
@@ -1672,7 +1696,7 @@ PostgreSQL 19 beta, and Intel macOS on 13–18 and 19 beta all pass on runtime *
 declaration audit against pgrx 0.19.3 has no open option, and the third code
 review's findings are fixed or kept by documented design.
 
-1. Resolve discovered correctness and CI failures before accepting affected work, including the intermittent macOS PostgreSQL 19 `AllocSetCheck` fault if it recurs. The macOS ARM64 test-host crashes are a suspected macOS bug, not yet reported: on 2026-10-14 the build-tool tests' host died after 698 of 1,346 tests, and its crash report shows `fork()`, called by .NET's `Process.Start`, aborting in libmalloc's xzone allocator (`_malloc_fork_parent`: unlock of an `os_unfair_lock` the thread does not own) while two other threads waited on xzone's fork lock to allocate. macOS 26 uses xzone for every ARM64 process, with no setting to turn it off outside Apple, and Intel Macs never use it. Rerun a job that ends this way and record it. If it happens once more, a maintainer files the report with Apple and .NET.
+1. Resolve discovered correctness and CI failures before accepting affected work. The macOS ARM64 test-host crashes are a suspected macOS bug, not yet reported: on 2026-10-14 the build-tool tests' host died after 698 of 1,346 tests, and its crash report shows `fork()`, called by .NET's `Process.Start`, aborting in libmalloc's xzone allocator (`_malloc_fork_parent`: unlock of an `os_unfair_lock` the thread does not own) while two other threads waited on xzone's fork lock to allocate. macOS 26 uses xzone for every ARM64 process, with no setting to turn it off outside Apple, and Intel Macs never use it. Rerun a job that ends this way and record it. If it happens once more, a maintainer files the report with Apple and .NET.
 2. Keep the pgrx 0.19.3 [release-delta gates](docs/contributing/evidence/parity-requirements.md#pgrx-0193-release-delta-and-refresh-gates) satisfied: each has implementation and complete-suite evidence on runtime 10.0.13-ankus.1, which must be refreshed on each later serviced runtime.
 3. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
 4. Use the in-backend baseline to finish measured hot-path improvements that preserve recovery and ownership guarantees. The latest trigger profile is in the [guard-tier evidence](docs/contributing/evidence/guard-tiers.md#row-triggers). `Set` no longer consults the registries for built-in types, so the remaining managed cost is mostly the detached row's allocations.
