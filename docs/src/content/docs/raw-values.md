@@ -41,7 +41,11 @@ reference.rtindex++;
 
 The generated records include fields and dependencies reached through native
 pointers. Structs, unions, inline arrays and bitfields retain their measured
-storage; bitfield writes reject out-of-range values. Extended numeric and atomic
+storage; bitfield writes reject out-of-range values. Plain C `char`, which is
+unsigned on Linux ARM64 and signed on the other platforms, is `sbyte` everywhere,
+so `char *` arguments and fields are `sbyte*` and the same code compiles on every
+platform, as Rust's `c_char` lets portable pgrx code do. The bytes are the same
+either way; `unsigned char` is `byte`. Extended numeric and atomic
 representations expose bytes when no exact CLR value exists. Those bytes do not
 provide native arithmetic or atomic operations. Opaque declarations expose
 pointer identities and metadata. They do not implement the native allocation

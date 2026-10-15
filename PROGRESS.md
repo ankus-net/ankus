@@ -479,7 +479,14 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   verification and the release matrix gain `linux-arm64`, built on GitHub's
   hosted `ubuntu-24.04-arm` runners, and the `Linux ARM64` workflow runs the
   complete suite there on both target frameworks. Acceptance needs that suite to
-  pass.
+  pass. The first run built both runtime lines and passed their fork probes on
+  Linux ARM64. Its tests then failed to compile: plain C `char` is unsigned
+  there, and bindings followed the target, so `char *` became `byte*` on Linux
+  ARM64 and `sbyte*` everywhere else, and code written for one did not compile
+  on the other. Bindings now map plain `char` to `sbyte` on every target, as
+  Rust's `c_char` gives portable code one name, and reject a plain `char`
+  bitfield on an unsigned target, where its value would read with the other
+  sign. PostgreSQL's headers declare none.
 - The same matrix found two test races. On Windows, a test that ends its
   backend with FATAL can see a connection reset instead of the report, so all
   three such GUC tests now accept a reset there and read the report from the

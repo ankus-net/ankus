@@ -454,6 +454,12 @@ internal static partial class NativeBindingRecordCSharp
                 throw new FormatException("A native bitfield requires an observed integer representation of at most 128 bits.");
             }
 
+            // Plain char maps to sbyte on every target, but a bitfield's value depends on the native signedness.
+            if (type.Kind == "scalar" && type.Name == "char" && !graph.Target.Numeric.CharIsSigned)
+            {
+                throw new FormatException("A plain char bitfield has target-dependent values; declare it signed char or unsigned char.");
+            }
+
             string cast = type.Kind == "enum" ? "(" + integer.Code + ")" : "";
             string raw = integer.Code == "bool" ? "(value ? (global::System.UInt128)1 : 0)" : "unchecked((global::System.UInt128)" + cast + "value)";
             string signed = $"(unchecked((global::System.Int128)(bits << {Number(128 - width)})) >> {Number(128 - width)})";
@@ -577,7 +583,10 @@ internal static partial class NativeBindingRecordCSharp
             bool? sign = type.Name switch
             {
                 "_Bool" => false,
-                "char" => graph.Target.Numeric.CharIsSigned,
+                // Plain char is unsigned on Linux ARM64 and signed on every other target. Bindings give it one
+                // CLR type everywhere, as Rust's c_char gives portable code one name, so the same source compiles
+                // on each target; the bits are identical either way.
+                "char" => true,
                 "wchar_t" => graph.Target.Numeric.WCharIsSigned,
                 "signed char" or "short" or "int" or "long" or "long long" or "__int128" => true,
                 "unsigned char" or "unsigned short" or "unsigned int" or "unsigned long" or "unsigned long long" or "unsigned __int128" => false,

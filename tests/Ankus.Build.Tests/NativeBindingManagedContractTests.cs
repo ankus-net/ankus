@@ -246,6 +246,41 @@ public sealed class NativeBindingManagedContractTests(TestContext context)
         Assert.AreEqual(expected, NativeBindingRecordCSharp.Generate(graph));
     }
 
+    /// <summary>
+    /// Plain char is unsigned on Linux ARM64 and signed elsewhere; bindings give it sbyte on every target, so the same
+    /// source compiles on each, as Rust's c_char does. A plain char bitfield's value would depend on the target, so an
+    /// unsigned target rejects one instead of reading it with the other sign.
+    /// </summary>
+    /// <param name="charIsSigned">Whether the target's plain char is signed.</param>
+    [TestMethod]
+    [DataRow(true)]
+    [DataRow(false)]
+    public void PlainCharMapsToSbyteOnEveryTarget(bool charIsSigned)
+    {
+        NativeRecordGraph graph = CreateGraph();
+        graph = graph with
+        {
+            Target = graph.Target with { Numeric = graph.Target.Numeric with { CharIsSigned = charIsSigned } },
+            Types = [graph.Types[0] with { Size = 1, Alignment = 1 }, new("scalar", 1, "char", 0, 1, 1, "char", null, null, null, null, null)],
+            Declarations = [new("struct", "Root", true, 1, 1, [new("tag", 1, 0, null, false, "char tag;")], null, [])],
+        };
+        Assert.Contains("public sbyte @tag;", NativeBindingRecordCSharp.Generate(graph).Source);
+
+        NativeRecordGraph bitfield = graph with
+        {
+            Declarations = [new("struct", "Root", true, 1, 1, [new("tag", 1, 0, 3, false, "char tag : 3;")], null, [])],
+        };
+        if (charIsSigned)
+        {
+            Assert.Contains("public sbyte @tag", NativeBindingRecordCSharp.Generate(bitfield).Source);
+        }
+        else
+        {
+            FormatException error = Assert.ThrowsExactly<FormatException>(() => NativeBindingRecordCSharp.Generate(bitfield));
+            Assert.Contains("plain char bitfield", error.Message);
+        }
+    }
+
     private static NativeRecordGraph CreateGraph()
     {
         var target = new NativeHeaderTarget(180006, RuntimeInformation.RuntimeIdentifier, IntPtr.Size, BitConverter.IsLittleEndian, 21, NativeNumericModelFixture.Binary80);
