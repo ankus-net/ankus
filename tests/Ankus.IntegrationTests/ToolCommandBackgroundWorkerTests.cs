@@ -639,8 +639,8 @@ public sealed partial class ToolCommandTests
                     try
                     {
                         // The worker publishes its PID as soon as it runs, but the postmaster records
-                        // the registration's PID only after its fork returns.
-                        WaitUntil(() => Ready.Value != 0 && worker.GetState().ProcessId != 0);
+                        // the registration's PID only after its fork returns; until then it has none.
+                        WaitUntil(() => Ready.Value != 0 && worker.GetState().ProcessId is not null);
                         if (worker.GetState().ProcessId != Ready.Value)
                         {
                             throw new InvalidOperationException("Restarted PID did not match the registration.");
