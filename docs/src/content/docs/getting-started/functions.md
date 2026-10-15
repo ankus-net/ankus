@@ -5,7 +5,7 @@ description: Declare C# methods, map PostgreSQL types, and handle SQL NULL.
 
 ## Create a project
 
-Install `Ankus.Tool` from your configured NuGet feed, then create a solution:
+Install `Ankus.Tool` from nuget.org, then create a solution:
 
 ```console
 dotnet tool install --global Ankus.Tool --version 0.1.0
@@ -13,11 +13,10 @@ ankus new Hello
 cd Hello
 ```
 
-Use the Ankus version available from your feed. Packages are currently built
-locally; a public release is pending. The solution includes an extension project,
-managed tests, and tests that load the native extension into PostgreSQL.
+The solution includes an extension project, managed tests, and tests that load
+the native extension into PostgreSQL.
 
-Alternatively, install the matching .NET template package from your feed:
+Alternatively, install the matching .NET template package:
 
 ```console
 dotnet new install Ankus.Templates::0.1.0

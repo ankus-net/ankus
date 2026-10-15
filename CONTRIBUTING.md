@@ -10,8 +10,8 @@ steps and where each one is explained.
    [Native AOT toolchain](https://learn.microsoft.com/dotnet/core/deploying/native-aot/), PostgreSQL 18 with its server
    development headers, and LLVM Clang 20 or later with `libclang`. Linux also needs Valgrind and `libc6-dbg`.
    [Development and testing](docs/contributing/development.md) has the complete list for each platform.
-2. Stage the patched Native AOT runtime. Extensions embed a patched runtime that is not on NuGet yet; download it from a
-   CI run and pack it as
+2. Extensions embed a patched Native AOT runtime. A checkout restores it from nuget.org when its runtime version has
+   been released; after the runtime fork moves past the last release, stage it from a CI run as
    [Stage the patched Native AOT runtime](docs/contributing/development.md#stage-the-patched-native-aot-runtime)
    describes.
 3. Build and test from the repository root:

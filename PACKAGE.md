@@ -17,7 +17,7 @@ The generated solution uses Central Package Management and the same Ankus
 version as the installed tool. Backend tests run in an isolated PostgreSQL cluster
 for the selected major, 18 by default.
 
-Use `Ankus.Sdk` as the project SDK, with the version available from your NuGet feed:
+Use `Ankus.Sdk` as the project SDK:
 
 ```xml
 <Project Sdk="Ankus.Sdk/0.1.0">

@@ -29,8 +29,6 @@ dotnet tool install --global Ankus.Tool --version 0.1.0
 ankus init --pg18 /path/to/postgresql/bin/pg_config
 ```
 
-Use the Ankus version available from your configured feed.
-
 ## Publish
 
 From your extension project or generated solution directory:

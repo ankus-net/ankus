@@ -1,8 +1,8 @@
 # Security
 
 Report a vulnerability privately through GitHub Security Advisories for the `ankus-net/ankus` repository: open the
-Security tab and choose "Report a vulnerability". Please do not open a public issue for one. Until 0.1.0 is released,
-fixes go into `main`; after that, into the latest release.
+Security tab and choose "Report a vulnerability". Please do not open a public issue for one. Fixes go into `main`
+and ship in the next release.
 
 ## What to report
 

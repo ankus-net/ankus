@@ -98,9 +98,12 @@ defaulting to `~/.ankus`. For a nonstandard path:
 
 ### Stage the patched Native AOT runtime
 
-A fresh checkout needs the patched runtime and compiler before building or running
-backend tests. These packages are not published to NuGet yet; without a staged payload, restore can
-fail with `NU1101` for `Ankus.NativeAot.Runtime.<rid>` or `Ankus.NativeAot.Compiler.<rid>`.
+A checkout needs the patched runtime and compiler before building or running
+backend tests. When the runtime version it selects has been released, restore
+downloads them from nuget.org and nothing needs staging. After the runtime fork
+moves past the last release, stage them as below; without a staged or published
+payload, restore fails with `NU1101` for `Ankus.NativeAot.Runtime.<rid>` or
+`Ankus.NativeAot.Compiler.<rid>`.
 
 Read the checkout's runtime identity and find a successful CI run for the same
 Ankus revision:

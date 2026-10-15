@@ -136,7 +136,7 @@ for project defaults and attribute overrides.
 
 ## Develop and test
 
-With the Ankus tool installed from your configured feed:
+With the Ankus tool installed (`dotnet tool install --global Ankus.Tool`):
 
 ```console
 ankus new Hello
@@ -223,11 +223,10 @@ Extension projects use the `Ankus.Sdk` NuGet project SDK:
 ```
 
 The SDK includes matching Native AOT compiler, runtime and source-generator
-packages plus the native build helper. See [package setup](docs/contributing/development.md#build-the-packages)
-for the local NuGet feed; the initial `0.1.0` release is pending.
+packages plus the native build helper, all restored from nuget.org.
 
-The initial target is .NET 10 LTS. .NET 11 support is planned and requires a
-validated Native AOT compiler/runtime combination. See [.NET support](https://ankus.net/reference/dotnet-support/)
+Ankus targets .NET 10 LTS. `net11.0` is a preview on .NET 11 RC2 until .NET 11
+ships. See [.NET support](https://ankus.net/reference/dotnet-support/)
 for version selection, servicing, and rebuilding deployed extensions.
 
 See [development and testing](docs/contributing/development.md) for prerequisites,
