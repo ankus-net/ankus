@@ -488,6 +488,16 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   8b8e04e, the complete suite then passes against PostgreSQL 18 on both
   `net10.0` and `net11.0`: 14,973 passed and 52 platform skips each, in about
   72 minutes on the hosted runner.
+- Scheduled run 38729094424 lost one Windows/PostgreSQL 18.6 case before its
+  test body ran: the server reset the connection during authentication. The
+  new backend had failed with `FATAL: incorrect checksum in control file` in
+  the same millisecond the checkpointer finished writing `pg_control`. Windows
+  builds start every backend as a new process that reads `pg_control` from disk
+  again without a lock (`LocalProcessControlFile` in `launch_backend.c`), so it
+  can see a half-written file, and the suites' frequent forced checkpoints make
+  that likelier. Its rerun passed. This looks like a PostgreSQL bug; it is
+  recorded here, not reported. If it happens again, a maintainer reports it
+  upstream.
 - The same matrix found two test races. On Windows, a test that ends its
   backend with FATAL can see a connection reset instead of the report, so all
   three such GUC tests now accept a reset there and read the report from the
