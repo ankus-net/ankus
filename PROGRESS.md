@@ -521,8 +521,13 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   key is always the replica identity or primary key. RC1 changed no SQLSTATE,
   type or function catalog entries. The packaged PostgreSQL 19 on the
   dedicated Linux hosts is now RC1, and the complete suite passes on it on
-  Linux x64: 14,976 passed and 52 platform skips. macOS and Windows still test
-  beta 4 until their installations move to RC1.
+  Linux x64: 14,976 passed and 52 platform skips. Every runner host now has
+  RC1: the packaged server on the dedicated Linux hosts, `ankus init --pg19
+  download` on both Macs (which selects the newest prerelease), and a meson
+  build of the checksum-verified source on Windows, the same way beta 4 was
+  built there. The complete integration suite also passes on an RC1 build
+  with assertions that never recycles deleted contexts and overwrites them:
+  5,540 passed and 17 skipped.
 - Release rehearsal 38759505000 on 0746e49 failed both Windows runtime jobs
   32 seconds into the runtime's `build.cmd`, right after its restore and
   before any compilation, and the log showed only the exit code: CI starts
@@ -540,8 +545,15 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   package, whose server the SDK's `build-server shutdown` does not reach, so
   it kept the checkout's own SDK open and `git clean` could not delete it.
   Cleanup now stops any process still running from that SDK, which only the
-  job's own build uses. The rehearsal's other ten runtime package
-  jobs passed, including Linux ARM64 and hosted Intel macOS on both lines.
+  job's own build uses. In both rehearsals every other runtime package job
+  passed, including Linux ARM64 and hosted Intel macOS on both lines. CI
+  38780573792 on 03b4375 passes on all three platforms. On 6ae03a5 one
+  Windows case had failed to link: the MSVC linker rejected the object
+  ILCompiler wrote with `LNK1103: debugging information corrupt`. It had never
+  happened before and did not recur; it ran while manual MSVC builds of the
+  runtime loaded the same host, against the rule to keep that host free while
+  its runners work. If it happens again on an idle host, it needs its own
+  investigation.
 - Scheduled run 38729094424 lost one Windows/PostgreSQL 18.6 case before its
   test body ran: the server reset the connection during authentication. The
   new backend had failed with `FATAL: incorrect checksum in control file` in
