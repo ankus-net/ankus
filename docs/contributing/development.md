@@ -387,8 +387,11 @@ The account must be able to read the PostgreSQL installation. Distribution and
 Homebrew packages are readable; a downloaded installation under a private home
 directory is not, because its binaries load libraries through an absolute
 `RUNPATH` there. CI test runs use `ankus-runas` when the runner provides it,
-create it on GitHub-hosted Linux runners, and print a warning otherwise. Grant a
-dedicated runner's account the same rule for `ankus-runas`.
+create it on GitHub-hosted Linux runners, and print a warning otherwise. Tests
+stage PostgreSQL 13 to 17 inside the workspace, so on hosted runners CI also
+lets other accounts search the directories above it, including the runner's
+home directory. Grant a dedicated runner's account the same rule for
+`ankus-runas`, and make sure that account can search its workspace's parents.
 
 For a separate PostgreSQL 18 build, set `ANKUS_TEST_PG_CONFIG` to its `pg_config`
 path for the integration test process. The fixture uses that installation for

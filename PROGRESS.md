@@ -503,6 +503,13 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   8b8e04e, the complete suite then passes against PostgreSQL 18 on both
   `net10.0` and `net11.0`: 14,973 passed and 52 platform skips each, in about
   72 minutes on the hosted runner.
+  On PostgreSQL 13, 14 and 15 (runs 38756151062, 38756165654 and 38756181319
+  on 0746e49) every test passed on both frameworks except one run-as case: the
+  run-as account could not execute `initdb`. Tests stage PostgreSQL 13 to 17
+  inside the workspace, and a hosted runner's home directory does not let
+  other accounts search it; 18 and later run from the system package and
+  passed. CI now lets other accounts search the directories above the
+  workspace on hosted runners; listing them stays closed.
 - Scheduled run 38729094424 lost one Windows/PostgreSQL 18.6 case before its
   test body ran: the server reset the connection during authentication. The
   new backend had failed with `FATAL: incorrect checksum in control file` in

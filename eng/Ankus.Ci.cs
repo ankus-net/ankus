@@ -130,7 +130,7 @@ try
         case "native-analysis-run":
             RequireArguments(args, 1);
             ValidateRuntimeIdentity(repositoryRoot);
-            ConfigureRunAsAccount();
+            ConfigureRunAsAccount(repositoryRoot);
             // The assembly fixture publishes the Hello sample and composes every native fixture from the test extension's
             // generated bridge; this test also compiles the worker signal fixture. CodeQL traces those compilations.
             RunTestModule(repositoryRoot, $"tests/Ankus.IntegrationTests/bin/Release/{ExtensionTestFramework()}/Ankus.IntegrationTests.dll",
@@ -1458,7 +1458,7 @@ static string ExtensionTestFramework()
 
 static void RunRuntimeTests(string repositoryRoot)
 {
-    ConfigureRunAsAccount();
+    ConfigureRunAsAccount(repositoryRoot);
     using WindowsSuiteSlot? slot = WindowsSuiteSlot.Acquire();
     string integrationTestModule = $"tests/Ankus.IntegrationTests/bin/Release/{ExtensionTestFramework()}/Ankus.IntegrationTests.dll";
     Task integrationTests = Task.Run(() => RunTestModule(repositoryRoot, integrationTestModule));
@@ -1469,7 +1469,7 @@ static void RunRuntimeTests(string repositoryRoot)
 // Like pgrx's runas job, run-as cases start servers as another account through passwordless sudo.
 // GitHub-hosted Linux runners create the account; dedicated runners are provisioned once, as the
 // contributing guide describes, and a runner without it reports the cases inconclusive with a warning.
-static void ConfigureRunAsAccount()
+static void ConfigureRunAsAccount(string repositoryRoot)
 {
     const string Account = "ankus-runas";
     if (OperatingSystem.IsWindows() || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ANKUS_TEST_RUNAS_ACCOUNT")))
@@ -1482,6 +1482,16 @@ static void ConfigureRunAsAccount()
     {
         Run("sudo", ["-n", "useradd", "--system", "--user-group", "--home-dir", "/nonexistent", "--no-create-home",
             "--shell", "/usr/sbin/nologin", Account]);
+
+        // Tests stage PostgreSQL 13 to 17 inside the workspace, under a home directory that other accounts cannot
+        // search, so the account could not run the staged initdb. Searching is all it needs; listing stays closed.
+        for (DirectoryInfo? directory = new(repositoryRoot); directory is not null; directory = directory.Parent)
+        {
+            if ((directory.UnixFileMode & UnixFileMode.OtherExecute) == 0)
+            {
+                directory.UnixFileMode |= UnixFileMode.OtherExecute;
+            }
+        }
     }
 
     if (CanRunAs(Account))
