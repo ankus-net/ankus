@@ -25,6 +25,9 @@ permissions:
 
 env:
   ANKUS_RUNNER_PRIVATE_IDENTIFIERS: ${{ secrets.ANKUS_RUNNER_PRIVATE_IDENTIFIERS }}
+  # Runners on one host share an account. Each keeps its own NuGet HTTP cache beside its checkout from the first
+  # restore on, so concurrent jobs never replace the same cached response; see eng/README.md.
+  NUGET_HTTP_CACHE_PATH: ${{ github.workspace }}/../nuget-http-cache
   MSBUILDDISABLENODEREUSE: '1'
   # The SDK's telemetry can deadlock a build against MSBuild's logging; see NativeAotExtensionTests.
   DOTNET_CLI_TELEMETRY_OPTOUT: '1'

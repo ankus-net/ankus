@@ -1203,8 +1203,8 @@ static void ConfigureBindingCache(string repositoryRoot)
 }
 
 // Runners on one host run as the same account and would share its NuGet HTTP cache. NuGet's audit can then find a
-// cached response still open in another runner's restore, and the build treats that as an error. Each dedicated
-// runner keeps its own HTTP cache, which survives between its jobs.
+// cached response still open in another runner's restore, and the build treats that as an error. The workflows give
+// each runner its own cache from the job's first restore; this covers a workflow that does not.
 static void ConfigureNuGetHttpCache()
 {
     if (Environment.GetEnvironmentVariable("RUNNER_ENVIRONMENT") != "self-hosted" ||

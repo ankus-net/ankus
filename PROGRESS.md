@@ -572,8 +572,10 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   NuGet's vulnerability data in the service account's shared HTTP cache. The
   three Windows runners share that cache and a package folder, but NuGet
   coordinates them through lock files under `NUGET_SCRATCH`, which defaults to
-  each runner's own `TEMP`. The runner guide now says to share it; the
-  Windows runners do not share one yet, so the race remains possible there.
+  each runner's own `TEMP`. Since 32390ee test builds used a per-runner HTTP
+  cache, but the CI script's own restore ran before that setting. The
+  workflows now set `NUGET_HTTP_CACHE_PATH` beside each runner's checkout for
+  the whole job.
 - PostgreSQL 19 RC1 passes the complete suite on every platform CI covers:
   Linux x64 (run 38785556292, 14,976 passed and 52 skips), Linux ARM64 on
   both frameworks (38777760999, 14,976 and 52 each), macOS ARM64 (38791251393,
