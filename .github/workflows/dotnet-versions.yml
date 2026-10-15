@@ -150,6 +150,12 @@ jobs:
           dotnet run --file ./eng/Ankus.Ci.cs -- runtime-test-build ${{ matrix.rid }}
           ${{ (inputs.postgresql != '' && inputs.postgresql != 'default' && inputs.postgresql) || (matrix.rid == 'win-x64' && '17') || '18' }}
 
+      # SDK 11's dotnet test shows the test host's live output, including compiler errors that a test provokes on
+      # purpose. Without setup-dotnet's compiler matcher they stay in the log instead of becoming error annotations;
+      # the build step above keeps the matcher for real compiler errors.
+      - name: Keep provoked compiler errors out of annotations
+        run: echo "::remove-matcher owner=csc::"
+
       - name: Run full PostgreSQL tests
         env:
           ANKUS_PACKAGE_TEST_CONCURRENCY: ${{ inputs.package-test-concurrency || (runner.os == 'Windows' && vars.ANKUS_WINDOWS_PACKAGE_TEST_CONCURRENCY) || (runner.os == 'macOS' && vars.ANKUS_MACOS_PACKAGE_TEST_CONCURRENCY) || (runner.os == 'Linux' && vars.ANKUS_LINUX_PACKAGE_TEST_CONCURRENCY) || '' }}
