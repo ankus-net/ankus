@@ -17,7 +17,7 @@
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-    <_AnkusSupportedRuntimeIdentifiers>;linux-x64;osx-arm64;osx-x64;win-x64;</_AnkusSupportedRuntimeIdentifiers>
+    <_AnkusSupportedRuntimeIdentifiers>;linux-arm64;linux-x64;osx-arm64;osx-x64;win-x64;</_AnkusSupportedRuntimeIdentifiers>
   </PropertyGroup>
 
   <ItemGroup>

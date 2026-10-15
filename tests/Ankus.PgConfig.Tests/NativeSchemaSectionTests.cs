@@ -14,6 +14,7 @@ public sealed class NativeSchemaSectionTests
     /// <param name="rid">The native library identity.</param>
     [TestMethod]
     [DataRow("linux-x64")]
+    [DataRow("linux-arm64")]
     [DataRow("win-x64")]
     [DataRow("osx-x64")]
     [DataRow("osx-arm64")]
@@ -41,6 +42,20 @@ public sealed class NativeSchemaSectionTests
     {
         using var stream = new MemoryStream(Image(rid, [3, 1, 4]));
         Assert.ThrowsExactly<FormatException>(() => NativeSchemaSection.Read(stream, rid == "win-x64" ? "linux-x64" : "win-x64"));
+    }
+
+    /// <summary>
+    /// An ARM64 library does not satisfy an x64 request, or the reverse, though both are Linux ELF files.
+    /// </summary>
+    /// <param name="actual">The library's architecture.</param>
+    /// <param name="requested">The other Linux architecture.</param>
+    [TestMethod]
+    [DataRow("linux-arm64", "linux-x64")]
+    [DataRow("linux-x64", "linux-arm64")]
+    public void RejectsTheOtherLinuxArchitecture(string actual, string requested)
+    {
+        using var stream = new MemoryStream(Image(actual, [3, 1, 4]));
+        Assert.ThrowsExactly<FormatException>(() => NativeSchemaSection.Read(stream, requested));
     }
 
     /// <summary>
@@ -265,12 +280,13 @@ public sealed class NativeSchemaSectionTests
         switch (rid)
         {
             case "linux-x64":
+            case "linux-arm64":
                 "\u007fELF"u8.CopyTo(image);
                 image[4] = 2;
                 image[5] = 1;
                 image[6] = 1;
                 Put16(image, 16, 3);
-                Put16(image, 18, 62);
+                Put16(image, 18, rid == "linux-arm64" ? (ushort)183 : (ushort)62);
                 Put32(image, 20, 1);
                 Put64(image, 40, 64);
                 Put16(image, 52, 64);

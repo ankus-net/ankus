@@ -469,6 +469,17 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   function and records the context current when its ERROR arrives: a SQL
   function's error and an Ankus function's both arrive in `ErrorContext`, and
   before the change the Ankus one did not.
+- Linux ARM64, which pgrx supports, is being added as a fifth runtime
+  identifier. Both runtime lines enabled the collector's fork checkpoints and
+  the runtime's fork support only on Linux x64 and macOS; that code relies on
+  POSIX fork handling rather than an instruction set, so the fork now enables
+  it on Linux ARM64 too (`72c3927a21d` for .NET 10, `9692d0ff7ad` for .NET 11).
+  The schema reader accepts AArch64 ELF libraries and rejects one architecture
+  where the other was requested. Runtime and compiler packages, release
+  verification and the release matrix gain `linux-arm64`, built on GitHub's
+  hosted `ubuntu-24.04-arm` runners, and the `Linux ARM64` workflow runs the
+  complete suite there on both target frameworks. Acceptance needs that suite to
+  pass.
 - The same matrix found two test races. On Windows, a test that ends its
   backend with FATAL can see a connection reset instead of the report, so all
   three such GUC tests now accept a reset there and read the report from the
@@ -1508,7 +1519,7 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   can inspect an error and continue. Projects that enable implicit usings get
   `using Ankus` from the SDK. The `dotnet new` templates accept
   `--extension-name`, matching `ankus new`. The numeric guide notes pgrx's
-  `XX000`. Still open from the audit: Linux ARM64, which no runner covers yet.
+  `XX000`. Linux ARM64, the last platform gap from the audit, is in progress below.
   Binding catalogs are now derived from the selected headers.
 - **2b841a3** passes the complete Linux x64 suite on PostgreSQL 18.6 with run-as
   (**14,442** total; **14,391** passed; 51 skips; zero failures; **41m03s**). Its
@@ -1584,8 +1595,9 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   with benchmarks missing from the current run and why a comparison is
   unavailable; and new tests pin the comparison summaries, concurrent test
   isolation, process-exit cleanup, the logging defaults and the composite and
-  text-array signatures pgrx keeps in its `todo` corpus. The ranked gaps start with Valgrind runs of test clusters and the
-  benchmark history report.
+  text-array signatures pgrx keeps in its `todo` corpus. Test clusters and the
+  `start`, `run`, `connect`, `regress` and `bench` commands now run under
+  Valgrind, and `ankus bench --report` shows benchmark history.
 - `PgMemoryContext.CreateFlatArray<T>` builds a zeroed PostgreSQL array of a
   fixed-size scalar in place, the counterpart of pgrx's `FlatArray::new_zeroed_in`;
   it rejects zero-length dimensions, more than six dimensions and PostgreSQL's

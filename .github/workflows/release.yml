@@ -85,6 +85,11 @@ jobs:
             platform: linux
             architecture: x64
             timeout: 60
+          - runner: ubuntu-24.04-arm
+            rid: linux-arm64
+            platform: linux
+            architecture: arm64
+            timeout: 180
           - runner: ${{ github.repository == 'willibrandon/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && 'ankus-macos-arm64' || 'macos-15' }}
             rid: osx-arm64
             platform: osx

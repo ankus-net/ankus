@@ -1,0 +1,158 @@
+name: Linux ARM64
+
+on:
+  schedule:
+    - cron: '29 6 * * 4'
+  workflow_dispatch:
+    inputs:
+      postgresql:
+        description: PostgreSQL major
+        type: choice
+        default: '18'
+        options: ['13', '14', '15', '16', '17', '18', '19']
+      package-test-concurrency:
+        description: Package-consumer slots (empty uses two, which fits the hosted runner's memory)
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  ANKUS_RUNNER_PRIVATE_IDENTIFIERS: ${{ secrets.ANKUS_RUNNER_PRIVATE_IDENTIFIERS }}
+  MSBUILDDISABLENODEREUSE: '1'
+  # The SDK's telemetry can deadlock a build against MSBuild's logging; see NativeAotExtensionTests.
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  # The .NET 11 SDK that builds net11.0 extensions and the net11.0 fork probes.
+  ANKUS_DOTNET11_SDK: 11.0.100-rc.2.26504.105
+
+jobs:
+  runtime:
+    strategy:
+      fail-fast: false
+      matrix:
+        line: [net10.0, net11.0]
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            10.0.x
+            ${{ env.ANKUS_DOTNET11_SDK }}
+
+      - name: Read runtime identity
+        id: runtime
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- metadata ${{ matrix.line }}
+
+      - name: Restore native runtime
+        uses: actions/cache/restore@v6
+        id: runtime-cache
+        with:
+          path: artifacts/${{ steps.runtime.outputs.staging }}/linux-arm64
+          key: nativeaot-v3-linux-arm64-${{ steps.runtime.outputs.commit }}
+
+      - uses: actions/checkout@v7
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
+        with:
+          repository: ${{ steps.runtime.outputs.repository }}
+          ref: ${{ steps.runtime.outputs.commit }}
+          path: runtime
+
+      - name: Build native runtime
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- runtime-build linux arm64 linux-arm64 ${{ matrix.line }}
+
+      - name: Save native runtime
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: artifacts/${{ steps.runtime.outputs.staging }}/linux-arm64
+          key: ${{ steps.runtime-cache.outputs.cache-primary-key }}
+
+      - name: Pack runtime
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- runtime-pack linux-arm64 ${{ matrix.line }}
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.runtime.outputs.staging }}-linux-arm64
+          path: artifacts/${{ steps.runtime.outputs.staging }}/linux-arm64
+          if-no-files-found: error
+          retention-days: 3
+
+  test:
+    needs: runtime
+    strategy:
+      fail-fast: false
+      matrix:
+        # net11.0 retargets every repository extension; package consumers keep both lines in their feed.
+        framework: [net10.0, net11.0]
+    name: test (${{ matrix.framework }})
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 240
+    env:
+      AnkusExtensionTargetFramework: ${{ matrix.framework != 'net10.0' && matrix.framework || '' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            10.0.x
+            ${{ env.ANKUS_DOTNET11_SDK }}
+
+      - name: Select the .NET 11 SDK
+        if: matrix.framework == 'net11.0'
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- select-sdk ${{ env.ANKUS_DOTNET11_SDK }}
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: nativeaot-linux-arm64
+          path: artifacts/nativeaot/linux-arm64
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: nativeaot-net11.0-linux-arm64
+          path: artifacts/nativeaot-net11.0/linux-arm64
+
+      - name: Restore NuGet packages
+        run: dotnet restore Ankus.slnx -p:Platform="Any CPU"
+
+      - name: Build PostgreSQL tests
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- runtime-test-build linux-arm64 ${{ inputs.postgresql || '18' }}
+
+      - name: Keep provoked compiler errors out of annotations
+        if: matrix.framework == 'net11.0'
+        run: echo "::remove-matcher owner=csc::"
+
+      - name: Run full PostgreSQL tests
+        env:
+          ANKUS_PACKAGE_TEST_CONCURRENCY: ${{ inputs.package-test-concurrency || '2' }}
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- runtime-test-run
+
+      - name: Remove private identifiers from reports
+        if: always()
+        id: reports
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- prepare-reports
+
+      - name: Save test results and timings
+        if: always() && steps.reports.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-linux-arm64-${{ matrix.framework }}-pg${{ inputs.postgresql || '18' }}
+          path: |
+            artifacts/ci-reports/test-results/*.trx
+            artifacts/ci-reports/test-results/process-timings.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Save failure logs
+        if: (failure() || cancelled()) && steps.reports.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-logs-linux-arm64-${{ matrix.framework }}-pg${{ inputs.postgresql || '18' }}
+          path: artifacts/ci-reports/test-logs/**
+          if-no-files-found: ignore
+          retention-days: 7

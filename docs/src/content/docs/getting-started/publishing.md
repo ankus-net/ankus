@@ -119,9 +119,10 @@ The publication still keeps its SQL and control files together under
 ## Build for another architecture
 
 Native AOT can build for another architecture of the same operating system.
-Ankus provides runtimes for `linux-x64`, `win-x64`, `osx-arm64` and `osx-x64`, so
-this applies to the two macOS architectures, such as building Intel macOS
-extensions on Apple silicon. Ankus also needs the target's PostgreSQL
+Ankus provides runtimes for `linux-x64`, `linux-arm64`, `win-x64`, `osx-arm64` and
+`osx-x64`. Building for the other architecture is tested between the two macOS
+architectures, such as building Intel macOS extensions on Apple silicon. Ankus
+also needs the target's PostgreSQL
 headers and the native layouts measured from them. It measures layouts by
 compiling and running small C programs, which must run on the target, so the
 target machine captures both once. pgrx's `cargo pgrx cross pgrx-target` captures

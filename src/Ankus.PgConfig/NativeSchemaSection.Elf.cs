@@ -4,13 +4,24 @@ internal static partial class NativeSchemaSection
 {
     private sealed partial class Reader
     {
+        /// <summary>
+        /// The ELF machine number of x86-64 libraries.
+        /// </summary>
+        private const ushort ElfX64 = 62;
+
+        /// <summary>
+        /// The ELF machine number of AArch64 libraries.
+        /// </summary>
+        private const ushort ElfArm64 = 183;
+
         private string ReadElf()
         {
             byte[] header = Bytes(0, 64);
             Require(header[4] == 2 && header[5] == 1 && header[6] == 1 && UInt32(header.AsSpan(20)) == 1,
                 "Expected a little-endian ELF64 library.");
-            Require(UInt16(header.AsSpan(16)) == 3 && UInt16(header.AsSpan(18)) == 62,
-                "Expected an x64 ELF shared library.");
+            ushort machine = UInt16(header.AsSpan(18));
+            Require(UInt16(header.AsSpan(16)) == 3 && machine is ElfX64 or ElfArm64,
+                "Expected an x64 or ARM64 ELF shared library.");
             Require(UInt16(header.AsSpan(52)) == 64 && UInt16(header.AsSpan(58)) == 64,
                 "Invalid ELF header or section-header size.");
             ulong table = UInt64(header.AsSpan(40));
@@ -50,7 +61,7 @@ internal static partial class NativeSchemaSection
                 }
             }
 
-            return "linux-x64";
+            return machine == ElfArm64 ? "linux-arm64" : "linux-x64";
         }
     }
 }

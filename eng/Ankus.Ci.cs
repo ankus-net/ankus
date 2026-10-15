@@ -728,7 +728,7 @@ static void VerifyPlatform(string platform, string architecture)
 {
     bool matches = platform switch
     {
-        "linux" => OperatingSystem.IsLinux() && architecture == "x64",
+        "linux" => OperatingSystem.IsLinux() && architecture is "x64" or "arm64",
         "osx" => OperatingSystem.IsMacOS() && architecture is "x64" or "arm64",
         "windows" => OperatingSystem.IsWindows() && architecture == "x64",
         _ => false,
@@ -1843,7 +1843,7 @@ static void PublishPackages(string repositoryRoot, string packageVersion)
 static string[] VerifyPackages(string repositoryRoot, string packageVersion)
 {
     string packageDirectory = Path.Join(repositoryRoot, "artifacts", "packages");
-    string[] runtimeIdentifiers = ["linux-x64", "osx-arm64", "osx-x64", "win-x64"];
+    string[] runtimeIdentifiers = ["linux-arm64", "linux-x64", "osx-arm64", "osx-x64", "win-x64"];
     string[] packages =
     [
         .. RuntimeLine.All.SelectMany(line => runtimeIdentifiers.SelectMany(rid => new[]
@@ -2107,7 +2107,7 @@ internal sealed record RuntimeLine(string TargetFramework, string Base, string C
     /// <summary>
     /// Gets the line for net10.0, which commands use when no line is named.
     /// </summary>
-    internal static RuntimeLine Default { get; } = new("net10.0", "v10.0.13", "f97c4dea9e1cab1f4afcbd8d9c67eb5f7d88a492",
+    internal static RuntimeLine Default { get; } = new("net10.0", "v10.0.13", "72c3927a21db0faa1205127265bda90fdf2874dd",
         "10.0.13-ankus.1", "10.0.13");
 
     /// <summary>
@@ -2116,7 +2116,7 @@ internal sealed record RuntimeLine(string TargetFramework, string Base, string C
     internal static IReadOnlyList<RuntimeLine> All { get; } =
     [
         Default,
-        new("net11.0", "v11.0.0-rc.2.26504.105", "34f19a015e32712d52e1028bf9f1ee31316c1e9c",
+        new("net11.0", "v11.0.0-rc.2.26504.105", "9692d0ff7adccba4178cc65bdc5d9bd093c031cc",
             "11.0.0-rc.2.26504.105-ankus.1", "11.0.0-rc.2.26504.105"),
     ];
 

@@ -56,7 +56,11 @@ consumer cases also target `net11.0` there, so the feed carries both lines. Its
 hours.
 
 Runtime and compiler packages are built on their own operating system and
-architecture, including Intel macOS. Linux/macOS builds also execute the fork's bounded host-shutdown
+architecture, including Intel macOS and Linux ARM64, which GitHub's hosted
+`ubuntu-24.04-arm` runners build. The `Linux ARM64` workflow builds both runtime
+lines there and runs the complete suite against real PostgreSQL, once on
+`net10.0` and once with every repository extension on `net11.0`; it limits package
+consumers to two at a time to fit the runner's 16 GB. Linux/macOS builds also execute the fork's bounded host-shutdown
 probes before staging a payload. They require normal process exit and managed
 thread cleanup, including mutex abandonment, GC and finalizer drain.
 Signal checks also verify host masks, ordinary and alternate stacks, and
