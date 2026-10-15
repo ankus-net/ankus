@@ -645,6 +645,7 @@ static (string CCompiler, string CppCompiler, IReadOnlyDictionary<string, string
 }
 
 // Prove that a newly built fork runtime preserves native host shutdown, thread cleanup, signal masks and signal routing.
+// Each probe publishes from its own directory, whose global.json selects the SDK for that runtime line's framework.
 static void VerifyNativeHostBehavior(
     string repositoryRoot,
     string platform,
@@ -662,7 +663,7 @@ static void VerifyNativeHostBehavior(
         "--configuration", "Release", "--runtime", runtimeIdentifier, "--output", output,
         $"-p:IlcSdkPath={GetBuiltRuntimePath(repositoryRoot, platform, architecture)}{Path.DirectorySeparatorChar}",
         $"-p:IlcToolsPath={GetBuiltCompilerPath(repositoryRoot, platform, architecture)}{Path.DirectorySeparatorChar}",
-    ], environment: environment);
+    ], probeRoot, environment: environment);
 
     string host = Path.Join(output, "host");
     List<string> compilerArguments =
@@ -706,7 +707,7 @@ static void VerifyNativeHostBehavior(
         "--configuration", "Release", "--runtime", runtimeIdentifier, "--output", hostSignalOutput,
         $"-p:IlcSdkPath={GetBuiltRuntimePath(repositoryRoot, platform, architecture)}{Path.DirectorySeparatorChar}",
         $"-p:IlcToolsPath={GetBuiltCompilerPath(repositoryRoot, platform, architecture)}{Path.DirectorySeparatorChar}",
-    ], environment: environment);
+    ], hostSignalRoot, environment: environment);
 
     string hostSignalHost = Path.Join(hostSignalOutput, "host");
     List<string> hostSignalArguments =
@@ -1220,6 +1221,15 @@ static void CleanRunnerWorkspace(string repositoryRoot)
     if (RunForExitCode(GetDotNetHost(), ["build-server", "shutdown"], repositoryRoot) != 0)
     {
         Console.WriteLine("::warning::A build server did not stop; another job on this host may still be using it.");
+    }
+
+    // A runtime build runs on the SDK the runtime checkout installs for itself, whose servers keep that SDK's files
+    // open; Windows then cannot delete the checkout. Only this job uses that SDK, so its servers must stop.
+    string runtimeRoot = Path.Join(repositoryRoot, "runtime");
+    string runtimeHost = Path.Join(runtimeRoot, ".dotnet", OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet");
+    if (File.Exists(runtimeHost))
+    {
+        Run(runtimeHost, ["build-server", "shutdown"], runtimeRoot);
     }
 
     Run("git", ["clean", "-ffdx"], repositoryRoot);
