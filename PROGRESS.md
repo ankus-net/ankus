@@ -532,9 +532,15 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   extracting into one empty package folder, so the trigger is not yet known.
   The release path differed from CI's in one way: it restored into the
   runners' shared package folder instead of one of its own. It now isolates
-  that folder as CI does, a batch file's output goes to a log the job prints,
-  and the job stops the runtime SDK's build servers afterward, which otherwise
-  keep its files locked for minutes. The rehearsal's other ten runtime package
+  that folder as CI does, and a batch file's output goes to a log the job
+  prints. In rehearsal 38778949479 on 6ae03a5 both Windows lines then built
+  and packed their runtimes, which places the fault in the shared folder,
+  though its exact trigger was never captured. The job's new cleanup step
+  failed instead: the runtime compiles with the compiler from Roslyn's toolset
+  package, whose server the SDK's `build-server shutdown` does not reach, so
+  it kept the checkout's own SDK open and `git clean` could not delete it.
+  Cleanup now stops any process still running from that SDK, which only the
+  job's own build uses. The rehearsal's other ten runtime package
   jobs passed, including Linux ARM64 and hosted Intel macOS on both lines.
 - Scheduled run 38729094424 lost one Windows/PostgreSQL 18.6 case before its
   test body ran: the server reset the connection during authentication. The

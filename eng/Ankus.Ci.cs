@@ -1242,6 +1242,10 @@ static void CleanRunnerWorkspace(string repositoryRoot)
     if (File.Exists(runtimeHost))
     {
         Run(runtimeHost, ["build-server", "shutdown"], runtimeRoot);
+
+        // The runtime compiles with the compiler from Roslyn's toolset package, whose server that shutdown does not
+        // reach, so it kept the SDK's files open and git could not delete them.
+        StopProcessesRunningFrom(Path.GetDirectoryName(runtimeHost)!);
     }
 
     Run("git", ["clean", "-ffdx"], repositoryRoot);
@@ -1267,6 +1271,47 @@ static void RemoveAbandonedPackageTestDirectories()
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
             Console.Error.WriteLine($"Could not remove {Path.GetFileName(directory)}: {error.Message}");
+        }
+    }
+}
+
+// Stops every process whose executable lies under a directory that only this job uses, such as the runtime checkout's
+// own SDK.
+static void StopProcessesRunningFrom(string directory)
+{
+    string prefix = Path.GetFullPath(directory).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+    StringComparison comparison = OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+    foreach (Process process in Process.GetProcesses())
+    {
+        using (process)
+        {
+            string? executable;
+            try
+            {
+                executable = process.MainModule?.FileName;
+            }
+            catch (Exception exception) when (exception is System.ComponentModel.Win32Exception or InvalidOperationException
+                or NotSupportedException)
+            {
+                // Another account's process, or one that has already exited.
+                continue;
+            }
+
+            if (executable is null || !executable.StartsWith(prefix, comparison))
+            {
+                continue;
+            }
+
+            Console.WriteLine($"Stopping process {process.Id}, which still runs from {directory}.");
+            try
+            {
+                process.Kill(entireProcessTree: true);
+                process.WaitForExit(TimeSpan.FromSeconds(30));
+            }
+            catch (InvalidOperationException)
+            {
+                // It exited on its own.
+            }
         }
     }
 }
