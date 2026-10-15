@@ -53,6 +53,24 @@ internal static partial class ProjectScaffolder
     internal static IReadOnlySet<string> PostgresKeywords => s_postgresKeywords;
 
     /// <summary>
+    /// Gets the target frameworks a new solution can use, each with its own Native AOT runtime line.
+    /// </summary>
+    internal static string[] TargetFrameworks { get; } = ["net10.0", "net11.0"];
+
+    /// <summary>
+    /// Selects the SDK a new solution pins for its target framework. A .NET 11 solution allows the release
+    /// candidate SDK until .NET 11 ships.
+    /// </summary>
+    /// <param name="targetFramework">The solution's target framework.</param>
+    /// <returns>The global.json SDK version and whether it allows prerelease SDKs.</returns>
+    internal static (string Version, bool AllowPrerelease) SelectSdk(string targetFramework) => targetFramework switch
+    {
+        "net10.0" => ("10.0.400", false),
+        "net11.0" => ("11.0.100-rc.2.26504.105", true),
+        _ => throw new ArgumentException("The target framework must be net10.0 or net11.0.", nameof(targetFramework)),
+    };
+
+    /// <summary>
     /// Creates a version-matched extension solution in a new directory using an atomic move from staging.
     /// </summary>
     /// <param name="name">The portable project name whose namespace is normalized for C#.</param>
@@ -60,11 +78,14 @@ internal static partial class ProjectScaffolder
     /// <param name="extension">The SQL extension name, or null to derive it from the project name.</param>
     /// <param name="backgroundWorker">Whether to include a preloaded worker and its backend test.</param>
     /// <param name="framework">The selected MSTest, xUnit or NUnit consumer framework.</param>
+    /// <param name="targetFramework">The extension's target framework, net10.0 or net11.0.</param>
     /// <param name="token">Cancellation for template I/O and the final move.</param>
     /// <returns>The absolute destination path.</returns>
-    internal static async Task<string> CreateAsync(string name, string? output, string? extension, bool backgroundWorker, string framework, CancellationToken token)
+    internal static async Task<string> CreateAsync(string name, string? output, string? extension, bool backgroundWorker, string framework,
+        string targetFramework, CancellationToken token)
     {
         ValidateName(name);
+        (string sdkVersion, bool allowPrerelease) = SelectSdk(targetFramework);
         string? frameworkDirectory = framework switch
         {
             "mstest" => null,
@@ -96,6 +117,9 @@ internal static partial class ProjectScaffolder
             ["__VERSION__"] = version,
             ["__PRELOAD__"] = backgroundWorker ? "true" : "false",
             ["__TEST_FRAMEWORK__"] = framework switch { "xunit" => "xUnit", "nunit" => "NUnit", _ => "MSTest" },
+            ["__TARGET_FRAMEWORK__"] = targetFramework,
+            ["__SDK_VERSION__"] = sdkVersion,
+            ["__SDK_ALLOW_PRERELEASE__"] = allowPrerelease ? "true" : "false",
             ["__WORKER_STATE__"] = "ankus.worker." + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(extension)))[..24],
         };
         string parent = Path.GetDirectoryName(destination)!;
@@ -150,7 +174,7 @@ internal static partial class ProjectScaffolder
     private static string Replace(string value, Dictionary<string, string> replacements)
         => TokenPattern().Replace(value, match => replacements[match.Value]);
 
-    [GeneratedRegex("__(PROJECT|NAMESPACE|EXTENSION|EXTENSION_IDENTIFIER|VERSION|PRELOAD|WORKER_STATE|TEST_FRAMEWORK)__",
+    [GeneratedRegex("__(PROJECT|NAMESPACE|EXTENSION|EXTENSION_IDENTIFIER|VERSION|PRELOAD|WORKER_STATE|TEST_FRAMEWORK|TARGET_FRAMEWORK|SDK_VERSION|SDK_ALLOW_PRERELEASE)__",
         RegexOptions.CultureInvariant)]
     private static partial Regex TokenPattern();
 

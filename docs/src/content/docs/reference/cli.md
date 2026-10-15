@@ -21,6 +21,12 @@ to select xUnit.net v3 or NUnit. Both ordinary and background-worker solutions
 support these options. MSTest is the default; each framework runs through
 ordinary `dotnet test` with Microsoft.Testing.Platform.
 
+`--framework net11.0` targets .NET 11 instead of the default `net10.0`. The
+extension then embeds Ankus's .NET 11 Native AOT runtime, and `global.json` pins
+the .NET 11 release-candidate SDK until .NET 11 ships. The .NET templates accept
+the same option. See [.NET support](/reference/dotnet-support/) for what has been
+validated on .NET 11.
+
 Generated projects use ordinary .NET warning defaults. To require warning-free
 builds, set `TreatWarningsAsErrors` in your project's build properties.
 Invalid Ankus declarations remain errors regardless of that setting.

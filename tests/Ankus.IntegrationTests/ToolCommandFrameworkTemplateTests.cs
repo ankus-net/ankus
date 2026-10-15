@@ -57,6 +57,8 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         const string Name = "Acme.Probe";
         string output = Path.Join(CreateDirectory(), "framework with spaces");
+        // These consumers target the extensions' own framework, so a net11.0 acceptance run builds them with .NET 11.
+        string targetFramework = IntegrationEnvironment.ExtensionTargetFramework;
         if (template)
         {
             string hive = Path.Join(CreateDirectory(), "isolated template hive");
@@ -64,18 +66,21 @@ public sealed partial class ToolCommandTests
             (await PackageProcessRunner.RunAsync("dotnet", ["new", "install", package, "--debug:custom-hive", hive],
                 s_environment, token, workingDirectory: s_root)).EnsureSuccess("dotnet", ["new", "install"]);
             (await PackageProcessRunner.RunAsync("dotnet", ["new", worker ? "ankus-worker" : "ankus", "--name", Name,
-                "--output", output, "--test-framework", framework, "--debug:custom-hive", hive],
+                "--output", output, "--test-framework", framework, "--framework", targetFramework, "--debug:custom-hive", hive],
                 s_environment, token, workingDirectory: s_root)).EnsureSuccess("dotnet", ["new"]);
         }
         else
         {
             string[] options = worker ? ["--background-worker"] : [];
-            (await InvokeAsync(["new", Name, "--output", output, "--test-framework", framework, .. options], token))
-                .EnsureSuccess(s_tool, ["new"]);
+            (await InvokeAsync(["new", Name, "--output", output, "--test-framework", framework, "--framework", targetFramework,
+                .. options], token)).EnsureSuccess(s_tool, ["new"]);
         }
 
         using JsonDocument global = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Join(output, "global.json"), token));
         Assert.AreEqual("Microsoft.Testing.Platform", global.RootElement.GetProperty("test").GetProperty("runner").GetString());
+        // net10.0 pins a .NET 10 SDK and net11.0 a .NET 11 SDK.
+        Assert.StartsWith(targetFramework["net".Length..^".0".Length] + ".", global.RootElement.GetProperty("sdk").GetProperty("version").GetString());
+        Assert.AreEqual(targetFramework, XDocument.Load(Path.Join(output, "Directory.Build.props")).Descendants("TargetFramework").Single().Value);
         Assert.IsFalse(global.RootElement.GetProperty("msbuild-sdks").TryGetProperty("MSTest.Sdk", out _));
         XDocument project = XDocument.Load(Path.Join(output, "tests", Name + ".Tests", Name + ".Tests.csproj"));
         Assert.AreEqual("Microsoft.NET.Sdk", (string?)project.Root!.Attribute("Sdk"));

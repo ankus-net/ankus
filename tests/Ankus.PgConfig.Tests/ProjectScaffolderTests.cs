@@ -39,6 +39,40 @@ public sealed class ProjectScaffolderTests(TestContext context)
         => Assert.AreEqual(expected, ProjectScaffolder.QuoteIdentifier(identifier));
 
     /// <summary>
+    /// The target framework selects the projects' framework and the SDK that global.json pins, for every consumer test
+    /// framework. A .NET 11 solution allows the release candidate SDK until .NET 11 ships.
+    /// </summary>
+    /// <param name="targetFramework">The selected target framework.</param>
+    /// <param name="testFramework">The consumer test framework.</param>
+    /// <param name="sdk">The expected pinned SDK version.</param>
+    /// <param name="allowPrerelease">Whether global.json should allow a prerelease SDK.</param>
+    [TestMethod]
+    [DataRow("net10.0", "mstest", "10.0.400", false)]
+    [DataRow("net11.0", "mstest", "11.0.100-rc.2.26504.105", true)]
+    [DataRow("net11.0", "xunit", "11.0.100-rc.2.26504.105", true)]
+    [DataRow("net11.0", "nunit", "11.0.100-rc.2.26504.105", true)]
+    public async Task TargetFrameworkSelectsFrameworkAndSdk(string targetFramework, string testFramework, string sdk, bool allowPrerelease)
+    {
+        string directory = Directory.CreateTempSubdirectory("ankus-scaffold-").FullName;
+        try
+        {
+            string destination = await ProjectScaffolder.CreateAsync("Acme.Probe", Path.Join(directory, "solution"), null, false,
+                testFramework, targetFramework, context.CancellationToken);
+            string props = await File.ReadAllTextAsync(Path.Join(destination, "Directory.Build.props"), context.CancellationToken);
+            Assert.Contains($"<TargetFramework>{targetFramework}</TargetFramework>", props);
+            using JsonDocument global = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Join(destination, "global.json"),
+                context.CancellationToken));
+            JsonElement selected = global.RootElement.GetProperty("sdk");
+            Assert.AreEqual(sdk, selected.GetProperty("version").GetString());
+            Assert.AreEqual(allowPrerelease, selected.GetProperty("allowPrerelease").GetBoolean());
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// A derived or explicit extension name that is a SQL keyword is quoted in every scaffolded SQL statement,
     /// while project metadata keeps the exact extension name.
     /// </summary>
@@ -57,7 +91,7 @@ public sealed class ProjectScaffolderTests(TestContext context)
         try
         {
             string destination = await ProjectScaffolder.CreateAsync(name, Path.Join(directory, "solution"), extension, worker, "mstest",
-                context.CancellationToken);
+                "net10.0", context.CancellationToken);
             string project = Path.Join(destination, "src", name);
             string catalogName = extension ?? expected.Trim('"');
             string setup = "-- This setup file runs when the regression database is created or recreated.\n" +

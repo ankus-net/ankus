@@ -1,5 +1,9 @@
 {
   "symbolInfo": {
+    "Framework": {
+      "longName": "framework",
+      "shortName": "f"
+    },
     "testFramework": {
       "longName": "test-framework",
       "shortName": ""

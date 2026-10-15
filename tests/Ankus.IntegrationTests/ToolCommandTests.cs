@@ -68,25 +68,15 @@ public sealed partial class ToolCommandTests(TestContext context)
         string feed = Path.Join(s_root, "feed");
         Directory.CreateDirectory(feed);
         s_version = "0.0.0-test." + Guid.NewGuid().ToString("N");
-        string runtimeIdentifier = RuntimeInformation.RuntimeIdentifier;
-        string runtimeSdk = Path.Join(repository, "artifacts", "nativeaot", runtimeIdentifier, "aotsdk") +
-                            Path.DirectorySeparatorChar;
-        string compilerTools = Path.Join(repository, "artifacts", "nativeaot", runtimeIdentifier, "compiler") +
-                               Path.DirectorySeparatorChar;
-        string runtimeSource = Path.Join(repository, "artifacts", "nativeaot", runtimeIdentifier, "source");
-        await PackageProcessRunner.RunCheckedAsync("dotnet",
-            ["pack", Path.Join(repository, "src/Ankus.NativeAot.Runtime"), "-c", "Release", "-o", feed,
-                "-p:AnkusRuntimeIdentifier=" + runtimeIdentifier, "-p:AnkusRuntimeSdkPath=" + runtimeSdk,
-                "-p:AnkusRuntimeSourcePath=" + runtimeSource,
-                "-bl:" + Path.Join(repository, "artifacts", "runtime-package-pack.binlog")],
-            new Dictionary<string, string?>(), token);
-        await PackageProcessRunner.RunCheckedAsync("dotnet",
-            ["pack", Path.Join(repository, "src/Ankus.NativeAot.Compiler"), "-c", "Release", "-o", feed,
-                "-p:AnkusCompilerRuntimeIdentifier=" + runtimeIdentifier,
-                "-p:AnkusCompilerToolsPath=" + compilerTools,
-                "-p:AnkusRuntimeSourcePath=" + runtimeSource,
-                "-bl:" + Path.Join(repository, "artifacts", "compiler-package-pack.binlog")],
-            new Dictionary<string, string?>(), token);
+        // Generated consumers target net10.0 unless a case selects the extensions' own framework, so a net11.0
+        // acceptance run feeds both runtime lines.
+        string[] lines = IntegrationEnvironment.ExtensionTargetFramework == "net10.0"
+            ? ["net10.0"]
+            : ["net10.0", IntegrationEnvironment.ExtensionTargetFramework];
+        foreach (string line in lines)
+        {
+            await PackRuntimeLineAsync(repository, line, feed, token);
+        }
 
         string[] projects = ["src/Ankus.Runtime", "src/Ankus.Generators", "src/Ankus.PgConfig",
             "src/Ankus.Sdk", "src/Ankus.Tool", "src/Ankus.Testing", "src/Ankus.Templates"];
@@ -227,6 +217,35 @@ public sealed partial class ToolCommandTests(TestContext context)
             ["publish", "--home", s_home, "--pg", MajorText(), "--project", s_project, "--output", s_published], token))
             .EnsureSuccess(s_tool, ["publish"]);
         InitializeSharedPublications();
+    }
+
+    /// <summary>
+    /// Packs one Native AOT runtime line's host runtime and compiler packages from its staged build.
+    /// </summary>
+    /// <param name="repository">The repository root.</param>
+    /// <param name="line">The target framework the runtime line serves.</param>
+    /// <param name="feed">The consumer package feed.</param>
+    /// <param name="token">Cancellation for both pack processes.</param>
+    /// <returns>A task that completes after both packages are in the feed.</returns>
+    private static async Task PackRuntimeLineAsync(string repository, string line, string feed, CancellationToken token)
+    {
+        string runtimeIdentifier = RuntimeInformation.RuntimeIdentifier;
+        string staging = Path.Join(repository, "artifacts", line == "net10.0" ? "nativeaot" : "nativeaot-" + line, runtimeIdentifier);
+        string suffix = line == "net10.0" ? string.Empty : "-" + line;
+        await PackageProcessRunner.RunCheckedAsync("dotnet",
+            ["pack", Path.Join(repository, "src/Ankus.NativeAot.Runtime"), "-c", "Release", "-o", feed,
+                "-p:AnkusRuntimeLine=" + line, "-p:AnkusRuntimeIdentifier=" + runtimeIdentifier,
+                "-p:AnkusRuntimeSdkPath=" + Path.Join(staging, "aotsdk") + Path.DirectorySeparatorChar,
+                "-p:AnkusRuntimeSourcePath=" + Path.Join(staging, "source"),
+                "-bl:" + Path.Join(repository, "artifacts", "runtime-package-pack" + suffix + ".binlog")],
+            new Dictionary<string, string?>(), token);
+        await PackageProcessRunner.RunCheckedAsync("dotnet",
+            ["pack", Path.Join(repository, "src/Ankus.NativeAot.Compiler"), "-c", "Release", "-o", feed,
+                "-p:AnkusRuntimeLine=" + line, "-p:AnkusCompilerRuntimeIdentifier=" + runtimeIdentifier,
+                "-p:AnkusCompilerToolsPath=" + Path.Join(staging, "compiler") + Path.DirectorySeparatorChar,
+                "-p:AnkusRuntimeSourcePath=" + Path.Join(staging, "source"),
+                "-bl:" + Path.Join(repository, "artifacts", "compiler-package-pack" + suffix + ".binlog")],
+            new Dictionary<string, string?>(), token);
     }
 
     /// <summary>

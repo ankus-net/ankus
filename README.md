@@ -171,7 +171,9 @@ Both creation paths pin the matching local tool in `.config/dotnet-tools.json`;
 after restoring it, use `dotnet ankus` for extension commands.
 
 The .NET templates accept the same `--test-framework xunit` or
-`--test-framework nunit` option, including worker templates.
+`--test-framework nunit` option, including worker templates. Both creation paths
+also accept `--framework net11.0` to target .NET 11; see
+[.NET support](docs/src/content/docs/reference/dotnet-support.md) for its status.
 
 Use `ankus test --pg 17` for another registered PostgreSQL major, or
 `ankus test --all` for every registered version. Pass ordinary test filters and

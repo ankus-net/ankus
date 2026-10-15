@@ -53,7 +53,8 @@ internal static class AllocatorFaultFixtureCompiler
     {
         string root = IntegrationEnvironment.RepositoryRoot;
         string suffix = Path.Join(RuntimeInformation.RuntimeIdentifier, "native", "ankus", "bridge.c");
-        string emittedPath = Directory.EnumerateFiles(Path.Join(root, "tests", "Ankus.TestExtension", "obj", "Release"),
+        string emittedPath = Directory.EnumerateFiles(Path.Join(root, "tests", "Ankus.TestExtension", "obj", "Release",
+            IntegrationEnvironment.ExtensionTargetFramework),
             "bridge.c", SearchOption.AllDirectories).Single(path => path.EndsWith(suffix, StringComparison.Ordinal));
         string emitted = (await File.ReadAllTextAsync(emittedPath, cancellationToken)).ReplaceLineEndings("\n");
         int preambleEnd = FindBoundary(emitted, "static inline void\nankus_read_buffer(");

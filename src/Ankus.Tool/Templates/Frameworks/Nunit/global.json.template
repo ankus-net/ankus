@@ -1,8 +1,8 @@
 {
   "sdk": {
-    "version": "10.0.400",
+    "version": "__SDK_VERSION__",
     "rollForward": "latestFeature",
-    "allowPrerelease": false
+    "allowPrerelease": __SDK_ALLOW_PRERELEASE__
   },
   "msbuild-sdks": {
     "Ankus.Sdk": "__VERSION__"

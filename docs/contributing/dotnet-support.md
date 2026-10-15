@@ -118,7 +118,20 @@ restore test offers the .NET 10 reference packs that SDK 11 downloads. With SDK
 10.0.402 installed beside RC2, the complete PostgreSQL 18.6/Linux x64 suite
 passes **14,956 of 15,010 with 52 platform skips**. The two failures are one
 design-time build test's data rows, which see RC2's preview notice (NETSDK1057);
-a release SDK does not print it.
+a release SDK does not print it. That test now ignores the notice, which the SDK
+prints for every project on a preview.
+
+The `net11.0` target is implemented. `Ankus.NativeAot.Lines.props` maps each
+target framework to its runtime package, compiler host and upstream compiler
+versions, and the runtime and compiler package projects pack one line per
+`AnkusRuntimeLine`. `ankus new --framework net11.0` and the templates' `--framework`
+option set the projects' framework and pin the matching SDK. .NET 11's Native AOT
+adds the native library to the publish list under `TargetName`, so `Ankus.Sdk`
+restores a custom library name there and publishes its symbols beside it. The
+`.NET versions` workflow builds both lines and runs the complete suite with
+`AnkusExtensionTargetFramework=net11.0`; its feed carries both lines because
+most generated consumers still target `net10.0` while the framework-template
+cases target `net11.0`. Releases build and verify every line's packages.
 
 1. Use an isolated writable runtime checkout based on the selected .NET 11
    release tag/commit. Keep reference clones read-only. Review each existing
@@ -143,10 +156,11 @@ a release SDK does not print it.
    Windows worker startup, GC/thread repair, signal handling, native error
    unwinding, cleanup and same-session recovery. Reusing the patch cleanly or
    passing a smoke test is insufficient.
-6. Publish compatibility results and update templates/defaults only after the
-   gate passes on the GA release. Until then, preview/RC checks are explicit
-   experiments. If .NET 11 reaches GA before `0.1.0`, complete this gate as part
-   of the initial release; an unreleased .NET version need not block it.
+6. Publish compatibility results as each platform passes. `ankus new` and the
+   templates keep `net10.0`, the LTS release, as their default; `--framework
+   net11.0` opts in and pins the matching SDK in `global.json`. Rebase the fork
+   onto the GA release when it ships and repeat this gate on it. .NET 11 support
+   is required work, not an optional experiment.
 
 Start with explicit compatibility runs using existing automation. Add a small
 scheduled/manual preview lane if useful; it must record failures without

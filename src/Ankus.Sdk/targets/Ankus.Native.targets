@@ -62,6 +62,33 @@
           DestinationFolder="$(PublishDir)$([System.IO.Path]::GetFileName('$(_AnkusLibrarySymbols)'))/%(_AnkusLibrarySymbolBundleFile.RecursiveDir)" />
   </Target>
 
+  <Target Name="_PublishAnkusNativeLibraryName" AfterTargets="NativeCompile" DependsOnTargets="_ResolveAnkusNativeLibrary"
+          Condition="'$(PublishAot)' == 'true'">
+    <!-- From .NET 11, Native AOT adds the library and its symbols to the publish list under TargetName's name instead of
+         copying them after publishing. A renamed library keeps its own name, and its symbols, which carry that name,
+         are published beside it. .NET 10 has no such step and uses _CopyAnkusNativeLibrarySymbols instead. -->
+    <PropertyGroup Condition="'$(_AnkusNativeLibraryRenamed)' == 'true'">
+      <_AnkusPublishedSymbols Condition="'$(OS)' == 'Windows_NT'">$(NativeOutputPath)$(_AnkusNativeLibraryStem)$(NativeSymbolExt)</_AnkusPublishedSymbols>
+      <_AnkusPublishedSymbols Condition="'$(OS)' != 'Windows_NT'">$(NativeBinary)$(NativeSymbolExt)</_AnkusPublishedSymbols>
+    </PropertyGroup>
+    <ItemGroup Condition="'$(_AnkusNativeLibraryRenamed)' == 'true'">
+      <ResolvedFileToPublish Condition="'%(ResolvedFileToPublish.Identity)' == '$(NativeBinary)'">
+        <RelativePath>$(_AnkusNativeLibrary)</RelativePath>
+      </ResolvedFileToPublish>
+      <ResolvedFileToPublish Include="$(_AnkusPublishedSymbols)"
+                             Condition="'$(CopyOutputSymbolsToPublishDirectory)' == 'true' and '$(NativeSymbolExt)' != '.dSYM' and Exists('$(_AnkusPublishedSymbols)')">
+        <RelativePath>$([System.IO.Path]::GetFileName('$(_AnkusPublishedSymbols)'))</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+      <_AnkusPublishedSymbolBundleFile Include="$(_AnkusPublishedSymbols)/**/*"
+                                       Condition="'$(CopyOutputSymbolsToPublishDirectory)' == 'true' and '$(NativeSymbolExt)' == '.dSYM'" />
+      <ResolvedFileToPublish Include="@(_AnkusPublishedSymbolBundleFile)">
+        <RelativePath>$([System.IO.Path]::GetFileName('$(_AnkusPublishedSymbols)'))/%(_AnkusPublishedSymbolBundleFile.RecursiveDir)%(_AnkusPublishedSymbolBundleFile.Filename)%(_AnkusPublishedSymbolBundleFile.Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+
   <Target Name="_CleanAnkusSchemaSnapshots" BeforeTargets="CoreClean" Condition="'$(NativeIntermediateOutputPath)' != ''">
     <ItemGroup>
       <Clean Include="$(NativeIntermediateOutputPath)ankus/schema-pg*-*.json" />

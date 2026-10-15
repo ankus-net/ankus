@@ -26,9 +26,9 @@ repository root with `dotnet run --file`.
 | `runtime-build` | Build and stage a runtime line's runtime and compiler host for the runner's platform; a trailing target framework selects the line. |
 | `runtime-pack` | Pack a staged runtime line's runtime and compiler host for CI. |
 | `runtime-test` | Use a staged runtime to run the complete unit and PostgreSQL integration test suites. |
-| `runtime-test-build` | Prepare the staged runtime's PostgreSQL toolchain and build all test projects before saving CI caches. |
+| `runtime-test-build` | Prepare the staged runtime's PostgreSQL toolchain and build all test projects before saving CI caches. With `AnkusExtensionTargetFramework` set, it also checks that line's staged runtime. |
 | `windows-toolchain` | Select the latest supported Visual Studio installation with C++ x64 tools and export its developer environment to later CI steps. |
-| `runtime-test-run` | Run every already-built test module using the PostgreSQL and compiler environment prepared by `runtime-test-build`. |
+| `runtime-test-run` | Run every already-built test module using the PostgreSQL and compiler environment prepared by `runtime-test-build`. The integration and Hello sample tests run from the extensions' target framework output. |
 | `native-analysis-run` | Run the integration fixture setup and one worker test, which compile the generated native bridge and every composed native fixture, so CodeQL can trace them. |
 | `header-frontend-setup` | Select LLVM 20 or later and install LLVM 20 on Linux when no supported compiler is present. |
 | `target-export` | Export a runner's PostgreSQL target information for the Hello sample's toolchain, as `ankus target export` does. |
@@ -40,8 +40,8 @@ repository root with `dotnet run --file`.
 | `prepare-reports` | Copy test results and server logs with private runner identifiers removed before artifact upload. |
 | `runner-cleanup` | On a self-hosted runner, stop build servers, remove generated checkout files after artifact upload, and delete abandoned package-test directories. |
 | `release-managed` | Pack the managed NuGet packages. |
-| `release-runtime` | Build and pack the runtime and compiler host for one platform. |
-| `release-verify` | Check the complete NuGet package set and each manifest's identity, license and source commit. |
+| `release-runtime` | Build and pack one runtime line's runtime and compiler host for one platform. |
+| `release-verify` | Check the complete NuGet package set, including every runtime line's packages, and each manifest's identity, license and source commit. |
 | `publish` | Verify and publish the complete NuGet package set. |
 
 Each supported extension target framework has its own runtime line: a fork
@@ -49,7 +49,11 @@ commit, a patched runtime and compiler host package version, and the upstream
 compiler it pairs with. `net10.0` stages into `artifacts/nativeaot`; other lines
 stage into `artifacts/nativeaot-<framework>`. The `.NET versions` workflow builds
 the `net11.0` line and runs the complete suite with every repository extension
-retargeted through `AnkusExtensionTargetFramework=net11.0`.
+retargeted through `AnkusExtensionTargetFramework=net11.0`. The framework-template
+consumer cases also target `net11.0` there, so the feed carries both lines. Its
+`postgresql` input runs that suite against another PostgreSQL major, and its
+`platform` input adds Intel macOS, which `all` leaves out because its suite takes
+hours.
 
 Runtime and compiler packages are built on their own operating system and
 architecture, including Intel macOS. Linux/macOS builds also execute the fork's bounded host-shutdown

@@ -102,7 +102,7 @@ try
             RequireArguments(args, 3);
             ValidateRuntimeIdentity(repositoryRoot);
             RemoveStagingFeedPackages();
-            VerifyStagedRuntime(repositoryRoot, args[1]);
+            VerifyStagedRuntimes(repositoryRoot, args[1]);
             InstallPostgreSql(repositoryRoot, args[2]);
             ConfigureHeaderFrontend(repositoryRoot);
             ConfigureMacOsSdk();
@@ -133,7 +133,7 @@ try
             ConfigureRunAsAccount();
             // The assembly fixture publishes the Hello sample and composes every native fixture from the test extension's
             // generated bridge; this test also compiles the worker signal fixture. CodeQL traces those compilations.
-            RunTestModule(repositoryRoot, "tests/Ankus.IntegrationTests/bin/Release/net10.0/Ankus.IntegrationTests.dll",
+            RunTestModule(repositoryRoot, $"tests/Ankus.IntegrationTests/bin/Release/{ExtensionTestFramework()}/Ankus.IntegrationTests.dll",
                 "FullyQualifiedName~BackgroundWorkersRegisterAndShareState");
             break;
 
@@ -141,7 +141,7 @@ try
             RequireArguments(args, 4);
             ValidateRuntimeIdentity(repositoryRoot);
             RemoveStagingFeedPackages();
-            VerifyStagedRuntime(repositoryRoot, args[1]);
+            VerifyStagedRuntimes(repositoryRoot, args[1]);
             InstallPostgreSql(repositoryRoot, args[2]);
             ConfigureHeaderFrontend(repositoryRoot);
             ConfigureMacOsSdk();
@@ -837,6 +837,16 @@ static void StageRuntime(string repositoryRoot, string platform, string architec
     }
 }
 
+// Checks the default line, and the extensions' own line when an acceptance run retargets them; both build in that run.
+static void VerifyStagedRuntimes(string repositoryRoot, string runtimeIdentifier)
+{
+    VerifyStagedRuntime(repositoryRoot, runtimeIdentifier);
+    if (ExtensionTestFramework() != RuntimeLine.Default.TargetFramework)
+    {
+        VerifyStagedRuntime(repositoryRoot, runtimeIdentifier, RuntimeLine.Find(ExtensionTestFramework()));
+    }
+}
+
 static void VerifyStagedRuntime(string repositoryRoot, string runtimeIdentifier, RuntimeLine? line = null)
 {
     string path = GetStagedRuntimePath(repositoryRoot, runtimeIdentifier, line);
@@ -1422,11 +1432,16 @@ static void WriteEnvironment(string name, string value)
     File.AppendAllText(environmentPath, $"{name}={value}{Environment.NewLine}");
 }
 
+// The integration and Hello sample tests compile against repository extensions, so they follow an acceptance run's
+// AnkusExtensionTargetFramework; the other test projects always target net10.0.
+static string ExtensionTestFramework()
+    => Environment.GetEnvironmentVariable("AnkusExtensionTargetFramework") is { Length: > 0 } framework ? framework : "net10.0";
+
 static void RunRuntimeTests(string repositoryRoot)
 {
     ConfigureRunAsAccount();
     using WindowsSuiteSlot? slot = WindowsSuiteSlot.Acquire();
-    string integrationTestModule = "tests/Ankus.IntegrationTests/bin/Release/net10.0/Ankus.IntegrationTests.dll";
+    string integrationTestModule = $"tests/Ankus.IntegrationTests/bin/Release/{ExtensionTestFramework()}/Ankus.IntegrationTests.dll";
     Task integrationTests = Task.Run(() => RunTestModule(repositoryRoot, integrationTestModule));
     Task unitTests = Task.Run(() => RunUnitTestModules(repositoryRoot));
     Task.WhenAll(integrationTests, unitTests).GetAwaiter().GetResult();
@@ -1657,7 +1672,7 @@ static void RunUnitTestModules(string repositoryRoot)
     string[] testModules =
     [
         "tests/Ankus.Build.Tests/bin/Release/net10.0/Ankus.Build.Tests.dll",
-        "tests/Ankus.Examples.Hello.Tests/bin/Release/net10.0/Ankus.Examples.Hello.Tests.dll",
+        $"tests/Ankus.Examples.Hello.Tests/bin/Release/{ExtensionTestFramework()}/Ankus.Examples.Hello.Tests.dll",
         "tests/Ankus.Generators.Tests/bin/Release/net10.0/Ankus.Generators.Tests.dll",
         "tests/Ankus.PgConfig.Tests/bin/Release/net10.0/Ankus.PgConfig.Tests.dll",
         "tests/Ankus.Runtime.Tests/bin/Release/net10.0/Ankus.Runtime.Tests.dll",
@@ -1809,16 +1824,14 @@ static void PublishPackages(string repositoryRoot, string packageVersion)
 static string[] VerifyPackages(string repositoryRoot, string packageVersion)
 {
     string packageDirectory = Path.Join(repositoryRoot, "artifacts", "packages");
+    string[] runtimeIdentifiers = ["linux-x64", "osx-arm64", "osx-x64", "win-x64"];
     string[] packages =
     [
-        $"Ankus.NativeAot.Runtime.linux-x64.{RuntimeLine.Default.Version}.nupkg",
-        $"Ankus.NativeAot.Runtime.osx-arm64.{RuntimeLine.Default.Version}.nupkg",
-        $"Ankus.NativeAot.Runtime.osx-x64.{RuntimeLine.Default.Version}.nupkg",
-        $"Ankus.NativeAot.Runtime.win-x64.{RuntimeLine.Default.Version}.nupkg",
-        $"Ankus.NativeAot.Compiler.linux-x64.{RuntimeLine.Default.Version}.nupkg",
-        $"Ankus.NativeAot.Compiler.osx-arm64.{RuntimeLine.Default.Version}.nupkg",
-        $"Ankus.NativeAot.Compiler.osx-x64.{RuntimeLine.Default.Version}.nupkg",
-        $"Ankus.NativeAot.Compiler.win-x64.{RuntimeLine.Default.Version}.nupkg",
+        .. RuntimeLine.All.SelectMany(line => runtimeIdentifiers.SelectMany(rid => new[]
+        {
+            $"Ankus.NativeAot.Runtime.{rid}.{line.Version}.nupkg",
+            $"Ankus.NativeAot.Compiler.{rid}.{line.Version}.nupkg",
+        })),
         $"Ankus.Generators.{packageVersion}.nupkg",
         $"Ankus.PgConfig.{packageVersion}.nupkg",
         $"Ankus.Runtime.{packageVersion}.nupkg",

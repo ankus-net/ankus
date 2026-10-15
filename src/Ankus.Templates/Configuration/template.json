@@ -24,6 +24,41 @@
     { "source": "Frameworks/NunitWorker/", "target": "./", "condition": "(testFramework == \"nunit\" && __WORKER__)" }
   ],
   "symbols": {
+    "Framework": {
+      "type": "parameter",
+      "datatype": "choice",
+      "defaultValue": "net10.0",
+      "description": "Target framework for the extension and its tests",
+      "choices": [
+        { "choice": "net10.0", "description": ".NET 10" },
+        { "choice": "net11.0", "description": ".NET 11 (release candidate)" }
+      ],
+      "replaces": "__TARGET_FRAMEWORK__"
+    },
+    "sdkVersion": {
+      "type": "generated",
+      "generator": "regex",
+      "parameters": {
+        "source": "Framework",
+        "steps": [
+          { "regex": "^net10\\.0$", "replacement": "10.0.400" },
+          { "regex": "^net11\\.0$", "replacement": "11.0.100-rc.2.26504.105" }
+        ]
+      },
+      "replaces": "__SDK_VERSION__"
+    },
+    "sdkAllowPrerelease": {
+      "type": "generated",
+      "generator": "regex",
+      "parameters": {
+        "source": "Framework",
+        "steps": [
+          { "regex": "^net10\\.0$", "replacement": "false" },
+          { "regex": "^net11\\.0$", "replacement": "true" }
+        ]
+      },
+      "replaces": "__SDK_ALLOW_PRERELEASE__"
+    },
     "testFramework": {
       "type": "parameter",
       "datatype": "choice",

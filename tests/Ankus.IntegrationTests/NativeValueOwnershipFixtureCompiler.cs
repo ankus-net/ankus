@@ -30,7 +30,8 @@ internal static class NativeValueOwnershipFixtureCompiler
     {
         string root = IntegrationEnvironment.RepositoryRoot;
         string suffix = Path.Join(RuntimeInformation.RuntimeIdentifier, "native", "ankus", "bridge.c");
-        string emittedPath = Directory.EnumerateFiles(Path.Join(root, "samples", "Ankus.Examples.Hello", "obj", "Release"),
+        string emittedPath = Directory.EnumerateFiles(Path.Join(root, "samples", "Ankus.Examples.Hello", "obj", "Release",
+            IntegrationEnvironment.ExtensionTargetFramework),
             "bridge.c", SearchOption.AllDirectories).Single(path => path.EndsWith(suffix, StringComparison.Ordinal));
         string emitted = await File.ReadAllTextAsync(emittedPath, cancellationToken);
         int boundary = emitted.IndexOf("extern int ankus_managed_", StringComparison.Ordinal);

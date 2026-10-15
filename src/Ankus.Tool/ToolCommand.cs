@@ -88,15 +88,22 @@ internal static partial class ToolCommand
             DefaultValueFactory = static _ => "mstest",
         };
         framework.AcceptOnlyFromAmong("mstest", "xunit", "nunit");
+        var targetFramework = new Option<string>("--framework", "-f")
+        {
+            Description = "Target framework: net10.0 (default) or net11.0.",
+            DefaultValueFactory = static _ => "net10.0",
+        };
+        targetFramework.AcceptOnlyFromAmong(ProjectScaffolder.TargetFrameworks);
         command.Arguments.Add(name);
         command.Options.Add(output);
         command.Options.Add(extension);
         command.Options.Add(worker);
         command.Options.Add(framework);
+        command.Options.Add(targetFramework);
         command.SetAction(async (result, token) =>
         {
             string path = await ProjectScaffolder.CreateAsync(result.GetValue(name)!, result.GetValue(output),
-                result.GetValue(extension), result.GetValue(worker), result.GetValue(framework)!, token);
+                result.GetValue(extension), result.GetValue(worker), result.GetValue(framework)!, result.GetValue(targetFramework)!, token);
             Console.WriteLine($"Created extension solution at {path}");
             Console.WriteLine("Run dotnet test from that directory to build and test the extension in PostgreSQL 18.");
             Console.WriteLine("Run ankus publish to publish using your registered PostgreSQL installation.");

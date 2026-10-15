@@ -57,6 +57,12 @@ internal static class IntegrationEnvironment
     }
 
     /// <summary>
+    /// Gets the target framework of the repository's extensions, which the test assembly shares: net10.0 by default and
+    /// net11.0 in an acceptance run that retargets them.
+    /// </summary>
+    internal static string ExtensionTargetFramework { get; } = "net" + Environment.Version.Major.ToString(CultureInfo.InvariantCulture) + ".0";
+
+    /// <summary>
     /// Gets the host-native publish directory containing the sample library and its extension installation files.
     /// </summary>
     internal static string NativeOutputDirectory

@@ -3,9 +3,10 @@ title: .NET support
 description: Choose a .NET version and keep the runtime embedded in your extension up to date.
 ---
 
-Ankus targets .NET 10 LTS for its initial `0.1.0` release. That release is still
-pending. .NET 11 support is planned; it is not yet validated or available as a
-supported extension target.
+Ankus targets .NET 10 LTS by default. Extensions can also target .NET 11
+(`net11.0`), which Ankus currently builds on the .NET 11 release candidate; see
+[.NET 11 status](#net-11-status) for what has been validated. The initial
+`0.1.0` release is still pending.
 
 ## Version policy
 
@@ -39,40 +40,53 @@ These versions serve different purposes:
 | Selection | What it controls |
 | --- | --- |
 | .NET SDK in `global.json` | The build tools and C# compiler used by your project |
-| `TargetFramework`, currently `net10.0` | The .NET API contract your extension compiles against |
+| `TargetFramework`, `net10.0` or `net11.0` | The .NET API contract your extension compiles against, and which patched runtime it embeds |
 | `Ankus.Sdk` package version | Matching Ankus packages and the selected Native AOT compiler/runtime payload |
 | PostgreSQL major and runtime identifier | The server ABI, operating system, and architecture of the native library |
 
 Generated projects select stable .NET 10 SDKs with `rollForward: latestFeature`
 and `allowPrerelease: false`. A .NET 11 SDK can coexist for other projects without
 changing that selection. Installing a newer SDK does not retarget your extension
-or update its embedded runtime. See [.NET SDK selection](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json).
+or update its embedded runtime. `ankus new --framework net11.0` (or the same
+template option) instead targets `net11.0` and pins SDK 11.0.100-rc.2.26504.105
+with prerelease SDKs allowed, since .NET 11 has not shipped yet. See
+[.NET SDK selection](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json).
 
 SDK 11 RC2 targeting `net10.0` passes the complete test suite against
 PostgreSQL 18.6 on Linux x64, using the .NET 10 compiler and embedded runtime.
 SDK 11 can publish Native AOT without a full build, but in RC2 that path loses
 an extension's documentation file, so Ankus keeps `UseOptimizedPublish` off
-unless your project turns it on. Cross-platform and final-release validation
-remain open, as does the separate `net11.0` runtime target. Keep the generated
-stable SDK selection until that acceptance is complete.
+unless your project turns it on.
 
-Keep `net10.0` until Ankus documents support for another target. Ankus will select
-a matching runtime for each supported target; extension authors should not need
-to build a runtime fork or override compiler internals. The command-line tool,
+Ankus selects the matching runtime and compiler from your `TargetFramework`;
+extension authors do not build a runtime fork or override compiler internals. The command-line tool,
 native binding helper, and managed test host also need their declared .NET runtime
 on the development machine. The selected SDK's compiler uses that SDK's own
 runtime requirements. Installing a newer SDK does not replace the .NET 10 runtime
 required by Ankus's managed tools. PostgreSQL servers do not need a separately
 installed .NET runtime.
 
+## .NET 11 status
+
+The `net11.0` runtime carries every Ankus runtime change, adapted where .NET 11
+reorganized the collector, thread pool and diagnostics. On Linux x64 it passes
+the runtime's own fork probes, and the complete Ankus test suite passes against
+PostgreSQL 18 with every repository extension and the framework-template
+consumers targeting `net11.0`.
+
+Before `net11.0` is listed as supported, it must also pass on macOS ARM64,
+Windows x64 and Intel macOS, across the supported PostgreSQL majors, and again
+on the .NET 11 release that replaces the release candidate. Until then, treat
+`net11.0` extensions as previews and keep production extensions on `net10.0`.
+
 ## Runtime servicing and deployment
 
 Ankus includes a patched Native AOT runtime for PostgreSQL process and preload
 behavior. The SDK automatically restores a matching patched Native AOT compiler
 for the build machine and runtime for the extension's target platform. These
-packages are versioned together. Support for
-.NET 11 requires adapting and validating that patch against .NET 11, rather than
-reusing a .NET 10 runtime with a .NET 11 compiler.
+packages are versioned together, and each target framework has its own: a
+`net11.0` extension embeds .NET 11's runtime with the same patch, never a .NET 10
+runtime behind a .NET 11 compiler.
 
 Ankus also selects the matching framework-library patch. Projects targeting an
 unsupported framework or overriding `RuntimeFrameworkVersion` to a different
