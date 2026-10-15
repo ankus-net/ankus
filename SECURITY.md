@@ -22,7 +22,7 @@ when Ankus itself does something the author did not ask for, for example when:
 
 Each extension embeds Ankus's patched .NET Native AOT runtime, so a .NET security release reaches an extension only
 when it is rebuilt with an Ankus release that carries that servicing update. Rebuild and redeploy your extensions after
-each Ankus servicing release. [.NET support](docs/src/content/docs/reference/dotnet-support.md) explains how Ankus
+each Ankus servicing release. [.NET support](https://willibrandon.github.io/ankus/reference/dotnet-support/) explains how Ankus
 follows .NET servicing.
 
 ## Network use

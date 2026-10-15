@@ -38,5 +38,5 @@ NULL ages instead of converting them to zero.
 
 Functions use volatile, parallel-unsafe declarations because they access backend
 state. In particular, the random lookup must remain volatile even though pgrx's
-original example marks it immutable. See the [SPI guide](../../docs/src/content/docs/spi.md)
+original example marks it immutable. See the [SPI guide](https://willibrandon.github.io/ankus/spi/)
 for snapshots, transaction behavior, ownership, and error recovery.

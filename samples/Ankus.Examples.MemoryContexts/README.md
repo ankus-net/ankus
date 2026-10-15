@@ -67,5 +67,5 @@ pgrx's module documentation warns that writing through a pointer after
   preload the library, wake the worker and check consecutive ticks from one
   process.
 
-See [memory contexts](../../docs/src/content/docs/memory-contexts.md) and
-[background workers](../../docs/src/content/docs/background-workers.md).
+See [memory contexts](https://willibrandon.github.io/ankus/memory-contexts/) and
+[background workers](https://willibrandon.github.io/ankus/background-workers/).

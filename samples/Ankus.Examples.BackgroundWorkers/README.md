@@ -26,5 +26,5 @@ shutdown requests graceful termination. Failure restarts it after five seconds.
 
 The example connects with PostgreSQL's default bootstrap superuser. Supply an
 explicit role to `PgBackgroundWorker.Connect` when adapting it for narrower
-database privileges. See the [worker guide](../../docs/src/content/docs/background-workers.md)
+database privileges. See the [worker guide](https://willibrandon.github.io/ankus/background-workers/)
 for dynamic registration and ownership rules.

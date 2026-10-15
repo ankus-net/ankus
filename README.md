@@ -16,8 +16,8 @@ generated bindings. Publish it all as a native extension.
 
 [Read the documentation](https://willibrandon.github.io/ankus/).
 
-See [Ankus for pgrx users](docs/src/content/docs/getting-started/from-pgrx.md)
-for API translations, and [Running .NET inside PostgreSQL](docs/src/content/docs/reference/execution.md)
+See [Ankus for pgrx users](https://willibrandon.github.io/ankus/getting-started/from-pgrx/)
+for API translations, and [Running .NET inside PostgreSQL](https://willibrandon.github.io/ankus/reference/execution/)
 for threads, signals, memory and backend lifetimes.
 
 ```csharp
@@ -131,7 +131,7 @@ counterpart of pgrx's `nostd` example: its declarations run with optional Native
 AOT runtime features removed.
 
 PostgreSQL 18 and later can report the library's name and version through
-`pg_get_loaded_modules()`. See [native module identity](docs/src/content/docs/reference/build-settings.md#native-module-identity)
+`pg_get_loaded_modules()`. See [native module identity](https://willibrandon.github.io/ankus/reference/build-settings/#native-module-identity)
 for project defaults and attribute overrides.
 
 ## Develop and test
@@ -173,21 +173,21 @@ after restoring it, use `dotnet ankus` for extension commands.
 The .NET templates accept the same `--test-framework xunit` or
 `--test-framework nunit` option, including worker templates. Both creation paths
 also accept `--framework net11.0` to target .NET 11; see
-[.NET support](docs/src/content/docs/reference/dotnet-support.md) for its status.
+[.NET support](https://willibrandon.github.io/ankus/reference/dotnet-support/) for its status.
 
 Use `ankus test --pg 17` for another registered PostgreSQL major, or
 `ankus test --all` for every registered version. Pass ordinary test filters and
-report options after `--`. See [test command options](docs/src/content/docs/reference/cli.md#run-extension-tests).
+report options after `--`. See [test command options](https://willibrandon.github.io/ankus/reference/cli/#run-extension-tests).
 
 Use `[PgBenchmark]` with `PgBencher` and run `ankus bench --pg 18` to measure
 extension code inside PostgreSQL. Benchmark entry points remain outside normal
 publications. `ankus bench --report` shows each benchmark's history against its
-first run. See [benchmarks](docs/src/content/docs/benchmarks.md) and the
+first run. See [benchmarks](https://willibrandon.github.io/ankus/benchmarks/) and the
 [benchmark sample](samples/Ankus.Examples.Benchmarks/Benchmarks.cs).
 
 For scripts, `ankus info path 18`, `ankus info pg-config 18` and
 `ankus info version 18` print individual installation values. See
-[installation information](docs/src/content/docs/reference/cli.md#read-installation-values-in-scripts).
+[installation information](https://willibrandon.github.io/ankus/reference/cli/#read-installation-values-in-scripts).
 
 Add `--pgdata ./test-data` to choose the parent for isolated test-cluster data.
 Each invocation cleans up its own child directory and preserves the parent.
@@ -198,15 +198,15 @@ recompiling function bodies. Native declaration changes require a normal run.
 Declare `[PgTest]` methods to run C# checks inside PostgreSQL. The generated
 catalog exposes individual cases to ordinary test discovery, including exact
 expected errors and explicit ignore reasons. Test publications opt in; normal
-publications exclude these SQL functions. See [backend tests](docs/src/content/docs/getting-started/testing.md#declare-tests-inside-the-extension).
+publications exclude these SQL functions. See [backend tests](https://willibrandon.github.io/ankus/getting-started/testing/#declare-tests-inside-the-extension).
 Inside one, `PgPropertyRunner` checks a condition against generated inputs and
 shrinks a failing input, including one that raises a PostgreSQL error. See
-[property tests](docs/src/content/docs/getting-started/testing.md#property-tests).
+[property tests](https://willibrandon.github.io/ankus/getting-started/testing/#property-tests).
 
 Use `SearchPath = ["pg_catalog", PgSearchPath.ExtensionSchema, "pg_temp"]` on
 `PgFunction` or `PgTest` to resolve names inside the extension's installation
 schema. PostgreSQL fixes this path during installation, so the extension cannot
-be relocated afterward. See [function execution options](docs/src/content/docs/function-declarations.md#execution-options).
+be relocated afterward. See [function execution options](https://willibrandon.github.io/ankus/function-declarations/#execution-options).
 
 Extension projects use the `Ankus.Sdk` NuGet project SDK:
 
@@ -227,7 +227,7 @@ packages plus the native build helper. See [package setup](docs/contributing/dev
 for the local NuGet feed; the initial `0.1.0` release is pending.
 
 The initial target is .NET 10 LTS. .NET 11 support is planned and requires a
-validated Native AOT compiler/runtime combination. See [.NET support](docs/src/content/docs/reference/dotnet-support.md)
+validated Native AOT compiler/runtime combination. See [.NET support](https://willibrandon.github.io/ankus/reference/dotnet-support/)
 for version selection, servicing, and rebuilding deployed extensions.
 
 See [development and testing](docs/contributing/development.md) for prerequisites,
@@ -235,7 +235,7 @@ PostgreSQL discovery, and the integration harness.
 
 Use `ankus init --pg18 download` to install PostgreSQL locally, or pass an existing
 `pg_config` path to register it. PostgreSQL 13–19 have independent selections;
-see the [command-line guide](docs/src/content/docs/reference/cli.md) for source-build
+see the [command-line guide](https://willibrandon.github.io/ankus/reference/cli/) for source-build
 prerequisites and platform distribution availability.
 
 `ANKUS_HOME` selects the configuration directory when `--home` is absent.
@@ -247,25 +247,25 @@ For `run`, `start`, `stop`, `status`, `connect`, `test`, `regress` and `bench`,
 defaults. Explicit selectors override it. Other commands ignore `PG_VERSION`.
 `DBNAME` supplies
 `connect`'s default database, and `ANKUS_PGCLI=true` selects pgcli for `run` and
-`connect`. See [environment selection](docs/src/content/docs/reference/cli.md#install-or-register-postgresql)
+`connect`. See [environment selection](https://willibrandon.github.io/ankus/reference/cli/#install-or-register-postgresql)
 for precedence and publication behavior.
 
 Use `ankus start --pg 18`, `ankus status --pg 18`, and `ankus stop --pg 18`
 to manage a persistent local development server. Stopping it preserves its databases.
 On supported Unix systems, add `--valgrind` to inspect native memory under Memcheck;
-see [Valgrind startup](docs/src/content/docs/reference/cli.md#inspect-native-memory-with-valgrind).
+see [Valgrind startup](https://willibrandon.github.io/ankus/reference/cli/#inspect-native-memory-with-valgrind).
 
 `ankus run --pg 18` builds and installs your extension, then opens psql in its
 development database. `ankus connect --pg 18` reopens that database without a build.
 
 `ankus regress --pg 18` runs SQL regression files through PostgreSQL's own test
-driver. See [SQL regression suites](docs/src/content/docs/reference/cli.md#run-sql-regression-suites)
+driver. See [SQL regression suites](https://willibrandon.github.io/ankus/reference/cli/#run-sql-regression-suites)
 for setup SQL, expected output, filters, and repeated runs.
 New extensions include the setup SQL and expected output under `pg_regress/`
 beside the extension project.
 
 Use `ankus upgrade --dry-run` to preview framework package and SDK updates.
-See [upgrading references](docs/src/content/docs/reference/cli.md#upgrade-ankus-references)
+See [upgrading references](https://willibrandon.github.io/ankus/reference/cli/#upgrade-ankus-references)
 for version selection, shared package files, and imported project files.
 
 `ankus package --pg 18 --output dist` builds an installation tree for distribution.
@@ -281,30 +281,30 @@ To build for another architecture, such as Intel macOS from Apple silicon, run
 `ankus package --target-info`. The archive carries that installation's headers,
 `pg_config` values and measured native layouts; a pgrx target bundle holds only
 the generated bindings. See
-[building for another architecture](docs/src/content/docs/getting-started/publishing.md#build-for-another-architecture).
+[building for another architecture](https://willibrandon.github.io/ankus/getting-started/publishing/#build-for-another-architecture).
 
 Use `--configuration Shipping` to select a custom MSBuild configuration when
 building, publishing, installing, or packaging an extension.
 
 Use `AnkusExtensionControlFile` for extension comments, a fixed schema,
-dependencies, and installation privileges. See [control settings](docs/src/content/docs/reference/build-settings.md#extension-control-settings).
+dependencies, and installation privileges. See [control settings](https://willibrandon.github.io/ankus/reference/build-settings/#extension-control-settings).
 Version-specific overrides belong in `sql/<extension>--<version>.control`.
 An authored `directory` setting selects a custom installation location for SQL
 scripts and secondary controls.
 
 Use `ankus get default_version` to query generated primary control settings.
 `ankus get comment --from publish` reads an existing publication; see
-[property queries](docs/src/content/docs/reference/cli.md#query-extension-properties).
+[property queries](https://willibrandon.github.io/ankus/reference/cli/#query-extension-properties).
 
 Keep SQL upgrade scripts in `sql/<extension>--<old>--<new>.sql`. Publishing,
 installing, and packaging include them so existing databases can use
-`ALTER EXTENSION ... UPDATE`. See [upgrading an extension](docs/src/content/docs/getting-started/publishing.md#upgrade-an-existing-extension).
+`ALTER EXTENSION ... UPDATE`. See [upgrading an extension](https://willibrandon.github.io/ankus/getting-started/publishing/#upgrade-an-existing-extension).
 
 ## Function types
 
 Declare functions as synchronous static methods.
 Compiler diagnostics distinguish `async` methods, task results and asynchronous
-enumerators. See [backend threads and tasks](docs/src/content/docs/reference/execution.md#backend-threads-and-tasks).
+enumerators. See [backend threads and tasks](https://willibrandon.github.io/ankus/reference/execution/#backend-threads-and-tasks).
 Editors offer corrections for declaration mistakes that have one clear fix, such
 as **Make static**, **Make synchronous** or **Add the parameter** a trigger or
 worker receives.
@@ -355,7 +355,7 @@ The generator uses these type mappings:
 Use `PgArrayView<T>` in scalar, SETOF, TABLE and aggregate signatures, construct
 it from a checked `PgDatum`, or request it through `Read<T>()`, SPI scalar helpers
 or `PgFunctions`. It converts elements on access while preserving native type, shape and lifetime;
-see [typed borrowed arrays](docs/src/content/docs/arrays.md#typed-borrowed-cells).
+see [typed borrowed arrays](https://willibrandon.github.io/ankus/arrays/#typed-borrowed-cells).
 
 Nullable value types and nullable reference annotations accept SQL NULL. Methods
 with only required SQL parameters are declared `STRICT`. For mixed signatures, a NULL
@@ -363,7 +363,7 @@ required argument returns SQL NULL without invoking the method; nullable argumen
 reach managed code. Nullable results become SQL NULL. Methods can share a SQL name
 when their PostgreSQL argument types differ.
 
-[`PgItemPointer`](docs/src/content/docs/item-pointers.md) preserves exact tuple
+[`PgItemPointer`](https://willibrandon.github.io/ankus/item-pointers/) preserves exact tuple
 locations, including non-NULL invalid values. `PgNativeItemPointer` supplies checked
 ownership and borrowing for native `ItemPointerData` storage.
 
@@ -372,20 +372,20 @@ Temporal conversions preserve microseconds. `DateTime` requires `Kind.Unspecifie
 infinities, BC dates, 24:00, second-resolution offsets, and separate calendar months
 and days. They expose exact calendar fields and raw-value factories;
 `PgTimeZone` resolves server timezone offsets at transaction start or a supplied instant.
-See [date and time values](docs/src/content/docs/date-and-time.md).
+See [date and time values](https://willibrandon.github.io/ankus/date-and-time/).
 
 Text supports server-encoding conversion and Unicode; binary data preserves zero
 bytes. `string` and `byte[]` copy values into managed storage; `PgTextView` and
 `PgByteaView` provide checked native reads with private detoast or encoding
 storage when needed. `PgCString` and `PgCStringView` preserve exact terminated
-bytes for native C-string signatures. See [text and binary values](docs/src/content/docs/text-and-binary.md)
+bytes for native C-string signatures. See [text and binary values](https://willibrandon.github.io/ankus/text-and-binary/)
 for lifetime rules and independent copies.
 
 Managed exceptions return completely to native code
 before PostgreSQL raises ERROR. See [the native boundary design](docs/contributing/native-boundary.md)
 for buffer ownership and error cleanup.
 
-See [JSON and UUID values](docs/src/content/docs/json-and-uuid.md) for JSON text ownership, document
+See [JSON and UUID values](https://willibrandon.github.io/ankus/json-and-uuid/) for JSON text ownership, document
 access, and source-generated serialization with Native AOT.
 
 Use `[PgType]` on a record, class, struct, or enum for a PostgreSQL base type.
@@ -403,7 +403,7 @@ storage. Add `NativeLayout = true` to store an unmanaged struct's own bytes, as
 pgrx's `pgvarlena_inoutfuncs` does, with custom text and zeroed padding. Use `PgVarlena<T>` to borrow native-layout
 inputs with checked lifetimes, copy-on-write mutation, explicit cloning and datum
 transfer, or supply a `PgTypeCodec<T>` for both storage and text. See
-[custom types](docs/src/content/docs/custom-types.md).
+[custom types](https://willibrandon.github.io/ankus/custom-types/).
 
 Use `[PgDatumType]` for a reusable scalar wrapper over manual native storage or an
 external SQL type. Its converter implements `IPgDatumReader<T>`,
@@ -420,8 +420,8 @@ constraint-checked factory from their exact reader/writer interfaces at compile 
 
 Value-type wrappers can also declare `[PgRangeType]` to use the same converter
 for finite `PgRange<T>` bounds, with independent range SQL identity and ownership.
-See [mapped range bounds](docs/src/content/docs/ranges.md#mapped-bounds).
-See [reusable scalar mappings](docs/src/content/docs/raw-values.md#reusable-scalar-mappings)
+See [mapped range bounds](https://willibrandon.github.io/ankus/ranges/#mapped-bounds).
+See [reusable scalar mappings](https://willibrandon.github.io/ankus/raw-values/#reusable-scalar-mappings)
 for provider ownership, supported paths, and lifetime requirements.
 
 The [range sample](samples/Ankus.Examples.Ranges/README.md) ports pgrx's range
@@ -429,13 +429,13 @@ constructors and stored-value example, including empty and unbounded ranges.
 
 Use `[PgEnum]` and optional `[PgEnumLabel]` attributes for PostgreSQL enums,
 including nullable values, arrays, typed SPI queries and schema dependencies.
-See [enumerated types](docs/src/content/docs/enums.md) and the
+See [enumerated types](https://willibrandon.github.io/ankus/enums/) and the
 [enum sample](samples/Ankus.Examples.Enums/DeliveryFunctions.cs).
 
 Use `[PgOperator]` for binary or prefix operators and `[PgCast]` for explicit,
 assignment, or implicit conversions. Apply them to ordinary static methods or
 C# operator and conversion declarations. Both generate backing functions and
-dependency-ordered SQL. See [operators and casts](docs/src/content/docs/operators-and-casts.md)
+dependency-ordered SQL. See [operators and casts](https://willibrandon.github.io/ankus/operators-and-casts/)
 and the [operator sample](samples/Ankus.Examples.Operators/PriorityFunctions.cs).
 
 Add `[PgEquality]`, `[PgOrdering]`, and `[PgHashing]` to custom types, enums, or
@@ -443,7 +443,7 @@ readable datum mappings to generate comparisons and default B-tree/hash index
 classes. Equality and ordering use
 `IEquatable<T>` and `IComparable<T>`; `IPgHashable` supplies a stable database hash,
 with `PgHash` available for explicitly normalized keys. See
-[generated operators](docs/src/content/docs/operators-and-casts.md#generated-type-operators).
+[generated operators](https://willibrandon.github.io/ankus/operators-and-casts/#generated-type-operators).
 
 Add a `PgFunctionContext` parameter to inspect a call's collation, function and
 result type OIDs, and raw SQL arguments. It adds no SQL parameter.
@@ -452,12 +452,12 @@ and disposes it when PostgreSQL releases the owner.
 
 Use `PgSupportFunction` to connect a generated planner support method by its C#
 declaration. Ankus validates its SQL signature and installation dependency; see
-[planner support functions](docs/src/content/docs/function-declarations.md#planner-support-functions).
+[planner support functions](https://willibrandon.github.io/ankus/function-declarations/#planner-support-functions).
 
 Set `PgFunction.Sql` to replace a function's installation SQL, or
 `GenerateSql = false` to retain its native entry points without installing it.
 The same controls cover attached operators/casts and apply to trigger functions
-and aggregate helpers. See [custom SQL](docs/src/content/docs/custom-sql.md).
+and aggregate helpers. See [custom SQL](https://willibrandon.github.io/ankus/custom-sql/).
 
 Use `PgRequires` and `PgBefore` with `typeof` and `nameof` to order SQL by its
 managed declarations. Explicit dependency IDs remain available for custom SQL
@@ -476,31 +476,31 @@ manual shell/input/output/completion sequences with explicit prerequisites.
 
 Return `IEnumerable<T>` from `[PgFunction]` for `SETOF T`, or named tuple elements
 for `RETURNS TABLE`. Ordinary C# iterators support streaming, PostgreSQL-backed
-materialization, and cleanup when a query stops early. See [sets and tables](docs/src/content/docs/sets-and-tables.md)
+materialization, and cleanup when a query stops early. See [sets and tables](https://willibrandon.github.io/ankus/sets-and-tables/)
 and the [sets sample](samples/Ankus.Examples.Sets/SetFunctions.cs).
 
 `PgHeapTuple` owns composite cells and immutable descriptor metadata, including
 physical dropped slots, type modifiers, and domain identity. Named bindings,
 anonymous records, nested arrays, and composite sets share the guarded native
-conversion. See [composite values](docs/src/content/docs/composites.md) and the
+conversion. See [composite values](https://willibrandon.github.io/ankus/composites/) and the
 [composite sample](samples/Ankus.Examples.Composites/CompositeFunctions.cs).
 
 Use `[PgTrigger]` with `PgTriggerContext` for row and statement triggers.
 Owned OLD/NEW tuples, trigger arguments, transition-table SPI queries, `UPDATE OF`
 and updated columns, and constraint trigger flags preserve PostgreSQL's
-before/after/instead-of semantics. See [triggers](docs/src/content/docs/triggers.md)
+before/after/instead-of semantics. See [triggers](https://willibrandon.github.io/ankus/triggers/)
 and the [trigger sample](samples/Ankus.Examples.Triggers/PetTriggers.cs).
 
 Use `[PgEventTrigger]` with `PgEventTriggerContext` for DDL, dropped-object,
 table-rewrite and login callbacks. Metadata snapshots remain owned after callback
-return. See [event triggers](docs/src/content/docs/event-triggers.md) and the
+return. See [event triggers](https://willibrandon.github.io/ankus/event-triggers/) and the
 [event trigger sample](samples/Ankus.Examples.EventTriggers/DdlEvents.cs).
 
 Use `[PgAggregate]` with typed static support methods for grouped, parallel,
 moving-window, and ordered-set aggregation. `PgAggregateState<T>` owns managed
 state through PostgreSQL's group and query lifetimes. `PgAnyElement` and
 `PgAnyArray` support aggregates whose input, state, or result types vary by call. See
-[aggregates](docs/src/content/docs/aggregates.md) and the
+[aggregates](https://willibrandon.github.io/ankus/aggregates/) and the
 [average sample](samples/Ankus.Examples.Aggregates/IntegerAverage.cs).
 
 Implement `IPgAggregate<TState, TArgs>` for compiler-checked aggregate callbacks.
@@ -514,18 +514,18 @@ Use `Spi` inside an extension function to execute SQL in the calling backend:
 int answer = Spi.ExecuteScalar<int>("SELECT $1 + $2", SpiParameter.Create(40), SpiParameter.Create(2));
 ```
 
-See [SPI queries](docs/src/content/docs/spi.md) for typed parameters, result rows, and error handling.
+See [SPI queries](https://willibrandon.github.io/ankus/spi/) for typed parameters, result rows, and error handling.
 PostgreSQL 13–16 parallel execution cannot use recovery subtransactions; a native
 failure unwinds the managed callback before PostgreSQL aborts the operation.
 
 Use `PgTypes.GetOid` for native type-name resolution and `PgQualifiedNameBuilder`
-for exact operator lookup. See [catalog name lookups](docs/src/content/docs/catalog-lookups.md)
+for exact operator lookup. See [catalog name lookups](https://willibrandon.github.io/ankus/catalog-lookups/)
 for search paths, permissions and current catalog identities.
 
 Use `PgRelation` to open and lock a relation, inspect live metadata, copy its tuple
 descriptor, and open its indexes. Generated `regclass` arguments and results have
 explicit reference cleanup, including arrays and iterators. See
-[relation access](docs/src/content/docs/relations.md) for ownership and locking.
+[relation access](https://willibrandon.github.io/ankus/relations/) for ownership and locking.
 
 `PgBuiltInOid` supplies typed native constants, and `PgOid` classifies values
 against an explicit or active PostgreSQL major version while preserving invalid,
@@ -544,7 +544,7 @@ Projects using the same measured contract share their native type identity.
 
 The SDK defines `ANKUS_PG13` through `ANKUS_PG19` for the selected major so
 consumer code can select version-specific declarations at compile time; see
-[build settings](docs/src/content/docs/reference/build-settings.md).
+[build settings](https://willibrandon.github.io/ankus/reference/build-settings/).
 
 `PgNodes.Borrow` adds checked views over native storage, with tag-based casts that retain the original
 bounds and lifetime. `PgNodes.DangerousAllocate` creates zeroed tagged storage;
@@ -567,12 +567,12 @@ types named after their record and field; global hooks also expose
 managed handler through a generated native function-pointer property, including
 explicit hook installation, previous-hook chaining and restoration. Variadic
 calls remain in progress.
-See [native PostgreSQL declarations](docs/src/content/docs/raw-values.md#native-postgresql-declarations).
+See [native PostgreSQL declarations](https://willibrandon.github.io/ankus/raw-values/#native-postgresql-declarations).
 
 `[PgOutputPlugin]` exports a static method as `_PG_output_plugin_init`, so the
 library can serve as a logical decoding output plugin. The method receives
 PostgreSQL's callback table and assigns `[PgNativeCallback]` properties. See
-[logical decoding output plugins](docs/src/content/docs/logical-decoding.md).
+[logical decoding output plugins](https://willibrandon.github.io/ankus/logical-decoding/).
 
 `PgReplicationConnection` connects from a backend to another server through
 PostgreSQL's own `libpqwalreceiver`, as the built-in subscriber does, to run SQL,
@@ -581,8 +581,8 @@ copy tables and stream logical changes with no client library.
 `PgReplicationOrigin` tracks how far each source has been applied. They are part
 of a toolkit for logical replication extensions such as pglogical, which pgrx
 leaves to raw calls; see
-[replication connections](docs/src/content/docs/replication-connections.md) and
-[applying replicated changes](docs/src/content/docs/applying-changes.md). The
+[replication connections](https://willibrandon.github.io/ankus/replication-connections/) and
+[applying replicated changes](https://willibrandon.github.io/ankus/applying-changes/). The
 [subscriber sample](samples/Ankus.Examples.Subscriber/) uses them together to
 copy and stream a publication's tables from another server.
 
@@ -601,14 +601,14 @@ capabilities.
 
 Parameter diagnostics follow partition ancestry without reevaluating
 the child's clauses. Parallel scans combine observations in PostgreSQL-owned shared
-memory using native atomics. See [custom scan providers](docs/src/content/docs/custom-scans.md)
+memory using native atomics. See [custom scan providers](https://willibrandon.github.io/ankus/custom-scans/)
 for registration, plan/state ownership and parallel lifecycle requirements.
 
 Use `PgFunctions.Call<T>` to call a PostgreSQL function by name or OID, with typed
 arguments, defaults, and ordinary PostgreSQL permissions. `CallRaw` returns a
 context-owned datum with its exact type identity. Queries and catalog calls also
 accept `PgAnyElement` and `PgAnyArray` results for types determined at runtime. See
-[calling PostgreSQL functions](docs/src/content/docs/calling-functions.md).
+[calling PostgreSQL functions](https://willibrandon.github.io/ankus/calling-functions/).
 
 Use `PgFunctions.GetInfo` for an immutable function-catalog snapshot, including
 argument types and modes, volatility, permissions-related flags, source and local
@@ -621,13 +621,13 @@ managed results. Rows keep cells without a managed conversion as exact copies.
 `DangerousCall<T>` accepts mapped results when the caller supplies a valid native
 address with the matching result type and ABI.
 
-Use [logging and errors](docs/src/content/docs/logging.md) to send PostgreSQL notices and structured diagnostics.
+Use [logging and errors](https://willibrandon.github.io/ankus/logging/) to send PostgreSQL notices and structured diagnostics.
 `PgSqlStates` supplies named SQLSTATE strings for reporting errors and writing
 exception filters, while preserving support for extension-specific codes.
 
 Use `PgTransactionId` for PostgreSQL `xid`; C# `uint` remains PostgreSQL `oid`.
 It works in generated functions, SPI, and arrays, and can expand an `xid` with
-the current server epoch. See [transaction IDs](docs/src/content/docs/transaction-ids.md).
+the current server epoch. See [transaction IDs](https://willibrandon.github.io/ankus/transaction-ids/).
 
 Use `PgTransaction.RunInSubtransaction` to group synchronous work with rollback
 before an exception reaches the caller. Nested scopes recover independently.
@@ -635,7 +635,7 @@ Use `PgTransaction.RegisterCallback` for commit, rollback, preparation, and para
 transaction phases. `RegisterSubtransactionCallback` observes savepoints and other
 subtransactions with their exact IDs. Callbacks support cancellation, guarded SPI
 before commit, nested dispatch, and managed cleanup. See
-[transaction callbacks](docs/src/content/docs/transaction-callbacks.md).
+[transaction callbacks](https://willibrandon.github.io/ankus/transaction-callbacks/).
 
 Use `PgMemoryContext` and `PgAllocation` for PostgreSQL-owned native storage,
 temporary current-context scopes, checked byte access, and deterministic cleanup.
@@ -654,7 +654,7 @@ restrictions; Bump storage requires context cleanup instead of individual free.
 Reset and transaction cleanup invalidate managed handles before they can access
 freed memory. `RegisterResetCallback` roots one-shot managed cleanup until the
 native context resets or is deleted; its disposable registration supports cancellation.
-See [memory contexts](docs/src/content/docs/memory-contexts.md).
+See [memory contexts](https://willibrandon.github.io/ankus/memory-contexts/).
 
 Use static `PgLwLock<T>` descriptors and `PgSharedMemory.Initialize` during shared
 preload to share unmanaged values between backends. Disposable shared and
@@ -677,17 +677,17 @@ guards also support scoped mutations without releasing the parent lock.
 `PgFixedList<T>`, `PgFixedDeque<T>` and
 `PgFixedMap<TKey, TValue>` provide bounded collections over unmanaged inline
 buffers, including process-stable map keys. See
-[shared memory, locks and atomics](docs/src/content/docs/shared-memory.md).
+[shared memory, locks and atomics](https://willibrandon.github.io/ankus/shared-memory/).
 
 Use `PgStringInfoStream` for a PostgreSQL-owned growable buffer with ordinary
 stream writes, strict UTF-8 text, exact binary copies, checked context lifetimes,
 and explicit native ownership transfer. See
-[StringInfo buffers](docs/src/content/docs/stringinfo.md).
+[StringInfo buffers](https://willibrandon.github.io/ankus/stringinfo/).
 
 Use `PgList<T>` for typed native PostgreSQL lists with ordinary collection
 operations, checked context lifetimes, eager draining and explicit native
 borrowing. Integer, OID, transaction-ID and opaque pointer cells preserve their
-native identity. See [PostgreSQL lists](docs/src/content/docs/lists.md).
+native identity. See [PostgreSQL lists](https://willibrandon.github.io/ankus/lists/).
 
 Use `[PgInitialize]` on one static method to initialize the extension when its
 library loads in a backend. Initialization supports guarded database access,
@@ -695,18 +695,18 @@ owned error diagnostics, retries after failure, and managed shared preload.
 Use `[PgModuleLoad]` for native hook or provider registration that must run
 before a parallel worker's first executor entry. It precedes `PgInitialize`,
 which waits for worker restoration where required. See
-[extension initialization](docs/src/content/docs/initialization.md).
+[extension initialization](https://willibrandon.github.io/ankus/initialization/).
 
 Use `[PgBackgroundWorker]` for a PostgreSQL worker process with a managed entry.
 `PgBackgroundWorker` provides static and dynamic registration, lifecycle
 observation, native signal/latch handling and guarded transaction callbacks.
 Workers can attach the same shared-memory descriptors as ordinary backends.
-See [background workers](docs/src/content/docs/background-workers.md).
+See [background workers](https://willibrandon.github.io/ankus/background-workers/).
 
 Declare PostgreSQL settings with `[PgGucBool]`, `[PgGucInt]`, `[PgGucReal]`,
 `[PgGucString]`, or `[PgGucEnum]` on static partial getters. PostgreSQL owns their
 storage, startup source priority, permissions, SET/RESET behavior, and transaction restoration. See
-[configuration settings](docs/src/content/docs/configuration.md) for typed hooks,
+[configuration settings](https://willibrandon.github.io/ankus/configuration/) for typed hooks,
 units, owned extra data, and shared preload.
 
 An assembly `PgGucPrefix`
@@ -725,7 +725,7 @@ ankus install --from artifacts/hello
 ```
 
 See [tool setup](docs/contributing/development.md#build-the-tool) for local package installation
-and the [command reference](docs/src/content/docs/reference/cli.md) for options.
+and the [command reference](https://willibrandon.github.io/ankus/reference/cli/) for options.
 
 Publishing the sample produces a native library and these PostgreSQL installation files:
 
@@ -751,7 +751,7 @@ Pass declaration names to emit their SQL and dependencies. Add `--dot dependenci
 to export the full graph. Selected scripts attach objects to an existing extension;
 `--no-alter-extension` emits only their creation SQL.
 `Ankus.PgConfig.ExtensionSchema.Read` exposes the metadata to .NET applications;
-see [schema extraction](docs/src/content/docs/getting-started/publishing.md#inspect-installation-sql).
+see [schema extraction](https://willibrandon.github.io/ankus/getting-started/publishing/#inspect-installation-sql).
 
 `AnkusExtensionName` selects the extension name; its default is the assembly name
 lowercased with periods replaced by underscores. `AnkusExtensionVersion` defaults
@@ -762,7 +762,7 @@ PostgreSQL's `dynamic_library_path`, whose default is `$libdir`.
 Cargo's `[lib] name`. `AnkusVersionedLibrary` follows cargo-pgrx's versioned
 shared-object mode: each version publishes `<library>-<version>`, and its SQL names
 that library, so versions install side by side. See
-[native library names](docs/src/content/docs/reference/build-settings.md#native-library-names).
+[native library names](https://willibrandon.github.io/ankus/reference/build-settings/#native-library-names).
 
 For a standard server installation, the native library belongs in
 `pg_config --pkglibdir`, and the control and versioned SQL files belong in the
@@ -781,7 +781,7 @@ See [PROGRESS.md](PROGRESS.md) for implementation status and platform validation
 The Astro/Starlight site lives in `docs/`. See [site maintenance](docs/contributing/site.md)
 for local preview and build commands.
 
-The [public API reference](docs/src/content/docs/api/index.md) is generated from C# XML
+The [public API reference](https://willibrandon.github.io/ankus/api/) is generated from C# XML
 documentation. See [API reference generation](docs/contributing/api-reference.md).
 
 ## Contributing and security

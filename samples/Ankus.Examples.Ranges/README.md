@@ -42,5 +42,5 @@ SELECT id, value FROM stored_ranges ORDER BY id;
 `AssertRange` compares detached representations. An empty range differs from a
 newly requested pair of equal bounds until that pair has been canonicalized.
 For PostgreSQL semantic equality, use SQL `=` or call `Canonicalize()` first.
-See the [range guide](../../docs/src/content/docs/ranges.md) for other bound
+See the [range guide](https://willibrandon.github.io/ankus/ranges/) for other bound
 families, operations, arrays and explicitly mapped custom bounds.

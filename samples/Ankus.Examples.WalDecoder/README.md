@@ -141,5 +141,5 @@ These are pgrx's limitations, which the port keeps:
   changes through SQL slot functions and a WAL sender, and check transaction
   IDs and commit times against `track_commit_timestamp`.
 
-See [logical decoding output plugins](../../docs/src/content/docs/logical-decoding.md)
+See [logical decoding output plugins](https://willibrandon.github.io/ankus/logical-decoding/)
 for the declaration, output, memory and error rules.

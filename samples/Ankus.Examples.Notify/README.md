@@ -129,5 +129,5 @@ The integration tests check delivery from the writer's backend, commit-time
 delivery, rollback and savepoint recovery, coalescing, byte limits in UTF-8 and
 LATIN1 databases, subscription changes and prepared transactions.
 
-See [triggers](../../docs/src/content/docs/triggers.md) and
-[transaction callbacks](../../docs/src/content/docs/transaction-callbacks.md).
+See [triggers](https://willibrandon.github.io/ankus/triggers/) and
+[transaction callbacks](https://willibrandon.github.io/ankus/transaction-callbacks/).

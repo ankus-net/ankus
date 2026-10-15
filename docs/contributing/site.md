@@ -30,5 +30,11 @@ followed by code; add details when they change how the API should be used.
 Repository development, testing, and internal design notes belong in
 `docs/contributing/`. Implementation status belongs in the root `PROGRESS.md`.
 
+Site pages link each other by their published routes, such as `/api/ankus/`,
+which do not resolve when a page's source is viewed on GitHub. The README,
+`SECURITY.md` and sample READMEs therefore link the published pages under
+`https://willibrandon.github.io/ankus/`; contributor documents may link a page's
+source when they are about editing it.
+
 The site uses Astro and Starlight. TypeScript is pinned to the newest stable
 version supported by `@astrojs/check`.

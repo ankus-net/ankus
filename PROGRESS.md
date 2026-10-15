@@ -431,8 +431,9 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   Windows x64 and, in run 38663487329, Intel macOS. With every repository
   extension on `net11.0`, the complete suite passes on macOS ARM64 against
   PostgreSQL 18.6 (14,954 passed, 65 platform skips) and on Windows x64 against
-  PostgreSQL 17.11 (14,973 passed, 46 skips), about 25 minutes each. Locally on
-  Linux x64 with PostgreSQL 18.6 it passes 14,967 of 15,019 with 52 skips. SDK
+  PostgreSQL 17.11 (14,973 passed, 46 skips), about 25 minutes each, and on
+  Linux x64 against PostgreSQL 18.6 (14,967 passed, 52 skips) in 55 minutes, as
+  it also does locally. SDK
   11's `dotnet test` shows the test host's live output, so a binding test's
   deliberate compiler errors became annotations; that step now runs without
   setup-dotnet's compiler matcher.

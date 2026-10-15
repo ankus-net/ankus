@@ -59,5 +59,5 @@ can send a top-level `SELECT 1;` with or without its semicolon.
   check the thread rejection and recovery, the exact-text hook, chaining and a
   repeated library load.
 
-See [Running .NET inside PostgreSQL](../../docs/src/content/docs/reference/execution.md#backend-threads-and-tasks)
-and [managed native callbacks and hooks](../../docs/src/content/docs/raw-values.md#managed-native-callbacks-and-hooks).
+See [Running .NET inside PostgreSQL](https://willibrandon.github.io/ankus/reference/execution/#backend-threads-and-tasks)
+and [managed native callbacks and hooks](https://willibrandon.github.io/ankus/raw-values/#managed-native-callbacks-and-hooks).

@@ -70,5 +70,5 @@ responsibility; Ankus enforces the rollback instead.
 pgrx's example has no `#[pg_test]` coverage. The Ankus integration tests check
 exact results, SQLSTATEs, messages, warnings and continued use of the session.
 
-See [transaction callbacks and recoverable work](../../docs/src/content/docs/transaction-callbacks.md#recoverable-work)
-and [Ankus for pgrx users](../../docs/src/content/docs/getting-started/from-pgrx.md).
+See [transaction callbacks and recoverable work](https://willibrandon.github.io/ankus/transaction-callbacks/#recoverable-work)
+and [Ankus for pgrx users](https://willibrandon.github.io/ankus/getting-started/from-pgrx/).

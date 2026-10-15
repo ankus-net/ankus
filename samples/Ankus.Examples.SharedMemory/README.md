@@ -64,4 +64,4 @@ exclusive lock is released because a mutation callback cannot call PostgreSQL.
   the functions from two backends of a preloaded server, fill each collection,
   and check rollback, recovery and the error raised without preloading.
 
-See [shared memory, locks and atomics](../../docs/src/content/docs/shared-memory.md).
+See [shared memory, locks and atomics](https://willibrandon.github.io/ankus/shared-memory/).

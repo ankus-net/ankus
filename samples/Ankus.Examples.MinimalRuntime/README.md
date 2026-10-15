@@ -57,5 +57,5 @@ CREATE INDEX ON things USING hash (value);
 - pgrx's example has no tests. The Ankus integration test runs the functions and
   operators and builds B-tree and hash indexes under this configuration.
 
-See [Running .NET inside PostgreSQL](../../docs/src/content/docs/reference/execution.md#managed-memory-and-database-memory)
-and [Ankus for pgrx users](../../docs/src/content/docs/getting-started/from-pgrx.md).
+See [Running .NET inside PostgreSQL](https://willibrandon.github.io/ankus/reference/execution/#managed-memory-and-database-memory)
+and [Ankus for pgrx users](https://willibrandon.github.io/ankus/getting-started/from-pgrx/).
