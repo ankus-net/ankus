@@ -272,7 +272,8 @@ public sealed class PostgresInstallation
         }
 
         throw new FileNotFoundException(
-            $"PostgreSQL {major} was not found. Run 'ankus init --pg{major} /path/to/pg_config'.");
+            $"PostgreSQL {major} was not found. Run 'ankus init --pg{major} download' to install it, or " +
+            $"'ankus init --pg{major} /path/to/pg_config' to use an existing installation.");
     }
 
     /// <summary>

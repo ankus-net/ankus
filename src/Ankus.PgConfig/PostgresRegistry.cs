@@ -70,7 +70,8 @@ public sealed class PostgresRegistry(string? homeDirectory = null)
     public async Task<PostgresInstallation> GetAsync(int major, CancellationToken cancellationToken = default)
     {
         string path = GetPath(major) ?? throw new InvalidOperationException(
-            $"PostgreSQL {major} is not registered. Run 'ankus init --pg{major} /path/to/pg_config'.");
+            $"PostgreSQL {major} is not registered. Run 'ankus init --pg{major} download' to install it, or " +
+            $"'ankus init --pg{major} /path/to/pg_config' to use an existing installation.");
         PostgresInstallation installation = await PostgresInstallation.CreateAsync(path, cancellationToken).ConfigureAwait(false);
         RequireVersion(installation, major);
         return installation;

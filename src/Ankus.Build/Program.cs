@@ -243,7 +243,13 @@ try
 // codeql[cs/catch-of-all-exceptions] MSBuild runs this tool, so any failure becomes one reported error and exit code instead of a crash.
 catch (Exception error)
 {
-    Console.Error.WriteLine($"Ankus build failed: {error}");
+    // MSBuild's Exec logs standard error as messages, which the default console output hides, so a failure showed
+    // only "exited with code 1". A line in MSBuild's canonical error format is reported as a build error instead.
+    string summary = error.Message.ReplaceLineEndings("\n").Split('\n', StringSplitOptions.RemoveEmptyEntries) is [string first, ..]
+        ? first.Trim()
+        : error.GetType().Name;
+    Console.Error.WriteLine($"Ankus.Build : error : {summary}");
+    Console.Error.WriteLine(error);
     return 1;
 }
 

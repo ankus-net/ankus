@@ -585,6 +585,18 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   Release rehearsal 38788408053 on be35ef6 builds, packs and verifies every
   package for all five runtime identifiers on both lines; later commits
   change only tests and documentation.
+- A first user of 0.1.0 saw `dotnet build` fail with only `MSB3073: The command
+  "dotnet …/Ankus.Build.dll binding-sources …" exited with code 1`. No
+  PostgreSQL 18 was registered on that machine, and the build tool said so,
+  but it wrote the message to standard error as plain text, which MSBuild's
+  `Exec` logs as a message that the default console output hides. Every
+  failure of the build tool was hidden the same way. Its first line on
+  standard error is now in MSBuild's canonical error format, `Ankus.Build :
+  error : <message>`, so the build reports it as an error, with the details
+  after it. The not-found and not-registered messages now offer `ankus init
+  --pgNN download` beside a `pg_config` path. Tests run the tool directly and
+  through `Exec` and fail with the old output; a PgConfig test checks the
+  registry message. This ships in 0.1.1.
 - Scheduled run 38729094424 lost one Windows/PostgreSQL 18.6 case before its
   test body ran: the server reset the connection during authentication. The
   new backend had failed with `FATAL: incorrect checksum in control file` in

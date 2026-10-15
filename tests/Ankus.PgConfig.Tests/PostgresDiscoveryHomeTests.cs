@@ -10,6 +10,26 @@ namespace Ankus.PgConfig.Tests;
 public sealed class PostgresDiscoveryHomeTests(TestContext context)
 {
     /// <summary>
+    /// A major with no registration says how to install one or register an existing one.
+    /// </summary>
+    [TestMethod]
+    public async Task UnregisteredMajorNamesBothWaysToRegisterIt()
+    {
+        string home = Directory.CreateTempSubdirectory("ankus discovery ").FullName;
+        try
+        {
+            InvalidOperationException error = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
+                new PostgresRegistry(home).GetAsync(18, context.CancellationToken));
+            Assert.AreEqual("PostgreSQL 18 is not registered. Run 'ankus init --pg18 download' to install it, or " +
+                "'ankus init --pg18 /path/to/pg_config' to use an existing installation.", error.Message);
+        }
+        finally
+        {
+            Directory.Delete(home, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// An unavailable explicitly registered server cannot be replaced by a conventional installation.
     /// </summary>
     [TestMethod]
