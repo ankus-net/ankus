@@ -328,8 +328,8 @@ public sealed partial class AggregateTests(TestContext context)
                 Assert.AreEqual("retry valid inputs", error.Hint);
             }
 
-            await transaction.RollbackAsync("aggregate_error", token);
-            await Execute(connection, transaction, "SET LOCAL statement_timeout=0", token);
+            await StatementTimeoutCleanup.RetryAsync(() => transaction.RollbackAsync("aggregate_error", token));
+            await StatementTimeoutCleanup.RetryAsync(() => Execute(connection, transaction, "SET LOCAL statement_timeout=0", token));
             await AssertReleased(connection, transaction, mode == "moving_null" ? 0 : 1, token);
             await Reset(connection, transaction, "normal", token);
             Assert.AreEqual(42L, await Scalar<long>(connection, transaction,

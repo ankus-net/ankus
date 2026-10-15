@@ -39,7 +39,7 @@ public sealed class BadIdeasExampleTests(TestContext context)
         await ExecuteAsync(connection, "SET statement_timeout = '200ms'", token);
         PostgresException timeout = await Assert.ThrowsExactlyAsync<PostgresException>(() => ExecuteAsync(connection, "SELECT loop_forever()", token));
         Assert.AreEqual("57014", timeout.SqlState, timeout.MessageText);
-        await ExecuteAsync(connection, "RESET statement_timeout", token);
+        await StatementTimeoutCleanup.RetryAsync(() => ExecuteAsync(connection, "RESET statement_timeout", token));
 
         await using NpgsqlConnection administrator = await PostgresFixture.Cluster.OpenConnectionAsync(token);
         int backend = connection.ProcessID;

@@ -52,7 +52,7 @@ public sealed class DatumCreationTests(TestContext context)
         await Execute(connection, "SET statement_timeout = 100");
         PostgresException canceled = await Assert.ThrowsExactlyAsync<PostgresException>(() =>
             Scalar<string>(connection, "SELECT datum_creation.interrupt_pending(true)"));
-        await Execute(connection, "RESET statement_timeout");
+        await StatementTimeoutCleanup.RetryAsync(() => Execute(connection, "RESET statement_timeout"));
         Assert.AreEqual(PostgresErrorCodes.QueryCanceled, canceled.SqlState);
         Assert.Contains("pending False True", notices);
         Assert.AreEqual(1, await Scalar<int>(connection, "SELECT 1"));

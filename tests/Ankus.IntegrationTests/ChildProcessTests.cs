@@ -89,14 +89,17 @@ public sealed class ChildProcessTests(TestContext context)
 
         // Without the check, the orphaned session runs until its sleep ends.
         string sql = checksClient ? "SET client_connection_check_interval = '100ms'; SELECT pg_sleep(60)" : "SELECT pg_sleep(10)";
-        await ExecuteAsync(connection, "SET statement_timeout = '1s'", token);
+
+        // Only the program's statement runs under the timeout, so no later statement can be canceled by it.
+        var timedSettings = new NpgsqlConnectionStringBuilder(connection.ConnectionString) { Options = "-c statement_timeout=1s" };
+        await using var timed = new NpgsqlConnection(timedSettings.ConnectionString);
+        await timed.OpenAsync(token);
         Stopwatch watch = Stopwatch.StartNew();
-        PostgresException canceled = await Assert.ThrowsExactlyAsync<PostgresException>(() => ScalarAsync<int>(connection,
+        PostgresException canceled = await Assert.ThrowsExactlyAsync<PostgresException>(() => ScalarAsync<int>(timed,
             "SELECT datatype.child_run(@path, @arguments)", token, ("path", Program("psql")),
             ("arguments", new[] { "--no-psqlrc", "--command=" + sql, "--dbname=" + ConnectionString(connection) + " application_name=" + application })));
         Assert.AreEqual(PostgresErrorCodes.QueryCanceled, canceled.SqlState);
         Assert.IsLessThan(TimeSpan.FromSeconds(20), watch.Elapsed);
-        await ExecuteAsync(connection, "RESET statement_timeout", token);
         if (checksClient)
         {
             DateTime deadline = DateTime.UtcNow.AddSeconds(20);

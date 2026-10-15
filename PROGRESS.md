@@ -554,6 +554,18 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   runtime loaded the same host, against the rule to keep that host free while
   its runners work. If it happens again on an idle host, it needs its own
   investigation.
+- The first PostgreSQL 19 RC1 platform run (38785565865 on 03b4375) failed on
+  both hosts for reasons outside RC1. On macOS ARM64 the disk filled while the
+  release rehearsal's two runtime builds ran beside the suite, with 20 GB of
+  stale investigation trees and two profiling clusters of mine still on the
+  runner hosts; those are removed. On Windows one case's cleanup was
+  canceled: five tests set a short `statement_timeout` (100 ms to 1 s) to
+  provoke a cancellation and then reset it on the same session, but the
+  reset is itself armed with that timeout, and with two runtime builds
+  compiling on the same host it ran longer. The program-cancellation test now
+  gives the timed statement its own connection, configured with the timeout
+  at startup, and the four that check same-session recovery retry their
+  cleanup when the timeout they set cancels it.
 - Scheduled run 38729094424 lost one Windows/PostgreSQL 18.6 case before its
   test body ran: the server reset the connection during authentication. The
   new backend had failed with `FATAL: incorrect checksum in control file` in

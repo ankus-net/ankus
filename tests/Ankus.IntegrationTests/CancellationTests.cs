@@ -46,7 +46,7 @@ public sealed class CancellationTests(TestContext context)
         Assert.AreEqual("canceling statement due to statement timeout", error.MessageText);
         command.Parameters.Clear();
         command.CommandText = "SET statement_timeout = 0";
-        await command.ExecuteNonQueryAsync(token);
+        await StatementTimeoutCleanup.RetryAsync(() => command.ExecuteNonQueryAsync(token));
         command.CommandText = "SELECT datatype.cancel_observations()";
         Assert.AreEqual(7, await command.ExecuteScalarAsync(token));
         command.CommandText = "SELECT 42";
