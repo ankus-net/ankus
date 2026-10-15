@@ -69,6 +69,23 @@ internal static class IntegrationEnvironment
         => Path.Join(RepositoryRoot, "artifacts", "native", RuntimeInformation.RuntimeIdentifier);
 
     /// <summary>
+    /// Gets the version a published sample installs. Samples take the repository's package version, so tests read it
+    /// from the control file rather than repeat it, and a release can change it.
+    /// </summary>
+    /// <param name="extensionName">The sample's extension name.</param>
+    /// <returns>The control file's <c>default_version</c>.</returns>
+    internal static string ExtensionVersion(string extensionName)
+        => ExtensionControlFile.Read(Path.Join(NativeOutputDirectory, "extension", extensionName + ".control"))["default_version"];
+
+    /// <summary>
+    /// Gets the path of a published sample's installation script.
+    /// </summary>
+    /// <param name="extensionName">The sample's extension name.</param>
+    /// <returns>The script that installs the sample's current version.</returns>
+    internal static string ExtensionScript(string extensionName)
+        => Path.Join(NativeOutputDirectory, "extension", $"{extensionName}--{ExtensionVersion(extensionName)}.sql");
+
+    /// <summary>
     /// Resolves ancestor aliases before comparing ownership, including macOS's temporary-directory aliases.
     /// </summary>
     /// <param name="directory">The existing directory to resolve.</param>

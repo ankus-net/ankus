@@ -56,8 +56,7 @@ public sealed class CustomSqlExampleTests(TestContext context)
     [TestMethod]
     public async Task CustomSqlSampleOrdersInstallationScript()
     {
-        string script = await File.ReadAllTextAsync(
-            Path.Join(IntegrationEnvironment.NativeOutputDirectory, "extension", "ankus_custom_sql--0.1.0.sql"), context.CancellationToken);
+        string script = await File.ReadAllTextAsync(IntegrationEnvironment.ExtensionScript("ankus_custom_sql"), context.CancellationToken);
         string[] markers =
         [
             "INSERT INTO extension_sql VALUES ('bootstrap');",

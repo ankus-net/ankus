@@ -597,6 +597,11 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   --pgNN download` beside a `pg_config` path. Tests run the tool directly and
   through `Exec` and fail with the old output; a PgConfig test checks the
   registry message. This ships in 0.1.1.
+- Raising the repository's default version to 0.1.1 failed six integration
+  tests on every platform (CI 38814462084). Samples take their extension
+  version from the package version, and the tests repeated `0.1.0` in script
+  names and catalog checks. They now read each sample's `default_version` from
+  its published control file, so a release no longer requires editing tests.
 - Scheduled run 38729094424 lost one Windows/PostgreSQL 18.6 case before its
   test body ran: the server reset the connection during authentication. The
   new backend had failed with `FATAL: incorrect checksum in control file` in

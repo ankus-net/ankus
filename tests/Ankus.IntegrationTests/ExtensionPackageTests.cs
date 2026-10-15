@@ -36,7 +36,7 @@ public sealed class ExtensionPackageTests(TestContext context)
                 await using NpgsqlDataReader reader = await command.ExecuteReaderAsync(token);
 
                 Assert.IsTrue(await reader.ReadAsync(token));
-                Assert.AreEqual("0.1.0", reader.GetString(0));
+                Assert.AreEqual(IntegrationEnvironment.ExtensionVersion("ankus_hello"), reader.GetString(0));
                 Assert.IsTrue(reader.GetBoolean(1));
                 Assert.AreEqual(signature, reader.GetString(2));
                 Assert.IsTrue(reader.GetBoolean(3));
@@ -86,9 +86,9 @@ public sealed class ExtensionPackageTests(TestContext context)
                     Assert.IsTrue(Assert.IsInstanceOfType<bool>(await drop.ExecuteScalarAsync(token)));
                 }
 
-                const string sql = """
+                string sql = $"""
                     CREATE SCHEMA reinstalled;
-                    CREATE EXTENSION ankus_hello WITH SCHEMA reinstalled VERSION '0.1.0';
+                    CREATE EXTENSION ankus_hello WITH SCHEMA reinstalled VERSION '{IntegrationEnvironment.ExtensionVersion("ankus_hello")}';
                     SELECT reinstalled.add(-20, 5)
                     """;
                 await using var install = new NpgsqlCommand(sql, connection, transaction);

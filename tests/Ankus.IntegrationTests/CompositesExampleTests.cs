@@ -121,8 +121,7 @@ public sealed class CompositesExampleTests(TestContext context)
     public Task CompositesSampleOrdersTypesAndResolvesInstalledSchema()
         => PostgresFixture.Cluster.RunInTransactionAsync(nameof(CompositesSampleOrdersTypesAndResolvesInstalledSchema), async (connection, transaction, token) =>
         {
-            string script = await File.ReadAllTextAsync(
-                Path.Join(IntegrationEnvironment.NativeOutputDirectory, "extension", "ankus_composites--0.1.0.sql"), token);
+            string script = await File.ReadAllTextAsync(IntegrationEnvironment.ExtensionScript("ankus_composites"), token);
             int dog = script.IndexOf("CREATE TYPE Dog AS", StringComparison.Ordinal);
             int friendship = script.IndexOf("CREATE TYPE CatAndDogFriendship AS", StringComparison.Ordinal);
             int makeFriendship = script.IndexOf("CREATE FUNCTION \"make_friendship\"", StringComparison.Ordinal);
