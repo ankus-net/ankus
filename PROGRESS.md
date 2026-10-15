@@ -483,7 +483,8 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   name the new home; the site is served from the domain root, so it no longer
   needs a base path or the plugin that added one. Packages publish from the
   `ankus` nuget.org organization through a trusted publishing policy for
-  `ankus-net/ankus`.
+  `ankus-net/ankus`, and nuget.org has reserved the `Ankus` ID prefix for that
+  organization.
 - Linux ARM64, which pgrx supports, is now a fifth runtime identifier. Both runtime lines enabled the collector's fork checkpoints and
   the runtime's fork support only on Linux x64 and macOS; that code relies on
   POSIX fork handling rather than an instruction set, so the fork now enables
@@ -573,6 +574,15 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   coordinates them through lock files under `NUGET_SCRATCH`, which defaults to
   each runner's own `TEMP`. The runner guide now says to share it; the
   Windows runners do not share one yet, so the race remains possible there.
+- PostgreSQL 19 RC1 passes the complete suite on every platform CI covers:
+  Linux x64 (run 38785556292, 14,976 passed and 52 skips), Linux ARM64 on
+  both frameworks (38777760999, 14,976 and 52 each), macOS ARM64 (38791251393,
+  14,963 and 65), Windows x64 (38791251393, 14,982 and 46) and Intel macOS
+  (38785575156, 14,963 and 65). Linux ARM64 on
+  PostgreSQL 13 (38777749438) passes on both frameworks with the run-as fix.
+  Release rehearsal 38788408053 on be35ef6 builds, packs and verifies every
+  package for all five runtime identifiers on both lines; later commits
+  change only tests and documentation.
 - Scheduled run 38729094424 lost one Windows/PostgreSQL 18.6 case before its
   test body ran: the server reset the connection during authentication. The
   new backend had failed with `FATAL: incorrect checksum in control file` in
@@ -1844,7 +1854,7 @@ Earlier entries in this log are in the
 ## Remaining work order
 
 Primary CI, the Linux, macOS ARM64 and Windows x64 version matrices, including
-PostgreSQL 19 beta, and Intel macOS on 13–18 and 19 beta all pass on runtime **10.0.13-ankus.1**. The
+PostgreSQL 19 RC1, Linux ARM64, and Intel macOS on 13–18 and 19 RC1 all pass on runtime **10.0.13-ankus.1**. The
 declaration audit against pgrx 0.19.3 has no open option, and the third code
 review's findings are fixed or kept by documented design.
 
@@ -1855,7 +1865,7 @@ review's findings are fixed or kept by documented design.
 5. Keep samples and guides current with API changes, and recheck changed guides before release. Test discovery for MSTest, xUnit and NUnit consumers and samples for all 37 pgrx examples are complete.
 6. Keep the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) current as a pglogical port exercises it; every planned capability is done.
 7. Support .NET 11 as an extension target (required, in progress). The runtime fork's changes over 10.0.13 are ported onto .NET 11 RC2 as fork commit `34f19a015e3` on branch `ankus/runtime-11.0-rc2`, and every fork probe passes on Linux x64; rebase onto GA when it ships. `Ankus.Sdk` selects the `net11.0` line, `ankus new` and the templates take `--framework net11.0`, and CI and releases build both lines. The complete suite passes on every PostgreSQL major on Linux x64, macOS ARM64, Windows x64 and Intel macOS. Remaining: the rebase onto the .NET 11 release in November, which ships as a servicing update.
-8. Before publishing 0.1.0, repeat the release rehearsal on the commit to be released. The native binding catalogs and the public API surface were audited on 2026-10-14. The .NET 10.0.13 servicing update is done and rehearsal 38600378664 passes on it.
+8. Release 0.1.0. Rehearsal 38788408053 passes on be35ef6, building, packing and verifying both runtime lines for all five runtime identifiers; later commits change only tests and documentation. The native binding catalogs and the public API surface were audited on 2026-10-14. Activate the nuget.org trusted publishing policy before publishing.
 
 Continue independent work while CI runs. Before every commit and push, check and
 record previous run outcomes, including live runs, and resolve reported failures.
