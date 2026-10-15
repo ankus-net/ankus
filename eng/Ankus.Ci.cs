@@ -70,7 +70,7 @@ try
 
         case "runtime-build":
         {
-            RequireArguments(args, 4);
+            RequireLineArguments(args, 4);
             ValidateRuntimeIdentity(repositoryRoot);
             RuntimeLine line = SelectRuntimeLine(args, 4);
             IsolateRuntimeBuildPackages(repositoryRoot);
@@ -82,7 +82,7 @@ try
 
         case "runtime-pack":
         {
-            RequireArguments(args, 2);
+            RequireLineArguments(args, 2);
             ValidateRuntimeIdentity(repositoryRoot);
             RuntimeLine line = SelectRuntimeLine(args, 2);
             RemoveStagingFeedPackages();
@@ -208,7 +208,7 @@ try
 
         case "release-runtime":
         {
-            RequireArguments(args, 4);
+            RequireLineArguments(args, 4);
             ValidateRuntimeIdentity(repositoryRoot);
             RuntimeLine line = SelectRuntimeLine(args, 4);
             InstallRuntimePrerequisites();
@@ -267,6 +267,15 @@ static void RequireArguments(string[] commandArguments, int count)
     if (commandArguments.Length != count)
     {
         throw new InvalidOperationException($"Command '{commandArguments[0]}' expects {count - 1} arguments.");
+    }
+}
+
+// Runtime commands take their usual arguments and may name a runtime line after them.
+static void RequireLineArguments(string[] commandArguments, int count)
+{
+    if (commandArguments.Length != count && commandArguments.Length != count + 1)
+    {
+        throw new InvalidOperationException($"Command '{commandArguments[0]}' expects {count - 1} arguments and an optional runtime line.");
     }
 }
 
