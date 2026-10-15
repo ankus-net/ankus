@@ -18,7 +18,7 @@ captured on the target.
   native declarations from your PostgreSQL headers.
   Windows also requires LLVM's `llvm-objcopy.exe` on `PATH` for native binding
   verification; the LLVM installer supplies these tools.
-- PostgreSQL 13 through 18 or 19 beta (this guide uses 18), with `pg_config`, server
+- PostgreSQL 13 through 18 or the 19 beta or release candidate (this guide uses 18), with `pg_config`, server
   executables, and development headers.
   Windows also needs the PostgreSQL server import library.
 

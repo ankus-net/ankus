@@ -510,6 +510,19 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   other accounts search it; 18 and later run from the system package and
   passed. CI now lets other accounts search the directories above the
   workspace on hosted runners; listing them stays closed.
+- PostgreSQL 19 RC1 changed an executor API. The hosted ARM64 runner installed
+  `19~rc1` and every extension failed to compile: `RelationFindReplTupleByIndex`
+  gained a `skipduplicates` argument (2f7bf51b7b0), because the apply worker now
+  records whether its key index is the replica identity instead of deciding
+  again during the search, where a concurrent REINDEX could change the answer.
+  16 to 18 keep the old function and add `RelationFindReplTupleByIndexExt`.
+  Beta 4 and RC1 both report `PG_VERSION_NUM` 190000, so the relation writer
+  selects the form by catalog version (202610061 in RC1) and passes `true`: its
+  key is always the replica identity or primary key. RC1 changed no SQLSTATE,
+  type or function catalog entries. The packaged PostgreSQL 19 on the
+  dedicated Linux hosts is now RC1, and the complete suite passes on it on
+  Linux x64: 14,976 passed and 52 platform skips. macOS and Windows still test
+  beta 4 until their installations move to RC1.
 - Scheduled run 38729094424 lost one Windows/PostgreSQL 18.6 case before its
   test body ran: the server reset the connection during authentication. The
   new backend had failed with `FATAL: incorrect checksum in control file` in

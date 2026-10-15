@@ -23,6 +23,7 @@ internal static class NativeRelationWriterBridge
         #include "access/table.h"
         #include "access/tableam.h"
         #include "access/xact.h"
+        #include "catalog/catversion.h"
         #include "commands/trigger.h"
         #include "executor/executor.h"
         #include "mb/pg_wchar.h"
@@ -369,8 +370,17 @@ internal static class NativeRelationWriterBridge
         ankus_relation_writer_lookup(AnkusRelationWriter *writer)
         {
             ankus_relation_writer_check(writer, ACL_SELECT);
+            /* PostgreSQL 19 RC1 takes whether the first match can be used without comparing the rest. The subscriber
+             * now records that with its key index instead of deciding again during the search, which a concurrent
+             * REINDEX could change (2f7bf51b7b0). The writer's key is always the replica identity or primary key,
+             * whose first match is the row. Beta 4 has the earlier form and an older catalog version. */
             if (OidIsValid(writer->key))
+        #if CATALOG_VERSION_NO >= 202610061
+                return RelationFindReplTupleByIndex(writer->relation, writer->key, true, LockTupleExclusive, writer->search,
+                    writer->local);
+        #else
                 return RelationFindReplTupleByIndex(writer->relation, writer->key, LockTupleExclusive, writer->search, writer->local);
+        #endif
             return RelationFindReplTupleSeq(writer->relation, LockTupleExclusive, writer->search, writer->local);
         }
 
