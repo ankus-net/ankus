@@ -116,9 +116,9 @@ packing from the dispatched commit and skips publishing.
 
 The `Additional platforms` workflow runs the complete suite on the dedicated
 Intel macOS runner, covering the release-only macOS x64 architecture. The weekly
-run tests PostgreSQL 13–17, 18 and 19 beta in turn; manual dispatch takes a
+run tests PostgreSQL 13–17, 18 and 19 RC1 in turn; manual dispatch takes a
 `postgresql` input of one major (18 by default) or `all`. MacPorts supplies 13–18,
-with 18 on `PATH`, and 19 beta is an `ankus init` build; repository variables
+with 18 on `PATH`, and 19 RC1 is an `ankus init` build; repository variables
 `ANKUS_MACOS_X64_PG<major>_PG_CONFIG` name every major except 18. Runtime, NuGet
 and binding caches are saved before tests so later runs reuse successful
 preparation. Each major retains its test results and timings and allows 360
@@ -170,7 +170,7 @@ directory, and set repository variables `ANKUS_MACOS_PG13_PG_CONFIG`,
 `ANKUS_MACOS_PG14_PG_CONFIG`, `ANKUS_MACOS_PG17_PG_CONFIG` and
 `ANKUS_MACOS_PG19_PG_CONFIG` to their `pg_config` paths. On Windows, install each major with server headers and
 import libraries; PostgreSQL 16 must be 16.15 or later and 18 must be 18.6 or
-later. EDB publishes no Windows beta, so build 19 beta from source with meson
+later. EDB publishes no Windows build of PostgreSQL 19 prereleases, so build 19 RC1 from source with meson
 and MSVC (with winflexbison and Strawberry Perl on `PATH`) into the same layout.
 Build it with `-Dicu=enabled`, as the EDB builds are, because the suite tests ICU
 collations: point `ICU_ROOT` at ICU's official Win64 MSVC binaries so meson finds
@@ -323,7 +323,7 @@ dotnet run --file ./eng/Ankus.SqlStates.cs -- /path/to/postgres --check
 ```
 
 The app reads `src/backend/utils/errcodes.txt` at the pinned PostgreSQL 13–18 and
-19 beta tags listed in its source. It makes no network requests or changes to
+19 RC1 tags listed in its source. It makes no network requests or changes to
 the reference checkout. The generated union retains native aliases and names
 removed from newer server versions. Update the tag list when refreshing the
 catalog, then regenerate the API documentation from its XML comments.
@@ -424,8 +424,8 @@ Independent probes compile complete headers, including implementation headers,
 and link only definitions reached by the probe. Unused backend functions need
 no standalone implementation; missing dependencies in executed checks still fail
 linking. Compile-time assertions and executable bitfield checks remain enabled.
-The pinned pgrx 0.19.3 inventory, OIDs and PostgreSQL 19 SQLSTATE inputs all use
-19 beta 4. Complete platform/version validation remains required.
+The pinned pgrx 0.19.3 inventory and OIDs come from 19 beta 4, and the SQLSTATE
+inputs from 19 RC1; the complete suites pass on 19 RC1 on every platform.
 
 To emit managed declarations and their companion project, use `binding-sources`
 with the same arguments, followed by optional Clang executable and libclang paths.

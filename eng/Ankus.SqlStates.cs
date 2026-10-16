@@ -16,7 +16,7 @@ try
     (int Major, string Tag)[] sources =
     [
         (13, "REL_13_23"), (14, "REL_14_24"), (15, "REL_15_19"), (16, "REL_16_15"),
-        (17, "REL_17_11"), (18, "REL_18_6"), (19, "REL_19_BETA4"),
+        (17, "REL_17_11"), (18, "REL_18_6"), (19, "REL_19_RC1"),
     ];
     var definitions = new Dictionary<string, (string Code, string? Condition, List<int> Versions)>(StringComparer.Ordinal);
     foreach ((int major, string tag) in sources)
@@ -74,7 +74,7 @@ try
         /// Provides named PostgreSQL SQLSTATE strings for error reporting, diagnostics and exception filters.
         /// </summary>
         /// <remarks>
-        /// Includes the union of the PostgreSQL 13 through 18 and 19 beta catalogs, including aliases and retired names.
+        /// Includes the union of the PostgreSQL 13 through 18 and 19 RC1 catalogs, including aliases and retired names.
         /// A constant does not imply that its associated server feature exists in every PostgreSQL version.
         /// These names supplement the string-based diagnostic APIs; extension-specific SQLSTATE strings remain supported.
         /// </remarks>
@@ -97,7 +97,7 @@ try
         if (versions.Count != sources.Length)
         {
             generated.Append(" Present in the PostgreSQL ")
-                .Append(string.Join(", ", versions.Select(static version => version == 19 ? "19 beta" : version.ToString(CultureInfo.InvariantCulture))))
+                .Append(string.Join(", ", versions.Select(static version => version == 19 ? "19 RC1" : version.ToString(CultureInfo.InvariantCulture))))
                 .Append(" source catalogs.");
         }
 

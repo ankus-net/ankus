@@ -15,7 +15,7 @@ Provides named PostgreSQL SQLSTATE strings for error reporting, diagnostics and 
 public static class PgSqlStates
 ```
 
-Includes the union of the PostgreSQL 13 through 18 and 19 beta catalogs, including aliases and retired names.
+Includes the union of the PostgreSQL 13 through 18 and 19 RC1 catalogs, including aliases and retired names.
 A constant does not imply that its associated server feature exists in every PostgreSQL version.
 These names supplement the string-based diagnostic APIs; extension-specific SQLSTATE strings remain supported.
 
@@ -1113,7 +1113,7 @@ The PostgreSQL <code>file_name_too_long</code> SQLSTATE (<code>58P03</code>).
 public const string FileNameTooLong = "58P03"
 ```
 
-PostgreSQL macro <code>ERRCODE_FILE_NAME_TOO_LONG</code>. Present in the PostgreSQL 18, 19 beta source catalogs.
+PostgreSQL macro <code>ERRCODE_FILE_NAME_TOO_LONG</code>. Present in the PostgreSQL 18, 19 RC1 source catalogs.
 
 <a id="member-47376240efb544c0"></a>
 
@@ -1197,7 +1197,7 @@ The PostgreSQL <code>idle_session_timeout</code> SQLSTATE (<code>57P05</code>).
 public const string IdleSessionTimeout = "57P05"
 ```
 
-PostgreSQL macro <code>ERRCODE_IDLE_SESSION_TIMEOUT</code>. Present in the PostgreSQL 14, 15, 16, 17, 18, 19 beta source catalogs.
+PostgreSQL macro <code>ERRCODE_IDLE_SESSION_TIMEOUT</code>. Present in the PostgreSQL 14, 15, 16, 17, 18, 19 RC1 source catalogs.
 
 <a id="member-91808915b66a361b"></a>
 
@@ -1425,7 +1425,7 @@ The PostgreSQL <code>invalid_argument_for_xquery</code> SQLSTATE (<code>10608</c
 public const string InvalidArgumentForXQuery = "10608"
 ```
 
-PostgreSQL macro <code>ERRCODE_INVALID_ARGUMENT_FOR_XQUERY</code>. Present in the PostgreSQL 18, 19 beta source catalogs.
+PostgreSQL macro <code>ERRCODE_INVALID_ARGUMENT_FOR_XQUERY</code>. Present in the PostgreSQL 18, 19 RC1 source catalogs.
 
 <a id="member-85407a1924361b30"></a>
 
@@ -2529,7 +2529,7 @@ The PostgreSQL <code>sql_json_item_cannot_be_cast_to_target_type</code> SQLSTATE
 public const string SqlJsonItemCannotBeCastToTargetType = "2203G"
 ```
 
-PostgreSQL macro <code>ERRCODE_SQL_JSON_ITEM_CANNOT_BE_CAST_TO_TARGET_TYPE</code>. Present in the PostgreSQL 15, 16, 17, 18, 19 beta source catalogs.
+PostgreSQL macro <code>ERRCODE_SQL_JSON_ITEM_CANNOT_BE_CAST_TO_TARGET_TYPE</code>. Present in the PostgreSQL 15, 16, 17, 18, 19 RC1 source catalogs.
 
 <a id="member-6d9e7a6dfa516483"></a>
 
@@ -2901,7 +2901,7 @@ The PostgreSQL <code>transaction_timeout</code> SQLSTATE (<code>25P04</code>).
 public const string TransactionTimeout = "25P04"
 ```
 
-PostgreSQL macro <code>ERRCODE_TRANSACTION_TIMEOUT</code>. Present in the PostgreSQL 17, 18, 19 beta source catalogs.
+PostgreSQL macro <code>ERRCODE_TRANSACTION_TIMEOUT</code>. Present in the PostgreSQL 17, 18, 19 RC1 source catalogs.
 
 <a id="member-84b9f86c79253a5f"></a>
 

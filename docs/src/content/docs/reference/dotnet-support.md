@@ -5,8 +5,7 @@ description: Choose a .NET version and keep the runtime embedded in your extensi
 
 Ankus targets .NET 10 LTS by default. Extensions can also target .NET 11
 (`net11.0`), which Ankus currently builds on the .NET 11 release candidate; see
-[.NET 11 status](#net-11-status) for what has been validated. The initial
-`0.1.0` release is still pending.
+[.NET 11 status](#net-11-status) for what has been validated.
 
 ## Version policy
 

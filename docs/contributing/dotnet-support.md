@@ -47,7 +47,7 @@ target and per-RID package properties carry matching target runtime and host
 compiler identities. Framework runtime packs also use 10.0.13 instead of
 following the installed SDK's default patch. Check
 `PROGRESS.md` for completed platform evidence and recheck upstream servicing
-before publishing `0.1.0`.
+before each release.
 
 The runtime repository restores from dnceng staging feeds, which carry builds of
 official package versions before or beside nuget.org's signed copies.

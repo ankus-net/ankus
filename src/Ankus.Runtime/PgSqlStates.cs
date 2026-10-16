@@ -5,7 +5,7 @@ namespace Ankus;
 /// Provides named PostgreSQL SQLSTATE strings for error reporting, diagnostics and exception filters.
 /// </summary>
 /// <remarks>
-/// Includes the union of the PostgreSQL 13 through 18 and 19 beta catalogs, including aliases and retired names.
+/// Includes the union of the PostgreSQL 13 through 18 and 19 RC1 catalogs, including aliases and retired names.
 /// A constant does not imply that its associated server feature exists in every PostgreSQL version.
 /// These names supplement the string-based diagnostic APIs; extension-specific SQLSTATE strings remain supported.
 /// </remarks>
@@ -727,7 +727,7 @@ public static class PgSqlStates
     /// The PostgreSQL <c>file_name_too_long</c> SQLSTATE (<c>58P03</c>).
     /// </summary>
     /// <remarks>
-    /// PostgreSQL macro <c>ERRCODE_FILE_NAME_TOO_LONG</c>. Present in the PostgreSQL 18, 19 beta source catalogs.
+    /// PostgreSQL macro <c>ERRCODE_FILE_NAME_TOO_LONG</c>. Present in the PostgreSQL 18, 19 RC1 source catalogs.
     /// </remarks>
     public const string FileNameTooLong = "58P03";
 
@@ -783,7 +783,7 @@ public static class PgSqlStates
     /// The PostgreSQL <c>idle_session_timeout</c> SQLSTATE (<c>57P05</c>).
     /// </summary>
     /// <remarks>
-    /// PostgreSQL macro <c>ERRCODE_IDLE_SESSION_TIMEOUT</c>. Present in the PostgreSQL 14, 15, 16, 17, 18, 19 beta source catalogs.
+    /// PostgreSQL macro <c>ERRCODE_IDLE_SESSION_TIMEOUT</c>. Present in the PostgreSQL 14, 15, 16, 17, 18, 19 RC1 source catalogs.
     /// </remarks>
     public const string IdleSessionTimeout = "57P05";
 
@@ -927,7 +927,7 @@ public static class PgSqlStates
     /// The PostgreSQL <c>invalid_argument_for_xquery</c> SQLSTATE (<c>10608</c>).
     /// </summary>
     /// <remarks>
-    /// PostgreSQL macro <c>ERRCODE_INVALID_ARGUMENT_FOR_XQUERY</c>. Present in the PostgreSQL 18, 19 beta source catalogs.
+    /// PostgreSQL macro <c>ERRCODE_INVALID_ARGUMENT_FOR_XQUERY</c>. Present in the PostgreSQL 18, 19 RC1 source catalogs.
     /// </remarks>
     public const string InvalidArgumentForXQuery = "10608";
 
@@ -1663,7 +1663,7 @@ public static class PgSqlStates
     /// The PostgreSQL <c>sql_json_item_cannot_be_cast_to_target_type</c> SQLSTATE (<c>2203G</c>).
     /// </summary>
     /// <remarks>
-    /// PostgreSQL macro <c>ERRCODE_SQL_JSON_ITEM_CANNOT_BE_CAST_TO_TARGET_TYPE</c>. Present in the PostgreSQL 15, 16, 17, 18, 19 beta source catalogs.
+    /// PostgreSQL macro <c>ERRCODE_SQL_JSON_ITEM_CANNOT_BE_CAST_TO_TARGET_TYPE</c>. Present in the PostgreSQL 15, 16, 17, 18, 19 RC1 source catalogs.
     /// </remarks>
     public const string SqlJsonItemCannotBeCastToTargetType = "2203G";
 
@@ -1895,7 +1895,7 @@ public static class PgSqlStates
     /// The PostgreSQL <c>transaction_timeout</c> SQLSTATE (<c>25P04</c>).
     /// </summary>
     /// <remarks>
-    /// PostgreSQL macro <c>ERRCODE_TRANSACTION_TIMEOUT</c>. Present in the PostgreSQL 17, 18, 19 beta source catalogs.
+    /// PostgreSQL macro <c>ERRCODE_TRANSACTION_TIMEOUT</c>. Present in the PostgreSQL 17, 18, 19 RC1 source catalogs.
     /// </remarks>
     public const string TransactionTimeout = "25P04";
 

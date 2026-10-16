@@ -480,7 +480,8 @@ This produces `Ankus.Sdk`, `Ankus.Runtime`, `Ankus.Generators`, `Ankus.PgConfig`
 matching runtime/generator versions. It uses NuGet's MSBuild SDK resolver.
 
 Add the absolute feed path to a consumer's `NuGet.Config` and use
-`<Project Sdk="Ankus.Sdk/0.1.0">`. Both the SDK resolver and package restore read
+`<Project Sdk="Ankus.Sdk/<version>">`, where `<version>` is the `VersionPrefix` in
+`Directory.Build.props`. Both the SDK resolver and package restore read
 that configuration. The consumer needs its own `TargetFramework`, nullable, and
 implicit-using settings; it does not import repository build files.
 
@@ -490,7 +491,7 @@ Pack and install from the local feed:
 
 ```console
 dotnet pack src/Ankus.Tool -c Release -o artifacts/packages
-dotnet tool install Ankus.Tool --tool-path artifacts/tools --add-source artifacts/packages --version 0.1.0
+dotnet tool install Ankus.Tool --tool-path artifacts/tools --add-source artifacts/packages --version <version>
 ```
 
 Invoke `artifacts/tools/ankus` (`ankus.exe` on Windows), or put that directory on

@@ -403,7 +403,7 @@ ankus info version 18
 
 `path` returns the directory above the selected `pg_config` directory, matching
 pgrx's installation-root convention. `pg-config` returns the executable's
-absolute path. `version` returns its release version, such as `18.6` or `19beta4`.
+absolute path. `version` returns its release version, such as `18.6` or `19rc1`.
 Paths are printed verbatim, including spaces. Preserve the returned value
 rather than splitting it on whitespace.
 

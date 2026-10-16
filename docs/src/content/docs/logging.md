@@ -119,7 +119,7 @@ throw new PgException(PgSqlStates.InvalidParameterValue, "Count must be positive
 ```
 
 `PgSqlStates` provides named strings for every SQLSTATE in the PostgreSQL 13–18
-and 19 beta source catalogs, including native aliases and retired names. Use
+and 19 RC1 source catalogs, including native aliases and retired names. Use
 them directly with `PgException`, `PgDiagnostic.SqlState`, and exception filters:
 
 ```csharp
