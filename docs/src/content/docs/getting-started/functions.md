@@ -8,7 +8,7 @@ description: Declare C# methods, map PostgreSQL types, and handle SQL NULL.
 Install `Ankus.Tool` from nuget.org, then create a solution:
 
 ```console
-dotnet tool install --global Ankus.Tool --version 0.1.5
+dotnet tool install --global Ankus.Tool --version 0.1.6
 ankus new Hello
 cd Hello
 ```
@@ -19,7 +19,7 @@ the native extension into PostgreSQL.
 Alternatively, install the matching .NET template package:
 
 ```console
-dotnet new install Ankus.Templates@0.1.5
+dotnet new install Ankus.Templates@0.1.6
 dotnet new ankus -n Hello
 cd Hello
 dotnet tool restore
