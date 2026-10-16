@@ -16,7 +16,7 @@ Completion requires the supported PostgreSQL 13–18 and 19 RC1 contracts on
 Linux x64, Windows x64, macOS ARM64 and macOS x64, including real published
 extensions, backend recovery, complete suites and release/package validation.
 Ankus is released on nuget.org: 0.1.0 on 2026-10-15, followed by servicing
-releases through 0.1.6 (see remaining-work item 8).
+releases through 0.1.7 (see remaining-work item 8).
 
 The upstream inventory is pinned to pgrx **0.19.3**, commit
 `fc91c63ebad11784647b50ee7e265c1fd9c9924f`. The refresh covers every release
@@ -722,6 +722,33 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   20 installed, the 0.1.6 build tool stops at Apple clang and the fixed one
   collects and verifies the PostgreSQL 18 bindings. Build tests check the
   search order and that a MacPorts Clang wins over an older one on `PATH`.
+- CI 38970927551 on 1e72b1e lost its Windows/PostgreSQL 17 test job before any
+  test ran: building a test extension, the binding step could not create its
+  preprocessor output file in the runner's temp directory, and Windows
+  returned "Insufficient system resources exist to complete the requested
+  service" (`ERROR_NO_SYSTEM_RESOURCES`). The copy uses 64 KB buffers, the
+  host had 1.1 TB free on D: and 31 GB of free memory afterwards, the System
+  log has no resource exhaustion event that day, the change under test only
+  touches macOS, and none of the 25 previous CI runs' Windows jobs reported
+  it. The job was rerun. Record it again if it repeats.
+- The three Windows runners' temporary directories held about 227 GB in
+  roughly 147,000 entries. Most were empty directories with random names: the
+  .NET SDK's tool downloader (`ToolPackageDownloaderBase`) calls
+  `Directory.CreateTempSubdirectory()` for its asset files and never deletes
+  the directory, so every `dotnet tool install`, `update` or `restore` leaves
+  one or two behind, and a suite leaves about a hundred. This is a suspected
+  SDK bug, not yet reported; a maintainer files it if it is confirmed again.
+  The space was in Ankus test roots that cancelled suites had left, such as a
+  30 GB one from 2026-10-06; cleanup removed only `ankus package tests *`
+  directories. `runner-cleanup` now removes every `ankus*` temporary directory
+  and every empty one older than 12 hours, skipping other accounts' entries
+  in a shared `/tmp` silently. Applying the same rule once by hand on the idle
+  Windows host removed 172 abandoned Ankus directories and about 146,000 empty
+  ones and freed about 226 GB.
+- 0.1.7 is released (release run 38975555924 on 1e72b1e, after the rerun of
+  CI's Windows job above). On the Intel Mac mini, with Apple clang 17 first on
+  `PATH` and `AnkusClangPath` unset, a solution created by `Ankus.Tool` 0.1.7
+  from nuget.org built against MacPorts PostgreSQL 18 and LLVM 20.
 - Release run 38839379088's net11.0 macOS ARM64 runtime job warned that "a
   build server did not stop": its cleanup ran `dotnet build-server shutdown`
   while the MacBook's other runner was compiling, and the shared compiler
@@ -2013,7 +2040,7 @@ review's findings are fixed or kept by documented design.
 5. Keep samples and guides current with API changes, and recheck changed guides before release. Test discovery for MSTest, xUnit and NUnit consumers and samples for all 37 pgrx examples are complete.
 6. Keep the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) current as a pglogical port exercises it; every planned capability is done.
 7. Support .NET 11 as an extension target (required, in progress). The runtime fork's changes over 10.0.13 are ported onto .NET 11 RC2 as fork commit `34f19a015e3` on branch `ankus/runtime-11.0-rc2`, and every fork probe passes on Linux x64; rebase onto GA when it ships. `Ankus.Sdk` selects the `net11.0` line, `ankus new` and the templates take `--framework net11.0`, and CI and releases build both lines. The complete suite passes on every PostgreSQL major on Linux x64, macOS ARM64, Windows x64 and Intel macOS. Remaining: the rebase onto the .NET 11 release in November, which ships as a servicing update.
-8. 0.1.0 through 0.1.6 are released; 0.1.1 reports build tool failures as build errors, 0.1.2 and 0.1.3 fix `ankus upgrade` and PostgreSQL discovery for the first outside install, 0.1.4 finds a Clang 20 or later when the one on `PATH` is older, 0.1.5 links Windows binding probes with MSVC's linker, and 0.1.6 records each development cluster's log path in `.ankus-log`. For 0.1.0, release run 38804273089 on e71e226 built, verified and published all 27 packages to nuget.org through the trusted publishing policy: the seven 0.1.0 packages and the patched runtime and compiler for five runtime identifiers on both lines (`10.0.13-ankus.1` and the `11.0.0-rc.2.26504.105-ankus.1` preview). From nuget.org alone, `Ankus.Tool` 0.1.0 creates a solution whose 7 tests pass against PostgreSQL 18, the templates do the same and publish an extension, and a fresh clone of the repository publishes a sample without staging a runtime.
+8. 0.1.0 through 0.1.7 are released; 0.1.1 reports build tool failures as build errors, 0.1.2 and 0.1.3 fix `ankus upgrade` and PostgreSQL discovery for the first outside install, 0.1.4 finds a Clang 20 or later when the one on `PATH` is older, 0.1.5 links Windows binding probes with MSVC's linker, 0.1.6 records each development cluster's log path in `.ankus-log`, and 0.1.7 finds MacPorts' LLVM. For 0.1.0, release run 38804273089 on e71e226 built, verified and published all 27 packages to nuget.org through the trusted publishing policy: the seven 0.1.0 packages and the patched runtime and compiler for five runtime identifiers on both lines (`10.0.13-ankus.1` and the `11.0.0-rc.2.26504.105-ankus.1` preview). From nuget.org alone, `Ankus.Tool` 0.1.0 creates a solution whose 7 tests pass against PostgreSQL 18, the templates do the same and publish an extension, and a fresh clone of the repository publishes a sample without staging a runtime.
 
 Continue independent work while CI runs. Before every commit and push, check and
 record previous run outcomes, including live runs, and resolve reported failures.

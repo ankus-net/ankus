@@ -38,7 +38,7 @@ repository root with `dotnet run --file`.
 | `postgresql-check` | Check an explicit PostgreSQL 13–19 `pg_config` for its selected major and server headers without installing packages. |
 | `unit-test` | Build and run the five unit test modules. |
 | `prepare-reports` | Copy test results and server logs with private runner identifiers removed before artifact upload. |
-| `runner-cleanup` | On a self-hosted runner, stop the job's own PostgreSQL and runtime SDK servers, remove generated checkout files after artifact upload, and delete abandoned package-test directories. |
+| `runner-cleanup` | On a self-hosted runner, stop the job's own PostgreSQL and runtime SDK servers, remove generated checkout files after artifact upload, and delete abandoned and empty temporary directories. |
 | `release-managed` | Pack the managed NuGet packages. |
 | `release-runtime` | Build and pack one runtime line's runtime and compiler host for one platform. |
 | `release-verify` | Check the complete NuGet package set, including every runtime line's packages, and each manifest's identity, license and source commit. |
@@ -284,9 +284,10 @@ local caches; hosted jobs continue to restore and save GitHub caches. Before
 upload, report preparation redacts every TRX machine identity and all configured
 private identifiers. After upload, `runner-cleanup` stops the servers only its
 job uses, leaving the host SDK's shared build servers to other runners' jobs,
-removes ignored and untracked checkout outputs, and deletes package-test
-directories more than 12 hours old that cancelled suites left in the shared
-temporary directory. All platform suites remain
+removes ignored and untracked checkout outputs, and deletes temporary
+directories more than 12 hours old: Ankus's own, which cancelled suites leave
+behind, and empty ones, which every .NET tool install, update or restore leaves
+because the SDK never deletes the directory it creates. All platform suites remain
 complete and unsharded. Workflows do not automatically cancel earlier runs; jobs
 queue while their dedicated runner is busy.
 

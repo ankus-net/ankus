@@ -1245,29 +1245,52 @@ static void CleanRunnerWorkspace(string repositoryRoot)
     }
 
     Run("git", ["clean", "-ffdx"], repositoryRoot);
-    RemoveAbandonedPackageTestDirectories();
+    RemoveAbandonedTemporaryDirectories();
 }
 
-// A cancelled or killed suite never reaches its own cleanup, so its package-test directory stays behind and the
-// disk eventually fills. Runners on one host share the temporary directory, so only directories older than any
-// job can run are removed; a live suite's directory is always newer.
-static void RemoveAbandonedPackageTestDirectories()
+// A cancelled or killed suite never reaches its own cleanup, so its directories stay behind, and every .NET tool
+// install, update or restore leaves an empty temporary directory that the SDK creates and never deletes, about a
+// hundred per suite. Runners on one host can share the temporary directory, so only Ankus's own directories and empty
+// ones older than any job can run are removed; a live job's directories are always newer. Other accounts' entries in a
+// shared directory are skipped silently.
+static void RemoveAbandonedTemporaryDirectories()
 {
     DateTime cutoff = DateTime.UtcNow.AddHours(-12);
-    foreach (string directory in Directory.EnumerateDirectories(Path.GetTempPath(), "ankus package tests *"))
+    int empty = 0;
+    foreach (string directory in Directory.EnumerateDirectories(Path.GetTempPath()))
     {
+        string name = Path.GetFileName(directory);
+        bool owned = name.StartsWith("ankus", StringComparison.OrdinalIgnoreCase);
         try
         {
-            if (Directory.GetLastWriteTimeUtc(directory) < cutoff)
+            if (Directory.GetLastWriteTimeUtc(directory) >= cutoff)
+            {
+                continue;
+            }
+
+            if (owned)
             {
                 Directory.Delete(directory, recursive: true);
-                Console.WriteLine($"Removed abandoned package-test directory {Path.GetFileName(directory)}.");
+                Console.WriteLine($"Removed abandoned temporary directory {name}.");
+            }
+            else if (!Directory.EnumerateFileSystemEntries(directory).Any())
+            {
+                Directory.Delete(directory);
+                empty++;
             }
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            Console.Error.WriteLine($"Could not remove {Path.GetFileName(directory)}: {error.Message}");
+            if (owned)
+            {
+                Console.Error.WriteLine($"Could not remove {name}: {error.Message}");
+            }
         }
+    }
+
+    if (empty != 0)
+    {
+        Console.WriteLine($"Removed {empty} empty temporary directories left by .NET tool commands.");
     }
 }
 
