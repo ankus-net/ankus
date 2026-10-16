@@ -680,6 +680,17 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   selection. nuget.org listed all seven packages by 07:24 UTC. On the Mac
   where 0.1.3 failed, a copy of that solution upgraded to 0.1.4 and built with
   Xcode's Apple clang 17 still first on `PATH` and `AnkusClangPath` unset.
+- On Windows, the 0.1.4 build failed in the binding layout probe with
+  `link.exe exited with 1: link: extra operand '/OUT:...checks.exe'`. The
+  probe ran a bare `link.exe`, and outside a Developer Prompt the first one on
+  `PATH` was Git for Windows' coreutils `link`, while MSVC's linker sat beside
+  the `cl.exe` the build had passed by full path. The probe now links with that
+  adjacent `link.exe`, and finds `llvm-objcopy.exe` on `PATH` or in LLVM's
+  standard installation, as the Clang selection does. On the machine that
+  failed, with Git's `link.exe` still first on `PATH`, the 0.1.4 build tool
+  fails and the fixed one collects and verifies the PostgreSQL 18 bindings.
+  Build tests check the adjacent linker, a compiler named without a directory,
+  and a missing LLVM tool.
 - Release run 38839379088's net11.0 macOS ARM64 runtime job warned that "a
   build server did not stop": its cleanup ran `dotnet build-server shutdown`
   while the MacBook's other runner was compiling, and the shared compiler

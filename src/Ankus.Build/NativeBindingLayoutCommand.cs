@@ -157,18 +157,53 @@ internal static class NativeBindingLayoutCommand
         byte[] image = await File.ReadAllBytesAsync(compiled, cancellationToken);
         NativeObjectSymbols.IdentifyCoffProbeUnwindSections(image);
         await File.WriteAllBytesAsync(compiled, image, cancellationToken);
-        await RunProcessAsync("llvm-objcopy.exe", ["--remove-section=ankus_header_code", "--remove-section=ankus_header_data",
+        string objcopy = FindLlvmTool("llvm-objcopy.exe");
+        await RunProcessAsync(objcopy, ["--remove-section=ankus_header_code", "--remove-section=ankus_header_data",
             "--remove-section=ankus_header_const", "--remove-section=ankus_header_bss", "--remove-section=ankus_eh", compiled, standalone], directory, cancellationToken);
         image = await File.ReadAllBytesAsync(standalone, cancellationToken);
         NativeObjectImports unused = NativeObjectSymbols.ReadUnreferencedCoffImports(image);
         if (unused.Symbols.Count != 0)
         {
-            await RunProcessAsync("llvm-objcopy.exe", [.. unused.Symbols.Select(static name => "--strip-symbol=" + name), standalone],
+            await RunProcessAsync(objcopy, [.. unused.Symbols.Select(static name => "--strip-symbol=" + name), standalone],
                 directory, cancellationToken);
         }
 
-        await RunProcessAsync("link.exe", ["/nologo", "/WX", "/OUT:" + executable,
+        await RunProcessAsync(FindLinker(compiler), ["/nologo", "/WX", "/OUT:" + executable,
             standalone, .. options.Skip(linker + 1)], directory, cancellationToken);
+    }
+
+    /// <summary>
+    /// Returns MSVC's linker beside the selected compiler. A bare <c>link.exe</c> runs whichever comes first on
+    /// <c>PATH</c>, and Git for Windows puts its coreutils <c>link.exe</c> there, which rejects every MSVC option.
+    /// </summary>
+    /// <param name="compiler">The selected compiler, such as the full path of MSVC's <c>cl.exe</c>.</param>
+    /// <returns>The adjacent <c>link.exe</c>, or the bare name when the compiler has none beside it.</returns>
+    internal static string FindLinker(string compiler)
+    {
+        string? directory = Path.GetDirectoryName(compiler);
+        string adjacent = Path.Join(directory, "link.exe");
+        return !string.IsNullOrEmpty(directory) && File.Exists(adjacent) ? adjacent : "link.exe";
+    }
+
+    /// <summary>
+    /// Returns an LLVM tool from <c>PATH</c>, or from LLVM's standard Windows installation, which the build's Clang
+    /// selection also uses and whose installer leaves off <c>PATH</c> by default.
+    /// </summary>
+    /// <param name="name">The tool's file name.</param>
+    /// <returns>The tool's path, or its bare name when neither location has it.</returns>
+    internal static string FindLlvmTool(string name)
+    {
+        foreach (string directory in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+        {
+            string candidate = Path.Join(directory.Trim('"'), name);
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        string installed = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "LLVM", "bin", name);
+        return File.Exists(installed) ? installed : name;
     }
 
     /// <summary>

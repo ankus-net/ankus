@@ -19,8 +19,8 @@ captured on the target.
   then the standard LLVM locations. On macOS, Xcode's Apple clang is too old;
   install LLVM with `brew install llvm`, and Ankus finds it even though Homebrew
   keeps it off `PATH`. On Linux it also finds `clang-N` and `/usr/lib/llvm-N`.
-  Windows also requires LLVM's `llvm-objcopy.exe` on `PATH` for native binding
-  verification; the LLVM installer supplies these tools.
+  Windows also uses LLVM's `llvm-objcopy.exe` for native binding verification,
+  from `PATH` or LLVM's standard installation; the LLVM installer supplies it.
 - PostgreSQL 13 through 18 or the 19 beta or release candidate (this guide uses 18), with `pg_config`, server
   executables, and development headers.
   Windows also needs the PostgreSQL server import library. A client-only package,
