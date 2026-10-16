@@ -14,6 +14,22 @@ namespace Ankus.Tool;
 internal sealed class FrameworkVersionResolver(string? target, bool includePrereleases, string? configFile, string[] sources)
 {
     private readonly Dictionary<(string Directory, string Package), NuGetVersion[]> _versions = [];
+    private readonly HashSet<string> _release = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Gets or sets whether resolution only records the packages whose versions come from the package sources, and
+    /// leaves every requirement as it is.
+    /// </summary>
+    internal bool Recording
+    {
+        get;
+        set;
+    }
+
+    /// <summary>
+    /// Gets a note when a newer Ankus release is listed for some of the selection's packages but not yet for all of them.
+    /// </summary>
+    internal string? Pending { get; private set; }
 
     /// <summary>
     /// Validates an explicit requirement before any project is edited or feed is queried.
@@ -56,7 +72,13 @@ internal sealed class FrameworkVersionResolver(string? target, bool includePrere
             }
 
             VersionRange requested = VersionRange.Parse(target);
-            NuGetVersion[] available = await GetVersionsAsync(package, directory,
+            if (Recording)
+            {
+                _release.Add(package);
+                return current;
+            }
+
+            NuGetVersion[] available = await GetReleaseVersionsAsync(package, directory,
                 includePrereleases || requested.MinVersion?.IsPrerelease == true || requested.Float?.IncludePrerelease == true, token);
             return Select(available.Where(requested.Satisfies), package, target).ToNormalizedString();
         }
@@ -74,7 +96,13 @@ internal sealed class FrameworkVersionResolver(string? target, bool includePrere
             return current;
         }
 
-        NuGetVersion[] versions = await GetVersionsAsync(package, directory, includePrereleases, token);
+        if (Recording)
+        {
+            _release.Add(package);
+            return current;
+        }
+
+        NuGetVersion[] versions = await GetReleaseVersionsAsync(package, directory, includePrereleases, token);
         bool pinned = existing?.MinVersion is not null && existing.MinVersion.Equals(existing.MaxVersion);
         IEnumerable<NuGetVersion> candidates = !sdk && existing?.MaxVersion is not null && !pinned
             ? versions.Where(existing.Satisfies) : versions;
@@ -91,6 +119,45 @@ internal sealed class FrameworkVersionResolver(string? target, bool includePrere
 
         return new VersionRange(selected, includeMinVersion: true, existing.MaxVersion,
             includeMaxVersion: existing.IsMaxInclusive).ToNormalizedString();
+    }
+
+    /// <summary>
+    /// Lists the versions of a package that every Ankus package of the selection also lists. Ankus packages are released
+    /// together with one version, but nuget.org lists a release's packages one at a time, so an upgrade that chose each
+    /// package's newest version on its own could mix two releases.
+    /// </summary>
+    private async Task<NuGetVersion[]> GetReleaseVersionsAsync(string package, string directory, bool prerelease, CancellationToken token)
+    {
+        NuGetVersion[] own = await GetVersionsAsync(package, directory, prerelease, token);
+        string[] others = [.. _release.Where(other => !other.Equals(package, StringComparison.OrdinalIgnoreCase)).Order(StringComparer.Ordinal)];
+        var lists = new Dictionary<string, NuGetVersion[]>(StringComparer.OrdinalIgnoreCase) { [package] = own };
+        foreach (string other in others)
+        {
+            lists[other] = await GetVersionsAsync(other, directory, prerelease, token);
+        }
+
+        NuGetVersion[] common = [.. own.Where(version => lists.Values.All(list => list.Contains(version, VersionComparer.VersionRelease)))];
+        if (common.Length == 0 && own.Length != 0)
+        {
+            throw new InvalidOperationException($"No version of {package} is also listed for {string.Join(", ", others)} on the " +
+                "package sources, and Ankus packages must share a version. No project files were changed.");
+        }
+
+        if (target is null && common.Length != 0)
+        {
+            NuGetVersion newest = lists.Values.SelectMany(static list => list)
+                .OrderBy(static version => version, VersionComparer.VersionRelease).Last();
+            if (VersionComparer.VersionRelease.Compare(newest, common[^1]) > 0)
+            {
+                string[] missing = [.. lists.Where(pair => !pair.Value.Contains(newest, VersionComparer.VersionRelease))
+                    .Select(static pair => pair.Key).Order(StringComparer.Ordinal)];
+                Pending = $"Ankus {newest.ToNormalizedString()} is not listed for {string.Join(", ", missing)} on the package sources " +
+                    $"yet, so the references use {common[^1].ToNormalizedString()}, the newest version every Ankus package lists. " +
+                    "A new release can take a few minutes to appear everywhere; run 'ankus upgrade' again then.";
+            }
+        }
+
+        return common;
     }
 
     private async Task<NuGetVersion[]> GetVersionsAsync(string package, string directory, bool prerelease, CancellationToken token)

@@ -57,6 +57,11 @@ internal static partial class ToolCommand
             {
                 Console.WriteLine("Ankus framework references are already current.");
             }
+
+            if (versions.Pending is string pending)
+            {
+                Console.WriteLine(pending);
+            }
         });
         return command;
     }

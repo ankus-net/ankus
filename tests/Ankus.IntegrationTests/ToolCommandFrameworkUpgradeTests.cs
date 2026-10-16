@@ -744,6 +744,34 @@ public sealed partial class ToolCommandTests
     }
 
     /// <summary>
+    /// Every Ankus package moves to one release that all of them list. nuget.org lists a release's packages one at a
+    /// time, and an upgrade between them moved Ankus.Testing and the tool pin to the new release but left Ankus.Sdk on
+    /// the previous one, which then required a different Ankus.Runtime than Ankus.Testing.
+    /// </summary>
+    [TestMethod]
+    public async Task UpgradeKeepsAnkusPackagesOnOneRelease()
+    {
+        CancellationToken token = context.CancellationToken;
+        string root = CreateDirectory();
+        Directory.CreateDirectory(Path.Join(root, ".config"));
+        string project = await WriteUpgradeProjectAsync(root, "0.1.0", token);
+        await CreateUpgradeFeedAsync(root, "Ankus.Testing", token, ["0.1.0", "0.2.0"]);
+        await CreateUpgradeFeedAsync(root, "Ankus.Tool", token, ["0.1.0", "0.2.0", "0.3.0"]);
+        string manifest = Path.Join(root, ".config", "dotnet-tools.json");
+        await File.WriteAllTextAsync(manifest,
+            """{"version":1,"isRoot":true,"tools":{"ankus.tool":{"version":"0.1.0","commands":["ankus"]}}}""", token);
+        ProcessResult result = await InvokeAsync(["upgrade", "--project", project], token);
+        Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
+        Assert.AreEqual("0.2.0", XDocument.Load(project).Descendants("PackageReference").Single().Attribute("Version")!.Value);
+        using (JsonDocument tools = JsonDocument.Parse(await File.ReadAllTextAsync(manifest, token)))
+        {
+            Assert.AreEqual("0.2.0", tools.RootElement.GetProperty("tools").GetProperty("ankus.tool").GetProperty("version").GetString());
+        }
+
+        Assert.Contains("Ankus 0.3.0 is not listed for Ankus.Testing on the package sources yet, so the references use 0.2.0", result.StandardOutput);
+    }
+
+    /// <summary>
     /// A release published after an earlier upgrade is found by the next one. NuGet keeps a feed's package listing for
     /// 30 minutes, and upgrades that reused a listing saved before the release reported the references as current.
     /// </summary>
@@ -1061,11 +1089,11 @@ public sealed partial class ToolCommandTests
         return path;
     }
 
-    private static async Task CreateUpgradeFeedAsync(string root, string package, CancellationToken token)
+    private static async Task CreateUpgradeFeedAsync(string root, string package, CancellationToken token, string[]? versions = null)
     {
         string feed = Path.Join(root, "feed");
         Directory.CreateDirectory(feed);
-        foreach (string version in new[] { "0.1.0", "0.2.0", "0.3.0-beta.2", "0.3.0-beta.10" })
+        foreach (string version in versions ?? ["0.1.0", "0.2.0", "0.3.0-beta.2", "0.3.0-beta.10"])
         {
             await using var file = new FileStream(Path.Join(feed, package + "." + version + ".nupkg"), FileMode.CreateNew);
             using var archive = new ZipArchive(file, ZipArchiveMode.Create, leaveOpen: true);

@@ -218,9 +218,12 @@ ankus upgrade
 
 The command updates Ankus references in the selected projects, shared package
 files and `global.json`. It also updates `ankus.tool` in the local tool manifest
-that `dotnet tool restore` uses, so `dotnet ankus` runs the matching tool. It
-preserves unrelated dependencies, .NET SDK selection, target frameworks,
-comments and file encoding. Ankus Native AOT runtime packages
+that `dotnet tool restore` uses, so `dotnet ankus` runs the matching tool. Ankus
+packages are released together, so the command moves them all to the newest
+version that every one of them lists; while a new release is still appearing on
+a package source, it says so and keeps the previous release. It preserves
+unrelated dependencies, .NET SDK selection, target frameworks, comments and file
+encoding. Ankus Native AOT runtime packages
 have their own servicing versions and are not part of this update set.
 LF, CRLF and CR line endings are preserved.
 

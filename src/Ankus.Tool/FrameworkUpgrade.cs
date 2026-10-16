@@ -25,6 +25,17 @@ internal static partial class FrameworkUpgrade
     internal static async Task<UpgradeDocument[]> PlanAsync(string[] projects, FrameworkVersionResolver versions, CancellationToken token)
     {
         versions.Validate();
+
+        // A first pass finds every Ankus package whose version comes from the package sources, so the second can move
+        // them all to one version that each of them lists.
+        versions.Recording = true;
+        _ = await PlanProjectsAsync(projects, versions, token);
+        versions.Recording = false;
+        return await PlanProjectsAsync(projects, versions, token);
+    }
+
+    private static async Task<UpgradeDocument[]> PlanProjectsAsync(string[] projects, FrameworkVersionResolver versions, CancellationToken token)
+    {
         var documents = new Dictionary<string, UpgradeDocument>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
         int count = 0;
         foreach (string path in projects)
