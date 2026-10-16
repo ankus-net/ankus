@@ -16,8 +16,8 @@ internal static partial class ClangSelection
 
     /// <summary>
     /// Returns the first Clang 20 or later among the <c>PATH</c> entry and the standard LLVM installation locations.
-    /// macOS puts Xcode's older Apple clang on <c>PATH</c> and Homebrew keeps its LLVM off it, so a newer Clang that is
-    /// installed would otherwise go unused.
+    /// macOS puts Xcode's older Apple clang on <c>PATH</c>, and Homebrew and MacPorts keep their LLVM off it, so a newer
+    /// Clang that is installed would otherwise go unused.
     /// </summary>
     /// <param name="cancellationToken">Cancels the version queries.</param>
     /// <returns>The full path of the selected Clang.</returns>
@@ -107,13 +107,9 @@ internal static partial class ClangSelection
 
         if (OperatingSystem.IsMacOS())
         {
-            foreach (string prefix in new[] { "/opt/homebrew/opt", "/usr/local/opt" })
+            foreach (string installed in GetMacInstallations("/"))
             {
-                yield return Path.Join(prefix, "llvm", "bin", "clang");
-                foreach (string versioned in Newest(prefix, "llvm@"))
-                {
-                    yield return Path.Join(versioned, "bin", "clang");
-                }
+                yield return installed;
             }
 
             yield break;
@@ -129,6 +125,31 @@ internal static partial class ClangSelection
         }
 
         foreach (string versioned in Newest("/usr/lib", "llvm-"))
+        {
+            yield return Path.Join(versioned, "bin", "clang");
+        }
+    }
+
+    /// <summary>
+    /// Lists the Clang executables of the macOS package managers' LLVM installations beneath a root directory: Homebrew's
+    /// <c>llvm</c> and <c>llvm@N</c> on Apple silicon and Intel, then MacPorts' <c>llvm-N</c>, newest major first.
+    /// </summary>
+    /// <param name="root">The file system root, or a test directory standing in for it.</param>
+    /// <returns>Candidate paths, which may not exist.</returns>
+    internal static IEnumerable<string> GetMacInstallations(string root)
+    {
+        foreach (string prefix in new[] { Path.Join(root, "opt", "homebrew", "opt"), Path.Join(root, "usr", "local", "opt") })
+        {
+            yield return Path.Join(prefix, "llvm", "bin", "clang");
+            foreach (string versioned in Newest(prefix, "llvm@"))
+            {
+                yield return Path.Join(versioned, "bin", "clang");
+            }
+        }
+
+        // MacPorts keeps each LLVM release under /opt/local/libexec/llvm-N and links only suffixed names such as
+        // clang-mp-20 into /opt/local/bin.
+        foreach (string versioned in Newest(Path.Join(root, "opt", "local", "libexec"), "llvm-"))
         {
             yield return Path.Join(versioned, "bin", "clang");
         }
@@ -150,7 +171,7 @@ internal static partial class ClangSelection
             .Select(static entry => entry.Entry);
     }
 
-    private static string InstallHint => OperatingSystem.IsMacOS() ? "Install it with 'brew install llvm';"
+    private static string InstallHint => OperatingSystem.IsMacOS() ? "Install it with 'brew install llvm' or MacPorts' 'port install clang-20';"
         : OperatingSystem.IsWindows() ? "Install LLVM from https://github.com/llvm/llvm-project/releases;"
         : "Install your distribution's clang package or one from https://apt.llvm.org;";
 

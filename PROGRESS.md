@@ -712,6 +712,16 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   wrote `pg18.log.stderr.log` to `.ankus-log`, and that file held the
   server's "ready to accept connections". A first attempt on a port already in
   use still wrote the file, since Ankus writes it before launching the server.
+- The Clang search added in 0.1.4 covered Homebrew but not MacPorts, which
+  keeps each LLVM release under `/opt/local/libexec/llvm-N` and links only
+  suffixed names such as `clang-mp-20` into `/opt/local/bin`. pgrx's bindgen,
+  through clang-sys, has no MacPorts directory either, but accepts any
+  libclang 11 or later, so Xcode's always satisfies it; Ankus needs Clang 20.
+  macOS now also tries MacPorts' versioned installations, newest first. On the
+  Intel Mac mini, with Apple clang 17 first on `PATH` and only MacPorts LLVM
+  20 installed, the 0.1.6 build tool stops at Apple clang and the fixed one
+  collects and verifies the PostgreSQL 18 bindings. Build tests check the
+  search order and that a MacPorts Clang wins over an older one on `PATH`.
 - Release run 38839379088's net11.0 macOS ARM64 runtime job warned that "a
   build server did not stop": its cleanup ran `dotnet build-server shutdown`
   while the MacBook's other runner was compiling, and the shared compiler

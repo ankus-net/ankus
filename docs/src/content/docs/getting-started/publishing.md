@@ -17,8 +17,9 @@ captured on the target.
   read native declarations from your PostgreSQL headers. It uses the first
   Clang 20 or later it finds: `clang` (`clang-cl.exe` on Windows) on `PATH`,
   then the standard LLVM locations. On macOS, Xcode's Apple clang is too old;
-  install LLVM with `brew install llvm`, and Ankus finds it even though Homebrew
-  keeps it off `PATH`. On Linux it also finds `clang-N` and `/usr/lib/llvm-N`.
+  install LLVM with `brew install llvm` or MacPorts' `port install clang-20`,
+  and Ankus finds it even though neither puts it on `PATH`. On Linux it also
+  finds `clang-N` and `/usr/lib/llvm-N`.
   Windows also uses LLVM's `llvm-objcopy.exe` for native binding verification,
   from `PATH` or LLVM's standard installation; the LLVM installer supplies it.
 - PostgreSQL 13 through 18 or the 19 beta or release candidate (this guide uses 18), with `pg_config`, server

@@ -33,6 +33,43 @@ public sealed class ClangSelectionTests(TestContext context)
     }
 
     /// <summary>
+    /// On macOS the search covers Homebrew on Apple silicon and Intel, then MacPorts, which keeps each LLVM release under
+    /// <c>/opt/local/libexec/llvm-N</c>; versioned installations are tried newest first.
+    /// </summary>
+    [TestMethod]
+    public void ListsHomebrewThenMacPortsInstallations()
+    {
+        foreach (string directory in new[] { "opt/homebrew/opt/llvm@20", "opt/local/libexec/llvm-19", "opt/local/libexec/llvm-21", "opt/local/libexec/llvm-config" })
+        {
+            Directory.CreateDirectory(Path.Join(_root, directory));
+        }
+
+        Assert.AreSequenceEqual(
+        [
+            Path.Join(_root, "opt", "homebrew", "opt", "llvm", "bin", "clang"),
+            Path.Join(_root, "opt", "homebrew", "opt", "llvm@20", "bin", "clang"),
+            Path.Join(_root, "usr", "local", "opt", "llvm", "bin", "clang"),
+            Path.Join(_root, "opt", "local", "libexec", "llvm-21", "bin", "clang"),
+            Path.Join(_root, "opt", "local", "libexec", "llvm-19", "bin", "clang"),
+        ], ClangSelection.GetMacInstallations(_root));
+    }
+
+    /// <summary>
+    /// With Xcode's Apple clang first on <c>PATH</c> and LLVM only from MacPorts, as on an Intel Mac that uses MacPorts,
+    /// the MacPorts Clang is selected.
+    /// </summary>
+    [TestMethod]
+    [OSCondition(OperatingSystems.Linux | OperatingSystems.OSX)]
+    [SupportedOSPlatform("linux")]
+    [SupportedOSPlatform("macos")]
+    public async Task FindsMacPortsLlvm()
+    {
+        string apple = await WriteClangAsync("xcode", "Apple clang version 17.0.0 (clang-1700.0.13.5)");
+        string macports = await WriteClangAsync(Path.Join("opt", "local", "libexec", "llvm-20", "bin"), "clang version 20.1.8");
+        Assert.AreEqual(macports, await ClangSelection.FindAsync([apple, .. ClangSelection.GetMacInstallations(_root)], context.CancellationToken));
+    }
+
+    /// <summary>
     /// With no Clang new enough, the error names each one found and its version instead of a later preprocessing failure.
     /// </summary>
     [TestMethod]
