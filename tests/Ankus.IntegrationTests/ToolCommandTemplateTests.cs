@@ -190,6 +190,35 @@ public sealed partial class ToolCommandTests
             await File.ReadAllTextAsync(Path.Join(source, "pg_regress", "sql", "setup.sql"), token));
     }
 
+    /// <summary>
+    /// The guides' template install command runs as written, with only the version replaced by the test feed's. They
+    /// used <c>Ankus.Templates::version</c>, which the .NET 10 SDK still accepts but reports as deprecated in favor of
+    /// <c>Ankus.Templates@version</c>.
+    /// </summary>
+    [TestMethod]
+    public async Task DocumentedTemplateInstallRunsWithoutWarnings()
+    {
+        CancellationToken token = context.CancellationToken;
+        string[] guides = ["README.md", Path.Join("docs", "src", "content", "docs", "getting-started", "functions.md"),
+            Path.Join("docs", "src", "content", "docs", "reference", "cli.md")];
+        string command = Assert.ContainsSingle(guides
+            .SelectMany(guide => File.ReadLines(Path.Join(IntegrationEnvironment.RepositoryRoot, guide)))
+            .Where(static line => line.StartsWith("dotnet new install ", StringComparison.Ordinal))
+            .Distinct(StringComparer.Ordinal));
+        Match documented = DocumentedTemplateInstall().Match(command);
+        Assert.IsTrue(documented.Success, command);
+        string hive = Path.Join(CreateDirectory(), "isolated template hive");
+        ProcessResult installed = await PackageProcessRunner.RunAsync("dotnet",
+            ["new", "install", documented.Groups["package"].Value + documented.Groups["separator"].Value + s_version, "--debug:custom-hive", hive],
+            s_environment, token, workingDirectory: s_root);
+        installed.EnsureSuccess("dotnet", ["new", "install"]);
+        Assert.Contains("Ankus PostgreSQL extension", installed.StandardOutput);
+        Assert.DoesNotContain("deprecated", installed.StandardOutput + installed.StandardError);
+    }
+
+    [GeneratedRegex(@"^dotnet new install (?<package>Ankus\.Templates)(?<separator>::|@)\S+$", RegexOptions.CultureInvariant)]
+    private static partial Regex DocumentedTemplateInstall();
+
     private async Task CreateTemplateAsync(string template, string name, string output, CancellationToken token, params string[] arguments)
     {
         string hive = Path.Join(CreateDirectory(), "isolated template hive");

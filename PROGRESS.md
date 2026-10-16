@@ -656,6 +656,13 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   solution created with `Ankus.Tool` 0.1.2 upgraded to 0.1.3 after `dotnet
   tool update` (global.json, Directory.Packages.props and the tool pin) and
   its 7 tests passed against PostgreSQL 18 on Linux x64.
+- The guides told users to run `dotnet new install Ankus.Templates::0.1.3`.
+  The .NET 10 SDK still accepts `::` but warns that it is deprecated in favor
+  of `@`, which a user saw on the first install. The README, the getting
+  started guide and the CLI reference now use `Ankus.Templates@<version>`. A
+  template test reads the command from all three, requires them to agree, and
+  runs it as written against the test feed, failing on any deprecation
+  warning. No release was needed; the packages were unaffected.
 - Release run 38839379088's net11.0 macOS ARM64 runtime job warned that "a
   build server did not stop": its cleanup ran `dotnet build-server shutdown`
   while the MacBook's other runner was compiling, and the shared compiler

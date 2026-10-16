@@ -159,7 +159,7 @@ You can also install the matching `Ankus.Templates` package from your configured
 feed and use ordinary .NET templates:
 
 ```console
-dotnet new install Ankus.Templates::0.1.3
+dotnet new install Ankus.Templates@0.1.3
 dotnet new ankus -n Hello
 cd Hello
 dotnet tool restore

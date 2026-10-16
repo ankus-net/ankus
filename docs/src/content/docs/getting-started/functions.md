@@ -19,7 +19,7 @@ the native extension into PostgreSQL.
 Alternatively, install the matching .NET template package:
 
 ```console
-dotnet new install Ankus.Templates::0.1.3
+dotnet new install Ankus.Templates@0.1.3
 dotnet new ankus -n Hello
 cd Hello
 dotnet tool restore
