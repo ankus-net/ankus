@@ -232,6 +232,14 @@ bench test.
 | upgrade_help_succeeds | Covered | IT ToolCommandTests InstalledToolProvidesHelp (`upgrade --help` lists `--to`) |
 | upgrade_to_rejects_garbage, upgrade_to_rejects_empty | Covered | IT ToolCommandFrameworkUpgradeTests UpgradeInvalidRequestsPreserveAllFiles: `--to not-a-version` and `--to ""` fail and leave every file unchanged |
 
+cargo-pgrx gives each pgrx crate its own highest version from Cargo's local index
+cache. Ankus differs by design: NuGet keeps a feed's listing for 30 minutes and
+nuget.org lists a release's packages one at a time, so discovery reads the
+current listings and moves every Ankus package, including the local tool pin, to
+the newest version all of them list (IT ToolCommandFrameworkUpgradeTests
+UpgradeFindsReleasePublishedAfterEarlierUpgrade, UpgradeKeepsAnkusPackagesOnOneRelease,
+UpgradeUpdatesLocalToolManifest).
+
 ### install_pg_test_regression.rs
 
 | pgrx case | Status | Ankus evidence |
