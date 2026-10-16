@@ -74,9 +74,8 @@ public sealed class ClangSelectionTests(TestContext context)
     public async Task SelectsTheHostClang()
     {
         string compiler = NativeBindingRecordCommand.FindCompiler(OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang");
-        (string Name, int Major)? version = await ClangSelection.GetVersionAsync(compiler, context.CancellationToken);
-        Assert.IsNotNull(version);
-        Assert.IsGreaterThanOrEqualTo(ClangSelection.MinimumMajor, version.Value.Major);
+        int major = (await ClangSelection.GetVersionAsync(compiler, context.CancellationToken))?.Major ?? 0;
+        Assert.IsGreaterThanOrEqualTo(ClangSelection.MinimumMajor, major);
         Assert.AreEqual(compiler, await ClangSelection.FindAsync([compiler], context.CancellationToken));
     }
 
