@@ -449,6 +449,14 @@ routes to the event log under a service account. The account running Ankus needs
 Application-log read access. Retained messages survive later commands and server
 restarts; other servers' events are excluded.
 
+Each `start` also writes the path of the file the server writes to into
+`.ankus-log` in the data directory, as one line. That is the `.log` file, or on
+Windows the `.log.stderr.log` file Ankus combines with those events into the
+`.log` snapshot. Tools that follow a cluster's output, such as log tailers, can
+read the path there instead of depending on these names. Ankus keeps PostgreSQL's
+logging collector off so its commands can report the server's output, so the
+server does not write its own log files.
+
 Choose a different port or pass literal PostgreSQL settings when starting:
 
 ```console
@@ -464,8 +472,8 @@ you change the saved base.
 `--timeout` changes the startup wait from 60 seconds, with a range of 1–600.
 
 Ankus manages data and authentication paths, loopback connection routing, and
-log routing. Those settings and configuration include directives cannot be
-overridden through `--postgresql-conf`. Existing unowned or incompatible data
+log routing, including `logging_collector`. Those settings and configuration
+include directives cannot be overridden through `--postgresql-conf`. Existing unowned or incompatible data
 directories are rejected. A failed start preserves initialized data and reports
 the native diagnostic and server log path so you can correct the setting and retry.
 

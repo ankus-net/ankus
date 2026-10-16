@@ -114,21 +114,14 @@ public sealed partial class PostgresDevelopmentCluster
             await InitializeAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        string settings = Path.Join(DataDirectory, "ankus.conf");
-        string temporary = settings + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        try
-        {
-            await File.WriteAllTextAsync(temporary, configuration, cancellationToken).ConfigureAwait(false);
-            cancellationToken.ThrowIfCancellationRequested();
-            File.Move(temporary, settings, overwrite: true);
-        }
-        finally
-        {
-            File.Delete(temporary);
-        }
-
+        await ReplaceFileAsync(Path.Join(DataDirectory, "ankus.conf"), configuration, cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
         _log = PrepareLog();
+
+        // Tools that follow the server's output, such as log tailers, read the file it writes from here rather than
+        // reproducing Ankus's naming, which differs on Windows. The .ankus-cluster marker stays the label alone,
+        // which every Ankus version checks before it uses a cluster.
+        await ReplaceFileAsync(Path.Join(DataDirectory, ".ankus-log"), _log.NativeFilePath + "\n", cancellationToken).ConfigureAwait(false);
         try
         {
             string[] arguments = ["start", "-l", _log.NativeFilePath, "-w", "-t",
@@ -398,6 +391,21 @@ public sealed partial class PostgresDevelopmentCluster
         configuration.AppendLine("log_destination = 'stderr'");
         configuration.AppendLine("logging_collector = off");
         return configuration.ToString();
+    }
+
+    private static async Task ReplaceFileAsync(string path, string content, CancellationToken cancellationToken)
+    {
+        string temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            await File.WriteAllTextAsync(temporary, content, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            File.Move(temporary, path, overwrite: true);
+        }
+        finally
+        {
+            File.Delete(temporary);
+        }
     }
 
     private FileStream AcquireLock()

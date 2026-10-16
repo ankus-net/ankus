@@ -125,6 +125,61 @@ public sealed class PostgresDevelopmentDiagnosticsTests(TestContext context)
     }
 
     /// <summary>
+    /// Each start records the file the server writes in the data directory's <c>.ankus-log</c>, so a tool such as a log
+    /// tailer can follow it without reproducing Ankus's naming. The server's own output reaches that file, the
+    /// <c>.ankus-cluster</c> marker keeps the label every Ankus version checks, and a start after the Ankus home moves
+    /// records the new path.
+    /// </summary>
+    [RetryPortCollisionTestMethod]
+    public async Task StartRecordsTheServerLogPath()
+    {
+        CancellationToken token = context.CancellationToken;
+        PostgresInstallation installation = await IntegrationEnvironment.GetInstallationAsync(token);
+        string home = Directory.CreateTempSubdirectory("ankus-cluster-log-").FullName;
+        string moved = home + "-moved";
+        var cluster = new PostgresDevelopmentCluster(installation, home);
+        var relocated = new PostgresDevelopmentCluster(installation, moved);
+        using PortReservation reservation = PortReservation.Create();
+        var options = new PostgresDevelopmentOptions { Port = reservation.Port, TimeoutSeconds = (int)IntegrationEnvironment.StartupTimeout.TotalSeconds };
+        reservation.Dispose();
+        try
+        {
+            Assert.IsTrue(await cluster.StartAsync(options, token));
+            string recorded = await ReadRecordedLogAsync(cluster, token);
+            Assert.AreEqual(cluster.LogFilePath + (OperatingSystem.IsWindows() ? ".stderr.log" : string.Empty), recorded);
+            string message = "recorded log " + Guid.NewGuid().ToString("N");
+            await using (NpgsqlConnection connection = await OpenDevelopmentConnectionAsync(reservation.Port, token))
+            {
+                await using var warning = new NpgsqlCommand($"DO $test$ BEGIN RAISE WARNING '{message}'; END $test$;", connection);
+                await warning.ExecuteNonQueryAsync(token);
+            }
+
+            Assert.IsTrue(await cluster.StopAsync(token));
+            Assert.Contains("WARNING:  " + message, await File.ReadAllTextAsync(recorded, token));
+            Assert.AreEqual(installation.Label, await File.ReadAllTextAsync(Path.Join(cluster.DataDirectory, ".ankus-cluster"), token));
+
+            Directory.Move(home, moved);
+            Assert.IsTrue(await relocated.StartAsync(options, token));
+            Assert.AreEqual(relocated.LogFilePath + (OperatingSystem.IsWindows() ? ".stderr.log" : string.Empty),
+                await ReadRecordedLogAsync(relocated, token));
+        }
+        finally
+        {
+            await relocated.StopAsync(CancellationToken.None);
+            await cluster.StopAsync(CancellationToken.None);
+            PostgresServerStorage.Delete(moved);
+            PostgresServerStorage.Delete(home);
+        }
+
+        static async Task<string> ReadRecordedLogAsync(PostgresDevelopmentCluster cluster, CancellationToken token)
+        {
+            string text = await File.ReadAllTextAsync(Path.Join(cluster.DataDirectory, ".ankus-log"), token);
+            Assert.EndsWith("\n", text);
+            return text[..^1];
+        }
+    }
+
+    /// <summary>
     /// A damaged cluster identity cannot attach to a different provider or overwrite retained diagnostics.
     /// </summary>
     /// <param name="identity">The damaged identity marker.</param>

@@ -696,6 +696,17 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   rewritten with `Select`. On the Windows machine that failed, with Git's
   `link.exe` still first on `PATH`, a copy of that solution upgraded to 0.1.5
   and built.
+- pgtail (willibrandon/pgtail#67) could not find an Ankus cluster's log: it
+  read `logging_collector` only from `postgresql.conf`, where Ankus's included
+  `ankus.conf` turns it off, and had no way to learn where `pg_ctl -l` sends
+  the server's output. Each `ankus start` now writes that path to
+  `.ankus-log` in the data directory, one line: `<label>.log`, or on Windows
+  the `<label>.log.stderr.log` file the `.log` snapshot is built from. The
+  `.ankus-cluster` marker stays the label alone, because every Ankus version
+  compares it before using a cluster, and an older tool would otherwise refuse
+  clusters a newer one had started. An integration test checks the recorded
+  path, that the server's own warning reaches that file, the unchanged marker,
+  and the new path after the Ankus home moves.
 - Release run 38839379088's net11.0 macOS ARM64 runtime job warned that "a
   build server did not stop": its cleanup ran `dotnet build-server shutdown`
   while the MacBook's other runner was compiling, and the shared compiler
