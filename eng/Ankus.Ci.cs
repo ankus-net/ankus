@@ -1228,12 +1228,8 @@ static void CleanRunnerWorkspace(string repositoryRoot)
 
     StopJobPostgreSqlServers();
 
-    // Runners on one host share the user's build servers, so a compiler server still working for another runner's
-    // job can refuse to stop. It holds nothing in this checkout, so the refusal is reported and cleaning continues.
-    if (RunForExitCode(GetDotNetHost(), ["build-server", "shutdown"], repositoryRoot) != 0)
-    {
-        Console.WriteLine("::warning::A build server did not stop; another job on this host may still be using it.");
-    }
+    // The host SDK's build servers are left running. Runners on one host share them, so stopping them interrupted
+    // another runner's job, and they hold nothing in this checkout: the compiler loads analyzers without locking them.
 
     // A runtime build runs on the SDK the runtime checkout installs for itself, whose servers keep that SDK's files
     // open; Windows then cannot delete the checkout. Only this job uses that SDK, so its servers must stop.

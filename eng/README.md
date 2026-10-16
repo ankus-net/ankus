@@ -38,7 +38,7 @@ repository root with `dotnet run --file`.
 | `postgresql-check` | Check an explicit PostgreSQL 13–19 `pg_config` for its selected major and server headers without installing packages. |
 | `unit-test` | Build and run the five unit test modules. |
 | `prepare-reports` | Copy test results and server logs with private runner identifiers removed before artifact upload. |
-| `runner-cleanup` | On a self-hosted runner, stop build servers, remove generated checkout files after artifact upload, and delete abandoned package-test directories. |
+| `runner-cleanup` | On a self-hosted runner, stop the job's own PostgreSQL and runtime SDK servers, remove generated checkout files after artifact upload, and delete abandoned package-test directories. |
 | `release-managed` | Pack the managed NuGet packages. |
 | `release-runtime` | Build and pack one runtime line's runtime and compiler host for one platform. |
 | `release-verify` | Check the complete NuGet package set, including every runtime line's packages, and each manifest's identity, license and source commit. |
@@ -282,7 +282,8 @@ their transient NuGet HTTP metadata in their owned compiler workspaces, avoiding
 cross-process vulnerability-cache replacement races. Self-hosted jobs reuse these
 local caches; hosted jobs continue to restore and save GitHub caches. Before
 upload, report preparation redacts every TRX machine identity and all configured
-private identifiers. After upload, `runner-cleanup` shuts down build servers,
+private identifiers. After upload, `runner-cleanup` stops the servers only its
+job uses, leaving the host SDK's shared build servers to other runners' jobs,
 removes ignored and untracked checkout outputs, and deletes package-test
 directories more than 12 hours old that cancelled suites left in the shared
 temporary directory. All platform suites remain

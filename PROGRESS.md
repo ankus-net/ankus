@@ -628,6 +628,15 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   upward, stopping at the first manifest that lists the tool or is marked as
   the root. Tests check the generated solution's manifest, other tools and
   formatting, and that a manifest beyond a root one is left alone.
+- Release run 38839379088's net11.0 macOS ARM64 runtime job warned that "a
+  build server did not stop": its cleanup ran `dotnet build-server shutdown`
+  while the MacBook's other runner was compiling, and the shared compiler
+  server refused (`VB/C# compiler server failed to shut down`). The same
+  warning appeared on two earlier macOS ARM64 jobs. Runners on one host share
+  the account's compiler server, and the compiler loads analyzers without
+  locking them, so the server holds nothing in a checkout and stopping it only
+  interrupted the other job. Cleanup now leaves the host SDK's servers
+  running; it still stops the servers of the runtime checkout's own SDK.
 - Scheduled run 38729094424 lost one Windows/PostgreSQL 18.6 case before its
   test body ran: the server reset the connection during authentication. The
   new backend had failed with `FATAL: incorrect checksum in control file` in
