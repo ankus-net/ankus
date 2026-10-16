@@ -602,6 +602,14 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   version from the package version, and the tests repeated `0.1.0` in script
   names and catalog checks. They now read each sample's `default_version` from
   its published control file, so a release no longer requires editing tests.
+- 0.1.1 is released (release run 38821901839 on 0fe3c72). Its first attempt
+  lost GitHub's hosted Intel macOS runner partway through building the
+  `net11.0` runtime ("the hosted runner lost communication with the server");
+  the re-run built it, verified every package and pushed the seven 0.1.1
+  packages. The runtime and compiler packages were unchanged and nuget.org
+  already had them, so they were skipped as duplicates. `net11.0` also passes
+  the complete suite against PostgreSQL 19 RC1 on Linux x64, macOS ARM64,
+  Windows x64 (run 38804186774) and Intel macOS (38804197997).
 - Scheduled run 38729094424 lost one Windows/PostgreSQL 18.6 case before its
   test body ran: the server reset the connection during authentication. The
   new backend had failed with `FATAL: incorrect checksum in control file` in
@@ -1884,7 +1892,7 @@ review's findings are fixed or kept by documented design.
 5. Keep samples and guides current with API changes, and recheck changed guides before release. Test discovery for MSTest, xUnit and NUnit consumers and samples for all 37 pgrx examples are complete.
 6. Keep the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) current as a pglogical port exercises it; every planned capability is done.
 7. Support .NET 11 as an extension target (required, in progress). The runtime fork's changes over 10.0.13 are ported onto .NET 11 RC2 as fork commit `34f19a015e3` on branch `ankus/runtime-11.0-rc2`, and every fork probe passes on Linux x64; rebase onto GA when it ships. `Ankus.Sdk` selects the `net11.0` line, `ankus new` and the templates take `--framework net11.0`, and CI and releases build both lines. The complete suite passes on every PostgreSQL major on Linux x64, macOS ARM64, Windows x64 and Intel macOS. Remaining: the rebase onto the .NET 11 release in November, which ships as a servicing update.
-8. 0.1.0 is released. Release run 38804273089 on e71e226 built, verified and published all 27 packages to nuget.org through the trusted publishing policy: the seven 0.1.0 packages and the patched runtime and compiler for five runtime identifiers on both lines (`10.0.13-ankus.1` and the `11.0.0-rc.2.26504.105-ankus.1` preview). From nuget.org alone, `Ankus.Tool` 0.1.0 creates a solution whose 7 tests pass against PostgreSQL 18, the templates do the same and publish an extension, and a fresh clone of the repository publishes a sample without staging a runtime.
+8. 0.1.0 and 0.1.1 are released; 0.1.1 reports build tool failures as build errors. 0.1.0 Release run 38804273089 on e71e226 built, verified and published all 27 packages to nuget.org through the trusted publishing policy: the seven 0.1.0 packages and the patched runtime and compiler for five runtime identifiers on both lines (`10.0.13-ankus.1` and the `11.0.0-rc.2.26504.105-ankus.1` preview). From nuget.org alone, `Ankus.Tool` 0.1.0 creates a solution whose 7 tests pass against PostgreSQL 18, the templates do the same and publish an extension, and a fresh clone of the repository publishes a sample without staging a runtime.
 
 Continue independent work while CI runs. Before every commit and push, check and
 record previous run outcomes, including live runs, and resolve reported failures.
