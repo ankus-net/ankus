@@ -34,6 +34,11 @@ internal static partial class FrameworkUpgrade
             await project.ReadAsync(token);
             (List<UpgradeReference> references, int globals) = await CollectAsync(project, documents, versions, token);
             count += references.Count + globals;
+            if (references.Count + globals != 0)
+            {
+                await PlanToolManifestAsync(project, documents, versions, token);
+            }
+
             var owned = new HashSet<XObject>(references.Where(static reference => reference.Item is null).Select(static reference => reference.Node));
             foreach (UpgradeReference reference in references.Where(static reference => reference.Item is null))
             {
@@ -271,6 +276,101 @@ internal static partial class FrameworkUpgrade
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Updates Ankus.Tool in the local tool manifest that <c>dotnet tool restore</c> uses from the project directory, so
+    /// <c>dotnet ankus</c> runs the tool released with the upgraded framework. Like the .NET SDK, the search checks each
+    /// directory's <c>.config/dotnet-tools.json</c> and then <c>dotnet-tools.json</c>, from the project upward, and stops
+    /// at the first manifest that lists the tool or is marked as the root.
+    /// </summary>
+    private static async Task PlanToolManifestAsync(UpgradeProject project, Dictionary<string, UpgradeDocument> documents,
+        FrameworkVersionResolver versions, CancellationToken token)
+    {
+        for (DirectoryInfo? directory = new(project.DirectoryPath); directory is not null; directory = directory.Parent)
+        {
+            foreach (string candidate in new[] { Path.Join(directory.FullName, ".config", "dotnet-tools.json"), Path.Join(directory.FullName, "dotnet-tools.json") })
+            {
+                if (!File.Exists(candidate))
+                {
+                    continue;
+                }
+
+                string path = File.ResolveLinkTarget(candidate, returnFinalTarget: true)?.FullName ?? candidate;
+                UpgradeDocument document = documents.TryGetValue(path, out UpgradeDocument? existing) ? existing : UpgradeDocument.Read(path);
+                ((int Start, int Length, string Version)? declaration, bool root) = ReadToolManifest(document.Text);
+                if (declaration is (int start, int length, string current))
+                {
+                    documents.TryAdd(path, document);
+                    string updated = await versions.ResolveAsync("Ankus.Tool", current, true, project.DirectoryPath, token);
+                    document.Replace(start, length, "\"" + JsonEncodedText.Encode(updated) + "\"");
+                    return;
+                }
+
+                if (root)
+                {
+                    return;
+                }
+            }
+        }
+    }
+
+    private static ((int Start, int Length, string Version)? Declaration, bool Root) ReadToolManifest(string text)
+    {
+        byte[] utf8 = Encoding.UTF8.GetBytes(text);
+        var reader = new Utf8JsonReader(utf8, new JsonReaderOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip });
+        (int Start, int Length, string Version)? declaration = null;
+        bool root = false;
+        while (reader.Read())
+        {
+            if (reader.TokenType != JsonTokenType.PropertyName || reader.CurrentDepth != 1)
+            {
+                continue;
+            }
+
+            bool isRoot = reader.ValueTextEquals("isRoot");
+            bool tools = reader.ValueTextEquals("tools");
+            reader.Read();
+            if (isRoot)
+            {
+                root = reader.TokenType == JsonTokenType.True;
+            }
+            else if (tools && reader.TokenType == JsonTokenType.StartObject)
+            {
+                while (reader.Read() && reader.TokenType == JsonTokenType.PropertyName)
+                {
+                    bool ankus = string.Equals(reader.GetString(), "Ankus.Tool", StringComparison.OrdinalIgnoreCase);
+                    reader.Read();
+                    if (!ankus || reader.TokenType != JsonTokenType.StartObject)
+                    {
+                        reader.Skip();
+                        continue;
+                    }
+
+                    while (reader.Read() && reader.TokenType == JsonTokenType.PropertyName)
+                    {
+                        bool version = reader.ValueTextEquals("version");
+                        reader.Read();
+                        if (version && reader.TokenType == JsonTokenType.String)
+                        {
+                            int offset = checked((int)reader.TokenStartIndex);
+                            declaration = (Encoding.UTF8.GetCharCount(utf8.AsSpan(0, offset)),
+                                Encoding.UTF8.GetCharCount(utf8.AsSpan(offset, checked((int)reader.BytesConsumed) - offset)), reader.GetString()!);
+                        }
+                        else
+                        {
+                            reader.Skip();
+                        }
+                    }
+                }
+            }
+            else
+            {
+                reader.Skip();
+            }
+        }
+
+        return (declaration, root);
     }
 
     private static (int Start, int Length, string Version)? ReadGlobalSdk(string text)

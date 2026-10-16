@@ -620,9 +620,14 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   the feeds' current listings; the fixed tool chose 0.1.1 on that machine
   while its stale copy remained. A test publishes a release on a local feed
   between two upgrades and fails without the change. This ships in 0.1.2.
-  Still open: `ankus upgrade` leaves the `ankus.tool` pin in a generated
-  solution's `.config/dotnet-tools.json` at its old version, so `dotnet ankus`
-  keeps running the old tool after an upgrade.
+- `ankus upgrade` also left the `ankus.tool` pin in a generated solution's
+  `.config/dotnet-tools.json` at its old version, so `dotnet ankus` kept
+  running the old tool. It now updates that pin in the manifest `dotnet tool
+  restore` would use, found the way the .NET SDK finds it: each directory's
+  `.config/dotnet-tools.json`, then `dotnet-tools.json`, from the project
+  upward, stopping at the first manifest that lists the tool or is marked as
+  the root. Tests check the generated solution's manifest, other tools and
+  formatting, and that a manifest beyond a root one is left alone.
 - Scheduled run 38729094424 lost one Windows/PostgreSQL 18.6 case before its
   test body ran: the server reset the connection during authentication. The
   new backend had failed with `FATAL: incorrect checksum in control file` in

@@ -25,7 +25,8 @@ public sealed partial class ToolCommandTests
         (await InvokeAsync(["new", "UpgradeProbe", "-o", root], token)).EnsureSuccess(s_tool, ["new"]);
         string global = Path.Join(root, "global.json");
         string central = Path.Join(root, "Directory.Packages.props");
-        foreach (string path in new[] { global, central })
+        string tools = Path.Join(root, ".config", "dotnet-tools.json");
+        foreach (string path in new[] { global, central, tools })
         {
             string current = await File.ReadAllTextAsync(path, token);
             await File.WriteAllTextAsync(path, current.Replace(s_version, "0.0.0-before", StringComparison.Ordinal), token);
@@ -41,7 +42,7 @@ public sealed partial class ToolCommandTests
         foreach ((string path, byte[] bytes) in before)
         {
             string expected = Encoding.UTF8.GetString(bytes);
-            if (path == global || path == central)
+            if (path == global || path == central || path == tools)
             {
                 expected = expected.Replace("0.0.0-before", s_version, StringComparison.Ordinal);
             }
@@ -691,6 +692,55 @@ public sealed partial class ToolCommandTests
             await stop.CancelAsync();
             await server.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
         }
+    }
+
+    /// <summary>
+    /// Ankus.Tool moves with the framework in the local tool manifest that <c>dotnet tool restore</c> would use, and other
+    /// tools and the manifest's formatting are kept. A manifest beyond the first one marked as the root is not changed.
+    /// </summary>
+    /// <param name="listed">Whether the solution's own manifest lists Ankus.Tool.</param>
+    [TestMethod]
+    [DataRow(true)]
+    [DataRow(false)]
+    public async Task UpgradeUpdatesLocalToolManifest(bool listed)
+    {
+        CancellationToken token = context.CancellationToken;
+        string root = CreateDirectory();
+        string solution = Path.Join(root, "solution");
+        Directory.CreateDirectory(Path.Join(solution, ".config"));
+        string project = await WriteUpgradeProjectAsync(solution, "0.1.0", token);
+        await CreateUpgradeFeedAsync(solution, "Ankus.Testing", token);
+        await CreateUpgradeFeedAsync(solution, "Ankus.Tool", token);
+        string ankus = listed ? """
+            ,
+                "Ankus.Tool": {
+                  "version": "0.1.0",
+                  "commands": ["ankus"]
+                }
+            """ : "";
+        string local = Path.Join(solution, ".config", "dotnet-tools.json");
+        await File.WriteAllTextAsync(local, $$"""
+            {
+              "version": 1,
+              "isRoot": true,
+              "tools": {
+                "other.tool": { "version": "0.1.0", "commands": ["other"] }{{ankus}}
+              }
+            }
+            """, token);
+        await File.WriteAllTextAsync(Path.Join(root, "dotnet-tools.json"),
+            """{"version":1,"isRoot":true,"tools":{"ankus.tool":{"version":"0.1.0","commands":["ankus"]}}}""", token);
+        Dictionary<string, byte[]> before = SnapshotUpgradeFiles(root);
+        ProcessResult result = await InvokeAsync(["upgrade", "--project", project], token);
+        Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
+        before[project] = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(before[project]).Replace("0.1.0", "0.2.0", StringComparison.Ordinal));
+        if (listed)
+        {
+            before[local] = Encoding.UTF8.GetBytes(Encoding.UTF8.GetString(before[local])
+                .Replace(ankus, ankus.Replace("0.1.0", "0.2.0", StringComparison.Ordinal), StringComparison.Ordinal));
+        }
+
+        AssertUpgradeFilesUnchanged(root, before);
     }
 
     /// <summary>
