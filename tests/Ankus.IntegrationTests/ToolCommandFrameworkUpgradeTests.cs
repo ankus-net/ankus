@@ -694,6 +694,43 @@ public sealed partial class ToolCommandTests
     }
 
     /// <summary>
+    /// A release published after an earlier upgrade is found by the next one. NuGet keeps a feed's package listing for
+    /// 30 minutes, and upgrades that reused a listing saved before the release reported the references as current.
+    /// </summary>
+    [TestMethod]
+    public async Task UpgradeFindsReleasePublishedAfterEarlierUpgrade()
+    {
+        CancellationToken token = context.CancellationToken;
+        string root = CreateDirectory();
+        string project = await WriteUpgradeProjectAsync(root, "0.1.0", token);
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
+        string source = $"http://127.0.0.1:{port.ToString(CultureInfo.InvariantCulture)}/";
+        new XDocument(new XElement("configuration", new XElement("packageSources", new XElement("clear"),
+            new XElement("add", new XAttribute("key", "releases"), new XAttribute("allowInsecureConnections", "true"),
+                new XAttribute("value", source + "index.json"))))).Save(Path.Join(root, "NuGet.Config"));
+        string[] published = ["0.1.0"];
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(token);
+        Task server = ServeReleasesAsync(listener, source, () => published, stop.Token);
+        try
+        {
+            ProcessResult current = await InvokeAsync(["upgrade", "--project", project], token);
+            Assert.AreEqual(0, current.ExitCode, current.StandardOutput + current.StandardError);
+            Assert.Contains("already current", current.StandardOutput);
+            published = ["0.1.0", "0.2.0"];
+            ProcessResult released = await InvokeAsync(["upgrade", "--project", project], token);
+            Assert.AreEqual(0, released.ExitCode, released.StandardOutput + released.StandardError);
+            Assert.AreEqual("0.2.0", XDocument.Load(project).Descendants("PackageReference").Single().Attribute("Version")!.Value);
+        }
+        finally
+        {
+            await stop.CancelAsync();
+            await server.ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+        }
+    }
+
+    /// <summary>
     /// Cancellation after an observed package request terminates discovery and leaves the project unchanged.
     /// </summary>
     [TestMethod]
@@ -1024,6 +1061,32 @@ public sealed partial class ToolCommandTests
         foreach ((string path, byte[] content) in expected)
         {
             Assert.AreSequenceEqual(content, File.ReadAllBytes(path), path);
+        }
+    }
+
+    private static async Task ServeReleasesAsync(TcpListener listener, string source, Func<string[]> published, CancellationToken token)
+    {
+        while (true)
+        {
+            using TcpClient client = await listener.AcceptTcpClientAsync(token);
+            await using NetworkStream stream = client.GetStream();
+            using var reader = new StreamReader(stream, Encoding.ASCII, leaveOpen: true);
+            string request = await reader.ReadLineAsync(token) ?? "";
+            while (await reader.ReadLineAsync(token) is string line && line.Length != 0)
+            {
+                // Skip the request headers.
+            }
+
+            string[] versions = published();
+            string entries = string.Join(",", versions.Select(static version =>
+                $$$"""{"catalogEntry":{"id":"Ankus.Testing","version":"{{{version}}}","listed":true,"authors":"Ankus tests","description":"Owned release fixture"}}"""));
+            string body = request.StartsWith("GET /index.json ", StringComparison.Ordinal)
+                ? $$"""{"version":"3.0.0","resources":[{"@id":"{{source}}registrations/","@type":"RegistrationsBaseUrl/3.6.0"}]}"""
+                : $$"""{"count":1,"items":[{"count":{{versions.Length}},"lower":"{{versions[0]}}","upper":"{{versions[^1]}}","items":[{{entries}}]}]}""";
+            byte[] content = Encoding.UTF8.GetBytes(body);
+            byte[] header = Encoding.ASCII.GetBytes($"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {content.Length.ToString(CultureInfo.InvariantCulture)}\r\nConnection: close\r\n\r\n");
+            await stream.WriteAsync(header, token);
+            await stream.WriteAsync(content, token);
         }
     }
 

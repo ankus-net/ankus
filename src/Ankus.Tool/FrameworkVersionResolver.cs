@@ -117,8 +117,21 @@ internal sealed class FrameworkVersionResolver(string? target, bool includePrere
             arguments.AddRange(["--source", source]);
         }
 
+        // NuGet reuses a feed's saved package listing for up to 30 minutes, so a release published after an earlier
+        // check stayed invisible to upgrades until that copy expired. An empty HTTP cache reads the current listing.
         using var output = new MemoryStream();
-        int code = await ToolProcess.RunAsync("dotnet", arguments, token, outputStream: output, workingDirectory: directory);
+        DirectoryInfo cache = Directory.CreateTempSubdirectory("ankus-nuget-http-");
+        int code;
+        try
+        {
+            code = await ToolProcess.RunAsync("dotnet", arguments, token, outputStream: output, workingDirectory: directory,
+                environment: new Dictionary<string, string?> { ["NUGET_HTTP_CACHE_PATH"] = cache.FullName });
+        }
+        finally
+        {
+            cache.Delete(recursive: true);
+        }
+
         if (code != 0)
         {
             throw new InvalidOperationException($"NuGet version discovery for {package} failed ({code}). No project files were changed.");

@@ -610,6 +610,19 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   already had them, so they were skipped as duplicates. `net11.0` also passes
   the complete suite against PostgreSQL 19 RC1 on Linux x64, macOS ARM64,
   Windows x64 (run 38804186774) and Intel macOS (38804197997).
+- After updating the tool to 0.1.1, the same user's `ankus upgrade` kept
+  reporting "already current". `ankus upgrade` finds versions with `dotnet
+  package search`, and NuGet keeps each feed's package listing for 30 minutes.
+  The first upgrade ran at 00:52:36 UTC, before nuget.org added 0.1.1 to the
+  Ankus.Sdk listing at 00:53:45, and every upgrade until that copy expired
+  reused it. The tool update itself had seen 0.1.1 in the separate Ankus.Tool
+  listing. Version discovery now uses an empty HTTP cache, so each upgrade reads
+  the feeds' current listings; the fixed tool chose 0.1.1 on that machine
+  while its stale copy remained. A test publishes a release on a local feed
+  between two upgrades and fails without the change. This ships in 0.1.2.
+  Still open: `ankus upgrade` leaves the `ankus.tool` pin in a generated
+  solution's `.config/dotnet-tools.json` at its old version, so `dotnet ankus`
+  keeps running the old tool after an upgrade.
 - Scheduled run 38729094424 lost one Windows/PostgreSQL 18.6 case before its
   test body ran: the server reset the connection during authentication. The
   new backend had failed with `FATAL: incorrect checksum in control file` in
