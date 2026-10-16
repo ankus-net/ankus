@@ -663,6 +663,18 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   template test reads the command from all three, requires them to agree, and
   runs it as written against the test feed, failing on any deprecation
   warning. No release was needed; the packages were unaffected.
+- On a Mac with Xcode, `dotnet build` of a new solution failed with only
+  "Native preprocessing requires one supported Clang identity". The build ran
+  the `clang` on `PATH`, which is Xcode's Apple clang 17, while Homebrew's LLVM
+  20, 22 and 23 were installed but, as Homebrew does, kept off `PATH`. When
+  `AnkusClangPath` is unset, the build now takes the first Clang 20 or later
+  among `PATH`, Homebrew's `llvm` and `llvm@N` on macOS, `clang-N` and
+  `/usr/lib/llvm-N` on Linux, and `Program Files\LLVM` on Windows; if none
+  qualifies, the error names each Clang it found and its version. An explicit
+  Clang that is too old reports its version and the setting to change. On that
+  Mac, the 0.1.3 build tool fails and the fixed one collects and verifies the
+  PostgreSQL 18 bindings. Build tests select a newer Clang over an older one
+  first on `PATH`, check both messages, and read the host Clang's version.
 - Release run 38839379088's net11.0 macOS ARM64 runtime job warned that "a
   build server did not stop": its cleanup ran `dotnet build-server shutdown`
   while the MacBook's other runner was compiling, and the shared compiler

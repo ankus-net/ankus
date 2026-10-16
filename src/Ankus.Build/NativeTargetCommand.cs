@@ -116,7 +116,8 @@ internal static class NativeTargetCommand
     private static async Task<IReadOnlyList<string>> ReadDependenciesAsync(PostgresInstallation installation, string[] arguments,
         string runtime, string directory, CancellationToken cancellationToken)
     {
-        string compiler = NativeBindingRecordCommand.FindCompiler(arguments[7].Length != 0 ? arguments[7] : "clang");
+        string compiler = arguments[7].Length != 0 ? NativeBindingRecordCommand.FindCompiler(arguments[7])
+            : await ClangSelection.FindAsync(cancellationToken);
         List<string> options = await NativeBindingHeaderCommand.CreateArgumentsAsync(installation,
             ["", arguments[0], installation.PgConfigPath, directory, compiler, arguments[4], runtime, arguments[6]], cancellationToken);
         string input = Path.Join(directory, "native-target-input.c");

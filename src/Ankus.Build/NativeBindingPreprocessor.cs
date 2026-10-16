@@ -38,7 +38,7 @@ internal static class NativeBindingPreprocessor
                 continue;
             }
 
-            if (major != 0 || !int.TryParse(line.AsSpan(Version.Length), NumberStyles.None, CultureInfo.InvariantCulture, out major) || major < 20)
+            if (major != 0 || !int.TryParse(line.AsSpan(Version.Length), NumberStyles.None, CultureInfo.InvariantCulture, out major))
             {
                 throw new FormatException("Native preprocessing requires one supported Clang identity.");
             }
@@ -47,6 +47,13 @@ internal static class NativeBindingPreprocessor
         if (major == 0)
         {
             throw new FormatException("Native preprocessing did not retain its Clang identity.");
+        }
+
+        if (major < ClangSelection.MinimumMajor)
+        {
+            throw new InvalidOperationException($"'{compiler}' is Clang {major.ToString(CultureInfo.InvariantCulture)}, and Ankus needs LLVM " +
+                $"Clang {ClangSelection.MinimumMajor.ToString(CultureInfo.InvariantCulture)} or later to read PostgreSQL's headers. " +
+                "Set AnkusClangPath to a newer clang, or leave it unset so Ankus finds one.");
         }
 
         // Ask the driver for its effective frontend command. Default and explicit

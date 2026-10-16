@@ -38,8 +38,8 @@ internal static class NativeBindingSourceCache
                 return;
             }
 
-            string compiler = NativeBindingRecordCommand.FindCompiler(arguments.Length >= 8 && arguments[7].Length != 0 ? arguments[7]
-                : OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang");
+            string compiler = arguments.Length >= 8 && arguments[7].Length != 0 ? NativeBindingRecordCommand.FindCompiler(arguments[7])
+                : await ClangSelection.FindAsync(cancellationToken);
             string[] frontend = ["", arguments[0], arguments[1], directory, compiler,
                 arguments.Length >= 5 ? arguments[4] : "", arguments.Length >= 6 ? arguments[5] : "", arguments.Length >= 7 ? arguments[6] : ""];
             List<string> options = await NativeBindingHeaderCommand.CreateArgumentsAsync(installation, frontend, cancellationToken);

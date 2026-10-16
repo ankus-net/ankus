@@ -13,9 +13,12 @@ captured on the target.
 - .NET 10 SDK. See [.NET support](/reference/dotnet-support/) for supported
   targets and runtime servicing.
 - The [.NET Native AOT toolchain](https://learn.microsoft.com/dotnet/core/deploying/native-aot/).
-- LLVM Clang 20 or later and its matching `libclang` library. Make `clang`
-  available on Linux/macOS or `clang-cl.exe` on Windows. Ankus uses it to read
-  native declarations from your PostgreSQL headers.
+- LLVM Clang 20 or later and its matching `libclang` library. Ankus uses it to
+  read native declarations from your PostgreSQL headers. It uses the first
+  Clang 20 or later it finds: `clang` (`clang-cl.exe` on Windows) on `PATH`,
+  then the standard LLVM locations. On macOS, Xcode's Apple clang is too old;
+  install LLVM with `brew install llvm`, and Ankus finds it even though Homebrew
+  keeps it off `PATH`. On Linux it also finds `clang-N` and `/usr/lib/llvm-N`.
   Windows also requires LLVM's `llvm-objcopy.exe` on `PATH` for native binding
   verification; the LLVM installer supplies these tools.
 - PostgreSQL 13 through 18 or the 19 beta or release candidate (this guide uses 18), with `pg_config`, server

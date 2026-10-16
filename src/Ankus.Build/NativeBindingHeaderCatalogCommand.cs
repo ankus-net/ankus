@@ -68,7 +68,7 @@ internal static partial class NativeBindingHeaderCatalogCommand
         ArgumentNullException.ThrowIfNull(installation);
         List<string> options = await NativeBindingHeaderCommand.CreateArgumentsAsync(installation, [], cancellationToken);
         options.Add(OperatingSystem.IsWindows() ? "/Zs" : "-fsyntax-only");
-        string compiler = NativeBindingRecordCommand.FindCompiler(OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang");
+        string compiler = await ClangSelection.FindAsync(cancellationToken);
         string library = await NativeBindingRecordCommand.FindLibraryAsync(compiler, await ClangMajorAsync(compiler, cancellationToken),
             cancellationToken);
         int major = installation.Version.Major;
