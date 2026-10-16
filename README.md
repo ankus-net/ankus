@@ -159,7 +159,7 @@ You can also install the matching `Ankus.Templates` package from your configured
 feed and use ordinary .NET templates:
 
 ```console
-dotnet new install Ankus.Templates::0.1.1
+dotnet new install Ankus.Templates::0.1.2
 dotnet new ankus -n Hello
 cd Hello
 dotnet tool restore
@@ -211,7 +211,7 @@ be relocated afterward. See [function execution options](https://ankus.net/funct
 Extension projects use the `Ankus.Sdk` NuGet project SDK:
 
 ```xml
-<Project Sdk="Ankus.Sdk/0.1.1">
+<Project Sdk="Ankus.Sdk/0.1.2">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
