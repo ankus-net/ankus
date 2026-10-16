@@ -248,6 +248,7 @@ The queried PostgreSQL installation.
 ### DiscoverAsync(int, string?, CancellationToken)
 
 Discovers a specific PostgreSQL major using an explicit Ankus home for registrations and managed installations.
+An unregistered installation without its server headers, such as one from a client-only package, is skipped.
 
 ```csharp
 public static Task<PostgresInstallation> DiscoverAsync(int major, string? homeDirectory, CancellationToken cancellationToken)

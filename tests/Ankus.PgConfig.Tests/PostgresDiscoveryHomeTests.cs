@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using System.Text.Json;
 
 namespace Ankus.PgConfig.Tests;
@@ -26,6 +27,47 @@ public sealed class PostgresDiscoveryHomeTests(TestContext context)
         finally
         {
             Directory.Delete(home, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// A <c>pg_config</c> without its server headers, as a client-only package installs, cannot build extensions. Discovery
+    /// skips it, says why when nothing else is found, and selects it once the headers are present.
+    /// </summary>
+    [TestMethod]
+    [OSCondition(OperatingSystems.Linux | OperatingSystems.OSX)]
+    [SupportedOSPlatform("linux")]
+    [SupportedOSPlatform("macos")]
+    public async Task DiscoverySkipsInstallationsWithoutServerHeaders()
+    {
+        string root = Directory.CreateTempSubdirectory("ankus discovery ").FullName;
+        try
+        {
+            string include = Directory.CreateDirectory(Path.Join(root, "include", "server")).FullName;
+            string pgConfig = Path.Join(Directory.CreateDirectory(Path.Join(root, "bin")).FullName, "pg_config");
+            await File.WriteAllTextAsync(pgConfig, $"""
+                #!/bin/sh
+                case "$1" in
+                  --version) echo "PostgreSQL 18.6" ;;
+                  --includedir-server) echo "{include}" ;;
+                  --cppflags) echo "" ;;
+                  *) echo "{root}" ;;
+                esac
+
+                """, context.CancellationToken);
+            File.SetUnixFileMode(pgConfig, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            FileNotFoundException error = await Assert.ThrowsExactlyAsync<FileNotFoundException>(() =>
+                PostgresInstallation.DiscoverAsync(18, [pgConfig], context.CancellationToken));
+            Assert.AreEqual($"PostgreSQL 18 was not found. '{pgConfig}' is PostgreSQL 18.6 without its server headers " +
+                $"('{Path.Join(include, "postgres.h")}' is missing); install its server package to use it. Run 'ankus init " +
+                "--pg18 download' to install it, or 'ankus init --pg18 /path/to/pg_config' to use an existing installation.", error.Message);
+            await File.WriteAllTextAsync(Path.Join(include, "postgres.h"), "", context.CancellationToken);
+            PostgresInstallation installation = await PostgresInstallation.DiscoverAsync(18, [pgConfig], context.CancellationToken);
+            Assert.AreEqual(pgConfig, installation.PgConfigPath);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
         }
     }
 

@@ -20,7 +20,9 @@ captured on the target.
   verification; the LLVM installer supplies these tools.
 - PostgreSQL 13 through 18 or the 19 beta or release candidate (this guide uses 18), with `pg_config`, server
   executables, and development headers.
-  Windows also needs the PostgreSQL server import library.
+  Windows also needs the PostgreSQL server import library. A client-only package,
+  such as Arch Linux's `postgresql-libs`, installs `pg_config` without the server
+  headers; Ankus does not select such an installation.
 
 Register the installation with the Ankus tool:
 

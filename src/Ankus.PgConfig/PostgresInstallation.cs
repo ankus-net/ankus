@@ -248,6 +248,7 @@ public sealed class PostgresInstallation
 
     /// <summary>
     /// Discovers a specific PostgreSQL major using an explicit Ankus home for registrations and managed installations.
+    /// An unregistered installation without its server headers, such as one from a client-only package, is skipped.
     /// </summary>
     /// <param name="major">The required PostgreSQL major version.</param>
     /// <param name="homeDirectory">The selected home, or null to use ANKUS_HOME and the ordinary default.</param>
@@ -262,17 +263,41 @@ public sealed class PostgresInstallation
             return await registry.GetAsync(major, cancellationToken).ConfigureAwait(false);
         }
 
-        foreach (string candidate in PostgresDiscovery.GetCandidates(major, registry.HomeDirectory).Distinct(StringComparer.Ordinal).Where(static candidate => File.Exists(candidate)))
+        return await DiscoverAsync(major, PostgresDiscovery.GetCandidates(major, registry.HomeDirectory), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Selects the first candidate of the requested major that can build extensions.
+    /// </summary>
+    /// <param name="major">The required PostgreSQL major version.</param>
+    /// <param name="candidates">The <c>pg_config</c> paths to try, in discovery order.</param>
+    /// <param name="cancellationToken">Cancels installation queries.</param>
+    /// <returns>The first matching installation.</returns>
+    internal static async Task<PostgresInstallation> DiscoverAsync(int major, IEnumerable<string> candidates, CancellationToken cancellationToken)
+    {
+        string? headerless = null;
+        foreach (string candidate in candidates.Distinct(StringComparer.Ordinal).Where(static candidate => File.Exists(candidate)))
         {
             PostgresInstallation installation = await CreateAsync(candidate, cancellationToken).ConfigureAwait(false);
-            if (installation.Version.Major == major)
+            if (installation.Version.Major != major)
             {
-                return installation;
+                continue;
             }
+
+            // A client package can install pg_config without the server headers, as Arch's postgresql-libs does.
+            // Extensions cannot be built against it, so discovery keeps looking and names it if nothing else is found.
+            if (!File.Exists(Path.Join(installation.ServerIncludeDirectory, "postgres.h")))
+            {
+                headerless ??= $" '{installation.PgConfigPath}' is PostgreSQL {installation.Version} without its server headers " +
+                    $"('{Path.Join(installation.ServerIncludeDirectory, "postgres.h")}' is missing); install its server package to use it.";
+                continue;
+            }
+
+            return installation;
         }
 
         throw new FileNotFoundException(
-            $"PostgreSQL {major} was not found. Run 'ankus init --pg{major} download' to install it, or " +
+            $"PostgreSQL {major} was not found.{headerless} Run 'ankus init --pg{major} download' to install it, or " +
             $"'ankus init --pg{major} /path/to/pg_config' to use an existing installation.");
     }
 

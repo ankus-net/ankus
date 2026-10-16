@@ -214,12 +214,14 @@ internal static class NativeBindingHeaderCommand
             string error = await errors;
             if (process.ExitCode != 0)
             {
+                // The compiler's own error comes first: the build reports only the first line, and output written
+                // before the failure, such as a macro listing, does not say what went wrong.
                 if (inspectBodies)
                 {
                     output.Position = 0;
                     byte[] diagnostic = new byte[(int)Math.Min(output.Length, 16 * 1024)];
                     await output.ReadExactlyAsync(diagnostic, cancellationToken);
-                    error = System.Text.Encoding.UTF8.GetString(diagnostic) + error;
+                    error = error.TrimEnd() + Environment.NewLine + System.Text.Encoding.UTF8.GetString(diagnostic);
                 }
 
                 throw new InvalidOperationException($"{compiler} exited with {process.ExitCode}: {error}");

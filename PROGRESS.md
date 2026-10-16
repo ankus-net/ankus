@@ -628,6 +628,28 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   upward, stopping at the first manifest that lists the tool or is marked as
   the root. Tests check the generated solution's manifest, other tools and
   formatting, and that a manifest beyond a root one is left alone.
+- 0.1.2 is released (release run 38839379088 on 87d99c5). The same user
+  upgraded with it while nuget.org was still listing the release: Ankus.Tool
+  and Ankus.Testing already listed 0.1.2 but Ankus.Sdk did not, and because
+  each package took its own newest version, the solution mixed Ankus.Sdk 0.1.1
+  with Ankus.Testing 0.1.2 (NuGet warning NU1608 on `Ankus.Runtime`). Ankus
+  packages are released together with one version, so `ankus upgrade` now
+  plans twice: the first pass records which Ankus packages take their version
+  from the package sources, and the second moves them all to the newest
+  version every one of them lists, with a note when a newer release is only
+  partly listed. A test lists 0.3.0 for Ankus.Tool alone and checks that the
+  package and the tool pin both move to 0.2.0 and the note names
+  Ankus.Testing.
+- The build on that machine then failed with only `/usr/bin/clang exited with
+  1: #define __llvm__ 1`. It has Arch Linux's `postgresql-libs`, which installs
+  `pg_config` but not the server headers, and discovery accepted it from
+  `PATH`. Discovery now skips an installation whose server include directory
+  has no `postgres.h` and names it in the not-found error. The preprocessing
+  failure also put clang's macro listing before its error, so the build's
+  one-line summary showed a `#define`; the compiler's error now comes first. A
+  PgConfig test discovers a `pg_config` without headers, then with them, and a
+  Build test checks that a missing `postgres.h` is the first line. Both fail
+  without their fixes.
 - Release run 38839379088's net11.0 macOS ARM64 runtime job warned that "a
   build server did not stop": its cleanup ran `dotnet build-server shutdown`
   while the MacBook's other runner was compiling, and the shared compiler

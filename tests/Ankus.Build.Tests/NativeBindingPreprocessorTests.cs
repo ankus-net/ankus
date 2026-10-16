@@ -112,6 +112,30 @@ public sealed partial class NativeBindingNativeTests
     }
 
     /// <summary>
+    /// A failed observation's message starts with the compiler's error, the line a build reports, rather than with the
+    /// macro definitions the compiler wrote before failing. A missing PostgreSQL header showed only <c>#define __llvm__ 1</c>.
+    /// </summary>
+    [TestMethod]
+    public async Task NativePreprocessingFailureStartsWithTheCompilerError()
+    {
+        string directory = Directory.CreateTempSubdirectory("ankus-preprocessing-missing-").FullName;
+        try
+        {
+            string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang";
+            InvalidOperationException failure = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
+                NativeBindingPreprocessor.ObserveAsync(compiler, [], "#include \"postgres.h\"\n", directory, context.CancellationToken));
+            string first = failure.Message.ReplaceLineEndings("\n").Split('\n', StringSplitOptions.RemoveEmptyEntries)[0];
+            Assert.Contains("postgres.h", first);
+            Assert.DoesNotContain("#define", first);
+            Assert.Contains("#define", failure.Message);
+        }
+        finally
+        {
+            await DeleteDirectoryAsync(directory);
+        }
+    }
+
+    /// <summary>
     /// Failed and cancelled observations cannot provide a content identity; a corrected compiler input recovers.
     /// </summary>
     [TestMethod]
