@@ -193,13 +193,12 @@ internal static class NativeBindingLayoutCommand
     /// <returns>The tool's path, or its bare name when neither location has it.</returns>
     internal static string FindLlvmTool(string name)
     {
-        foreach (string directory in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+        string? onPath = (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+            .Select(directory => Path.Join(directory.Trim('"'), name))
+            .FirstOrDefault(File.Exists);
+        if (onPath is not null)
         {
-            string candidate = Path.Join(directory.Trim('"'), name);
-            if (File.Exists(candidate))
-            {
-                return candidate;
-            }
+            return onPath;
         }
 
         string installed = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "LLVM", "bin", name);
