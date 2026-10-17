@@ -207,6 +207,12 @@ its identity preserved. PostgreSQL errors, including commit failures, become
 owned `PgException` diagnostics after native cleanup. The worker may then start
 another transaction.
 
+After each transaction the worker publishes its table and I/O counts, as
+PostgreSQL's own example worker does, and `Wait` flushes any that PostgreSQL's
+rate limit held back before it sleeps. Autovacuum and `pg_stat_user_tables` see
+a running worker's writes, and `pg_stat_activity` shows it as `active` during a
+transaction and `idle` between them.
+
 Query cancellation raises `PgQueryCanceledException`. Catching it inside the
 transaction callback permits managed cleanup, but the transaction still aborts.
 Catch it around `RunTransaction` to continue the worker after rollback and start
