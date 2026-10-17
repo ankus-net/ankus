@@ -97,6 +97,8 @@ public sealed partial class ToolCommandTests
         string extensions = Path.Join(owner.Installation.SharedDirectory, "extension");
         Dictionary<string, UnixFileMode> modes = new[] { extensions, owner.Installation.LibraryDirectory }
             .ToDictionary(static path => path, File.GetUnixFileMode);
+        // The staged copy can already hold the probe from an earlier test, so compare contents instead of looking for it.
+        string[] before = Snapshot(modes.Keys);
         const UnixFileMode ReadOnly = UnixFileMode.UserRead | UnixFileMode.UserExecute | UnixFileMode.GroupRead |
             UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute;
         foreach (string path in modes.Keys)
@@ -114,7 +116,7 @@ public sealed partial class ToolCommandTests
             if (owner.Installation.Version.Major >= 18)
             {
                 Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
-                Assert.IsFalse(File.Exists(Path.Join(extensions, "ankus_tool_probe.control")));
+                Assert.AreSequenceEqual(before, Snapshot(modes.Keys));
             }
             else
             {
@@ -131,6 +133,11 @@ public sealed partial class ToolCommandTests
 
             await cluster.StopAsync(CancellationToken.None);
         }
+
+        static string[] Snapshot(IEnumerable<string> directories)
+            => [.. directories.SelectMany(static directory => Directory.EnumerateFiles(directory))
+                .Select(static file => file + "|" + File.GetLastWriteTimeUtc(file).Ticks.ToString(CultureInfo.InvariantCulture))
+                .Order(StringComparer.Ordinal)];
     }
 
     /// <summary>
