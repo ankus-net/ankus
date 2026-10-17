@@ -130,6 +130,19 @@ internal static partial class ToolCommand
             };
             bool reportOnly = result.GetValue(report);
             await cluster.StartAsync(server, token);
+            if (!reportOnly && !serverSettings.ContainsKey("shared_preload_libraries"))
+            {
+                // PostgreSQL adds the platform's suffix, so the setting names the library as people write it.
+                string library = Path.GetFileNameWithoutExtension(PublishedExtension.Read(output).Library);
+                if (await RequiresSharedPreloadAsync(installation, await cluster.GetConnectionStringAsync("postgres", token), library, token))
+                {
+                    serverSettings["shared_preload_libraries"] = library;
+                    await cluster.StopAsync(token);
+                    await cluster.StartAsync(server, token);
+                    Console.Error.WriteLine($"Ankus: {library} must be loaded through shared_preload_libraries; restarted PostgreSQL with it.");
+                }
+            }
+
             if (result.GetValue(reset))
             {
                 await cluster.DropDatabaseAsync(benchmarkDatabase, force: true, token);
@@ -241,6 +254,24 @@ internal static partial class ToolCommand
             return failures == 0 ? 0 : 1;
         });
         return command;
+    }
+
+    /// <summary>
+    /// Loads the library in its own session to see whether it needs <c>shared_preload_libraries</c>. Ankus's bridges reject
+    /// a module that registers shared memory, postmaster-level settings or startup background workers when it is loaded
+    /// any other way, and say so in the error.
+    /// </summary>
+    private static async Task<bool> RequiresSharedPreloadAsync(PostgresInstallation installation, string connection, string library,
+        CancellationToken token)
+    {
+        using var errors = new MemoryStream();
+        int code = await ToolProcess.RunAsync(installation.PsqlPath,
+            ["--no-psqlrc", "--no-password", "--quiet", "--set=ON_ERROR_STOP=1", "--dbname=" + connection,
+                "--command=LOAD '" + library.Replace("'", "''", StringComparison.Ordinal) + "'"],
+            token, outputStream: Stream.Null, postgresClient: true, errorStream: errors);
+        string error = Encoding.UTF8.GetString(errors.ToArray());
+        return code != 0 && (error.Contains("shared_preload_libraries", StringComparison.Ordinal) ||
+            error.Contains("shared preload", StringComparison.Ordinal));
     }
 
     private static string StageBenchmarkExtension(string output, CancellationToken token,

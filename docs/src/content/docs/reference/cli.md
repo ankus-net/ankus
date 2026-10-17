@@ -544,6 +544,13 @@ fails unless `--cascade` drops them too. `--wait <seconds>`, from 0 through 3600
 PostgreSQL selection, configuration, server settings and repeatable MSBuild
 properties follow the other build commands.
 
+An extension that registers shared memory, postmaster-level settings or startup
+background workers has to be loaded through `shared_preload_libraries`. Before
+benchmarking, Ankus loads the library in a separate session; when PostgreSQL
+rejects it for that reason, Ankus restarts the server with the library preloaded
+and says so. A `shared_preload_libraries` value passed with `--postgresql-conf`
+is used as given.
+
 On PostgreSQL 18 or later, Ankus stages benchmark control and SQL files beside
 the benchmark publication and uses private server search paths. The selected
 PostgreSQL installation does not need to be writable. Earlier PostgreSQL
