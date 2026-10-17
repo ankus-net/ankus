@@ -161,6 +161,13 @@ internal static partial class ToolCommand
 
             _ = await sql.ExecuteAsync("CREATE EXTENSION " + QuoteIdentifier(extension) + cascadeClause + ";\n", token);
             List<BenchmarkDescriptor> benchmarks = await DiscoverBenchmarksAsync(sql, result.GetValue(filter), token);
+            if (!result.GetValue(list) && (await sql.ExecuteAsync("SELECT current_setting('debug_assertions');\n", token)).Trim() == "on")
+            {
+                // Development builds, such as those from ankus init --pgNN download, check assertions throughout the
+                // server and randomize allocated memory, so timings would measure those checks along with the extension.
+                await Console.Error.WriteLineAsync(BenchmarkConsoleFormat.AssertionWarning(installation.Version));
+            }
+
             if (result.GetValue(list))
             {
                 foreach (BenchmarkDescriptor benchmark in benchmarks)

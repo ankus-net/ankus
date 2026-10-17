@@ -140,4 +140,13 @@ public sealed class BenchmarkConsoleFormatTests
             s_indent + "thrpt:  [80.0 Melem/s 100.0 Melem/s 125.0 Melem/s]", s_indent + "mean:   [800.0 ns 1.0 us 1.25 us]",
             string.Empty, string.Empty), BenchmarkConsoleFormat.Format("bench", result.RootElement));
     }
+
+    /// <summary>
+    /// The assertion warning names the server version and the release build to use instead.
+    /// </summary>
+    [TestMethod]
+    public void AssertionWarningNamesTheReleaseBuild()
+        => Assert.AreEqual("Ankus: warning: PostgreSQL 18.6 was built with assertions, which slow the whole server. For representative " +
+            "timings, benchmark a release build, such as one from 'ankus init --pg18 download --release'.",
+            BenchmarkConsoleFormat.AssertionWarning(new PostgresVersion(18, 6, PostgresReleaseStage.Stable, 0)));
 }

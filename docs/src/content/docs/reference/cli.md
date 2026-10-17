@@ -296,7 +296,10 @@ ankus init --pg13 download --pg18 download --pg19 /path/to/pg19/bin/pg_config
 ```
 
 Linux and macOS build PostgreSQL's upstream sources with debug information and
-assertions. Source downloads are checked against upstream SHA-256 checksums.
+assertions. Add `--release` to leave out the assertions and allocated-memory
+randomization, which slow the server, when the build is for benchmarking; it
+gets its own directory. Source downloads are checked against upstream SHA-256
+checksums.
 A failed download is tried again after 1, 2 and 4 seconds, with a one-line
 warning before each retry, as `cargo pgrx init` does.
 Windows x64 uses EDB's binary archives over HTTPS. A prerelease can be downloaded

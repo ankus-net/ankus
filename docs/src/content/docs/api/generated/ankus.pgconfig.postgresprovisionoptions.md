@@ -66,3 +66,17 @@ public int Jobs { get; init; }
 ```
 
 Value: [int](https://learn.microsoft.com/dotnet/api/system.int32)
+
+<a id="member-aacb21f974f8f897"></a>
+
+### Release
+
+Gets whether Unix builds leave out the assertions and allocated-memory randomization that development builds use,
+which catch mistakes early but make the server much slower, so that benchmarks measure the extension. Debug symbols
+are kept either way.
+
+```csharp
+public bool Release { get; init; }
+```
+
+Value: [bool](https://learn.microsoft.com/dotnet/api/system.boolean)

@@ -48,6 +48,12 @@ Supply an ordinal substring to select benchmark names:
 ankus bench AddNumeric --pg 18
 ```
 
+Benchmark against a PostgreSQL built without assertions. `ankus init --pg18
+download` builds with them, as `cargo pgrx init` does, because they catch mistakes
+while you develop, but they also slow the whole server, so `ankus bench` warns
+when the server reports `debug_assertions = on`. Build one for benchmarking with
+`ankus init --pg18 download --release`, or register a distribution's package.
+
 Results print in Criterion's layout, as `cargo pgrx bench` prints them:
 
 ```console

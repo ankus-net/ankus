@@ -32,4 +32,15 @@ public sealed class PostgresProvisionOptions
         get;
         init;
     }
+
+    /// <summary>
+    /// Gets whether Unix builds leave out the assertions and allocated-memory randomization that development builds use,
+    /// which catch mistakes early but make the server much slower, so that benchmarks measure the extension. Debug symbols
+    /// are kept either way.
+    /// </summary>
+    public bool Release
+    {
+        get;
+        init;
+    }
 }
