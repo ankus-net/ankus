@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Xml.Linq;
 using Ankus.PgConfig;
 using Ankus.Testing;
@@ -71,6 +72,63 @@ public sealed partial class ToolCommandTests
         }
         finally
         {
+            await cluster.StopAsync(CancellationToken.None);
+        }
+    }
+
+    /// <summary>
+    /// On PostgreSQL 18 and later, regress stages the extension beside its publication, so it runs against an installation
+    /// this account can't write, such as a distribution's, and leaves it unchanged. Earlier majors have no
+    /// <c>extension_control_path</c>, and their failure says why they need write access and what to use instead.
+    /// </summary>
+    [RetryPortCollisionTestMethod]
+    [OSCondition(OperatingSystems.Linux | OperatingSystems.OSX)]
+    [SupportedOSPlatform("linux")]
+    [SupportedOSPlatform("macos")]
+    public async Task RegressLeavesAReadOnlyInstallationAlone()
+    {
+        CancellationToken token = context.CancellationToken;
+        await using PostgresTestInstallation owner = await PostgresTestInstallation.StageAsync(s_installation, CreateDirectory(), token);
+        string home = CreateDirectory();
+        string project = PrepareRegressionProject();
+        string suite = Path.Join(Path.GetDirectoryName(project)!, "pg_regress");
+        await WriteRegressionCaseAsync(suite, "setup", "CREATE EXTENSION ankus_tool_probe;", "", token);
+        await WriteRegressionCaseAsync(suite, "native", "SELECT add(19, 23);", "42\n", token);
+        string extensions = Path.Join(owner.Installation.SharedDirectory, "extension");
+        Dictionary<string, UnixFileMode> modes = new[] { extensions, owner.Installation.LibraryDirectory }
+            .ToDictionary(static path => path, File.GetUnixFileMode);
+        const UnixFileMode ReadOnly = UnixFileMode.UserRead | UnixFileMode.UserExecute | UnixFileMode.GroupRead |
+            UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute;
+        foreach (string path in modes.Keys)
+        {
+            File.SetUnixFileMode(path, ReadOnly);
+        }
+
+        var cluster = new PostgresDevelopmentCluster(owner.Installation, home);
+        using PortReservation reservation = PortReservation.Create();
+        int port = reservation.Port;
+        reservation.Dispose();
+        try
+        {
+            ProcessResult result = await InvokeAsync(RegressionOptions(owner.Installation, home, project, port), token);
+            if (owner.Installation.Version.Major >= 18)
+            {
+                Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
+                Assert.IsFalse(File.Exists(Path.Join(extensions, "ankus_tool_probe.control")));
+            }
+            else
+            {
+                Assert.AreNotEqual(0, result.ExitCode, result.StandardOutput);
+                Assert.Contains("Before PostgreSQL 18, ankus regress installs the extension into the installation", result.StandardError);
+            }
+        }
+        finally
+        {
+            foreach ((string path, UnixFileMode mode) in modes)
+            {
+                File.SetUnixFileMode(path, mode);
+            }
+
             await cluster.StopAsync(CancellationToken.None);
         }
     }

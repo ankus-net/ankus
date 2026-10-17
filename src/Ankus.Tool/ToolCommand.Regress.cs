@@ -156,7 +156,31 @@ internal static partial class ToolCommand
                 }
             }
 
-            foreach (string path in ExtensionInstaller.Install(output, installation, null, token))
+            IReadOnlyList<string> installed;
+            if (installation.Version.Major >= 18)
+            {
+                // PostgreSQL 18 finds extensions through extension_control_path, so the files stay beside the publication
+                // and the installation, such as a distribution's, needs no write access.
+                string controlBase = ExtensionStaging.Stage(output, ".ankus-regress", token, out installed);
+                char separator = OperatingSystem.IsWindows() ? ';' : ':';
+                PrependSearchPath(settings, "extension_control_path", controlBase, "$system", separator);
+                PrependSearchPath(settings, "dynamic_library_path", output, "$libdir", separator);
+            }
+            else
+            {
+                try
+                {
+                    installed = ExtensionInstaller.Install(output, installation, null, token);
+                }
+                catch (UnauthorizedAccessException error)
+                {
+                    throw new UnauthorizedAccessException($"Before PostgreSQL 18, ankus regress installs the extension into the " +
+                        $"installation, and this account can't write there: {error.Message} Use an installation you own, such as " +
+                        $"one from 'ankus init --pg{installation.Version.Major} download'. PostgreSQL 18 and later need no write access.", error);
+                }
+            }
+
+            foreach (string path in installed)
             {
                 Console.WriteLine($"Installed {path}");
             }
