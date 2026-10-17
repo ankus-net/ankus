@@ -85,7 +85,7 @@ ankus package --configuration Shipping --output dist
 Custom configurations use your project's settings; they do not automatically
 inherit `Release` settings. The default publication directory includes the
 configuration name, keeping configurations separate. Use the same name with
-`schema --skip-build` or `run --no-build` to reuse that publication.
+`schema --no-build` or `run --no-build` to reuse that publication.
 
 `build`, `publish`, `install`, `package`, `schema`, `run`, `connect`, `get`,
 `regress` and `bench` share this option; `test` accepts it too, with a `Debug` default. Names may include spaces and Unicode; quote names containing spaces.
@@ -187,7 +187,7 @@ ankus schema --output schema.sql
 
 Without `--output`, SQL goes to stdout and build diagnostics go to stderr.
 Use the same `--project`, `--pg`, `--pg-config`, and `--configuration` options
-as `ankus publish`. `ankus schema --skip-build` reads the project's existing
+as `ankus publish`. `ankus schema --no-build` reads the project's existing
 default publication under `bin/ankus/`, selected by PostgreSQL major, host
 runtime, and configuration. It does not require a registered PostgreSQL
 installation; use `--pg` to select the existing publication's major.

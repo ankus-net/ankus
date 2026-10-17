@@ -291,7 +291,7 @@ public sealed partial class ToolCommandTests(TestContext context)
     [DataRow("publish", "--output")]
     [DataRow("install", "--destdir")]
     [DataRow("package", "--output")]
-    [DataRow("schema", "--skip-build")]
+    [DataRow("schema", "--no-build")]
     [DataRow("get", "--from")]
     [DataRow("regress", "--repeat")]
     [DataRow("test", "--all")]

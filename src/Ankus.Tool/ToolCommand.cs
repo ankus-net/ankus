@@ -1,4 +1,6 @@
 using System.CommandLine;
+using System.CommandLine.Help;
+using System.CommandLine.Invocation;
 using System.Runtime.InteropServices;
 using Ankus.PgConfig;
 
@@ -17,31 +19,7 @@ internal static partial class ToolCommand
     internal static async Task<int> RunAsync(string[] arguments)
     {
         using var interactiveCancellation = new InteractiveCommandCancellation();
-        var home = new Option<string?>("--home")
-        {
-            Description = "Ankus home directory (default: ANKUS_HOME, otherwise ~/.ankus).",
-            Recursive = true,
-        };
-        var root = new RootCommand("Build and manage .NET PostgreSQL extensions.") { home };
-        root.Subcommands.Add(CreateInit(home));
-        root.Subcommands.Add(CreateInfo(home));
-        root.Subcommands.Add(CreateCluster("start", home));
-        root.Subcommands.Add(CreateCluster("stop", home));
-        root.Subcommands.Add(CreateCluster("status", home));
-        root.Subcommands.Add(CreateConnect(home, interactiveCancellation));
-        root.Subcommands.Add(CreateRun(home, interactiveCancellation));
-        root.Subcommands.Add(CreateNew());
-        root.Subcommands.Add(CreateBuild("build", "Build the native extension and SQL files.", home));
-        root.Subcommands.Add(CreateBuild("publish", "Publish the native extension and SQL files to a directory.", home));
-        root.Subcommands.Add(CreateInstall(home));
-        root.Subcommands.Add(CreateInstall(home, package: true));
-        root.Subcommands.Add(CreateSchema(home));
-        root.Subcommands.Add(CreateGet(home));
-        root.Subcommands.Add(CreateRegress(home));
-        root.Subcommands.Add(CreateTest(home));
-        root.Subcommands.Add(CreateBench(home));
-        root.Subcommands.Add(CreateUpgrade());
-        root.Subcommands.Add(CreateTarget(home));
+        RootCommand root = CreateRoot(interactiveCancellation);
         try
         {
             if (arguments.Length != 0 && arguments[0] == RegressionDriver.ClientSwitch)
@@ -75,6 +53,46 @@ internal static partial class ToolCommand
         }
     }
 
+    /// <summary>
+    /// Creates the root command with every subcommand.
+    /// </summary>
+    /// <param name="interactiveCancellation">Cancels interactive commands on the console's interrupt key.</param>
+    /// <returns>The root command.</returns>
+    internal static RootCommand CreateRoot(InteractiveCommandCancellation interactiveCancellation)
+    {
+        var home = new Option<string?>("--home")
+        {
+            Description = "Ankus home directory (default: ANKUS_HOME, otherwise ~/.ankus).",
+            Recursive = true,
+        };
+        var root = new RootCommand("Build and manage .NET PostgreSQL extensions.");
+
+        // The root command's help option comes first, and every command lists inherited options in that order.
+        root.Options.Insert(0, home);
+        HelpOption help = root.Options.OfType<HelpOption>().Single();
+        help.Action = new RootHelpAction((SynchronousCommandLineAction)help.Action!);
+        root.Subcommands.Add(CreateInit(home));
+        root.Subcommands.Add(CreateInfo(home));
+        root.Subcommands.Add(CreateCluster("start", home));
+        root.Subcommands.Add(CreateCluster("stop", home));
+        root.Subcommands.Add(CreateCluster("status", home));
+        root.Subcommands.Add(CreateConnect(home, interactiveCancellation));
+        root.Subcommands.Add(CreateRun(home, interactiveCancellation));
+        root.Subcommands.Add(CreateNew());
+        root.Subcommands.Add(CreateBuild("build", "Build the native extension and SQL files.", home));
+        root.Subcommands.Add(CreateBuild("publish", "Publish the native extension and SQL files to a directory.", home));
+        root.Subcommands.Add(CreateInstall(home));
+        root.Subcommands.Add(CreateInstall(home, package: true));
+        root.Subcommands.Add(CreateSchema(home));
+        root.Subcommands.Add(CreateGet(home));
+        root.Subcommands.Add(CreateRegress(home));
+        root.Subcommands.Add(CreateTest(home));
+        root.Subcommands.Add(CreateBench(home));
+        root.Subcommands.Add(CreateUpgrade());
+        root.Subcommands.Add(CreateTarget(home));
+        return root;
+    }
+
     private static Command CreateNew()
     {
         var command = new Command("new", "Create an extension solution with managed and PostgreSQL tests.");
@@ -84,13 +102,13 @@ internal static partial class ToolCommand
         var worker = new Option<bool>("--background-worker") { Description = "Include a preloaded PostgreSQL worker and its backend test." };
         var framework = new Option<string>("--test-framework")
         {
-            Description = "Consumer test framework: mstest (default), xunit or nunit.",
+            Description = "Consumer test framework: mstest, xunit or nunit.",
             DefaultValueFactory = static _ => "mstest",
         };
         framework.AcceptOnlyFromAmong("mstest", "xunit", "nunit");
         var targetFramework = new Option<string>("--framework", "-f")
         {
-            Description = "Target framework: net10.0 (default) or net11.0.",
+            Description = "Target framework: net10.0 or net11.0.",
             DefaultValueFactory = static _ => "net10.0",
         };
         targetFramework.AcceptOnlyFromAmong(ProjectScaffolder.TargetFrameworks);
@@ -386,7 +404,7 @@ internal static partial class ToolCommand
     {
         var configuration = new Option<string>("--configuration", "-c")
         {
-            Description = $"MSBuild configuration, including custom configurations (default: {defaultConfiguration}).",
+            Description = "MSBuild configuration, including custom configurations.",
             DefaultValueFactory = _ => defaultConfiguration,
         };
         configuration.Validators.Add(result =>
