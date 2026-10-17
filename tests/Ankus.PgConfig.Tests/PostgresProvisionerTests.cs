@@ -103,6 +103,33 @@ public sealed class PostgresProvisionerTests(TestContext context)
     }
 
     /// <summary>
+    /// An installation reached through a symbolic link, as macOS's /tmp is, owns the resolved paths its pg_config reports,
+    /// while a sibling directory or a link inside the installation that leads out of it does not.
+    /// </summary>
+    [TestMethod]
+    [OSCondition(OperatingSystems.Linux | OperatingSystems.OSX)]
+    public void OwnedPathsAreComparedWithLinksResolved()
+    {
+        string root = Directory.CreateTempSubdirectory("ankus-owned-").FullName;
+        try
+        {
+            string physical = Directory.CreateDirectory(Path.Join(root, "private", "tmp", "postgres")).FullName;
+            _ = Directory.CreateDirectory(Path.Join(root, "private", "tmp", "other"));
+            _ = Directory.CreateSymbolicLink(Path.Join(root, "tmp"), Path.Join("private", "tmp"));
+            string linked = Path.Join(root, "tmp", "postgres");
+            PostgresProvisioner.RequireOwnedPath(linked, Path.Join(PostgresProvisioner.ResolveLinks(physical), "lib"));
+            PostgresProvisioner.RequireOwnedPath(linked, Path.Join(linked, "lib"));
+            Assert.ThrowsExactly<InvalidDataException>(() => PostgresProvisioner.RequireOwnedPath(linked, Path.Join(root, "private", "tmp", "other")));
+            _ = Directory.CreateSymbolicLink(Path.Join(physical, "escape"), Path.Join(root, "private", "tmp", "other"));
+            Assert.ThrowsExactly<InvalidDataException>(() => PostgresProvisioner.RequireOwnedPath(linked, Path.Join(linked, "escape", "lib")));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
     /// Turns any unexpected upstream access into a distinct failure.
     /// </summary>
     private sealed class UnexpectedRequestHandler : HttpMessageHandler
