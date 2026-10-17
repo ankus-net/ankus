@@ -770,6 +770,44 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   locking them, so the server holds nothing in a checkout and stopping it only
   interrupted the other job. Cleanup now leaves the host SDK's servers
   running; it still stops the servers of the runtime checkout's own SDK.
+- A review written while building pg_durable on Ankus became issues #6
+  through #13, and a macOS run became #18. Each was fixed in its own pull
+  request, whose CI passed the complete suite on Linux x64 and macOS ARM64
+  with PostgreSQL 18 and on Windows x64 with PostgreSQL 17 on GitHub-hosted
+  runners, with CodeQL clean.
+  - `PgSettings.Run` (#6, PR #24, CI 39022542430) changes settings while a
+    callback runs, as a function's `SET` clause does: it opens a GUC nest
+    level, saves each value with `GUC_ACTION_SAVE` and the current user's
+    privileges, and calls `AtEOXact_GUC` when the callback returns or throws.
+    Values are checked in a subtransaction first, so a bad name, value or
+    privilege is a `PgException` the caller can catch; an error that must
+    roll back leaves the values to that rollback. Its integration tests cover
+    each way a callback ends, nesting, a plain `SET` inside a scope and the
+    three rejections, and pass on PostgreSQL 13, 15, 18 and 19 RC1 on
+    debian-dev; the new C compiles without warnings under `-Wall -Wextra`
+    against the 13 and 18 headers.
+  - Benchmarks (#7, #9, #11; PRs #22, #19, #20, CI 39011781272, 39009051439,
+    39010077689). `RollbackPerBatch` and `RollbackPerIteration` roll the
+    benchmark subtransaction back natively, and a probe benchmark passes only
+    when every iteration starts from an empty table. `ankus bench` warns when
+    `debug_assertions` is on, and `ankus init --pgNN download --release`
+    builds without assertions under its own build identity. Bench runs `LOAD`
+    first and, when the server says the library needs
+    `shared_preload_libraries`, preloads it and restarts.
+  - Tooling (#8, #10, #12, #13, #18; PRs #21, #17, #16, #15, #23, CI
+    39010899066, 39008088070, 39019199283, 39007253379, 39012397015).
+    `ankus regress` stages the extension through `extension_control_path` on
+    PostgreSQL 18 and later, so a read-only installation is left alone, and
+    explains the requirement before 18. A failed source build leads with
+    configure's or the compiler's error, keeps the output and `config.log`
+    beside the installation, and finds pkg-config in Homebrew's and MacPorts'
+    directories. Test clusters create the `postgres` superuser, as
+    `ankus start` does, so a trusted extension's objects are now owned by
+    `postgres`. Root help lists commands as `dotnet --help` does, each default
+    appears once, and `schema --no-build` replaces `--skip-build`, which
+    stays as a hidden alias. Installation paths are compared with symbolic
+    links resolved; on the Intel Mac mini `ankus init --home /tmp/...
+    --pg18 download` now installs PostgreSQL 18.6.
 - Scheduled run 38729094424 lost one Windows/PostgreSQL 18.6 case before its
   test body ran: the server reset the connection during authentication. The
   new backend had failed with `FATAL: incorrect checksum in control file` in
