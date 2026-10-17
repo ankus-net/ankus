@@ -205,7 +205,9 @@ Windows is not supported. Memory errors appear in the server log between <code>V
 
 ### UserName
 
-Gets the bootstrap database superuser name, independent of the operating system account name.
+Gets the bootstrap database superuser name, independent of the operating system account name. The default,
+<code>postgres</code>, matches the clusters <code>ankus start</code> creates, PostgreSQL's installers and its official
+container image.
 
 ```csharp
 public string UserName { get; init; }
