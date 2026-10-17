@@ -808,6 +808,37 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
     stays as a hidden alias. Installation paths are compared with symbolic
     links resolved; on the Intel Mac mini `ankus init --home /tmp/...
     --pg18 download` now installs PostgreSQL 18.6.
+- Pull requests always ran on GitHub-hosted runners, 90 to 110 minutes each,
+  because CI picked the dedicated runners only for pushes to `main`. A pull
+  request willibrandon opens from a branch in this repository now uses them
+  too; forks and other authors' pull requests stay on GitHub's. Merging the
+  review's pull requests queued nine `main` runs behind the one runner with
+  `ankus-linux-primary-x64`, so behemoth's two version runners carry that
+  label as well. The merged runs then exposed four test problems the hosted
+  runners had hidden, each fixed through its own pull request:
+  - On Windows, `pg_ctl` starts the server through `cmd /c`, which can
+    outlive `pg_ctl stop` while it still holds the server log, so moving or
+    reading the cluster right after a stop failed in
+    `StartRecordsTheServerLogPath` on every dedicated Windows run (main CI
+    39041910214, its rerun, and 39041919277). A stop now waits, up to ten
+    seconds, until nothing holds the log open for writing; the test passed on
+    the dedicated Windows runner with the change and failed without it in the
+    same round.
+  - `RegressLeavesAReadOnlyInstallationAlone` looked for the probe's control
+    file, which an earlier test can already have installed into the staged
+    copy; it now compares the directories before and after (main CI
+    39042214181).
+  - `ValgrindStartupFailureRecovers` gave a start under Memcheck five seconds
+    to reach a failed bind; on a busy runner it timed out first (main CI
+    39042224967). A failed bind ends the start when the server exits, so it
+    uses the normal startup timeout.
+  - The Subscriber sample's `unsubscribe` never waited for its terminated
+    worker: its loop began with `pg_stat_clear_snapshot() IS NULL`, and a
+    void result is not null. When the provider's slot drop finished first,
+    dropping the origin failed "in use by PID" (CI 39056254299). It now
+    clears the snapshot in its own statement before each check.
+  The Docs workflow also gained a `pages` concurrency group after two merges a
+  minute apart collided on one Pages deployment (Docs run 39041919234).
 - Scheduled run 38729094424 lost one Windows/PostgreSQL 18.6 case before its
   test body ran: the server reset the connection during authentication. The
   new backend had failed with `FATAL: incorrect checksum in control file` in
