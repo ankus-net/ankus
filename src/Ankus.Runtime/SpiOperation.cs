@@ -193,4 +193,9 @@ internal enum SpiOperation : byte
     /// Defines a configuration parameter whose name and metadata are supplied at run time.
     /// </summary>
     GucDefine,
+
+    /// <summary>
+    /// Runs a synchronous managed callback with configuration settings saved and restored around it.
+    /// </summary>
+    Settings,
 }

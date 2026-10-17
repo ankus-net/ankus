@@ -70,6 +70,31 @@ separately saved `SET` and `SET LOCAL` states. PostgreSQL 13 and 14 use their
 native privilege-context checks and do not have per-parameter grants. A rejected
 replay warns and preserves the preceding accepted value.
 
+## Changing settings for a callback
+
+`PgSettings.Run` changes any setting, including PostgreSQL's own, while a
+callback runs, the way a function's `SET` clause does for its body:
+
+```csharp
+long claimed = PgSettings.Run("lock_timeout", "100ms",
+    () => Spi.Execute("UPDATE jobs SET state = 'running' WHERE id = $1", SpiParameter.Create(id)));
+```
+
+Pass pairs to change several at once:
+
+```csharp
+PgSettings.Run([new("lock_timeout", "100ms"), new("statement_timeout", "5s")], () => Claim(id));
+```
+
+PostgreSQL checks each name, value and privilege before the callback runs, so a
+mistake throws `PgException`, such as `42704` for an unknown setting, `22023` for
+an invalid value or `42501` for one the current user may not set, and the
+transaction stays usable. The values are restored when the callback returns or
+throws. If a PostgreSQL error rolls back the enclosing transaction or
+subtransaction, that rollback restores them, as it would for a function. A plain
+`SET` run inside the callback outlasts it, as it does inside a function with a
+`SET` clause.
+
 ## Reserving a prefix
 
 Declare a prefix at assembly scope to catch unknown settings after registration:
