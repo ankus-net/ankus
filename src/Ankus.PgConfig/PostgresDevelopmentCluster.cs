@@ -461,8 +461,55 @@ public sealed partial class PostgresDevelopmentCluster
     /// <summary>
     /// Requests a fast shutdown and waits for pg_ctl's default limit, which honors PGCTLTIMEOUT as cargo pgrx stop does.
     /// </summary>
-    private Task StopRunningAsync(CancellationToken cancellationToken)
-        => RunCheckedAsync(_installation.PgCtlPath, ["stop", "-D", DataDirectory, "-m", "fast", "-w"], cancellationToken);
+    private async Task StopRunningAsync(CancellationToken cancellationToken)
+    {
+        await RunCheckedAsync(_installation.PgCtlPath, ["stop", "-D", DataDirectory, "-m", "fast", "-w"], cancellationToken).ConfigureAwait(false);
+        if (OperatingSystem.IsWindows())
+        {
+            await WaitForLogWriterAsync(LogFilePath + ".stderr.log", TimeSpan.FromSeconds(10), cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Waits until no process holds a log open for writing, or the timeout passes.
+    /// </summary>
+    /// <param name="path">The log file.</param>
+    /// <param name="timeout">How long to wait before giving up quietly.</param>
+    /// <param name="cancellationToken">Cancels the wait.</param>
+    /// <returns>A task that completes once the log has no writer, is missing, or the timeout has passed.</returns>
+    /// <remarks>
+    /// On Windows, pg_ctl starts the server through <c>cmd /c</c>, which redirects its output to the log and can outlive
+    /// <c>pg_ctl stop</c> by a moment. Until it exits, the log, and so the cluster's directory, cannot be moved or deleted.
+    /// Opening with read sharing only fails while a writer remains, so a reader such as an editor does not delay the stop.
+    /// </remarks>
+    internal static async Task WaitForLogWriterAsync(string path, TimeSpan timeout, CancellationToken cancellationToken)
+    {
+        long deadline = Environment.TickCount64 + (long)timeout.TotalMilliseconds;
+        while (true)
+        {
+            try
+            {
+                using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+                return;
+            }
+            catch (FileNotFoundException)
+            {
+                return;
+            }
+            catch (DirectoryNotFoundException)
+            {
+                return;
+            }
+            catch (IOException) when (Environment.TickCount64 < deadline)
+            {
+                await Task.Delay(50, cancellationToken).ConfigureAwait(false);
+            }
+            catch (IOException)
+            {
+                return;
+            }
+        }
+    }
 
     private async Task RunCheckedAsync(string executable, string[] arguments, CancellationToken token, bool allowDescendants = false,
         IReadOnlyDictionary<string, string?>? environment = null)
