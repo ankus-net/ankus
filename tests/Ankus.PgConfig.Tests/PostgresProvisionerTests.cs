@@ -53,9 +53,26 @@ public sealed class PostgresProvisionerTests(TestContext context)
         string baseline = PostgresProvisioner.GetBuildIdentity(new PostgresProvisionOptions { Jobs = 1 });
         Assert.AreEqual(baseline, PostgresProvisioner.GetBuildIdentity(new PostgresProvisionOptions { Jobs = 8 }));
         Assert.AreNotEqual(baseline, PostgresProvisioner.GetBuildIdentity(new PostgresProvisionOptions { EnableValgrind = true }));
+        Assert.AreNotEqual(baseline, PostgresProvisioner.GetBuildIdentity(new PostgresProvisionOptions { Release = true }));
         Assert.AreNotEqual(baseline, PostgresProvisioner.GetBuildIdentity(new PostgresProvisionOptions { ConfigureFlags = ["--with-icu"] }));
         Assert.AreNotEqual(PostgresProvisioner.GetBuildIdentity(new PostgresProvisionOptions { ConfigureFlags = ["--with-icu"] }),
             PostgresProvisioner.GetBuildIdentity(new PostgresProvisionOptions { ConfigureFlags = ["--without-icu"] }));
+    }
+
+    /// <summary>
+    /// Development builds check assertions and randomize allocated memory as <c>cargo pgrx init</c>'s do, and release builds
+    /// leave both out for benchmarking. Both keep debug symbols, and Valgrind instrumentation is independent.
+    /// </summary>
+    [TestMethod]
+    public void ReleaseBuildsLeaveOutAssertionsAndMemoryRandomization()
+    {
+        var development = new PostgresProvisionOptions { ConfigureFlags = ["--with-icu"] };
+        var release = new PostgresProvisionOptions { ConfigureFlags = ["--with-icu"], Release = true, EnableValgrind = true };
+        Assert.AreSequenceEqual(["--prefix=/opt/pg", "--enable-debug", "--enable-cassert", "--with-icu"],
+            PostgresProvisioner.GetConfigureArguments("/opt/pg", development));
+        Assert.AreSequenceEqual(["--prefix=/opt/pg", "--enable-debug", "--with-icu"], PostgresProvisioner.GetConfigureArguments("/opt/pg", release));
+        Assert.AreEqual("-O2 -DUSE_ASSERT_CHECKING=1 -DRANDOMIZE_ALLOCATED_MEMORY=1", PostgresProvisioner.GetPreprocessorFlags("-O2", development));
+        Assert.AreEqual("-O2 -DUSE_VALGRIND=1", PostgresProvisioner.GetPreprocessorFlags("-O2", release));
     }
 
     /// <summary>

@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using Ankus.PgConfig;
 
 namespace Ankus.Tool;
 
@@ -41,6 +42,16 @@ internal static class BenchmarkConsoleFormat
     internal static string Waiting(int seconds)
         => string.Create(CultureInfo.InvariantCulture,
             $"     Waiting {seconds} {(seconds == 1 ? "second" : "seconds")} before starting benchmarks");
+
+    /// <summary>
+    /// Formats the warning printed to standard error when the server checks assertions, which make timings unrepresentative.
+    /// </summary>
+    /// <param name="version">The server's PostgreSQL version.</param>
+    /// <returns>The warning without a trailing newline.</returns>
+    internal static string AssertionWarning(PostgresVersion version)
+        => string.Create(CultureInfo.InvariantCulture,
+            $"Ankus: warning: PostgreSQL {version} was built with assertions, which slow the whole server. For representative " +
+            $"timings, benchmark a release build, such as one from 'ankus init --pg{version.Major} download --release'.");
 
     /// <summary>
     /// Formats the group summary printed after all benchmarks ran.

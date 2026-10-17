@@ -64,7 +64,19 @@ public sealed partial class ToolCommandTests
             Assert.Contains("] std. dev. [", run.StandardOutput);
             Assert.Contains(new string(' ', 28) + "median: [", run.StandardOutput);
             Assert.Contains("] med. abs. dev. [", run.StandardOutput);
-            Assert.IsEmpty(run.StandardError);
+
+            // A server built with assertions, as downloaded development builds are, gets a warning that timings include them.
+            ProcessResult configure = await PackageProcessRunner.RunAsync(installation.PgConfigPath, ["--configure"], s_environment, token);
+            if (configure.StandardOutput.Contains("--enable-cassert", StringComparison.Ordinal))
+            {
+                Assert.Contains($"PostgreSQL {installation.Version} was built with assertions", run.StandardError);
+                Assert.HasCount(1, run.StandardError.ReplaceLineEndings("\n").Split('\n', StringSplitOptions.RemoveEmptyEntries));
+            }
+            else
+            {
+                Assert.IsEmpty(run.StandardError);
+            }
+
             if (s_installation.Version.Major >= 18)
             {
                 string benchmarkOutput = Path.Join(benchmarkDirectory, "bin", "ankus-bench",

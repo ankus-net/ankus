@@ -169,7 +169,8 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
     internal static string GetBuildIdentity(PostgresProvisionOptions options)
     {
         string inputs = string.Join('\0', ["1", RuntimeInformation.RuntimeIdentifier,
-            options.EnableValgrind.ToString(CultureInfo.InvariantCulture), .. options.ConfigureFlags,
+            options.EnableValgrind.ToString(CultureInfo.InvariantCulture), .. options.Release ? ["release"] : Array.Empty<string>(),
+            .. options.ConfigureFlags,
             .. s_buildEnvironment.Select(static name => name + "=" + Environment.GetEnvironmentVariable(name))]);
         return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(inputs)))[..16];
     }
@@ -177,8 +178,7 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
     private static async Task BuildAsync(string source, string destination, string stagingRoot,
         PostgresProvisionOptions options, CancellationToken cancellationToken)
     {
-        string flags = (Environment.GetEnvironmentVariable("CPPFLAGS") ?? "") +
-            " -DUSE_ASSERT_CHECKING=1 -DRANDOMIZE_ALLOCATED_MEMORY=1" + (options.EnableValgrind ? " -DUSE_VALGRIND=1" : "");
+        string flags = GetPreprocessorFlags(Environment.GetEnvironmentVariable("CPPFLAGS"), options);
         string? pkgConfigPath = Environment.GetEnvironmentVariable("PKG_CONFIG_PATH");
         if (OperatingSystem.IsMacOS() && !options.ConfigureFlags.Contains("--without-icu") &&
             Environment.GetEnvironmentVariable("ICU_CFLAGS") is null && Environment.GetEnvironmentVariable("ICU_LIBS") is null &&
@@ -192,7 +192,7 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
             }
         }
 
-        string[] configure = [$"--prefix={destination}", "--enable-debug", "--enable-cassert", .. options.ConfigureFlags];
+        string[] configure = GetConfigureArguments(destination, options);
 
         // The source tree is deleted after a failed build, so the output and config.log are kept beside the installation.
         string log = destination + ".build.log";
@@ -242,6 +242,26 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
     /// <returns>The pkg-config path, or null.</returns>
     internal static string? FindPkgConfig(IEnumerable<string> directories)
         => directories.Select(static directory => Path.Join(directory, "pkg-config")).FirstOrDefault(File.Exists);
+
+    /// <summary>
+    /// Builds the preprocessor flags: development builds check assertions and randomize allocated memory as
+    /// <c>cargo pgrx init</c>'s do, and release builds leave both out.
+    /// </summary>
+    /// <param name="inherited">The caller's <c>CPPFLAGS</c>, if any.</param>
+    /// <param name="options">The build options.</param>
+    /// <returns>The flags passed to configure and make.</returns>
+    internal static string GetPreprocessorFlags(string? inherited, PostgresProvisionOptions options)
+        => (inherited ?? "") + (options.Release ? "" : " -DUSE_ASSERT_CHECKING=1 -DRANDOMIZE_ALLOCATED_MEMORY=1") +
+            (options.EnableValgrind ? " -DUSE_VALGRIND=1" : "");
+
+    /// <summary>
+    /// Builds configure's arguments. Every build keeps debug symbols; development builds also enable assertions.
+    /// </summary>
+    /// <param name="destination">The installation directory.</param>
+    /// <param name="options">The build options.</param>
+    /// <returns>The arguments in order.</returns>
+    internal static string[] GetConfigureArguments(string destination, PostgresProvisionOptions options)
+        => [$"--prefix={destination}", "--enable-debug", .. options.Release ? Array.Empty<string>() : ["--enable-cassert"], .. options.ConfigureFlags];
 
     private static async Task<string> RunAsync(string executable, string[] arguments, string directory,
         string preprocessorFlags, string? pkgConfigPath, CancellationToken cancellationToken, string? log = null)
