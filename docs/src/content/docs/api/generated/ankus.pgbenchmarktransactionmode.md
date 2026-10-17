@@ -17,6 +17,28 @@ public enum PgBenchmarkTransactionMode
 
 ## Fields
 
+<a id="member-00c1879054d852aa"></a>
+
+### RollbackPerBatch
+
+Runs each measured batch in its own internal subtransaction and rolls it back, so a benchmark that changes data
+starts every batch from the same state. The rollback is part of the measured time.
+
+```csharp
+RollbackPerBatch = 3
+```
+
+<a id="member-5f405f0abe968925"></a>
+
+### RollbackPerIteration
+
+Runs every measured iteration in its own internal subtransaction and rolls it back, so a benchmark that changes data
+starts every iteration from the same state. The rollback is part of the measured time.
+
+```csharp
+RollbackPerIteration = 4
+```
+
 <a id="member-503b9353a9b91d4f"></a>
 
 ### Shared

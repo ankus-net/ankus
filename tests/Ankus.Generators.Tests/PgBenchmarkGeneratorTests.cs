@@ -100,6 +100,38 @@ public sealed partial class PgFunctionGeneratorTests
     }
 
     /// <summary>
+    /// Each declared transaction mode, including the rollback modes, reaches the dispatcher, and a value beyond them is
+    /// reported.
+    /// </summary>
+    /// <param name="mode">The declared mode's name.</param>
+    /// <param name="value">Its numeric value in the generated dispatcher.</param>
+    [TestMethod]
+    [DataRow("Shared", 0)]
+    [DataRow("SubtransactionPerIteration", 2)]
+    [DataRow("RollbackPerBatch", 3)]
+    [DataRow("RollbackPerIteration", 4)]
+    public void TransactionModesReachTheDispatcher(string mode, int value)
+    {
+        (Compilation compilation, ImmutableArray<Diagnostic> diagnostics) = Generate($$"""
+            public static class Benchmarks
+            {
+                [Ankus.PgBenchmark(Transaction = Ankus.PgBenchmarkTransactionMode.{{mode}})]
+                public static void Run(Ankus.PgBencher bencher) => bencher.Iterate(static () => 42);
+
+                [Ankus.PgBenchmark(Transaction = (Ankus.PgBenchmarkTransactionMode)5)]
+                public static void Unknown(Ankus.PgBencher bencher) => bencher.Iterate(static () => 42);
+            }
+            """, options: new BenchmarkOptions(true, string.Empty));
+
+        Diagnostic diagnostic = Assert.ContainsSingle(diagnostics);
+        Assert.AreEqual("ANKUS132", diagnostic.Id);
+        Assert.Contains("Transaction", diagnostic.GetMessage(CultureInfo.InvariantCulture));
+        string dispatchers = compilation.SyntaxTrees.Single(static tree => tree.FilePath.EndsWith("ExtensionDispatchers.g.cs", StringComparison.Ordinal))
+            .GetText(context.CancellationToken).ToString();
+        Assert.Contains("(global::Ankus.PgBenchmarkTransactionMode)" + value.ToString(CultureInfo.InvariantCulture), dispatchers);
+    }
+
+    /// <summary>
     /// A benchmark's throughput reaches its configuration, and benchmarks without one keep the shorter form.
     /// </summary>
     [TestMethod]

@@ -190,6 +190,35 @@ public sealed partial class ToolCommandTests(TestContext context)
                     => bencher.Iterate(static () => Spi.Execute("INSERT INTO public.ankus_benchmark_probe VALUES (42)"));
 
                 /// <summary>
+                /// Inserts a row in each iteration after requiring the table to be empty, which holds only when every
+                /// iteration is rolled back.
+                /// </summary>
+                /// <param name="bencher">The PostgreSQL benchmark timing boundary.</param>
+                [PgBenchmark(Setup = nameof(Prepare), Transaction = PgBenchmarkTransactionMode.RollbackPerIteration, SampleSize = 10,
+                    MeasurementTimeMilliseconds = 1, WarmupTimeMilliseconds = 1, ResampleCount = 10)]
+                public static void RollbackKeepsIterationsIndependent(PgBencher bencher)
+                    => bencher.Iterate(InsertIntoEmptyTable);
+
+                /// <summary>
+                /// Runs the same body with each iteration's subtransaction released, so the second iteration fails.
+                /// </summary>
+                /// <param name="bencher">The PostgreSQL benchmark timing boundary.</param>
+                [PgBenchmark(Setup = nameof(Prepare), Transaction = PgBenchmarkTransactionMode.SubtransactionPerIteration, SampleSize = 10,
+                    MeasurementTimeMilliseconds = 1, WarmupTimeMilliseconds = 1, ResampleCount = 10)]
+                public static void ReleaseKeepsEarlierRows(PgBencher bencher)
+                    => bencher.Iterate(InsertIntoEmptyTable);
+
+                private static void InsertIntoEmptyTable()
+                {
+                    if (Spi.ExecuteScalar<long>("SELECT count(*) FROM public.ankus_benchmark_probe") != 0)
+                    {
+                        throw new InvalidOperationException("An earlier iteration's row survived.");
+                    }
+
+                    Spi.Execute("INSERT INTO public.ankus_benchmark_probe VALUES (42)");
+                }
+
+                /// <summary>
                 /// Measures PostgreSQL numeric addition through the managed value API.
                 /// </summary>
                 /// <param name="bencher">The PostgreSQL benchmark timing boundary.</param>

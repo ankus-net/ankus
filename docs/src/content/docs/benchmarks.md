@@ -150,7 +150,12 @@ Results then print a `thrpt:` line under the time, such as
 The default `Shared` transaction mode measures work in the benchmark's enclosing
 transaction. `SubtransactionPerBatch` adds one internal subtransaction around
 each batch. `SubtransactionPerIteration` isolates every iteration and includes
-that cost in the measurement.
+that cost in the measurement. These modes release the subtransaction, so rows a
+benchmark inserts or deletes are still there for the next iteration.
+`RollbackPerBatch` and `RollbackPerIteration` roll the subtransaction back
+instead, so every batch or iteration starts from the same data. The rollback is
+part of the measured time, and aborting a subtransaction that wrote rows costs
+more than releasing one.
 
 Results include the selected sampling mode, raw iteration counts, elapsed
 nanoseconds and bootstrap confidence intervals for mean, median, median absolute

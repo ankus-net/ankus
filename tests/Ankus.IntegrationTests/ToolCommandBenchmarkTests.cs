@@ -320,7 +320,7 @@ public sealed partial class ToolCommandTests
             Assert.Contains("Rerun with `ankus bench --cascade` to drop the objects that depend on it.", blocked.StandardError);
             ProcessResult cascaded = await InvokeAsync(["bench", .. options, "--group-name", "cascaded", "--cascade", "--no-build"], token);
             Assert.AreEqual(1, cascaded.ExitCode, cascaded.StandardOutput + cascaded.StandardError);
-            Assert.MatchesRegex(@"    Result 3 total, 2 ok, 1 failed", cascaded.StandardOutput);
+            Assert.MatchesRegex(@"    Result 5 total, 3 ok, 2 failed", cascaded.StandardOutput);
             await using (Npgsql.NpgsqlConnection connection = BenchmarkConnection(connectionString, "ankus_tool_probe_benches"))
             {
                 await connection.OpenAsync(token);
@@ -359,6 +359,18 @@ public sealed partial class ToolCommandTests
             ProcessResult combined = await InvokeAsync(["bench", .. options, "--report", "--list"], token);
             Assert.AreNotEqual(0, combined.ExitCode);
             Assert.Contains("--report cannot be combined with --list.", combined.StandardOutput + combined.StandardError);
+
+            // Each iteration requires the table to be empty before it inserts a row. That holds only when every
+            // iteration's subtransaction is rolled back, so the same body fails when each is released.
+            ProcessResult rolledBack = await InvokeAsync(["bench", "RollbackKeepsIterationsIndependent", .. options, "--no-build",
+                "--group-name", "rolled-back"], token);
+            Assert.AreEqual(0, rolledBack.ExitCode, rolledBack.StandardOutput + rolledBack.StandardError);
+            Assert.Contains("[transaction=rollback_per_iteration,", rolledBack.StandardOutput);
+            Assert.Contains("Result 1 total, 1 ok, 0 failed", rolledBack.StandardOutput);
+            ProcessResult released = await InvokeAsync(["bench", "ReleaseKeepsEarlierRows", .. options, "--no-build",
+                "--group-name", "released"], token);
+            Assert.AreNotEqual(0, released.ExitCode, released.StandardOutput + released.StandardError);
+            Assert.Contains("An earlier iteration's row survived.", released.StandardOutput + released.StandardError);
         }
         finally
         {

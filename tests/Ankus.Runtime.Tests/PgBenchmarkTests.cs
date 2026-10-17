@@ -95,6 +95,8 @@ public sealed class PgBenchmarkTests
     [DataRow(PgBenchmarkTransactionMode.Shared)]
     [DataRow(PgBenchmarkTransactionMode.SubtransactionPerBatch)]
     [DataRow(PgBenchmarkTransactionMode.SubtransactionPerIteration)]
+    [DataRow(PgBenchmarkTransactionMode.RollbackPerBatch)]
+    [DataRow(PgBenchmarkTransactionMode.RollbackPerIteration)]
     public void BatchedMeasurementIncludesInputPreparation(PgBenchmarkTransactionMode mode)
     {
         long setupElapsed = 0;
@@ -125,6 +127,8 @@ public sealed class PgBenchmarkTests
     [TestMethod]
     [DataRow(PgBenchmarkTransactionMode.SubtransactionPerBatch)]
     [DataRow(PgBenchmarkTransactionMode.SubtransactionPerIteration)]
+    [DataRow(PgBenchmarkTransactionMode.RollbackPerBatch)]
+    [DataRow(PgBenchmarkTransactionMode.RollbackPerIteration)]
     public void BatchedMeasurementIncludesSubtransactionBoundary(PgBenchmarkTransactionMode mode)
     {
         long boundaryElapsed = 0;
@@ -166,7 +170,7 @@ public sealed class PgBenchmarkTests
     }
 
     /// <summary>
-    /// Applies shared, per-batch and per-iteration transaction boundaries exactly.
+    /// Applies shared, per-batch and per-iteration transaction boundaries exactly, whether they release or roll back.
     /// </summary>
     [TestMethod]
     public void TransactionModesUseTheirExactBoundaries()
@@ -174,6 +178,8 @@ public sealed class PgBenchmarkTests
         Assert.AreEqual(0, CountSubtransactions(PgBenchmarkTransactionMode.Shared));
         Assert.AreEqual(3, CountSubtransactions(PgBenchmarkTransactionMode.SubtransactionPerBatch));
         Assert.AreEqual(5, CountSubtransactions(PgBenchmarkTransactionMode.SubtransactionPerIteration));
+        Assert.AreEqual(3, CountSubtransactions(PgBenchmarkTransactionMode.RollbackPerBatch));
+        Assert.AreEqual(5, CountSubtransactions(PgBenchmarkTransactionMode.RollbackPerIteration));
     }
 
     /// <summary>
@@ -183,6 +189,8 @@ public sealed class PgBenchmarkTests
     [TestMethod]
     [DataRow(PgBenchmarkTransactionMode.SubtransactionPerBatch)]
     [DataRow(PgBenchmarkTransactionMode.SubtransactionPerIteration)]
+    [DataRow(PgBenchmarkTransactionMode.RollbackPerBatch)]
+    [DataRow(PgBenchmarkTransactionMode.RollbackPerIteration)]
     public void BatchedSetupUsesSelectedTransactionBoundary(PgBenchmarkTransactionMode mode)
     {
         bool inside = false;
