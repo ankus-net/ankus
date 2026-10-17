@@ -20,6 +20,12 @@ permissions:
   pages: write
   id-token: write
 
+# Pages accepts one deployment at a time, so commits merged in quick succession wait for the deployment ahead of them
+# instead of failing.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-24.04
