@@ -1,10 +1,13 @@
+using System.Diagnostics;
+
 namespace Ankus.PgConfig.Tests;
 
 /// <summary>
 /// Verifies exact development-server configuration and validation before native operations.
 /// </summary>
+/// <param name="context">The current test's cancellation scope.</param>
 [TestClass]
-public sealed class PostgresDevelopmentClusterTests
+public sealed class PostgresDevelopmentClusterTests(TestContext context)
 {
     /// <summary>
     /// Each supported major receives its own pgrx-compatible port and local-only connection routing.
@@ -140,5 +143,45 @@ public sealed class PostgresDevelopmentClusterTests
         Assert.ThrowsExactly<ArgumentNullException>(() => PostgresDevelopmentCluster.CreateConfiguration(18,
             new PostgresDevelopmentOptions { Settings = new Dictionary<string, string> { ["probe.text"] = null! } }));
         Assert.ThrowsExactly<ArgumentNullException>(() => new PostgresDevelopmentCluster(null!));
+    }
+
+    /// <summary>
+    /// A stop waits while another process still writes the log, as the shell pg_ctl starts on Windows can just after the
+    /// server exits, but not for a missing log, a reader, or past its timeout.
+    /// </summary>
+    [TestMethod]
+    [OSCondition(OperatingSystems.Windows)]
+    public async Task StopWaitsOnlyForTheLogWriter()
+    {
+        CancellationToken token = context.CancellationToken;
+        string directory = Directory.CreateTempSubdirectory("ankus-log-writer-").FullName;
+        try
+        {
+            string path = Path.Join(directory, "pg18.log.stderr.log");
+            TimeSpan wait = TimeSpan.FromSeconds(30);
+            var elapsed = Stopwatch.StartNew();
+            await PostgresDevelopmentCluster.WaitForLogWriterAsync(path, wait, token);
+            await File.WriteAllTextAsync(path, "ready\n", token);
+            await using (var reader = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+            {
+                await PostgresDevelopmentCluster.WaitForLogWriterAsync(path, wait, token);
+            }
+
+            Assert.IsLessThan(TimeSpan.FromSeconds(5), elapsed.Elapsed);
+            var writer = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
+            Task waiting = PostgresDevelopmentCluster.WaitForLogWriterAsync(path, wait, token);
+            await Task.Delay(300, token);
+            Assert.IsFalse(waiting.IsCompleted);
+            await writer.DisposeAsync();
+            await waiting.WaitAsync(wait, token);
+            await using (new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
+            {
+                await PostgresDevelopmentCluster.WaitForLogWriterAsync(path, TimeSpan.FromMilliseconds(200), token).WaitAsync(wait, token);
+            }
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
     }
 }

@@ -155,7 +155,7 @@ public sealed class PostgresDevelopmentDiagnosticsTests(TestContext context)
             }
 
             Assert.IsTrue(await cluster.StopAsync(token));
-            Assert.Contains("WARNING:  " + message, await ReadSharedAsync(recorded, token));
+            Assert.Contains("WARNING:  " + message, await File.ReadAllTextAsync(recorded, token));
             Assert.AreEqual(installation.Label, await File.ReadAllTextAsync(Path.Join(cluster.DataDirectory, ".ankus-cluster"), token));
 
             Directory.Move(home, moved);
@@ -176,15 +176,6 @@ public sealed class PostgresDevelopmentDiagnosticsTests(TestContext context)
             string text = await File.ReadAllTextAsync(Path.Join(cluster.DataDirectory, ".ankus-log"), token);
             Assert.EndsWith("\n", text);
             return text[..^1];
-        }
-
-        // On Windows, the process that redirected the server's output can still hold the log open after the server
-        // stops, so read it without asking that writer to close.
-        static async Task<string> ReadSharedAsync(string path, CancellationToken token)
-        {
-            await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
-            using var reader = new StreamReader(stream);
-            return await reader.ReadToEndAsync(token);
         }
     }
 
