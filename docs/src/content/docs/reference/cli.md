@@ -583,8 +583,12 @@ missing. Existing expectations cannot be overwritten with `--add`. Review the
 recorded output before committing it, including any SQL errors your test intends
 to exercise. A failed client process never becomes a successful expectation.
 
-Ankus stops the selected development server, builds and installs the extension,
-then restarts the server. It uses a database named `<extension>_regress`.
+Ankus stops the selected development server, builds the extension, then restarts
+the server. On PostgreSQL 18 and later it stages the extension's files beside the
+publication and points the server at them through `extension_control_path`, as
+`ankus bench` does, so the installation, such as a distribution's, needs no write
+access. Earlier versions have no such setting, so the extension is installed into
+the selected installation, which must be writable. It uses a database named `<extension>_regress`.
 `--database` selects another literal name. Ordinary runs preserve that database
 and skip setup on reuse.
 `--resetdb` recreates it and reruns setup. A setup script newer than its expected
