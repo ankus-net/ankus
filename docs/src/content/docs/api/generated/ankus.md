@@ -153,6 +153,7 @@ Assembly: `Ankus.Runtime.dll`
 - [PgRequiresAttribute](/api/ankus.pgrequiresattribute/)
 - [PgSchemaAttribute](/api/ankus.pgschemaattribute/)
 - [PgSearchPath](/api/ankus.pgsearchpath/)
+- [PgSettings](/api/ankus.pgsettings/)
 - [PgSharedMemory](/api/ankus.pgsharedmemory/)
 - [PgShared&lt;T&gt;](/api/ankus.pgshared-1/)
 - [PgSpinLockGuard&lt;T&gt;](/api/ankus.pgspinlockguard-1/)

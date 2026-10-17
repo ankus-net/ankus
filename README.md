@@ -711,7 +711,8 @@ units, owned extra data, and shared preload.
 An assembly `PgGucPrefix`
 attribute checks unknown settings after registration. Hooks can use `PgLog` during reload,
 rollback, and client reporting. Parallel workers restore typed values and regenerate
-hook extra data in their own managed runtime.
+hook extra data in their own managed runtime. `PgSettings.Run` changes any setting
+while a callback runs and restores it afterwards, as a function's `SET` clause does.
 
 ## Publishing and installation
 

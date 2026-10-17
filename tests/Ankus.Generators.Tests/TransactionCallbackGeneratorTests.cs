@@ -105,7 +105,7 @@ public sealed partial class PgFunctionGeneratorTests
         // TryParse before PostgreSQL 16 nests its own subtransaction, also inside an explicit scope.
         Assert.Contains("!ankus_parallel_without_subtransactions() && (transaction_frame == NULL || transaction_frame->scope);", native);
         Assert.Contains("bool recovery_subtransaction = (!direct_spi || input_recovery || (subtransaction && !ankus_parallel_without_subtransactions())) &&\n" +
-            "        !lightweight;", native);
+            "        !lightweight && !settings;", native);
         // From PostgreSQL 16, a soft input error needs no subtransaction.
         Assert.Contains("bool soft_input = request->recover_input && request->scalar_operation == 0 &&", native);
         Assert.Contains("bool recovered = false;", native);
@@ -114,5 +114,26 @@ public sealed partial class PgFunctionGeneratorTests
         // An outermost report resets ErrorContext from PostgreSQL 19, so the operation's context never lives beneath it.
         Assert.Contains("operation_detached = ankus_memory_contains(ErrorContext, CurrentMemoryContext);", native);
         Assert.Contains("operation_context = AllocSetContextCreate(operation_detached ? TopMemoryContext : CurrentMemoryContext,", native);
+    }
+
+    /// <summary>
+    /// A settings scope applies its values as a function's SET clause does, after checking them in a subtransaction,
+    /// and runs its callback without one.
+    /// </summary>
+    [TestMethod]
+    public void SettingsScopesFollowFunctionSetClauses()
+    {
+        (Compilation compilation, ImmutableArray<Diagnostic> diagnostics) = Generate(
+            "public static class Functions { [Ankus.PgFunction] public static int Value(int value) => value + 1; }");
+        AssertMemoryCompilationSucceeds(compilation, diagnostics);
+        string native = ManifestValue(compilation, "Ankus.NativeSource").ReplaceLineEndings("\n");
+        Assert.Contains("GucContext context = superuser() ? PGC_SUSET : PGC_USERSET;", native);
+        Assert.Contains("set_config_option(names[index], values[index], context, PGC_S_SESSION, GUC_ACTION_SAVE, false, 0, false);", native);
+        Assert.Contains("int level = NewGUCNestLevel();", native);
+        Assert.Contains("set_config_option(names[index], values[index], context, PGC_S_SESSION, GUC_ACTION_SAVE, true, 0, false);", native);
+        Assert.Contains("AtEOXact_GUC(true, level);", native);
+        // A failure that must roll back is raised again and leaves the values to that rollback.
+        Assert.Contains("if (callback_error.sqlstate != 0)\n        ankus_transaction_report(&callback_error, ERROR);", native);
+        Assert.Contains("ankus_run_with_settings(request, result, transaction_frame, caller_nest_level);", native);
     }
 }

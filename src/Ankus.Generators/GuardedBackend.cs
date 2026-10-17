@@ -11,6 +11,9 @@ internal static class GuardedBackend
     internal const string Source = """
         #include "access/xact.h"
         #include "executor/spi.h"
+        #include "mb/pg_wchar.h"
+        #include "miscadmin.h"
+        #include "utils/guc.h"
         #include "utils/memutils.h"
         #include "utils/resowner.h"
 
@@ -29,6 +32,75 @@ internal static class GuardedBackend
 
             return request->parameter_count > 0 && request->parameters != NULL &&
                 ankus_is_builtin_range(request->parameters[0].type_oid);
+        }
+
+        /* Applies settings around a managed callback the way fmgr_security_definer applies a
+         * function's SET clause: a new GUC nest level, GUC_ACTION_SAVE values set with the current
+         * user's privileges, and AtEOXact_GUC when the callback returns. */
+        static void
+        ankus_run_with_settings(AnkusRequest *request, AnkusResult *result, AnkusTransactionFrame *transaction_frame,
+            int caller_nest_level)
+        {
+            typedef int (*AnkusSettingsManaged)(intptr_t);
+            if (request->callback == 0 || request->callback_state == 0 || request->parameter_count % 2 != 0)
+                ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                    errmsg("The settings callback, state or values are missing")));
+
+            if (!IsTransactionState())
+                ereport(ERROR, (errcode(ERRCODE_INVALID_TRANSACTION_STATE),
+                    errmsg("Settings can change only inside a transaction")));
+
+            int count = request->parameter_count / 2;
+            GucContext context = superuser() ? PGC_SUSET : PGC_USERSET;
+            /* Check every value first in a subtransaction where one can start, so a bad name,
+             * value or privilege is an ordinary recoverable error before anything changes. */
+            bool check = !ankus_parallel_without_subtransactions() && (transaction_frame == NULL || transaction_frame->scope);
+            MemoryContext caller = CurrentMemoryContext;
+            MemoryContext names_context = AllocSetContextCreate(caller, "Ankus settings", ALLOCSET_SMALL_SIZES);
+            char **names = MemoryContextAlloc(names_context, sizeof(char *) * (Size) Max(count, 1));
+            char **values = MemoryContextAlloc(names_context, sizeof(char *) * (Size) Max(count, 1));
+            if (check)
+                ankus_begin_internal_subtransaction();
+
+            MemoryContextSwitchTo(names_context);
+            for (int index = 0, parameter = 0; index < count; index++, parameter += 2)
+            {
+                const AnkusValue *name = &request->parameters[parameter].value;
+                const AnkusValue *value = &request->parameters[parameter + 1].value;
+                names[index] = pg_any_to_server((char *) name->data, name->length, PG_UTF8);
+                values[index] = pg_any_to_server((char *) value->data, value->length, PG_UTF8);
+                if (check)
+                    (void) set_config_option(names[index], values[index], context, PGC_S_SESSION, GUC_ACTION_SAVE, false, 0, false);
+            }
+
+            if (check)
+                ankus_release_internal_subtransaction();
+
+            int level = NewGUCNestLevel();
+            for (int index = 0; index < count; index++)
+                (void) set_config_option(names[index], values[index], context, PGC_S_SESSION, GUC_ACTION_SAVE, true, 0, false);
+
+            MemoryContextSwitchTo(caller);
+            MemoryContextDelete(names_context);
+
+            /* The thunk returns all managed failures as a status, and the managed caller
+             * rethrows its own exception once the values are restored. */
+            AnkusError callback_error = {0};
+            int callback_status;
+            ANKUS_MANAGED_INVOKE(callback_status, &callback_error,
+                ((AnkusSettingsManaged) request->callback)(request->callback_state));
+            result->processed = callback_status;
+
+            /* A failure that still requires rollback leaves the values to that rollback, as
+             * PostgreSQL does when a function with a SET clause raises an error. */
+            if (callback_error.sqlstate != 0)
+                ankus_transaction_report(&callback_error, ERROR);
+
+            if (GetCurrentTransactionNestLevel() != caller_nest_level)
+                ereport(ERROR, (errcode(ERRCODE_INVALID_TRANSACTION_STATE),
+                    errmsg("The settings callback changed its transaction nesting")));
+
+            AtEOXact_GUC(true, level);
         }
 
         static int
@@ -116,6 +188,7 @@ internal static class GuardedBackend
             bool function_context = request->operation == ANKUS_SPI_FUNCTION_CONTEXT;
             bool function_call = request->operation == ANKUS_SPI_FUNCTION_CALL;
             bool subtransaction = request->operation == ANKUS_SPI_SUBTRANSACTION;
+            bool settings = request->operation == ANKUS_SPI_SETTINGS;
             /* Successful built-in operations avoid a per-call subtransaction. Catalog
              * lookup and value conversion can still acquire transaction resources;
              * a caught ERROR requires real rollback before further backend work. */
@@ -142,11 +215,13 @@ internal static class GuardedBackend
             bool lightweight = !input_recovery && (numeric || temporal || network || geometry || light_report ||
                 (range && ankus_uses_builtin_range(request)) || (datum && request->scalar_operation == 6));
             bool direct = quote || reporting || temporal || numeric || network || geometry || range || enumeration || tuple ||
-                transaction_callbacks || transaction_id || datum || function_context || function_call || custom_type || datum_type || array || lookup || relation || subtransaction;
+                transaction_callbacks || transaction_id || datum || function_context || function_call || custom_type || datum_type || array || lookup || relation || subtransaction ||
+                settings;
             /* An explicit scope always owns a subtransaction, even inside an atomic scope whose
-             * statements share their enclosing subtransaction. */
+             * statements share their enclosing subtransaction. A settings scope opens none around
+             * its callback, as a function's SET clause runs in its caller's transaction. */
             bool recovery_subtransaction = (!direct_spi || input_recovery || (subtransaction && !ankus_parallel_without_subtransactions())) &&
-                !lightweight;
+                !lightweight && !settings;
             volatile MemoryContext operation_context = NULL;
             volatile bool operation_detached = false;
             result->release = ankus_release_result;
@@ -306,7 +381,7 @@ internal static class GuardedBackend
                             ankus_require_session(request->session_id);
                         }
 
-                        if ((direct || !standalone) && request->operation != ANKUS_SPI_CLOSE_SESSION && !subtransaction)
+                        if ((direct || !standalone) && request->operation != ANKUS_SPI_CLOSE_SESSION && !subtransaction && !settings)
                         {
                             /* From PostgreSQL 19 an outermost report, such as this operation's own,
                              * resets ErrorContext and deletes every context beneath it. The operation's
@@ -371,6 +446,11 @@ internal static class GuardedBackend
                                     ereport(ERROR, (errcode(ERRCODE_INVALID_TRANSACTION_STATE),
                                         errmsg("The recovery callback changed its transaction nesting")));
 
+                                code = 0;
+                            }
+                            else if (settings)
+                            {
+                                ankus_run_with_settings(request, result, transaction_frame, caller_nest_level);
                                 code = 0;
                             }
                             else if (reporting)
