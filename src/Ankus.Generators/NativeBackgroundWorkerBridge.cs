@@ -19,10 +19,9 @@ internal static class NativeBackgroundWorkerBridge
         #include "storage/pmsignal.h"
         #include "utils/snapmgr.h"
         #include "utils/guc.h"
+        #include "pgstat.h"
         #if PG_VERSION_NUM >= 140000
         #include "utils/wait_event.h"
-        #else
-        #include "pgstat.h"
         #endif
 
         struct AnkusRequest;
@@ -429,6 +428,7 @@ internal static class NativeBackgroundWorkerBridge
                 SetCurrentStatementStartTimestamp();
                 StartTransactionCommand();
                 ankus_worker_transaction_active = 1;
+                pgstat_report_activity(STATE_RUNNING, NULL);
                 PushActiveSnapshot(GetTransactionSnapshot());
                 AnkusMemoryApi memory = {0};
                 ankus_memory_initialize(&memory);
@@ -447,6 +447,11 @@ internal static class NativeBackgroundWorkerBridge
                 }
 
                 ankus_worker_transaction_active = 0;
+                /* As worker_spi does, publish the transaction's table and I/O counts, which otherwise stay in this
+                 * process until it exits, so autovacuum and the statistics views see the worker's writes. Without
+                 * force, PostgreSQL limits how often this flushes. */
+                (void) pgstat_report_stat(false);
+                pgstat_report_activity(STATE_IDLE, NULL);
                 if (error->sqlstate != 0)
                     ankus_report(error, ERROR);
             }
@@ -518,6 +523,10 @@ internal static class NativeBackgroundWorkerBridge
                         result->value = 0;
                         break;
                     }
+
+                    /* Flush counts the rate limit held back before sleeping, as a backend does before going idle. */
+                    if (!IsTransactionOrTransactionBlock())
+                        (void) pgstat_report_stat(true);
 
                     int events = WaitLatch(MyLatch, WL_LATCH_SET | WL_POSTMASTER_DEATH |
                         (request->value >= 0 ? WL_TIMEOUT : 0), request->value >= 0 ? (long) request->value : 0, PG_WAIT_EXTENSION);

@@ -749,6 +749,18 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   CI's Windows job above). On the Intel Mac mini, with Apple clang 17 first on
   `PATH` and `AnkusClangPath` unset, a solution created by `Ankus.Tool` 0.1.7
   from nuget.org built against MacPorts PostgreSQL 18 and LLVM 20.
+- Background workers never flushed their statistics (#5): `RunTransaction`
+  committed without `pgstat_report_stat`, so a worker's row and I/O counts
+  stayed in its own memory until it exited, and autovacuum never saw tables a
+  long-running worker wrote. A job queue built on Ankus bloated until its
+  throughput collapsed. pgrx's `BackgroundWorker::transaction` has the same
+  gap. As PostgreSQL's worker_spi does, the bridge now reports the worker as
+  active during a transaction and idle after it, flushes the counts after
+  each transaction without force, which PostgreSQL rate limits, and flushes
+  with force before `Wait` sleeps outside a transaction. An integration test
+  starts a worker that inserts 100 rows and then waits, and requires
+  `pg_stat_user_tables` to show the inserts and `pg_stat_activity` to show the
+  worker idle while it still runs.
 - Release run 38839379088's net11.0 macOS ARM64 runtime job warned that "a
   build server did not stop": its cleanup ran `dotnet build-server shutdown`
   while the MacBook's other runner was compiling, and the shared compiler
