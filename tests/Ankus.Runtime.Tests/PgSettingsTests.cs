@@ -62,10 +62,9 @@ public sealed unsafe class PgSettingsTests
     [TestMethod]
     public void RejectedSettingsSkipTheCallback()
     {
-        nint previous = Enter();
+        nint previous = Enter(reject: true);
         try
         {
-            s_reject = true;
             bool invoked = false;
             PgException failure = Assert.ThrowsExactly<PgException>(() => PgSettings.Run("lock_timeout", "soon", () => invoked = true));
             Assert.AreEqual("22023", failure.SqlState);
@@ -80,10 +79,12 @@ public sealed unsafe class PgSettingsTests
     /// <summary>
     /// Installs a synchronous native callback fixture on the current test thread.
     /// </summary>
+    /// <param name="reject">Whether the fixture rejects the settings before the callback.</param>
     /// <returns>The enclosing backend capability.</returns>
-    private static nint Enter()
+    private static nint Enter(bool reject = false)
     {
         s_received = [];
+        s_reject = reject;
         return NativeBackend.Enter((nint)(delegate* unmanaged[Cdecl]<NativeSpiRequest*, NativeSpiResult*, NativeCallError*, int>)&Execute);
     }
 
