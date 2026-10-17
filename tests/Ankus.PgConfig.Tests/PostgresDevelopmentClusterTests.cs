@@ -162,17 +162,20 @@ public sealed class PostgresDevelopmentClusterTests(TestContext context)
             var elapsed = Stopwatch.StartNew();
             await PostgresDevelopmentCluster.WaitForLogWriterAsync(path, wait, token);
             await File.WriteAllTextAsync(path, "ready\n", token);
-            await using (var reader = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+            await using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
             {
                 await PostgresDevelopmentCluster.WaitForLogWriterAsync(path, wait, token);
             }
 
             Assert.IsLessThan(TimeSpan.FromSeconds(5), elapsed.Elapsed);
-            var writer = new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete);
-            Task waiting = PostgresDevelopmentCluster.WaitForLogWriterAsync(path, wait, token);
-            await Task.Delay(300, token);
-            Assert.IsFalse(waiting.IsCompleted);
-            await writer.DisposeAsync();
+            Task waiting;
+            await using (new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
+            {
+                waiting = PostgresDevelopmentCluster.WaitForLogWriterAsync(path, wait, token);
+                await Task.Delay(300, token);
+                Assert.IsFalse(waiting.IsCompleted);
+            }
+
             await waiting.WaitAsync(wait, token);
             await using (new FileStream(path, FileMode.Append, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
             {
