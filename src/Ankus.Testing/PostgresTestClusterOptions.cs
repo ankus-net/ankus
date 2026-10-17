@@ -58,13 +58,15 @@ public sealed class PostgresTestClusterOptions
     } = "ankus_tests";
 
     /// <summary>
-    /// Gets the bootstrap database superuser name, independent of the operating system account name.
+    /// Gets the bootstrap database superuser name, independent of the operating system account name. The default,
+    /// <c>postgres</c>, matches the clusters <c>ankus start</c> creates, PostgreSQL's installers and its official
+    /// container image.
     /// </summary>
     public string UserName
     {
         get;
         init;
-    } = "ankus";
+    } = "postgres";
 
     /// <summary>
     /// Gets the Unix account that owns the cluster's data and runs its server through <c>sudo -u</c>, or null to use the

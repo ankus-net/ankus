@@ -362,6 +362,10 @@ written WAL; only durability across an operating system crash is given up. Add
 Set `UseValgrind` on the fixture or cluster options, or run `ankus test
 --valgrind`, to run the server under Valgrind's Memcheck on Linux or macOS.
 
+Test clusters create the superuser `postgres`, as `ankus start` does, so one
+connection string works against either. Set `UserName` on the cluster options
+for another name.
+
 Like pgrx's, test clusters log messages at `info` and statements that take over a
 second, and use a C collation with UTF-8 encoding. Unlike pgrx, they do not log
 every statement; add `log_statement = 'all'` to `PostgreSqlConfiguration` when a
