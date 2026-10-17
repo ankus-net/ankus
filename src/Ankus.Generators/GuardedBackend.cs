@@ -338,6 +338,9 @@ internal static class GuardedBackend
                                 if (request->callback == 0 || request->callback_state == 0)
                                     ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
                                         errmsg("The subtransaction callback or state is missing")));
+                                if ((request->scalar_operation & 2) != 0 && !recovery_subtransaction)
+                                    ereport(ERROR, (errcode(ERRCODE_INVALID_TRANSACTION_STATE),
+                                        errmsg("A rolled-back scope needs a subtransaction, which this process cannot start")));
 
                                 /* The thunk returns all managed failures before ERROR starts
                                  * rollback. Raw call guards remain inside the managed callback. */
@@ -348,7 +351,7 @@ internal static class GuardedBackend
                                  * a recoverable scope restores per-statement recovery inside an atomic one. */
                                 AnkusTransactionFrame scope_frame = {0};
                                 scope_frame.previous = ankus_transaction_frame;
-                                scope_frame.direct_spi = request->scalar_operation == 1;
+                                scope_frame.direct_spi = (request->scalar_operation & 1) != 0;
                                 scope_frame.scope = true;
                                 ankus_transaction_frame = &scope_frame;
                                 ANKUS_MANAGED_INVOKE(callback_status, &callback_error,
@@ -521,7 +524,14 @@ internal static class GuardedBackend
                             }
                         }
 
-                        if (recovery_subtransaction)
+                        if (recovery_subtransaction && subtransaction && (request->scalar_operation & 2) != 0)
+                        {
+                            /* A rollback scope discards its work even after the callback succeeds, as a benchmark that
+                             * changes data needs between iterations. */
+                            RollbackAndReleaseCurrentSubTransaction();
+                            ankus_trim_internal_subtransactions();
+                        }
+                        else if (recovery_subtransaction)
                         {
                             ankus_release_internal_subtransaction();
                             if (request->operation == ANKUS_SPI_CLOSE_SESSION)

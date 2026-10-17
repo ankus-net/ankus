@@ -18,8 +18,9 @@ internal static unsafe class NativeSubtransaction
     /// <typeparam name="TResult">The managed result type.</typeparam>
     /// <param name="action">The synchronous callback.</param>
     /// <param name="atomic">Whether statements in the scope share its subtransaction instead of recovering individually.</param>
+    /// <param name="rollBack">Whether the subtransaction is rolled back even when the callback succeeds.</param>
     /// <returns>The result after native release succeeds.</returns>
-    internal static TResult Run<TResult>(Func<TResult> action, bool atomic = false)
+    internal static TResult Run<TResult>(Func<TResult> action, bool atomic = false, bool rollBack = false)
     {
         ArgumentNullException.ThrowIfNull(action);
         NativeBackend.CheckAccess();
@@ -29,7 +30,7 @@ internal static unsafe class NativeSubtransaction
         try
         {
             NativeBackend.RunSubtransaction((nint)(delegate* unmanaged[Cdecl]<nint, int>)&Dispatch,
-                GCHandle.ToIntPtr(handle), atomic);
+                GCHandle.ToIntPtr(handle), atomic, rollBack);
         }
         catch (Exception exception) when (invocation.Failure is not null && exception is not PgQueryCanceledException)
         {
@@ -47,6 +48,21 @@ internal static unsafe class NativeSubtransaction
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Runs a callback in a subtransaction that is always rolled back, discarding its changes without an exception, as
+    /// benchmarks that must start each iteration from the same data require.
+    /// </summary>
+    /// <param name="action">The synchronous callback.</param>
+    internal static void RunAndRollBack(Action action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        _ = Run<object?>(() =>
+        {
+            action();
+            return null;
+        }, rollBack: true);
     }
 
     /// <summary>

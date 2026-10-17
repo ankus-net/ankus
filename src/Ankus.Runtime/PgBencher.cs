@@ -133,7 +133,7 @@ internal sealed class PgBenchmarkRoutine(Func<object?>? setup, Action<object?> r
             {
                 InvokeBatch(current);
             }
-            else if (mode == PgBenchmarkTransactionMode.SubtransactionPerBatch)
+            else if (mode is PgBenchmarkTransactionMode.SubtransactionPerBatch or PgBenchmarkTransactionMode.RollbackPerBatch)
             {
                 subtransaction(() => InvokeBatch(current));
             }

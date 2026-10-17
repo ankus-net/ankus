@@ -124,7 +124,7 @@ internal static class PgBenchmarkPipeline
         double significance = AttributeValues.Get(benchmark, "SignificanceLevel", 0.05);
         int throughput = AttributeValues.Get(benchmark, "Throughput", 0);
         long throughputPerIteration = AttributeValues.Get(benchmark, "ThroughputPerIteration", 0L);
-        if (transaction is < 0 or > 2)
+        if (transaction is < 0 or > 4)
         {
             return Invalid("Transaction");
         }

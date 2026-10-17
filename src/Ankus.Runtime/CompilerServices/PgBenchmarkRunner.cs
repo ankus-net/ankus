@@ -167,7 +167,9 @@ public static class PgBenchmarkRunner
         PgJsonb? baseline)
         => Run(definition, setup, benchmark, baseline,
             static action => PgTransaction.RunInSubtransaction(action),
-            static action => PgTransaction.RunInSubtransaction(action));
+            definition?.TransactionMode is PgBenchmarkTransactionMode.RollbackPerBatch or PgBenchmarkTransactionMode.RollbackPerIteration
+                ? static action => NativeSubtransaction.RunAndRollBack(action)
+                : static action => PgTransaction.RunInSubtransaction(action));
 
     /// <summary>
     /// Runs one benchmark through an explicit transaction boundary for direct verification.
@@ -882,6 +884,8 @@ public static class PgBenchmarkRunner
             PgBenchmarkTransactionMode.Shared => "shared",
             PgBenchmarkTransactionMode.SubtransactionPerBatch => "subtransaction_per_batch",
             PgBenchmarkTransactionMode.SubtransactionPerIteration => "subtransaction_per_iteration",
+            PgBenchmarkTransactionMode.RollbackPerBatch => "rollback_per_batch",
+            PgBenchmarkTransactionMode.RollbackPerIteration => "rollback_per_iteration",
             _ => throw new InvalidOperationException("The generated benchmark transaction mode is invalid."),
         };
 
