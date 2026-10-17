@@ -145,7 +145,7 @@ internal static class PackageProcessRunner
             return false;
         }
 
-        bool skipsBuild = command is "bench" or "regress" or "run" && EnabledOption(arguments, "--no-build") ||
+        bool skipsBuild = command is "bench" or "regress" or "run" or "schema" && EnabledOption(arguments, "--no-build") ||
             command == "schema" && EnabledOption(arguments, "--skip-build");
         bool onlyReports = command == "bench" && EnabledOption(arguments, "--report") ||
             command == "regress" && EnabledOption(arguments, "--dry-run");

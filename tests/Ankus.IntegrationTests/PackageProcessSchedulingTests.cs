@@ -64,6 +64,7 @@ public sealed class PackageProcessSchedulingTests
     [DataRow("ankus", new[] { "package", "--property", "Mode=--from" }, true)]
     [DataRow("ankus", new[] { "schema", "--from:published extension" }, false)]
     [DataRow("ankus", new[] { "schema", "--", "--from" }, true)]
+    [DataRow("ankus", new[] { "schema", "--no-build" }, false)]
     [DataRow("ankus", new[] { "schema", "--skip-build" }, false)]
     [DataRow("ankus", new[] { "schema", "--skip-build=false" }, true)]
     [DataRow("ankus", new[] { "upgrade" }, false)]

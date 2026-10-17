@@ -221,7 +221,7 @@ public sealed partial class ToolCommandTests
         [
             ("build", ["build", "--project", project]),
             ("publish", ["publish", "--project", project]),
-            ("schema", ["schema", "--project", project, "--skip-build"]),
+            ("schema", ["schema", "--project", project, "--no-build"]),
             ("get", ["get", "extname", "--project", project]),
             ("install", ["install", "--project", project, "--destdir", stagedInstallation]),
             ("package", ["package", "--project", project, "--output", stagedPackage, "--prefix-dir", "flat"]),

@@ -187,7 +187,7 @@ public sealed partial class ToolCommandTests
         ProcessResult schema = await InvokeAsync(["schema", .. options], token);
         Assert.AreEqual(0, schema.ExitCode, schema.StandardError);
         Assert.AreEqual(await File.ReadAllTextAsync(Path.Join(defaultOutput, "extension", original.Sql), token), schema.StandardOutput);
-        ProcessResult skippedSchema = await InvokeAsync(["schema", .. options, "--skip-build"], token);
+        ProcessResult skippedSchema = await InvokeAsync(["schema", .. options, "--no-build"], token);
         Assert.AreEqual(0, skippedSchema.ExitCode, skippedSchema.StandardError);
         Assert.AreEqual(schema.StandardOutput, skippedSchema.StandardOutput);
         // From the project directory without --project, a relative intermediate path names the same directory, as
@@ -195,7 +195,7 @@ public sealed partial class ToolCommandTests
         string[] relative = [.. options.Where((_, index) => index is not (2 or 3))];
         relative[^1] = "BaseIntermediateOutputPath=" + Path.GetFileName(Path.TrimEndingDirectorySeparator(intermediateDirectory)) +
             Path.DirectorySeparatorChar;
-        ProcessResult projectDirectorySchema = await PackageProcessRunner.RunAsync(s_tool, ["schema", .. relative, "--skip-build"],
+        ProcessResult projectDirectorySchema = await PackageProcessRunner.RunAsync(s_tool, ["schema", .. relative, "--no-build"],
             s_environment, token, workingDirectory: directory);
         Assert.AreEqual(0, projectDirectorySchema.ExitCode, projectDirectorySchema.StandardOutput + projectDirectorySchema.StandardError);
         Assert.AreEqual(schema.StandardOutput, projectDirectorySchema.StandardOutput);

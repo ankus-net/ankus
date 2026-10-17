@@ -7,7 +7,8 @@ namespace Ankus.Tool;
 
 internal static partial class ToolCommand
 {
-    private static readonly string[] s_schemaBuildOptions = ["--project", "--property", "--pg", "--pg-config", "--configuration", "--skip-build"];
+    private static readonly string[] s_schemaBuildOptions = ["--project", "--property", "--pg", "--pg-config", "--configuration", "--no-build",
+        "--skip-build"];
 
     private static Command CreateSchema(Option<string?> home)
     {
@@ -18,10 +19,13 @@ internal static partial class ToolCommand
         {
             Description = "Read this native library without building or requiring a PostgreSQL installation.",
         };
-        var skipBuild = new Option<bool>("--skip-build")
+        var noBuild = new Option<bool>("--no-build")
         {
             Description = "Read the project's existing default publish directory without rebuilding.",
         };
+
+        // cargo pgrx schema calls this --skip-build; the name still works but follows dotnet's --no-build in help.
+        var skipBuild = new Option<bool>("--skip-build") { Hidden = true };
         var runtime = new Option<string?>("--runtime", "-r")
         {
             Description = "Required library RID; selects an architecture in a universal macOS library. Builds use the host RID.",
@@ -46,6 +50,7 @@ internal static partial class ToolCommand
         command.Options.Add(noAlter);
         command.Options.Add(targetSchema);
         command.Options.Add(from);
+        command.Options.Add(noBuild);
         command.Options.Add(skipBuild);
         command.Options.Add(runtime);
         command.Options.Add(output);
@@ -81,7 +86,8 @@ internal static partial class ToolCommand
                     throw new ArgumentException("Project schema builds use the host runtime identifier; use --from for another target.");
                 }
 
-                if (result.GetValue(skipBuild) && result.GetValue<string?>("--pg-config") is not null)
+                bool reuse = result.GetValue(noBuild) || result.GetValue(skipBuild);
+                if (reuse && result.GetValue<string?>("--pg-config") is not null)
                 {
                     throw new ArgumentException("--pg-config requires a build; use --pg to select an existing publication.");
                 }
@@ -93,7 +99,7 @@ internal static partial class ToolCommand
                 string directory = Path.Join(Path.GetDirectoryName(project)!, "bin", "ankus",
                     "pg" + major.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     RuntimeInformation.RuntimeIdentifier, configuration);
-                if (!result.GetValue(skipBuild))
+                if (!reuse)
                 {
                     PostgresInstallation installation = await SelectAsync(result, home, token, resolvedProject: project);
                     int code = await ExtensionBuilder.PublishAsync(project, configuration, installation, directory, token,

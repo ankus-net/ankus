@@ -6,7 +6,7 @@ internal static partial class ToolCommand
 {
     private static Command CreateUpgrade()
     {
-        var command = new Command("upgrade", "Upgrade Ankus framework package and project SDK references.");
+        var command = new Command("upgrade", "Upgrade the Ankus framework packages and project SDK references.");
         var project = new Option<string?>("--project") { Description = "Project file or directory (default: the current project or solution)." };
         var solution = new Option<string?>("--solution") { Description = "Solution whose project references should be upgraded." };
         var package = new Option<string?>("--package", "-p") { Description = "Select one project by name within the solution." };

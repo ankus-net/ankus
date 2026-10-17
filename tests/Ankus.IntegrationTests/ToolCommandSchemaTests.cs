@@ -97,6 +97,7 @@ public sealed partial class ToolCommandTests
     [DataRow("--pg", "18")]
     [DataRow("--pg-config", "ignored")]
     [DataRow("--configuration", "Release")]
+    [DataRow("--no-build", null)]
     [DataRow("--skip-build", null)]
     public async Task SchemaRejectsConflictingArtifactOptions(string option, string? value)
     {
@@ -127,7 +128,7 @@ public sealed partial class ToolCommandTests
         string project = Path.Join(directory, "Probe.csproj");
         File.Copy(s_project, project);
         string output = Path.Join(directory, "schema.sql");
-        ProcessResult result = await InvokeAsync(["schema", "--project", project, "--skip-build", option, value,
+        ProcessResult result = await InvokeAsync(["schema", "--project", project, "--no-build", option, value,
             "--output", output], context.CancellationToken);
         Assert.AreEqual(1, result.ExitCode);
         Assert.IsEmpty(result.StandardOutput);
@@ -201,7 +202,7 @@ public sealed partial class ToolCommandTests
         File.Copy(Path.Join(s_published, publication.Library), Path.Join(published, publication.Library));
         publication.Write(published);
         string[] arguments = ["schema", "--project", project, "--pg", MajorText(), "--configuration", configuration,
-            "--skip-build", "--home", Path.Join(directory, "unregistered")];
+            "--no-build", "--home", Path.Join(directory, "unregistered")];
         ProcessResult extracted = await InvokeAsync(arguments, token);
         Assert.AreEqual(0, extracted.ExitCode, extracted.StandardError);
         Assert.AreEqual(ExtensionSchema.Read(Path.Join(s_published, publication.Library)).Sql, extracted.StandardOutput);
@@ -254,7 +255,7 @@ public sealed partial class ToolCommandTests
         Assert.Contains("fresh_schema_value", built.StandardOutput);
         Assert.Contains("Fresh", built.StandardError);
         ProcessResult existing = await InvokeAsync(["schema", "--project", directory, "--pg", MajorText(),
-            "--configuration", configuration, "--skip-build"], token);
+            "--configuration", configuration, "--no-build"], token);
         Assert.AreEqual(0, existing.ExitCode, existing.StandardError);
         Assert.AreEqual(expected, existing.StandardOutput);
         Assert.IsEmpty(existing.StandardError);
