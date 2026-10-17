@@ -291,7 +291,14 @@ public sealed class PostgresValgrindTests(TestContext context)
         PostgresInstallation installation = await IntegrationEnvironment.GetInstallationAsync(token);
         var cluster = new PostgresDevelopmentCluster(installation, _root);
         using PortReservation reservation = PortReservation.Create();
-        var options = new PostgresDevelopmentOptions { Port = reservation.Port, TimeoutSeconds = 5, UseValgrind = true };
+        // The failed bind ends the start as soon as the server exits; a short deadline would only turn a slow start under
+        // Memcheck on a busy host into a timeout before the bind is ever tried.
+        var options = new PostgresDevelopmentOptions
+        {
+            Port = reservation.Port,
+            TimeoutSeconds = (int)IntegrationEnvironment.StartupTimeout.TotalSeconds,
+            UseValgrind = true,
+        };
         try
         {
             InvalidOperationException error = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => cluster.StartAsync(options, token));
@@ -303,13 +310,7 @@ public sealed class PostgresValgrindTests(TestContext context)
             Assert.Contains("Memcheck, a memory error detector", log);
             Assert.Contains("could not create any TCP/IP sockets", log);
             reservation.Dispose();
-            var recovered = new PostgresDevelopmentOptions
-            {
-                Port = options.Port,
-                TimeoutSeconds = (int)IntegrationEnvironment.StartupTimeout.TotalSeconds,
-                UseValgrind = true,
-            };
-            Assert.IsTrue(await cluster.StartAsync(recovered, token));
+            Assert.IsTrue(await cluster.StartAsync(options, token));
             await using NpgsqlConnection connection = await OpenAsync(options.Port!.Value, token);
             await using var command = new NpgsqlCommand("SELECT 19 + 23", connection);
             Assert.AreEqual(42, await command.ExecuteScalarAsync(token));
