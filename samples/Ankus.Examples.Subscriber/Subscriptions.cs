@@ -64,11 +64,17 @@ public static class Subscriptions
 
         if (pid is not null)
         {
-            // A terminated worker exits cleanly, so PostgreSQL does not restart it.
+            // A terminated worker exits cleanly, so PostgreSQL does not restart it. It releases its replication origin
+            // before it leaves pg_stat_activity, which keeps one snapshot per transaction unless it is cleared.
             Spi.Execute("SELECT pg_terminate_backend($1)", SpiParameter.Create(pid.Value));
-            for (int attempt = 0; Spi.ExecuteScalar<bool>(
-                "SELECT pg_stat_clear_snapshot() IS NULL AND EXISTS (SELECT FROM pg_stat_activity WHERE pid = $1)", SpiParameter.Create(pid.Value)); attempt++)
+            for (int attempt = 0; ; attempt++)
             {
+                Spi.Execute("SELECT pg_stat_clear_snapshot()");
+                if (!Spi.ExecuteScalar<bool>("SELECT EXISTS (SELECT FROM pg_stat_activity WHERE pid = $1)", SpiParameter.Create(pid.Value)))
+                {
+                    break;
+                }
+
                 if (attempt == 300)
                 {
                     throw new PgException(PgSqlStates.ObjectInUse, $"The worker for subscription \"{name}\" did not stop.");
