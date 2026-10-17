@@ -92,7 +92,8 @@ public sealed partial class ToolCommandTests
             "SELECT n.nspname || '|' || e.extowner::regrole::text || '|' || e.extrelocatable::text FROM pg_extension e JOIN pg_namespace n ON n.oid=e.extnamespace WHERE e.extname='ankus_control_probe'"));
         Assert.AreEqual("it's # exact\nsecond line", await SqlPackageScalarAsync<string>(connection,
             "SELECT obj_description(oid, 'pg_extension') FROM pg_extension WHERE extname='ankus_control_probe'"));
-        Assert.AreEqual("ankus", await SqlPackageScalarAsync<string>(connection,
+        // PostgreSQL runs a trusted extension's script as the bootstrap superuser, which then owns its objects.
+        Assert.AreEqual("postgres", await SqlPackageScalarAsync<string>(connection,
             "SELECT proowner::regrole::text FROM pg_proc WHERE oid='\"Control Schema\".control_value()'::regprocedure"));
         await ExecuteSqlPackageAsync(connection, "CREATE SCHEMA relocation_target");
         PostgresException relocation = await Assert.ThrowsExactlyAsync<PostgresException>(() =>
