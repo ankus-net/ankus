@@ -311,12 +311,54 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
         return installation;
     }
 
-    private static void RequireOwnedPath(string directory, string path)
+    /// <summary>
+    /// Requires a path reported by an installation's pg_config to lie within the installation directory.
+    /// </summary>
+    /// <param name="directory">The installation directory.</param>
+    /// <param name="path">The reported path.</param>
+    /// <remarks>
+    /// pg_config derives its paths from its own location with symbolic links resolved, so a directory reached through
+    /// a link, such as macOS's <c>/tmp</c>, reports paths under the link's target. Both sides are compared resolved.
+    /// </remarks>
+    /// <exception cref="InvalidDataException">The path lies outside the directory.</exception>
+    internal static void RequireOwnedPath(string directory, string path)
     {
-        string relative = Path.GetRelativePath(directory, path);
+        string relative = Path.GetRelativePath(ResolveLinks(directory), ResolveLinks(path));
         if (Path.IsPathRooted(relative) || relative == ".." || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal))
         {
             throw new InvalidDataException($"The downloaded PostgreSQL installation refers outside its directory: {path}");
         }
+    }
+
+    /// <summary>
+    /// Resolves the symbolic links among a path's existing components, as realpath does.
+    /// </summary>
+    /// <param name="path">The path to resolve.</param>
+    /// <returns>The absolute path with every link among its existing components replaced by its target.</returns>
+    internal static string ResolveLinks(string path)
+    {
+        string pending = Path.GetFullPath(path);
+        // Follow at most as many links as the kernel would for one path, so a cycle ends the search.
+        for (int followed = 0; followed < 40; followed++)
+        {
+            string current = Path.GetPathRoot(pending)!;
+            string[] components = pending[current.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+            int index = 0;
+            while (index < components.Length && new DirectoryInfo(Path.Join(current, components[index])).LinkTarget is null)
+            {
+                current = Path.Join(current, components[index]);
+                index++;
+            }
+
+            if (index == components.Length)
+            {
+                return pending;
+            }
+
+            string target = new DirectoryInfo(Path.Join(current, components[index])).LinkTarget!;
+            pending = Path.Join([Path.GetFullPath(target, current), .. components[(index + 1)..]]);
+        }
+
+        return pending;
     }
 }
