@@ -193,14 +193,58 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
         }
 
         string[] configure = [$"--prefix={destination}", "--enable-debug", "--enable-cassert", .. options.ConfigureFlags];
-        await RunAsync(Path.Join(source, "configure"), configure, source, flags, pkgConfigPath, cancellationToken).ConfigureAwait(false);
+
+        // The source tree is deleted after a failed build, so the output and config.log are kept beside the installation.
+        string log = destination + ".build.log";
+        File.Delete(log);
+        await RunAsync(Path.Join(source, "configure"), configure, source, flags, pkgConfigPath, cancellationToken, log).ConfigureAwait(false);
         string jobs = options.Jobs.ToString(CultureInfo.InvariantCulture);
-        await RunAsync("make", ["-j", jobs, "world-bin"], source, flags, pkgConfigPath, cancellationToken).ConfigureAwait(false);
-        await RunAsync("make", ["-j", jobs, "install-world-bin", $"DESTDIR={stagingRoot}"], source, flags, pkgConfigPath, cancellationToken).ConfigureAwait(false);
+        await RunAsync("make", ["-j", jobs, "world-bin"], source, flags, pkgConfigPath, cancellationToken, log).ConfigureAwait(false);
+        await RunAsync("make", ["-j", jobs, "install-world-bin", $"DESTDIR={stagingRoot}"], source, flags, pkgConfigPath, cancellationToken, log).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Describes a failed build command with its cause on the first line: configure's <c>configure: error:</c> line, or
+    /// the first compiler error. Everything else in the output is detail.
+    /// </summary>
+    /// <param name="command">The command's file name, such as <c>configure</c>.</param>
+    /// <param name="exitCode">The command's exit code.</param>
+    /// <param name="output">The end of the command's standard output.</param>
+    /// <param name="error">The end of the command's standard error.</param>
+    /// <param name="log">The file that keeps the output and <c>config.log</c>, or null.</param>
+    /// <returns>The failure message.</returns>
+    internal static string DescribeFailure(string command, int exitCode, string output, string error, string? log)
+    {
+        const string Configure = "configure: error: ";
+        string detail = (string.IsNullOrWhiteSpace(error) ? output : error).Trim();
+        string? reason = detail.ReplaceLineEndings("\n").Split('\n').Select(static line => line.Trim())
+            .FirstOrDefault(static line => line.StartsWith(Configure, StringComparison.Ordinal) || line.Contains("error:", StringComparison.Ordinal));
+        if (reason?.StartsWith(Configure, StringComparison.Ordinal) == true)
+        {
+            reason = reason[Configure.Length..];
+        }
+
+        var message = new StringBuilder(string.Create(CultureInfo.InvariantCulture, $"PostgreSQL's {command} failed ({exitCode})"));
+        message.Append(reason is null ? "." : ": " + reason).Append('\n').Append(detail);
+        if (log is not null)
+        {
+            message.Append(CultureInfo.InvariantCulture, $"\nThe output and config.log are in {log}.");
+        }
+
+        return message.ToString();
+    }
+
+    /// <summary>
+    /// Finds pkg-config in Homebrew's and MacPorts' directories. A non-interactive SSH session on macOS has only the system
+    /// directories on <c>PATH</c>, where neither installs it, so configure could not find a pkg-config that is installed.
+    /// </summary>
+    /// <param name="directories">The directories to search, in order.</param>
+    /// <returns>The pkg-config path, or null.</returns>
+    internal static string? FindPkgConfig(IEnumerable<string> directories)
+        => directories.Select(static directory => Path.Join(directory, "pkg-config")).FirstOrDefault(File.Exists);
+
     private static async Task<string> RunAsync(string executable, string[] arguments, string directory,
-        string preprocessorFlags, string? pkgConfigPath, CancellationToken cancellationToken)
+        string preprocessorFlags, string? pkgConfigPath, CancellationToken cancellationToken, string? log = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var start = new ProcessStartInfo(executable)
@@ -224,6 +268,12 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
 
         start.Environment["CPPFLAGS"] = preprocessorFlags;
         start.Environment["PKG_CONFIG_PATH"] = pkgConfigPath;
+        if (!OperatingSystem.IsWindows() && Environment.GetEnvironmentVariable("PKG_CONFIG") is null && ExecutableLocator.Find("pkg-config") is null &&
+            FindPkgConfig(["/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin"]) is string pkgConfig)
+        {
+            start.Environment["PKG_CONFIG"] = pkgConfig;
+        }
+
         using var process = new Process { StartInfo = start };
         process.Start();
         process.StandardInput.Close();
@@ -253,7 +303,16 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
         string stderr = await error.ConfigureAwait(false);
         if (process.ExitCode != 0)
         {
-            throw new InvalidOperationException($"PostgreSQL build command '{Path.GetFileName(executable)}' failed ({process.ExitCode}).\n{stdout}\n{stderr}");
+            string command = Path.GetFileName(executable);
+            if (log is not null)
+            {
+                string configLog = Path.Join(directory, "config.log");
+                await File.WriteAllTextAsync(log, $"{command} {string.Join(' ', arguments)}\n\n--- standard output\n{stdout}\n--- standard error\n{stderr}\n" +
+                    (File.Exists(configLog) ? "--- config.log\n" + await File.ReadAllTextAsync(configLog, CancellationToken.None).ConfigureAwait(false) : ""),
+                    CancellationToken.None).ConfigureAwait(false);
+            }
+
+            throw new InvalidOperationException(DescribeFailure(command, process.ExitCode, stdout, stderr, log));
         }
 
         return stdout;

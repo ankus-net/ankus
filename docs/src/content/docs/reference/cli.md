@@ -307,8 +307,14 @@ or release candidate.
 Source builds need a C compiler, GNU Make, Bison, Flex, pkg-config, and development
 files for Readline, zlib, and ICU. On macOS, install the Xcode command-line tools
 and the corresponding Homebrew dependencies. Ankus discovers Homebrew's ICU
-pkg-config directory automatically. Set `CC`, `CPPFLAGS`, `LDFLAGS`, or
-`PKG_CONFIG_PATH` when using another toolchain or dependency location.
+pkg-config directory automatically, and finds Homebrew's or MacPorts'
+pkg-config when it is not on `PATH`, as in a non-interactive SSH session. Set
+`CC`, `CPPFLAGS`, `LDFLAGS`, `PKG_CONFIG` or `PKG_CONFIG_PATH` when using another
+toolchain or dependency location.
+
+When a build fails, the error's first line names the cause, such as configure's
+`readline library not found`, and the output and `config.log` are kept beside
+the installation directory as `<version>-<identity>.build.log`.
 
 Use `--jobs 8` to limit parallel compilation. Repeat
 `--configure-flag=--with-icu` for additional Unix configure feature options.
@@ -319,7 +325,7 @@ Installations live under the Ankus home's `postgres/` directory, by default
 `~/.ankus/postgres/`. Repeating the same request reuses
 a validated installation with matching build options; a new release gets its
 own directory. Temporary downloads and build files are removed after success
-or failure. System installations and databases are preserved. `init` does not
+or failure; only the build log of a failure is kept. System installations and databases are preserved. `init` does not
 start a server or create a database cluster.
 
 With no version options or environment defaults, `init` requests every supported major. All requested
