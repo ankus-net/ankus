@@ -131,6 +131,11 @@ jobs:
           ref: ${{ steps.runtime.outputs.commit }}
           path: runtime
 
+      # Without an active developer environment the runtime's build takes the newest Visual Studio, previews included.
+      - name: Select Windows C++ toolchain
+        if: runner.os == 'Windows'
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- windows-toolchain
+
       - name: Build and pack runtime
         run: >-
           dotnet run --file ./eng/Ankus.Ci.cs -- release-runtime
