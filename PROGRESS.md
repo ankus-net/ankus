@@ -16,7 +16,8 @@ Completion requires the supported PostgreSQL 13–18 and 19 RC1 contracts on
 Linux x64, Windows x64, macOS ARM64 and macOS x64, including real published
 extensions, backend recovery, complete suites and release/package validation.
 Ankus is released on nuget.org: 0.1.0 on 2026-10-15, servicing releases
-through 0.1.7, and 0.2.0 on 2026-10-17 (see remaining-work item 8).
+through 0.1.7, 0.2.0 on 2026-10-17 and 0.2.1 on 2026-10-18 (see remaining-work
+item 8).
 
 The upstream inventory is pinned to pgrx **0.19.3**, commit
 `fc91c63ebad11784647b50ee7e265c1fd9c9924f`. The refresh covers every release
@@ -850,6 +851,43 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   under `ankus run` with the session at `5s`. `ankus run` still installs into
   the PostgreSQL installation, so Debian's read-only packages need a writable
   build there, as `ankus regress` did before PostgreSQL 18 staging.
+- Every Ankus project failed to build in Visual Studio 2026, whose MSBuild
+  runs on .NET Framework. `Path.GetDirectoryName("")` throws there, and the SDK
+  and Ankus.Testing called it on an empty `AnkusPgConfigPath`; the binding
+  compiler took the .NET SDK from `MSBuildToolsPath`, which under Visual
+  Studio is its own MSBuild folder; the 89-character binding file name pushed
+  a project about 120 characters deep past the 260-character limit that
+  MSBuild on .NET Framework enforces without Windows long paths; and every
+  test project got MSB3270, because the SDK marked the extension's IL x64 for
+  its runtime identifier, which only the .NET Framework reference resolver
+  can read. PR #35 skips the empty lookups, uses `NetCoreRoot` and
+  `NETCoreSdkVersion`, keeps 16 digits of the binding identity in the file
+  name (the assembly still embeds and verifies all 64) and defaults
+  `PlatformTarget` to `AnyCPU`. `VisualStudioBuildsNewSolutionCleanly` builds
+  a new solution with Visual Studio's MSBuild on Windows, with and without an
+  explicit pg_config, and requires no errors or warnings.
+- 0.2.1 is released (release run 39119671753 on 2b5c98f). The first 0.2.1 run,
+  39112874049 on 9f694a5, failed in both Windows runtime jobs: Visual Studio
+  18 Insiders on the runner host had updated itself overnight from MSVC 14.51
+  to 14.52.37025, which reports C4047 in the runtime's `dn-umap.c` (a `bool`
+  function returning a pointer), and the runtime's `init-vs-env.cmd` picks
+  the newest Visual Studio including previews unless a developer environment
+  is active. CI never noticed because its runtime build is cached by fork
+  commit. PR #38 runs the `windows-toolchain` step, which activates the newest
+  stable Visual Studio (18.11, MSVC 14.51.36231), before both runtime builds;
+  a release dry run, 39114517547, then built every package. Upstream
+  dotnet/runtime still has the same `dn-umap.c` code, so it will meet this
+  warning when a stable MSVC adopts 14.52; that is a suspected upstream issue
+  to confirm before anyone reports it. Nothing from the failed run reached
+  nuget.org, so its release and tag were recreated at 2b5c98f. nuget.org
+  listed all seven packages within four minutes. On Windows x64, `Ankus.Tool`
+  0.2.1 from nuget.org created a solution that Visual Studio 2026's MSBuild
+  built with no errors or warnings, and its 7 tests passed against
+  PostgreSQL 18. Two intermittent failures on the dedicated runners were also
+  fixed: `TraceScanRunsParallelIndexChildren` now vacuums until its shared
+  table is all-visible (PR #39), and a Windows `ankus bench` install that
+  failed once with only "Access to the path is denied" now names the file
+  (PR #37); record it again if it repeats.
 - Scheduled run 38729094424 lost one Windows/PostgreSQL 18.6 case before its
   test body ran: the server reset the connection during authentication. The
   new backend had failed with `FATAL: incorrect checksum in control file` in
@@ -2132,7 +2170,7 @@ review's findings are fixed or kept by documented design.
 5. Keep samples and guides current with API changes, and recheck changed guides before release. Test discovery for MSTest, xUnit and NUnit consumers and samples for all 37 pgrx examples are complete.
 6. Keep the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) current as a pglogical port exercises it; every planned capability is done.
 7. Support .NET 11 as an extension target (required, in progress). The runtime fork's changes over 10.0.13 are ported onto .NET 11 RC2 as fork commit `34f19a015e3` on branch `ankus/runtime-11.0-rc2`, and every fork probe passes on Linux x64; rebase onto GA when it ships. `Ankus.Sdk` selects the `net11.0` line, `ankus new` and the templates take `--framework net11.0`, and CI and releases build both lines. The complete suite passes on every PostgreSQL major on Linux x64, macOS ARM64, Windows x64 and Intel macOS. Remaining: the rebase onto the .NET 11 release in November, which ships as a servicing update.
-8. 0.1.0 through 0.2.0 are released; 0.1.1 reports build tool failures as build errors, 0.1.2 and 0.1.3 fix `ankus upgrade` and PostgreSQL discovery for the first outside install, 0.1.4 finds a Clang 20 or later when the one on `PATH` is older, 0.1.5 links Windows binding probes with MSVC's linker, 0.1.6 records each development cluster's log path in `.ankus-log`, 0.1.7 finds MacPorts' LLVM, and 0.2.0 adds `PgSettings`, the benchmark rollback modes and the fixes for issues #5 through #13 and #18. For 0.1.0, release run 38804273089 on e71e226 built, verified and published all 27 packages to nuget.org through the trusted publishing policy: the seven 0.1.0 packages and the patched runtime and compiler for five runtime identifiers on both lines (`10.0.13-ankus.1` and the `11.0.0-rc.2.26504.105-ankus.1` preview). From nuget.org alone, `Ankus.Tool` 0.1.0 creates a solution whose 7 tests pass against PostgreSQL 18, the templates do the same and publish an extension, and a fresh clone of the repository publishes a sample without staging a runtime.
+8. 0.1.0 through 0.2.1 are released; 0.1.1 reports build tool failures as build errors, 0.1.2 and 0.1.3 fix `ankus upgrade` and PostgreSQL discovery for the first outside install, 0.1.4 finds a Clang 20 or later when the one on `PATH` is older, 0.1.5 links Windows binding probes with MSVC's linker, 0.1.6 records each development cluster's log path in `.ankus-log`, 0.1.7 finds MacPorts' LLVM, 0.2.0 adds `PgSettings`, the benchmark rollback modes and the fixes for issues #5 through #13 and #18, and 0.2.1 builds in Visual Studio. For 0.1.0, release run 38804273089 on e71e226 built, verified and published all 27 packages to nuget.org through the trusted publishing policy: the seven 0.1.0 packages and the patched runtime and compiler for five runtime identifiers on both lines (`10.0.13-ankus.1` and the `11.0.0-rc.2.26504.105-ankus.1` preview). From nuget.org alone, `Ankus.Tool` 0.1.0 creates a solution whose 7 tests pass against PostgreSQL 18, the templates do the same and publish an extension, and a fresh clone of the repository publishes a sample without staging a runtime.
 
 Continue independent work while CI runs. Before every commit and push, check and
 record previous run outcomes, including live runs, and resolve reported failures.
