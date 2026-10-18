@@ -133,6 +133,16 @@ internal static class ExtensionInstaller
                 File.Copy(input, temporary);
                 File.Move(temporary, destination, overwrite: true);
             }
+            // A failed rename reports no path of its own, which leaves the reader guessing which file it was. Callers
+            // still tell a permission failure from other I/O failures.
+            catch (UnauthorizedAccessException exception)
+            {
+                throw new UnauthorizedAccessException($"Unable to install {destination}: {exception.Message}", exception);
+            }
+            catch (IOException exception)
+            {
+                throw new IOException($"Unable to install {destination}: {exception.Message}", exception);
+            }
             finally
             {
                 File.Delete(temporary);
