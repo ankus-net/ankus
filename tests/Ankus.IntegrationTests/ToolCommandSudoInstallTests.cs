@@ -123,7 +123,8 @@ public sealed partial class ToolCommandTests
                 ["install", "--home", s_home, "--pg", MajorText(), "--from", s_published, "--destdir", stage], context.CancellationToken);
 
             Assert.AreEqual(1, result.ExitCode);
-            Assert.StartsWith("Ankus: Access to the path '" + libraries, result.StandardError);
+            Assert.StartsWith("Ankus: Unable to install " + libraries, result.StandardError);
+            Assert.Contains(": Access to the path '" + libraries, result.StandardError);
             Assert.EndsWith("is denied. Add --sudo to copy the files with sudo.", result.StandardError.TrimEnd());
             Assert.IsEmpty(Directory.GetFileSystemEntries(libraries));
         }
