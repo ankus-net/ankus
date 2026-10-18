@@ -5,7 +5,8 @@
           BeforeTargets="_GenerateRuntimeConfigurationFilesInputCache">
     <PropertyGroup>
       <_AnkusTestPgConfigPath>$(AnkusPgConfigPath)</_AnkusTestPgConfigPath>
-      <_AnkusTestPgConfigDirectory>$([System.IO.Path]::GetDirectoryName('$(AnkusPgConfigPath)'))</_AnkusTestPgConfigDirectory>
+      <!-- Visual Studio's MSBuild runs on .NET Framework, where GetDirectoryName rejects an empty path. -->
+      <_AnkusTestPgConfigDirectory Condition="'$(AnkusPgConfigPath)' != ''">$([System.IO.Path]::GetDirectoryName('$(AnkusPgConfigPath)'))</_AnkusTestPgConfigDirectory>
       <_AnkusTestPgConfigPath Condition="'$(_AnkusTestPgConfigDirectory)' != ''">$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(AnkusPgConfigPath)'))</_AnkusTestPgConfigPath>
     </PropertyGroup>
     <ItemGroup>

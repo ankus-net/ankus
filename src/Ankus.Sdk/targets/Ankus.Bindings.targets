@@ -10,7 +10,8 @@
   <Target Name="_ResolveAnkusPostgresSelection">
     <PropertyGroup>
       <_AnkusResolvedPgConfigPath>$(AnkusPgConfigPath)</_AnkusResolvedPgConfigPath>
-      <_AnkusPgConfigDirectory>$([System.IO.Path]::GetDirectoryName('$(AnkusPgConfigPath)'))</_AnkusPgConfigDirectory>
+      <!-- Visual Studio's MSBuild runs on .NET Framework, where GetDirectoryName rejects an empty path. -->
+      <_AnkusPgConfigDirectory Condition="'$(AnkusPgConfigPath)' != ''">$([System.IO.Path]::GetDirectoryName('$(AnkusPgConfigPath)'))</_AnkusPgConfigDirectory>
       <_AnkusResolvedPgConfigPath Condition="'$(_AnkusPgConfigDirectory)' != ''">$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(AnkusPgConfigPath)'))</_AnkusResolvedPgConfigPath>
     </PropertyGroup>
     <ItemGroup>
@@ -117,7 +118,8 @@
           Returns="@(_AnkusDiscoveredBindingToolchain)">
     <PropertyGroup>
       <_AnkusDiscoveredCompiler>$(CppLinker)</_AnkusDiscoveredCompiler>
-      <_AnkusDiscoveredCompiler Condition="'$(_targetOS)' == 'win'">$([System.IO.Path]::Combine($([System.IO.Path]::GetDirectoryName('$(CppLinker)')), 'cl.exe'))</_AnkusDiscoveredCompiler>
+      <_AnkusCppLinkerDirectory Condition="'$(CppLinker)' != ''">$([System.IO.Path]::GetDirectoryName('$(CppLinker)'))</_AnkusCppLinkerDirectory>
+      <_AnkusDiscoveredCompiler Condition="'$(_targetOS)' == 'win'">$([System.IO.Path]::Combine('$(_AnkusCppLinkerDirectory)', 'cl.exe'))</_AnkusDiscoveredCompiler>
     </PropertyGroup>
     <ItemGroup>
       <_AnkusDiscoveredBindingToolchain Include="NativeCompiler">
@@ -154,7 +156,8 @@
     </ReadLinesFromFile>
     <PropertyGroup>
       <!-- A final dot keeps directory arguments literal when Windows parses a closing quote after a backslash. -->
-      <_AnkusBindingSdkDirectory>$([MSBuild]::EnsureTrailingSlash('$(MSBuildToolsPath)')).</_AnkusBindingSdkDirectory>
+      <!-- The .NET SDK that resolved this project, not MSBuild's own directory, which is Visual Studio's under VS. -->
+      <_AnkusBindingSdkDirectory>$([MSBuild]::NormalizeDirectory('$(NetCoreRoot)', 'sdk', '$(NETCoreSdkVersion)')).</_AnkusBindingSdkDirectory>
       <_AnkusBindingCompileCommand>dotnet &quot;$(_AnkusBuildTool)&quot; binding-compile &quot;$(_AnkusBindingsOutput)&quot; &quot;@(_AnkusBindingRuntime)&quot; &quot;$(TargetFramework)&quot; &quot;$(Configuration)&quot;</_AnkusBindingCompileCommand>
       <_AnkusBindingCompileCommand>$(_AnkusBindingCompileCommand) &quot;$(NETCoreSdkVersion)&quot; &quot;$(_AnkusBindingSdkDirectory)&quot; &quot;$(ProjectAssetsFile)&quot; &quot;$(_AnkusBindingCacheDirectory)&quot;</_AnkusBindingCompileCommand>
     </PropertyGroup>

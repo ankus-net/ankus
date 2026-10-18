@@ -140,6 +140,12 @@ internal static class PackageProcessRunner
             return command is "build" or "msbuild" or "pack" or "publish" or "restore" or "run" or "test" or "tool";
         }
 
+        // Visual Studio's MSBuild restores and builds a whole solution.
+        if (string.Equals(executable, "MSBuild", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
         if (!string.Equals(executable, "ankus", StringComparison.OrdinalIgnoreCase))
         {
             return false;

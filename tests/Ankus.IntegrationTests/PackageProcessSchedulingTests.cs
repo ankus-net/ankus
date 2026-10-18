@@ -74,6 +74,7 @@ public sealed class PackageProcessSchedulingTests
     [DataRow("ankus", new[] { "bench", "--report=false" }, true)]
     [DataRow("dotnet", new[] { "test", "--no-build" }, true)]
     [DataRow("dotnet.exe", new[] { "publish", "--no-restore" }, true)]
+    [DataRow("MSBuild.exe", new[] { "Solution.slnx", "-restore" }, true)]
     [DataRow("psql.exe", new[] { "--no-build" }, false)]
     public void ReservesCapacityForCompilation(string executable, string[] arguments, bool reserved)
         => Assert.AreEqual(reserved, PackageProcessRunner.RequiresSlot(executable, arguments));
