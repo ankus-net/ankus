@@ -20,7 +20,7 @@ for the selected major, 18 by default.
 Use `Ankus.Sdk` as the project SDK:
 
 ```xml
-<Project Sdk="Ankus.Sdk/0.2.0">
+<Project Sdk="Ankus.Sdk/0.2.1">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -67,7 +67,7 @@ Use the runtime identifier for the machine running PostgreSQL and set
 | `Ankus.Templates` | `dotnet new` templates for extensions and background workers |
 | `Ankus.NativeAot.Runtime.<rid>`, `Ankus.NativeAot.Compiler.<rid>` | The patched Native AOT runtime and compiler for PostgreSQL process and preload behavior; the SDK restores the ones for your build machine and target |
 
-Install `Ankus.Tool` with `dotnet tool install --global Ankus.Tool --version 0.2.0`. Register PostgreSQL with
+Install `Ankus.Tool` with `dotnet tool install --global Ankus.Tool --version 0.2.1`. Register PostgreSQL with
 `ankus init --pg18 /path/to/pg_config`, then run `ankus publish` and
 `ankus install --from /path/to/publish`.
 
