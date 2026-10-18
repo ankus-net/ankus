@@ -231,8 +231,7 @@ public sealed partial class CustomScanTests
         try
         {
             await command.ExecuteNonQueryAsync(token);
-            command.CommandText = $"VACUUM (ANALYZE) {table}";
-            await command.ExecuteNonQueryAsync(token);
+            await VacuumUntilAllVisibleAsync(connection, table, token);
             await SelectIndexPathsAsync(connection, indexOnly, token);
             command.CommandText = """
                 SET max_parallel_workers_per_gather = 2;
@@ -298,6 +297,33 @@ public sealed partial class CustomScanTests
         command.CommandText = "VACUUM (ANALYZE) trace_input";
         await command.ExecuteNonQueryAsync(token);
         await SelectIndexPathsAsync(connection, indexOnly, token);
+    }
+
+    /// <summary>
+    /// Vacuums a table until every page is all-visible, so an index-only scan needs no heap fetch.
+    /// </summary>
+    /// <remarks>
+    /// Parallel workers cannot read a temporary table, so this one is shared, and VACUUM marks a page all-visible only
+    /// once no transaction in the database can still see it otherwise. A snapshot held by a test running beside this one
+    /// can delay that.
+    /// </remarks>
+    private static async Task VacuumUntilAllVisibleAsync(NpgsqlConnection connection, string table, CancellationToken token)
+    {
+        await using var command = new NpgsqlCommand($"VACUUM (ANALYZE) {table}", connection);
+        await using var check = new NpgsqlCommand($"SELECT relallvisible >= relpages FROM pg_class WHERE oid = '{table}'::regclass",
+            connection);
+        DateTime deadline = DateTime.UtcNow + TimeSpan.FromMinutes(2);
+        while (true)
+        {
+            await command.ExecuteNonQueryAsync(token);
+            if (await check.ExecuteScalarAsync(token) is true)
+            {
+                return;
+            }
+
+            Assert.IsLessThan(deadline, DateTime.UtcNow, $"VACUUM did not make every page of {table} all-visible.");
+            await Task.Delay(250, token);
+        }
     }
 
     /// <summary>
