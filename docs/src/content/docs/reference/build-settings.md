@@ -41,6 +41,11 @@ explicit selection, so the executable's major is not substituted for it. A direc
 set, so the path alone selects another major; without either property it uses 18. A test project without its own PostgreSQL
 selection inherits the extension project's evaluated installation.
 
+The SDK sets `PlatformTarget` to `AnyCPU` unless the project or solution
+platform chooses one. Native AOT compiles the IL for the runtime identifier, so
+the IL needs no architecture of its own, and an `AnyCPU` test project can
+reference the extension without Visual Studio's MSB3270 architecture warning.
+
 For a shared installation beside `Directory.Build.props`, anchor the path to that
 file so projects in different directories select the same installation:
 

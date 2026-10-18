@@ -15,6 +15,10 @@
          documentation file from it. Extensions publish through the full build, as every SDK 10 publish does. -->
     <UseOptimizedPublish Condition="'$(UseOptimizedPublish)' == ''">false</UseOptimizedPublish>
     <UseCurrentRuntimeIdentifier Condition="'$(RuntimeIdentifier)' == '' and '$(UseCurrentRuntimeIdentifier)' == ''">true</UseCurrentRuntimeIdentifier>
+    <!-- Native AOT compiles the IL for the runtime identifier, so the IL itself needs no architecture. Without this the
+         SDK marks it with the runtime identifier's, and Visual Studio warns (MSB3270) when an AnyCPU test project
+         references the extension. -->
+    <PlatformTarget Condition="'$(PlatformTarget)' == ''">AnyCPU</PlatformTarget>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <IsPackable>false</IsPackable>
     <AnkusReuseSchema Condition="'$(AnkusReuseSchema)' == ''">false</AnkusReuseSchema>

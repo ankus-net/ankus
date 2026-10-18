@@ -316,7 +316,9 @@ internal static partial class NativeBindingRecordCSharp
             }
 
             string identity = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(body + "\n" + contract)));
-            return new("Ankus.Postgres.Pg" + Number(graph.Target.PostgresVersion / 10000) + "." + identity, identity,
+            // The assembly embeds and verifies the full identity. Its name keeps 64 bits of it, enough to tell contracts
+            // apart, so its path in a project stays within the 260 characters Visual Studio's MSBuild allows.
+            return new("Ankus.Postgres.Pg" + Number(graph.Target.PostgresVersion / 10000) + "." + identity[..16], identity,
                 body.Replace("__ANKUS_RECORD_IDENTITY__", identity, StringComparison.Ordinal));
         }
 
