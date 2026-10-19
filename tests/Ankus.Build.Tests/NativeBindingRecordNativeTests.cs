@@ -357,7 +357,7 @@ public sealed partial class NativeBindingNativeTests
         string file = Path.Join(directory, "records.c");
         string ast = Path.Join(directory, "records.ast");
         string json = Path.Join(directory, "records.ast.json");
-        string compiler = NativeBindingRecordCommand.FindCompiler(OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang");
+        string compiler = await HostCompilers.ClangAsync();
         string[] frontend = OperatingSystem.IsWindows()
             ? ["/nologo", "/std:c11", "/W4", "/WX", "/Zs", .. frontendOptions]
             : ["-std=c11", "-Wall", "-Wextra", "-Werror", "-fsyntax-only", .. frontendOptions];

@@ -52,7 +52,7 @@ public sealed partial class NativeBindingNativeTests
             await File.WriteAllBytesAsync(provider, await CompileNativeObjectAsync(
                 "int provider_calls; int provided_value(int value) { ++provider_calls; return value * 3 + 1; }"), context.CancellationToken);
             await File.WriteAllTextAsync(main, Main, context.CancellationToken);
-            string compiler = OperatingSystem.IsWindows() ? "cl.exe" : "clang";
+            string compiler = OperatingSystem.IsWindows() ? "cl.exe" : await HostCompilers.ClangAsync();
             string[] arguments = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/WX", "/O2", "/Fe" + executable, "/Fo" + Path.ChangeExtension(main, ".obj"), main, caller, native]
                 : ["-std=c11", "-Wall", "-Wextra", "-Werror", "-O2", main, caller, native, "-o", executable];

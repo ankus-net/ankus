@@ -55,7 +55,7 @@ public sealed partial class NativeBindingNativeTests
             };
             Assert.AreEqual(expected, NativeBindingCallSource.Generate(reordered, Headers));
             string file = Path.Join(directory, "checks.c");
-            string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang";
+            string compiler = await HostCompilers.ClangAsync();
             string[] options = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/Zs", file]
                 : ["-std=c11", "-Wall", "-Wextra", "-Werror", "-fsyntax-only", file];

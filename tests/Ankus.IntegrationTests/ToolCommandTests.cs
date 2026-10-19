@@ -249,7 +249,7 @@ public sealed partial class ToolCommandTests(TestContext context)
     }
 
     /// <summary>
-    /// Packs one Native AOT runtime line's host runtime and compiler packages from its staged build.
+    /// Packs one Native AOT runtime line's host runtime and compiler packages from its staged build, when there is one.
     /// </summary>
     /// <param name="repository">The repository root.</param>
     /// <param name="line">The target framework the runtime line serves.</param>
@@ -260,6 +260,13 @@ public sealed partial class ToolCommandTests(TestContext context)
     {
         string runtimeIdentifier = RuntimeInformation.RuntimeIdentifier;
         string staging = Path.Join(repository, "artifacts", line == "net10.0" ? "nativeaot" : "nativeaot-" + line, runtimeIdentifier);
+        // A checkout whose runtime version is released restores it from nuget.org, which the feed's configuration lists,
+        // as any extension build does. Only a staged runtime needs packing.
+        if (!File.Exists(Path.Join(staging, "aotsdk", "System.Private.CoreLib.dll")))
+        {
+            return;
+        }
+
         string suffix = line == "net10.0" ? string.Empty : "-" + line;
         await PackageProcessRunner.RunCheckedAsync("dotnet",
             ["pack", Path.Join(repository, "src/Ankus.NativeAot.Runtime"), "-c", "Release", "-o", feed,

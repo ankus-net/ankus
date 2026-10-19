@@ -171,7 +171,7 @@ public sealed partial class NativeBindingNativeTests
             };
             string file = Path.Join(directory, "calls.c");
             string diagnostics = Path.Join(directory, "calls.txt");
-            string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang";
+            string compiler = await HostCompilers.ClangAsync();
             string[] arguments = OperatingSystem.IsWindows() ? ["/nologo", "/std:c11", "/W4", "/WX", "/Zs", file]
                 : ["-std=c11", "-Wall", "-Wextra", "-Werror", "-fsyntax-only", file];
             await File.WriteAllTextAsync(file, NativeBindingCallSource.Generate(changed, Headers), context.CancellationToken);

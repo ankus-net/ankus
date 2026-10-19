@@ -70,8 +70,8 @@ public sealed partial class NativeBindingNativeTests
             File.Delete(shadow);
             Assert.AreEqual(macro, await ObserveAsync(directory, options));
 
-            Task<NativeBindingPreprocessed> ObserveAsync(string working, string[] arguments)
-                => NativeBindingPreprocessor.ObserveAsync(OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang",
+            async Task<NativeBindingPreprocessed> ObserveAsync(string working, string[] arguments)
+                => await NativeBindingPreprocessor.ObserveAsync(await HostCompilers.ClangAsync(),
                     arguments, Source, working, context.CancellationToken);
         }
         finally
@@ -90,7 +90,7 @@ public sealed partial class NativeBindingNativeTests
         try
         {
             string file = Path.Join(directory, "semantic.cfg");
-            string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang";
+            string compiler = await HostCompilers.ClangAsync();
             string prefix = OperatingSystem.IsWindows() ? "/clang:" : "";
             string[] options = ["--config=" + file];
             const string Source = "typedef struct Entry { char first; int second; } Entry;\n";
@@ -121,7 +121,7 @@ public sealed partial class NativeBindingNativeTests
         string directory = Directory.CreateTempSubdirectory("ankus-preprocessing-missing-").FullName;
         try
         {
-            string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang";
+            string compiler = await HostCompilers.ClangAsync();
             InvalidOperationException failure = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
                 NativeBindingPreprocessor.ObserveAsync(compiler, [], "#include \"postgres.h\"\n", directory, context.CancellationToken));
             string first = failure.Message.ReplaceLineEndings("\n").Split('\n', StringSplitOptions.RemoveEmptyEntries)[0];
@@ -144,7 +144,7 @@ public sealed partial class NativeBindingNativeTests
         string directory = Directory.CreateTempSubdirectory("ankus-preprocessing-failure-").FullName;
         try
         {
-            string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang";
+            string compiler = await HostCompilers.ClangAsync();
             InvalidOperationException failure = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
                 NativeBindingPreprocessor.ObserveAsync(compiler, [], "#error deliberate_preprocessing_failure\n", directory, context.CancellationToken));
             Assert.Contains("deliberate_preprocessing_failure", failure.Message);

@@ -28,7 +28,7 @@ public sealed partial class NativeBindingNativeTests
                     return EXIT_SUCCESS;
                 }
                 """, context.CancellationToken);
-            await RunAsync("clang", [.. selected, "-Wall", "-Wextra", "-Werror", source, "-o", executable], directory);
+            await RunAsync(await HostCompilers.ClangAsync(), [.. selected, "-Wall", "-Wextra", "-Werror", source, "-o", executable], directory);
             Assert.AreEqual("42", (await RunAsync(executable, [], directory)).Trim());
             Assert.IsFalse(Directory.Exists(recorded[1]));
         }

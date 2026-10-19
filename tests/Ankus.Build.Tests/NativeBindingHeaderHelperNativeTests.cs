@@ -258,7 +258,7 @@ public sealed partial class NativeBindingNativeTests
             string file = Path.Join(directory, "incompatible.c");
             string source = NativeBindingCallSource.Generate(records, "#define PG_VERSION_NUM 180006\n" + incompatible);
             await File.WriteAllTextAsync(file, source, context.CancellationToken);
-            string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang";
+            string compiler = await HostCompilers.ClangAsync();
             string[] options = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/Zs", file]
                 : ["-std=c11", "-Wall", "-Wextra", "-Werror", "-fsyntax-only", file];

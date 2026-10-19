@@ -240,7 +240,7 @@ public sealed partial class NativeBindingNativeTests
                 : NativeBindingCallSource.Generate(records, compilerHeaders, names);
             await File.WriteAllTextAsync(file, source + "\n" + main, context.CancellationToken);
             string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "calls.exe" : "calls");
-            string compiler = OperatingSystem.IsWindows() ? nativeCompiler ? "cl.exe" : "clang-cl.exe" : "clang";
+            string compiler = OperatingSystem.IsWindows() && nativeCompiler ? "cl.exe" : await HostCompilers.ClangAsync();
             string[] compile = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/O2", "/Fe" + executable, "/Fo" + Path.ChangeExtension(executable, ".obj"), file]
                 : ["-std=c11", "-Wall", "-Wextra", "-Werror", "-O2", file, "-o", executable];

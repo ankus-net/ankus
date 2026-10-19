@@ -85,7 +85,7 @@ public sealed partial class NativeBindingNativeTests
                     async (file, _, token) =>
                     {
                         stages.Add(Path.GetDirectoryName(file)!);
-                        string compiler = OperatingSystem.IsWindows() ? "cl.exe" : "clang";
+                        string compiler = OperatingSystem.IsWindows() ? "cl.exe" : await HostCompilers.ClangAsync();
                         string[] arguments = OperatingSystem.IsWindows() ? ["/nologo", "/WX", "/Zs", file]
                             : ["-Werror", "-fsyntax-only", file];
                         await NativeBindingLayoutCommand.RunProcessAsync(compiler, arguments, Path.GetDirectoryName(file)!, token);
@@ -131,7 +131,7 @@ public sealed partial class NativeBindingNativeTests
         async Task CompileAsync(string file, string artifact, CancellationToken token)
         {
             stages.Add(Path.GetDirectoryName(file)!);
-            string compiler = OperatingSystem.IsWindows() ? "cl.exe" : "clang";
+            string compiler = OperatingSystem.IsWindows() ? "cl.exe" : await HostCompilers.ClangAsync();
             string[] arguments = OperatingSystem.IsWindows() ? ["/nologo", "/WX", "/c", "/O2", "/Fo" + artifact, file]
                 : ["-Werror", "-c", "-O2", file, "-o", artifact];
             await NativeBindingLayoutCommand.RunProcessAsync(compiler, arguments, Path.GetDirectoryName(file)!, token);
@@ -219,7 +219,7 @@ public sealed partial class NativeBindingNativeTests
         string executable = Path.ChangeExtension(file, OperatingSystem.IsWindows() ? ".exe" : ".out");
         await File.WriteAllTextAsync(file, "#include <stdio.h>\nextern int native_published(void);\nint main(void) { printf(\"%d\\n\", native_published()); return 0; }\n",
             context.CancellationToken);
-        string compiler = OperatingSystem.IsWindows() ? "cl.exe" : "clang";
+        string compiler = OperatingSystem.IsWindows() ? "cl.exe" : await HostCompilers.ClangAsync();
         string[] arguments = OperatingSystem.IsWindows() ? ["/nologo", "/WX", "/Fe" + executable, "/Fo" + Path.ChangeExtension(file, ".obj"), file, artifact]
             : ["-Werror", file, artifact, "-o", executable];
         await RunAsync(compiler, arguments, directory);
