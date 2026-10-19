@@ -88,8 +88,8 @@ public sealed class ClangSelectionTests(TestContext context)
     }
 
     /// <summary>
-    /// A Clang chosen explicitly that is too old fails with its version and the setting to change, not as an unsupported
-    /// identity.
+    /// A Clang chosen explicitly that is too old fails with its version and the setting to change; it is never reported
+    /// as an unsupported identity.
     /// </summary>
     [TestMethod]
     [OSCondition(OperatingSystems.Linux | OperatingSystems.OSX)]

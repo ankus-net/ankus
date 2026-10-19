@@ -12,7 +12,7 @@ namespace Ankus.Generators;
 internal static class ExactAttributeStrings
 {
     /// <summary>
-    /// Rejects malformed UTF-8 instead of replacing bytes in persisted identities.
+    /// Rejects malformed UTF-8 so persisted identities keep their exact bytes.
     /// </summary>
     private static readonly UTF8Encoding s_utf8 = new(false, true);
 
@@ -562,7 +562,7 @@ internal static class ExactAttributeStrings
         }
 
         /// <summary>
-        /// Resolves each definition once, detecting cyclic and duplicate metadata rather than publishing a partial index.
+        /// Resolves each definition once, detecting cyclic and duplicate metadata so only a complete index is published.
         /// </summary>
         private static Dictionary<string, TypeDefinitionHandle> Create(MetadataReader reader, CancellationToken cancellationToken)
         {

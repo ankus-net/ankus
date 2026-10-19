@@ -97,7 +97,8 @@ public sealed partial class ToolCommandTests
                 context.CancellationToken, workingDirectory: s_root);
             Assert.AreNotEqual(0, result.ExitCode, "Environment default for PostgreSQL " + major.ToString(CultureInfo.InvariantCulture));
             Assert.Contains(s_installation.PgConfigPath, result.StandardError);
-            Assert.Contains("is PostgreSQL " + MajorText() + ", not PostgreSQL " + major.ToString(CultureInfo.InvariantCulture), result.StandardError);
+            Assert.Contains("is PostgreSQL " + MajorText() + "; PostgreSQL " + major.ToString(CultureInfo.InvariantCulture) + " was expected",
+                result.StandardError);
             Assert.AreEqual(Original, await File.ReadAllTextAsync(configuration, context.CancellationToken));
             Assert.HasCount(1, Directory.GetFileSystemEntries(home));
             Assert.DoesNotContain("download", result.StandardOutput, StringComparison.OrdinalIgnoreCase);

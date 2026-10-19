@@ -319,7 +319,7 @@ public sealed partial class PostgresDevelopmentCluster
     }
 
     /// <summary>
-    /// Rejects a damaged owned identity instead of attaching to another server's event provider.
+    /// Rejects a damaged owned identity so the cluster never attaches to another server's event provider.
     /// </summary>
     /// <param name="path">The owned identity marker.</param>
     /// <returns>The validated server identity.</returns>

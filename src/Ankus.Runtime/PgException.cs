@@ -177,7 +177,7 @@ public sealed class PgException : Exception
     }
 
     /// <summary>
-    /// Gets additional detail intended for the PostgreSQL server log rather than the client error response.
+    /// Gets additional detail written only to the PostgreSQL server log. The client error response omits it.
     /// </summary>
     public string? DetailLog
     {

@@ -149,7 +149,7 @@ public sealed class PgTriggerContext
 
     /// <summary>
     /// Gets the owned proposed row for row-level INSERT and UPDATE invocations, otherwise null.
-    /// Undefined generated columns are marked unavailable instead of being exposed as SQL NULL.
+    /// Undefined generated columns are marked unavailable and never read as SQL NULL.
     /// </summary>
     public PgHeapTuple? New { get; }
 

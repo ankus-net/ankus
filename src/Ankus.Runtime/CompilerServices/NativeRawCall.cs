@@ -119,7 +119,7 @@ internal unsafe struct NativeCallFrame
     /// </summary>
     internal NativeCallArgument* _arguments;
     /// <summary>
-    /// Counts argument representations rather than bytes.
+    /// Holds the element count of the argument representations.
     /// </summary>
     internal nuint _count;
     /// <summary>

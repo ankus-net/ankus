@@ -12,7 +12,9 @@ internal static class SpiSqlTokenLayout
     /// <param name="command">The built SQL, including generated parenthesized parameters.</param>
     /// <param name="positions">The exact dollar-token positions emitted by the interpolation builder.</param>
     /// <param name="allowLiteralParameters">Allows independent positional tokens in raw command text.</param>
-    /// <param name="quotedFragments">Marks complete quoted SQL atoms instead of interpolation-owned parameters.</param>
+    /// <param name="quotedFragments">
+    /// Whether positions mark complete quoted SQL atoms; otherwise they mark interpolation-owned parameters.
+    /// </param>
     /// <returns>The first binding ownership or SQL token-context failure, if any.</returns>
     internal static SqlInterpolationFailure Check(string command, IReadOnlyList<int> positions, bool allowLiteralParameters = false, bool quotedFragments = false)
     {

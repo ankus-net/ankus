@@ -15,8 +15,8 @@ Registers unmanaged values in PostgreSQL's named shared memory during shared pre
 public static class PgSharedMemory
 ```
 
-Register static descriptors from a [PgModuleLoadAttribute](/api/ankus.pgmoduleloadattribute/) method. Initialization
-runs when PostgreSQL creates shared memory, not while the descriptor is registered. Existing
+Register static descriptors from a [PgModuleLoadAttribute](/api/ankus.pgmoduleloadattribute/) method. Registering a
+descriptor defers its initialization until PostgreSQL creates shared memory. Existing
 storage is attached without running its initializer or overwriting its contents.
 
 Inheritance: [object](https://learn.microsoft.com/dotnet/api/system.object)

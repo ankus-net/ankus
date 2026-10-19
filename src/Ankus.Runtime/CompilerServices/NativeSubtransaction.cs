@@ -17,7 +17,9 @@ internal static unsafe class NativeSubtransaction
     /// </summary>
     /// <typeparam name="TResult">The managed result type.</typeparam>
     /// <param name="action">The synchronous callback.</param>
-    /// <param name="atomic">Whether statements in the scope share its subtransaction instead of recovering individually.</param>
+    /// <param name="atomic">
+    /// Whether statements in the scope share its subtransaction; otherwise each recovers individually.
+    /// </param>
     /// <param name="rollBack">Whether the subtransaction is rolled back even when the callback succeeds.</param>
     /// <returns>The result after native release succeeds.</returns>
     internal static TResult Run<TResult>(Func<TResult> action, bool atomic = false, bool rollBack = false)
@@ -89,7 +91,7 @@ internal static unsafe class NativeSubtransaction
     }
 
     /// <summary>
-    /// Gets whether rollback must reclaim native SPI frames instead of ordinary session close.
+    /// Gets whether rollback must reclaim native SPI frames itself; otherwise ordinary session close reclaims them.
     /// </summary>
     internal static bool HasFailure => s_current?.Failure is not null;
 

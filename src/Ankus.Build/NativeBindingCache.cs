@@ -337,7 +337,9 @@ internal sealed class NativeBindingCacheLease(string directory, FileStream owner
 /// </summary>
 /// <param name="Path">An artifact filename or absolute compiler input path.</param>
 /// <param name="Hash">The SHA-256 file content identity.</param>
-/// <param name="IsDirectory">Whether the hash records recursive directory membership rather than file bytes.</param>
+/// <param name="IsDirectory">
+/// Whether the hash records recursive directory membership; otherwise it records file bytes.
+/// </param>
 internal sealed record NativeBindingCacheFile(string Path, string Hash, bool IsDirectory = false);
 
 /// <summary>

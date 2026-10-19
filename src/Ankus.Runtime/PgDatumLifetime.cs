@@ -52,7 +52,7 @@ internal sealed class PgDatumLifetime
     /// <returns>The input's lifetime.</returns>
     /// <remarks>
     /// Every caller wraps the input in a view whose constructor checks the lifetime before anything else, so that
-    /// first check can trust the generation just read instead of reading it again.
+    /// first check can trust the generation just read without reading it again.
     /// </remarks>
     internal static PgDatumLifetime ForCurrentInput(NativeBorrowScope scope)
     {

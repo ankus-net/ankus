@@ -9,7 +9,8 @@ Namespace: [Ankus](/api/ankus/)
 
 Assembly: `Ankus.Runtime.dll`
 
-A PostgreSQL point with double-precision coordinates. Equality uses .NET value semantics, not geometric tolerance.
+A PostgreSQL point with double-precision coordinates.
+Equality uses .NET value semantics, without geometric tolerance.
 
 ```csharp
 public readonly struct PgPoint : ISpanFormattable, IFormattable, IParsable<PgPoint>, IEquatable<PgPoint>
@@ -23,7 +24,8 @@ Implements: [ISpanFormattable](https://learn.microsoft.com/dotnet/api/system.isp
 
 ### PgPoint(double, double)
 
-A PostgreSQL point with double-precision coordinates. Equality uses .NET value semantics, not geometric tolerance.
+A PostgreSQL point with double-precision coordinates.
+Equality uses .NET value semantics, without geometric tolerance.
 
 ```csharp
 public PgPoint(double X, double Y)

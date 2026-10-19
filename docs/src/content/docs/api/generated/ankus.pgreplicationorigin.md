@@ -111,7 +111,7 @@ The origin's name.
 
 `missingOk` — [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
 
-Whether a missing origin is ignored rather than an error.
+Whether a missing origin is ignored; otherwise it is an error.
 
 Exceptions:
 

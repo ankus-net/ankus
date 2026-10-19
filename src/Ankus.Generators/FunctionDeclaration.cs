@@ -101,7 +101,9 @@ internal sealed record FunctionDeclaration
     /// <param name="name">The validated SQL function name.</param>
     /// <param name="context">The generator context receiving declaration diagnostics.</param>
     /// <param name="set">The validated set return, or null for a scalar function.</param>
-    /// <param name="contextParameter">Whether the managed parameter is a backend invocation context instead of a SQL argument.</param>
+    /// <param name="contextParameter">
+    /// Whether the managed parameter is a backend invocation context; otherwise it is a SQL argument.
+    /// </param>
     /// <param name="sqlNullability">Explicit SQL parameter nullability for a specialized callback, excluding synthetic arguments that cannot be null.</param>
     /// <param name="schemaFallback">The specialized declaration's schema when the callback does not override it.</param>
     /// <param name="parameterModels">The ordered SQL and injected parameters, or null to resolve them from the method.</param>

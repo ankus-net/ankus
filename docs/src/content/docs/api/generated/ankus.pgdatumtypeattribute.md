@@ -16,7 +16,7 @@ Maps a managed type to an existing PostgreSQL representation through an explicit
 public sealed class PgDatumTypeAttribute : Attribute
 ```
 
-This declaration generates conversion registration, not type definitions or input/output functions.
+This declaration generates conversion registration only. It defines no type and no input/output functions.
 The converter implements IPgDatumReader&lt;T&gt;, IPgDatumWriter&lt;T&gt;, or both for this exact managed type.
 A default generic declaration is a template selected by fully constructed roots in supported generated
 signatures or exact managed PgSqlTypeProvider declarations. Each selected construction must have an
@@ -62,7 +62,7 @@ The exact unquoted PostgreSQL type identifier.
 
 The closed converter or inferable generic definition with an accessible parameterless constructor.
 
-This declaration generates conversion registration, not type definitions or input/output functions.
+This declaration generates conversion registration only. It defines no type and no input/output functions.
 The converter implements IPgDatumReader&lt;T&gt;, IPgDatumWriter&lt;T&gt;, or both for this exact managed type.
 A default generic declaration is a template selected by fully constructed roots in supported generated
 signatures or exact managed PgSqlTypeProvider declarations. Each selected construction must have an

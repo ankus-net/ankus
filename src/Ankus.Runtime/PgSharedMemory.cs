@@ -6,8 +6,8 @@ namespace Ankus;
 /// Registers unmanaged values in PostgreSQL's named shared memory during shared preload.
 /// </summary>
 /// <remarks>
-/// Register static descriptors from a <see cref="PgModuleLoadAttribute"/> method. Initialization
-/// runs when PostgreSQL creates shared memory, not while the descriptor is registered. Existing
+/// Register static descriptors from a <see cref="PgModuleLoadAttribute"/> method. Registering a
+/// descriptor defers its initialization until PostgreSQL creates shared memory. Existing
 /// storage is attached without running its initializer or overwriting its contents.
 /// </remarks>
 public static class PgSharedMemory

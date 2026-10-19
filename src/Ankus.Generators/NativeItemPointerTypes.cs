@@ -6,7 +6,7 @@ namespace Ankus.Generators;
 internal static class NativeItemPointerTypes
 {
     /// <summary>
-    /// Gets conversions using the selected PostgreSQL headers rather than a managed struct layout.
+    /// Gets conversions that take their layout from the selected PostgreSQL headers.
     /// </summary>
     internal const string Source = """
         #include "storage/itemptr.h"

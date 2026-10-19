@@ -217,7 +217,9 @@ internal sealed record NativeHeaderAdjusted(NativeHeaderType Written, NativeHead
 /// <param name="Result">The native return type.</param>
 /// <param name="Parameters">The ordered, C-adjusted fixed parameter types.</param>
 /// <param name="IsVariadic">Whether additional promoted call-site arguments are required.</param>
-/// <param name="HasPrototype">Whether the declaration has a prototype instead of an unspecified argument list.</param>
+/// <param name="HasPrototype">
+/// Whether the declaration has a prototype; otherwise its argument list is unspecified.
+/// </param>
 /// <param name="DoesNotReturn">Whether the function type itself carries a no-return contract.</param>
 /// <param name="CallingConvention">The compiler's native convention, using the measured graph's canonical convention identifiers.</param>
 internal sealed record NativeHeaderFunction(NativeHeaderType Result, IReadOnlyList<NativeHeaderType> Parameters,

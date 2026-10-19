@@ -53,7 +53,8 @@ public sealed class PgFunctionAttribute : Attribute
     /// <remarks>
     /// Replacement declarations must match the managed wrapper's argument, result and NULL contracts.
     /// Explicit dependencies and type/schema prerequisites still apply. For an aggregate helper this affects only
-    /// that helper, not the aggregate declaration. SQL syntax and object definitions are checked by PostgreSQL.
+    /// that helper; the aggregate declaration is unchanged. SQL syntax and object definitions are checked by
+    /// PostgreSQL.
     /// </remarks>
     public string? Sql
     {
@@ -111,7 +112,7 @@ public sealed class PgFunctionAttribute : Attribute
     }
 
     /// <summary>
-    /// Gets or sets whether the function executes with its owner's privileges instead of the caller's.
+    /// Gets or sets whether the function executes with its owner's privileges; otherwise it uses the caller's.
     /// </summary>
     public bool SecurityDefiner
     {

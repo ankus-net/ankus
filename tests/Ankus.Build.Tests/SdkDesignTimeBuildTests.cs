@@ -193,7 +193,7 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                 ["msbuild", project, "-nologo", "-nodeReuse:false", "-tl:off", "-verbosity:minimal", "-target:ResolveReferences",
                     "-property:Configuration=" + configuration, "-property:TargetFramework=net10.0", "-property:DesignTimeBuild=true",
                     "-property:BuildProjectReferences=false", "-property:BuildingProject=false"], directory, context.CancellationToken);
-            // A preview SDK announces itself for every project (NETSDK1057). That notice is the SDK's own, not one Ankus adds.
+            // A preview SDK announces itself for every project (NETSDK1057). The SDK emits that notice itself.
             string[] lines = [.. visible.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
                 .Where(static line => !line.Contains(": message NETSDK1057: ", StringComparison.Ordinal))];
             Assert.AreEqual("", string.Join('\n', lines));

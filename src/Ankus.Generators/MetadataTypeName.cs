@@ -17,7 +17,7 @@ internal static class MetadataTypeName
             Namespace(type.ContainingNamespace) + type.MetadataName;
 
     /// <summary>
-    /// Uses raw namespace names rather than language-specific display text.
+    /// Uses raw metadata namespace names, free of language-specific display text.
     /// </summary>
     private static string Namespace(INamespaceSymbol space)
         => space.IsGlobalNamespace ? string.Empty : Namespace(space.ContainingNamespace) + space.MetadataName + ".";

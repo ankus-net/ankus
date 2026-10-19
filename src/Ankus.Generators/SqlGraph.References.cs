@@ -40,7 +40,7 @@ internal sealed partial class SqlGraph
     }
 
     /// <summary>
-    /// Identifies explicit dependencies whose destination is a C# declaration rather than a string ID.
+    /// Identifies explicit dependencies whose destination is a C# declaration. Other dependencies name a string ID.
     /// </summary>
     internal static bool IsReference(AttributeData attribute)
         => attribute.AttributeClass?.ToDisplayString() is "Ankus.PgRequiresAttribute" or "Ankus.PgBeforeAttribute" or "Ankus.PgSupportFunctionAttribute";

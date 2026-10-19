@@ -13,7 +13,9 @@ internal static partial class NativeObjectSymbols
     /// <summary>
     /// Retains undefined external names with the requested C prefix and their measured object target.
     /// </summary>
-    /// <param name="image">One complete relocatable object, rather than an executable, archive or universal binary.</param>
+    /// <param name="image">
+    /// One complete relocatable object. Executables, archives and universal binaries are not supported.
+    /// </param>
     /// <param name="prefix">The generated C namespace to select after removing platform C-name decoration.</param>
     /// <returns>Ordinal, unique imports together with the actual object format, architecture and byte order.</returns>
     internal static NativeObjectImports Read(ReadOnlySpan<byte> image, string prefix)

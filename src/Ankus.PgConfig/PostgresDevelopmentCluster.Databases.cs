@@ -9,7 +9,7 @@ public sealed partial class PostgresDevelopmentCluster
     /// Gets a libpq connection string for the running cluster's actual port and an exact database name.
     /// This does not start the server or create the database.
     /// </summary>
-    /// <param name="database">The literal database name, not a connection string.</param>
+    /// <param name="database">The literal database name, escaped into the connection string's database path.</param>
     /// <param name="cancellationToken">Cancels status and port discovery.</param>
     /// <returns>Connection settings suitable for psql or another libpq client.</returns>
     public Task<string> GetConnectionStringAsync(string database, CancellationToken cancellationToken = default)

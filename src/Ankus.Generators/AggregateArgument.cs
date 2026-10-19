@@ -8,7 +8,7 @@ namespace Ankus.Generators;
 /// <param name="Managed">The exact closed managed argument spelling.</param>
 /// <param name="Start">The first SQL slot consumed by this argument.</param>
 /// <param name="Count">The number of SQL slots.</param>
-/// <param name="Tuple">Whether the argument is a tuple rather than one scalar.</param>
+/// <param name="Tuple">Whether the argument is a tuple; otherwise it is one scalar.</param>
 internal sealed record AggregateArgument(string Managed, int Start, int Count, bool Tuple)
 {
     /// <summary>

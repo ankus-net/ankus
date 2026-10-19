@@ -50,9 +50,9 @@ Exceptions:
             as for [AddPath(PgCustomScanPath)](/api/ankus.pgcustomscanplanner/#member-246b7dff9fbfbfd2).
 - [ArgumentException](https://learn.microsoft.com/dotnet/api/system.argumentexception): A sort key names a dropped column.
 
-PostgreSQL considers the path only for a table and query that can run in parallel, and not for a scan whose
-conditions depend on an outer row. The processes divide the rows through the provider's shared memory; see
-[IPgParallelCustomScan&lt;TState, TShared&gt;](/api/ankus.ipgparallelcustomscan-2/).
+PostgreSQL considers the path only for a table and query that can run in parallel, and only when the scan's
+conditions are independent of any outer row. The processes divide the rows through the provider's shared
+memory; see [IPgParallelCustomScan&lt;TState, TShared&gt;](/api/ankus.ipgparallelcustomscan-2/).
 
 <a id="member-246b7dff9fbfbfd2"></a>
 

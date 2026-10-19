@@ -7,7 +7,8 @@ namespace Ankus.CompilerServices;
 
 /// <summary>
 /// Compiler support for SQL interpolation that binds values with their declared managed types.
-/// Interpolations represent values, not identifiers, SQL fragments or formatted text.
+/// Each interpolation is a bound value that is never formatted into the text, so it cannot supply an identifier or
+/// SQL fragment.
 /// </summary>
 /// <param name="literalLength">The compiler's literal character count.</param>
 /// <param name="formattedCount">The compiler's interpolated value count.</param>

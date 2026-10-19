@@ -107,9 +107,10 @@ public sealed unsafe partial class PgMemoryContext : IDisposable
     /// <param name="options">The AllocSet block sizes, or null for PostgreSQL's default preset.</param>
     /// <returns>The callback's result.</returns>
     /// <remarks>
-    /// Return copied managed values rather than native pointers. Escaped checked handles become stale
-    /// after successful deletion. Callback, restoration, and deletion failures are preserved together.
-    /// If native cleanup fails, the context remains owned by its parent until cleanup is retried.
+    /// Return copied managed values; native pointers into the context do not survive its deletion.
+    /// Escaped checked handles become stale after successful deletion. Callback, restoration, and
+    /// deletion failures are preserved together. If native cleanup fails, the context remains owned
+    /// by its parent until cleanup is retried.
     /// Recover actual PostgreSQL errors with <see cref="PgTransaction.RunInSubtransaction(Action)"/>
     /// before retrying cleanup or performing further backend work.
     /// </remarks>

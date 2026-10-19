@@ -35,7 +35,7 @@ internal static class SqlTypeProviderDiagnostics
         helpLinkUri: "https://ankus.net/custom-sql/#type-provider-diagnostics");
 
     /// <summary>
-    /// Requires a resolved custom SQL block rather than another declaration alias.
+    /// Requires a resolved custom SQL block; another declaration's alias does not qualify.
     /// </summary>
     internal static readonly DiagnosticDescriptor s_missingBlock = new(
         "ANKUS381", "Type provider must name a custom SQL block",

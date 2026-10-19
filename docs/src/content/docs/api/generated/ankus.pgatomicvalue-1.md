@@ -22,7 +22,7 @@ Type parameters:
 A primitive or enum type supported by Interlocked.
 
 Operate directly on a field of the readonly reference supplied by a shared reader. Copying this
-value copies its current storage, not its identity. Each value occupies eight bytes and must be
+value snapshots its current storage into an independent value. Each value occupies eight bytes and must be
 eight-byte aligned; packed unaligned layouts are rejected. Operations use Interlocked ordering.
 
 ## Constructors

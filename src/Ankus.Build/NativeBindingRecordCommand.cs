@@ -96,7 +96,7 @@ internal static class NativeBindingRecordCommand
     }
 
     /// <summary>
-    /// Requires libclang from the selected compiler installation rather than an unrelated system library.
+    /// Requires libclang from the selected compiler installation, so an unrelated system library is never loaded.
     /// </summary>
     internal static async Task<string> FindLibraryAsync(string compiler, int major, CancellationToken cancellationToken)
     {

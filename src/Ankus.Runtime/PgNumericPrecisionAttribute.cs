@@ -6,7 +6,7 @@ namespace Ankus;
 /// </summary>
 /// <remarks>
 /// Use on <see cref="PgNumeric"/> or <see cref="decimal"/>, including nullable forms.
-/// Constraints apply at the SQL boundary, not to direct C# calls. Negative scales and scales
+/// Constraints apply at the SQL boundary; direct C# calls bypass them. Negative scales and scales
 /// above precision require PostgreSQL 15 or later. PostgreSQL function signatures themselves
 /// do not retain numeric type modifiers, so the generated dispatcher enforces this contract.
 /// </remarks>

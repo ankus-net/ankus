@@ -322,7 +322,7 @@ The canonical union.
 
 ### IsEmpty
 
-Gets whether this value represents an empty range rather than an interval with bounds.
+Gets whether this value represents an empty range, which has no bounds.
 
 ```csharp
 public bool IsEmpty { get; }

@@ -75,7 +75,7 @@ Returns: [Task](https://learn.microsoft.com/dotnet/api/system.threading.tasks.ta
 
 A task completing after the test and rollback.
 
-Report ignored cases through the host framework. Invoking an ignored case directly fails instead of reporting false success.
+Report ignored cases through the host framework. Invoking an ignored case directly fails, so it never reports false success.
 
 <a id="member-7653a9a4654625e8"></a>
 
@@ -106,7 +106,7 @@ The fixture that owns the published extension and isolated server.
 ### StartAsync(string, PostgresInstallation?, CancellationToken)
 
 Publishes for the host architecture using the selected installation's headers, starts a fresh cluster,
-and executes CREATE EXTENSION. Build and startup failures fail initialization rather than skip tests.
+and executes CREATE EXTENSION. Build and startup failures fail initialization, so tests never skip silently.
 
 ```csharp
 public static Task<PostgresExtensionTest> StartAsync(string projectPath, PostgresInstallation? installation = null, CancellationToken cancellationToken = default)

@@ -3,7 +3,7 @@ namespace Ankus;
 public static partial class Spi
 {
     /// <summary>
-    /// Creates SQL with typed positional bindings instead of formatting interpolated values into its text.
+    /// Creates SQL that binds each interpolated value as a typed positional parameter, keeping values out of its text.
     /// Values must not be quoted or used as identifiers or SQL fragments in the interpolation.
     /// </summary>
     /// <param name="sql">The compiler-built SQL interpolation.</param>

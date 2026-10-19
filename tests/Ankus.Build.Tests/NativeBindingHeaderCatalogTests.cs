@@ -387,7 +387,8 @@ public sealed class NativeBindingHeaderCatalogTests(TestContext context)
     }
 
     /// <summary>
-    /// A function type is divergent only when <c>noreturn</c> qualifies it, not one of its parameters.
+    /// A function type is divergent only when <c>noreturn</c> qualifies the function type itself; a <c>noreturn</c>
+    /// parameter does not make it divergent.
     /// </summary>
     [TestMethod]
     public void NoReturnOutsideParenthesesMarksDivergence()

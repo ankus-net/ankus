@@ -62,7 +62,7 @@ public sealed class PostgresTestCluster : IAsyncDisposable
     /// </summary>
     /// <param name="temporary">The caller's temporary directory.</param>
     /// <param name="otherAccount">Whether another account runs the server.</param>
-    /// <param name="macOS">Whether the platform limits socket paths to 103 bytes, as macOS does, rather than Linux's 107.</param>
+    /// <param name="macOS">Whether the platform limits socket paths to 103 bytes, as macOS does; Linux allows 107.</param>
     /// <returns>The directory beneath which the socket directory is created.</returns>
     internal static string SelectSocketRoot(string temporary, bool otherAccount, bool macOS)
     {
@@ -325,7 +325,8 @@ public sealed class PostgresTestCluster : IAsyncDisposable
     }
 
     /// <summary>
-    /// Gets a writer that receives test messages in this asynchronous flow instead of standard output.
+    /// Gets a writer that receives test messages in this asynchronous flow.
+    /// Messages go to standard output when no writer is set.
     /// </summary>
     internal static AsyncLocal<TextWriter?> TestMessageWriter { get; } = new();
 

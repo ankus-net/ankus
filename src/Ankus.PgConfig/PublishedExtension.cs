@@ -243,7 +243,7 @@ public sealed class PublishedExtension
         string directory = ScriptDirectory ?? "extension";
         if (Path.IsPathRooted(directory) && !Path.IsPathFullyQualified(directory))
         {
-            throw new FormatException("SQL directories must be relative or fully qualified, not drive-relative or rooted without a drive.");
+            throw new FormatException("SQL directories must be relative or fully qualified; drive-relative paths and paths rooted without a drive are rejected.");
         }
 
         // A fully qualified directory stands alone; PostgreSQL resolves any other one under the shared directory.

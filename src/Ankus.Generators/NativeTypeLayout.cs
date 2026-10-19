@@ -177,7 +177,7 @@ internal static class NativeTypeLayout
     private sealed record Gap(int Offset, int Length);
 
     /// <summary>
-    /// Creates a local unwind carrying a closed diagnostic instead of formatted free text.
+    /// Creates a local unwind carrying a closed diagnostic: its kind, location and arguments.
     /// </summary>
     private static ValidationException Invalid(CustomTypeDiagnosticKind kind, Location? location, params string[] arguments)
         => new(new(kind, location, new(arguments)));

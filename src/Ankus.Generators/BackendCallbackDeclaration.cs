@@ -17,7 +17,7 @@ internal static class BackendCallbackDeclaration
     /// <param name="marker">The selected callback attribute name.</param>
     /// <param name="opposite">The incompatible callback attribute name.</param>
     /// <param name="contextType">The required context's unqualified runtime type name.</param>
-    /// <param name="tupleResult">Whether the callback returns a heap tuple instead of void.</param>
+    /// <param name="tupleResult">Whether the callback returns a heap tuple; otherwise it returns void.</param>
     /// <returns>Whether this declaration satisfies its callback contract.</returns>
     internal static bool Validate(IMethodSymbol method, GeneratorDiagnostics context, string marker, string opposite, string contextType, bool tupleResult)
     {

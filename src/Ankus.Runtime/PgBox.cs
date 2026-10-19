@@ -2,7 +2,7 @@ namespace Ankus;
 
 /// <summary>
 /// An axis-aligned PostgreSQL box with normalized high and low corners. NaN sorts above finite values and infinity.
-/// Equality compares corners exactly rather than using PostgreSQL's area-based equality operator.
+/// Equality compares corners exactly. PostgreSQL's own box equality operator compares areas.
 /// </summary>
 public readonly partial record struct PgBox
 {

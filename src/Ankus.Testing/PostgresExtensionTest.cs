@@ -60,7 +60,7 @@ public sealed class PostgresExtensionTest : IAsyncDisposable
 
     /// <summary>
     /// Publishes for the host architecture using the selected installation's headers, starts a fresh cluster,
-    /// and executes CREATE EXTENSION. Build and startup failures fail initialization rather than skip tests.
+    /// and executes CREATE EXTENSION. Build and startup failures fail initialization, so tests never skip silently.
     /// </summary>
     /// <param name="projectPath">The extension project file.</param>
     /// <param name="installation">
@@ -177,7 +177,7 @@ public sealed class PostgresExtensionTest : IAsyncDisposable
     /// <param name="cancellationToken">Cancels connection and test execution.</param>
     /// <returns>A task completing after the test and rollback.</returns>
     /// <remarks>
-    /// Report ignored cases through the host framework. Invoking an ignored case directly fails instead of reporting false success.
+    /// Report ignored cases through the host framework. Invoking an ignored case directly fails, so it never reports false success.
     /// </remarks>
     public Task RunTestAsync(PgTestCase test, CancellationToken cancellationToken = default)
     {

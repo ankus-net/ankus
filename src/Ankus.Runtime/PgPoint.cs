@@ -1,7 +1,8 @@
 namespace Ankus;
 
 /// <summary>
-/// A PostgreSQL point with double-precision coordinates. Equality uses .NET value semantics, not geometric tolerance.
+/// A PostgreSQL point with double-precision coordinates.
+/// Equality uses .NET value semantics, without geometric tolerance.
 /// </summary>
 /// <param name="X">The horizontal coordinate.</param>
 /// <param name="Y">The vertical coordinate.</param>

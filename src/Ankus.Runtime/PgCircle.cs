@@ -2,7 +2,7 @@ namespace Ankus;
 
 /// <summary>
 /// A PostgreSQL circle with double-precision center and radius. PostgreSQL validates the radius on datum conversion.
-/// Equality compares the stored center and radius, not area or geometric tolerance.
+/// Equality compares the stored center and radius exactly, without geometric tolerance.
 /// </summary>
 /// <param name="Center">The center point.</param>
 /// <param name="Radius">The radius. Negative radii cannot be stored in PostgreSQL.</param>

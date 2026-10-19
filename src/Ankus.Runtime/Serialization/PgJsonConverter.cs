@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace Ankus.Serialization;
 
 /// <summary>
-/// Serializes PgJson as an embedded JSON value rather than a quoted string or wrapper object.
+/// Serializes PgJson as an embedded JSON value, written in place without quoting or a wrapper object.
 /// </summary>
 public sealed class PgJsonConverter : JsonConverter<PgJson>
 {

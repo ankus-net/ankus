@@ -490,7 +490,7 @@ internal static class NativeBindingHeaderParser
 /// </summary>
 /// <param name="Name">The binding inventory name.</param>
 /// <param name="NativeName">The C declaration's identifier, before native linker aliasing.</param>
-/// <param name="IsFunction">Whether the requested symbol must be a function instead of a global.</param>
+/// <param name="IsFunction">Whether the requested symbol must be a function; otherwise it must be a global.</param>
 internal sealed record NativeHeaderRequest(string Name, string NativeName, bool IsFunction);
 
 /// <summary>

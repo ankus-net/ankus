@@ -104,8 +104,8 @@ public sealed unsafe class PgNodeReference<T> where T : unmanaged, IPgNativeNode
     /// <typeparam name="TTarget">The generated target node representation.</typeparam>
     /// <returns>A shared view, or null when the target's native cast rules reject the stored tag.</returns>
     /// <remarks>
-    /// Invalid storage, incompatible ABIs and insufficient target bounds throw rather than becoming
-    /// a tag mismatch. Existing views observe allocation resizing, reset and deletion on every access.
+    /// Invalid storage, incompatible ABIs and insufficient target bounds throw; only a rejected tag
+    /// returns null. Existing views observe allocation resizing, reset and deletion on every access.
     /// </remarks>
     public PgNodeReference<TTarget>? TryCast<TTarget>() where TTarget : unmanaged, IPgNativeNode
     {

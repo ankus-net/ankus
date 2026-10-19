@@ -497,7 +497,7 @@ public sealed class DeclarationSqlTests(TestContext context)
     }
 
     /// <summary>
-    /// Requires the named actual constrained index scan, not merely compatible planner settings.
+    /// Requires the plan to use the named constrained index scan; compatible planner settings alone do not pass.
     /// </summary>
     private async Task AssertIndexPlan(NpgsqlConnection connection, string sql)
     {

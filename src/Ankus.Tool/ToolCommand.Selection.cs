@@ -248,7 +248,7 @@ internal static partial class ToolCommand
     }
 
     /// <summary>
-    /// Rejects an invalid explicit major instead of silently using project defaults.
+    /// Rejects an invalid explicit major so project defaults never silently replace it.
     /// </summary>
     /// <param name="result">The parsed command.</param>
     /// <returns>The explicit major, or null when the option was omitted.</returns>

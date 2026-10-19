@@ -19,7 +19,7 @@ internal sealed class NativeBindingHeaderCatalog
     };
 
     /// <summary>
-    /// The typedefs bindgen renders as Rust primitives instead of declaring aliases, with <c>size_t</c> as <c>usize</c>.
+    /// The typedefs bindgen renders as Rust primitives without declaring aliases, with <c>size_t</c> as <c>usize</c>.
     /// </summary>
     private static readonly Dictionary<string, string> s_primitiveTypedefs = new(StringComparer.Ordinal)
     {
@@ -781,8 +781,8 @@ internal sealed class NativeBindingHeaderCatalog
                 continue;
             }
 
-            // Bindgen declares a field of zero-length or incomplete array type, not through a typedef, as a flexible
-            // array member outside unions.
+            // Bindgen declares a field of zero-length or incomplete array type as a flexible array member outside
+            // unions when the field declares the array directly; a typedef'd array keeps its ordinary rendering.
             string representation = !record.IsUnion && field.Type is NativeCArray { Count: null or 0 } flexible
                 ? "__IncompleteArrayField<" + Render(flexible.Element) + ">"
                 : Render(field.Type);
@@ -874,7 +874,7 @@ internal sealed class NativeBindingHeaderCatalog
 
     /// <summary>
     /// Groups consecutive bitfields into allocation units as bindgen 0.72 does after LLVM's Itanium record layout, even
-    /// for MSVC targets: a unit's alignment follows its widest bitfield, not the bitfields' declared types.
+    /// for MSVC targets: a unit's alignment follows its widest bitfield, whatever the bitfields' declared types.
     /// </summary>
     private IEnumerable<(long Size, long Alignment)> BitfieldUnits(IEnumerable<AstField> bitfields, bool packed)
     {

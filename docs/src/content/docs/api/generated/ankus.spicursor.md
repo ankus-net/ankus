@@ -88,7 +88,7 @@ The nonnegative number of rows, or zero to fetch the current row.
 
 `forward` — [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
 
-Whether to move forward rather than backward.
+Whether to move forward; otherwise the cursor moves backward.
 
 Returns: [SpiResult](/api/ankus.spiresult/)
 
@@ -132,7 +132,7 @@ The nonnegative fetch count, or zero to fetch the current row.
 
 `forward` — [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
 
-Whether to move forward rather than backward.
+Whether to move forward; otherwise the cursor moves backward.
 
 Returns: [SpiRawResult](/api/ankus.spirawresult/)
 

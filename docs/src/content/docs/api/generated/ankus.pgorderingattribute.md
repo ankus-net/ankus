@@ -21,7 +21,7 @@ Requires PgType, PgEnum, or a readable PgDatumType mapping and a same-type equal
 generated with PgEquality or declared with PgOperator. A mapped writer is not required.
 Non-enum types must also implement IEquatable of the declared type. Comparison must define an immutable,
 parallel-safe total order whose zero results agree with equality. Generated functions are strict.
-On PgEnum this explicit opt-in selects numeric ordering instead of PostgreSQL label declaration order.
+On PgEnum this explicit opt-in selects numeric ordering; without it, PostgreSQL orders labels by declaration.
 Changing ordering after data is indexed requires rebuilding dependent indexes.
 Mapped readers share the immutable, parallel-safe contract. Generated objects use the mapped SQL type's schema;
 a fixed schema prevents extension relocation. PostgreSQL checks existing default classes and permissions.

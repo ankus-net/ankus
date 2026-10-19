@@ -447,7 +447,7 @@ public sealed class PgTriggerTests
     }
 
     /// <summary>
-    /// A row descriptor must retain the target's physical layout and metadata, not just the same number of cells.
+    /// A row descriptor must retain the target's physical layout and metadata; a matching cell count is not enough.
     /// </summary>
     [TestMethod]
     [DataRow("type")]

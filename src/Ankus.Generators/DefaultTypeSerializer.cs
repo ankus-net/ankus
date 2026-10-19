@@ -538,7 +538,7 @@ internal sealed class DefaultTypeSerializer(INamedTypeSymbol root, IAssemblySymb
             root.Locations.FirstOrDefault(static location => location.IsInSource);
 
     /// <summary>
-    /// Creates a local unwind carrying a closed diagnostic rather than formatted free text.
+    /// Creates a local unwind carrying a closed diagnostic: its kind, location and arguments.
     /// </summary>
     private static ValidationException Invalid(CustomTypeDiagnosticKind kind, Location? location, params string[] arguments)
         => new(new(kind, location, new(arguments)));

@@ -12,7 +12,7 @@ namespace Ankus.IntegrationTests;
 public sealed class PostgresTestClusterTests(TestContext context)
 {
     /// <summary>
-    /// A test whose backend dies reports the postmaster's account of that backend, not only the session's own lines.
+    /// A test whose backend dies reports the postmaster's account of that backend as well as the session's own lines.
     /// </summary>
     [TestMethod]
     public async Task FailedTestReportsItsBackendsTermination()

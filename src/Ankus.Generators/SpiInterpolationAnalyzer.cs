@@ -264,7 +264,7 @@ public sealed partial class SpiInterpolationAnalyzer : DiagnosticAnalyzer
     }
 
     /// <summary>
-    /// Detects writes and managed reference aliases to the local itself rather than reads used inside a write target.
+    /// Detects writes and managed reference aliases to the local itself. Reads used inside a write target do not count.
     /// </summary>
     /// <param name="reference">One bound use of the quoted local.</param>
     /// <returns>Whether this use can replace its quoted value.</returns>

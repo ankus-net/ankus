@@ -276,7 +276,7 @@ internal static class GuardedBackend
                 ANKUS_PG_TRY_INNER();
                 {
                     /* PostgreSQL may reset ErrorContext even after a nonthrowing report.
-                     * Retain an identity, not a pointer probe into a possibly deleted child. */
+                     * Retain an identity, since probing a pointer could reach a deleted child. */
                     uint64 caller_identity = recovery_context == ErrorContext
                         ? ankus_memory_context_id(caller_context) : 0;
                     int code;

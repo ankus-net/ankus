@@ -38,7 +38,7 @@ public readonly unsafe struct PgSpinLockValue<T> where T : unmanaged
     /// Gets whether the lock is currently held, on PostgreSQL versions before 19.
     /// </summary>
     /// <remarks>
-    /// This is an instantaneous observation, not permission to access the protected value.
+    /// This is an instantaneous observation. It does not grant access to the protected value.
     /// PostgreSQL 19 and later throw NotSupportedException because SpinLockFree was removed.
     /// </remarks>
     public bool IsLocked => Query(null);

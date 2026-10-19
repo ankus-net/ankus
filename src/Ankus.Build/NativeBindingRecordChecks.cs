@@ -395,7 +395,7 @@ internal static partial class NativeBindingRecordChecks
         private static string TypeName(int index) => "ankus_record_type_" + Number(index);
 
         /// <summary>
-        /// Names the standard variadic argument type instead of leaking Clang's private typedef into another compiler.
+        /// Names the standard variadic argument type, keeping Clang's private typedef out of other compilers' input.
         /// </summary>
         private static string AliasName(NativeRecordType type) => type.Name == "__builtin_va_list" ? "va_list" : type.Name;
 

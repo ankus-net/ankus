@@ -271,7 +271,7 @@ public sealed class PostgresServerLog(string filePath, Guid identity)
     }
 
     /// <summary>
-    /// Rejects an empty identity instead of sharing a common provider with other servers.
+    /// Rejects an empty identity, which would share one common provider among servers.
     /// </summary>
     /// <param name="identity">The cluster's supplied provider identity.</param>
     /// <returns>The validated identity.</returns>

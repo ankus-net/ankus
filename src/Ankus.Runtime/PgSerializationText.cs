@@ -8,7 +8,7 @@ namespace Ankus;
 internal static class PgSerializationText
 {
     /// <summary>
-    /// Rejects unpaired UTF-16 surrogates instead of replacing stored data.
+    /// Rejects unpaired UTF-16 surrogates so stored data is never silently replaced.
     /// </summary>
     internal static UTF8Encoding Utf8 { get; } = new(false, true);
 }

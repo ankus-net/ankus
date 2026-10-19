@@ -4,7 +4,7 @@ using System.Security;
 namespace Ankus.Build.Tests;
 
 /// <summary>
-/// Verifies that a build tool failure reaches the person building, not only its exit code.
+/// Verifies that a build tool failure's message reaches the person building, along with its exit code.
 /// </summary>
 /// <param name="context">The current cancellation context.</param>
 [TestClass]

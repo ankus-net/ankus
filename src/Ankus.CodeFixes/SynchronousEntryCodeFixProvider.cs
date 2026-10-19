@@ -68,7 +68,7 @@ public sealed class SynchronousEntryCodeFixProvider : CodeFixProvider
     }
 
     /// <summary>
-    /// Finds an <c>await</c> that belongs to the method itself rather than to a nested lambda or local function.
+    /// Finds an <c>await</c> that belongs to the method itself, skipping nested lambdas and local functions.
     /// </summary>
     /// <param name="body">The method body or expression body.</param>
     /// <returns>Whether the method awaits anything.</returns>

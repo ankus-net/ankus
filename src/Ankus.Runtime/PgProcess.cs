@@ -28,8 +28,7 @@ public static unsafe class PgProcess
     /// A callback can use shared memory and lightweight locks, but not SQL or logging, because the transaction may be
     /// aborted and PostgreSQL is shutting the process down. It must not wait for a lock this process may already hold.
     /// An exception is reported as a warning and the remaining callbacks still run. Registration belongs to the calling
-    /// process; register in the backend or worker that needs the callback, not while the library loads in the
-    /// postmaster.
+    /// process; register in the backend or worker that needs the callback, after the library has loaded there.
     /// </para>
     /// </remarks>
     public static IDisposable OnExit(Action<int> callback)

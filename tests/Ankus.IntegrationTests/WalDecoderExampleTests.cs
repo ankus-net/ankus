@@ -165,7 +165,7 @@ public sealed class WalDecoderExampleTests(TestContext context)
         // 32000 hexadecimal digits still need about 16 kB compressed, so PostgreSQL stores the value out of line.
         Assert.IsGreaterThan(8000, await ScalarAsync<int>(connection, "SELECT pg_column_size(note) FROM keyed WHERE id = 3", token));
 
-        // A key change logs the old key; the unchanged TOAST value is not logged again but is read while decoding.
+        // A key change logs the old key; the unchanged TOAST value is read while decoding without being logged again.
         await CommitAsync(connection, "UPDATE keyed SET id = 4 WHERE id = 3", token);
         Assert.AreSequenceEqual([$$$"""{"typ":"UPDATE","rel":"public.keyed","old":{"id":3},"new":{"id":4,"note":"{{{expected}}}"}}"""],
             Rows(await ChangesAsync(connection, "rows", token)));

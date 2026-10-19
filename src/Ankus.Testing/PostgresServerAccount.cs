@@ -56,7 +56,7 @@ internal sealed class PostgresServerAccount
     /// <param name="arguments">Individual command-line arguments.</param>
     /// <param name="environment">Environment variables to set; null values are omitted.</param>
     /// <param name="cancellationToken">Cancels and terminates the process.</param>
-    /// <param name="captureOutput">Whether to redirect output rather than inherit the host's handles.</param>
+    /// <param name="captureOutput">Whether to redirect output; otherwise the child inherits the host's handles.</param>
     /// <returns>The captured process result.</returns>
     internal Task<ProcessResult> RunAsync(string fileName, IReadOnlyList<string> arguments,
         IReadOnlyDictionary<string, string?> environment, CancellationToken cancellationToken, bool captureOutput = true)
@@ -78,7 +78,7 @@ internal sealed class PostgresServerAccount
     /// <param name="arguments">Individual command-line arguments.</param>
     /// <param name="environment">Environment variables to set; null values are omitted for another account.</param>
     /// <param name="cancellationToken">Cancels and terminates the process.</param>
-    /// <param name="captureOutput">Whether to redirect output rather than inherit the host's handles.</param>
+    /// <param name="captureOutput">Whether to redirect output; otherwise the child inherits the host's handles.</param>
     /// <returns>The successful process result.</returns>
     internal async Task<ProcessResult> RunCheckedAsync(string fileName, IReadOnlyList<string> arguments,
         IReadOnlyDictionary<string, string?> environment, CancellationToken cancellationToken, bool captureOutput = true)

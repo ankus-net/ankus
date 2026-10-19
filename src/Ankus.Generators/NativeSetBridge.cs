@@ -220,7 +220,7 @@ internal static class NativeSetBridge
         #endif
             }
 
-            /* Materialization copies internal words, not their pointed-to state.
+            /* Materialization copies internal words only; their pointed-to state stays in place.
              * Keep managed payloads with the returned store after the iterator closes. */
             if (state->materialize && !composite_result)
                 for (int index = 0; index < columns; index++)

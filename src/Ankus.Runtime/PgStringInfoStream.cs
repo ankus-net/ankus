@@ -365,7 +365,7 @@ public sealed unsafe class PgStringInfoStream : Stream
     /// <param name="count">The unused requested length.</param>
     /// <returns>No value; this method throws NotSupportedException.</returns>
     public override int Read(byte[] buffer, int offset, int count)
-        => throw new NotSupportedException("PostgreSQL StringInfo streams support appending, not stream reads.");
+        => throw new NotSupportedException("PostgreSQL StringInfo streams support appending only; they cannot be read.");
 
     /// <summary>
     /// Rejects seeking because stream writes always append.

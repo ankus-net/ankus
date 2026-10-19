@@ -9,7 +9,7 @@ Namespace: [Ankus.Serialization](/api/ankus.serialization/)
 
 Assembly: `Ankus.Runtime.dll`
 
-Serializes PgJson as an embedded JSON value rather than a quoted string or wrapper object.
+Serializes PgJson as an embedded JSON value, written in place without quoting or a wrapper object.
 
 ```csharp
 public sealed class PgJsonConverter : JsonConverter<PgJson>

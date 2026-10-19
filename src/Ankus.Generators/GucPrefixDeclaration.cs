@@ -28,7 +28,7 @@ internal static class GucPrefixDeclaration
         helpLinkUri: "https://ankus.net/configuration/#prefix-declaration-diagnostics");
 
     /// <summary>
-    /// Rejects malformed Unicode instead of replacing it while encoding native input.
+    /// Rejects malformed Unicode so encoding native input never replaces characters.
     /// </summary>
     private static readonly DiagnosticDescriptor s_unicode = new(
         "ANKUS349", "Configuration prefix requires well-formed Unicode",

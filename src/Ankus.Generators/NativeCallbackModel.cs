@@ -70,7 +70,9 @@ internal sealed record NativeCallbackModel(string Namespace, EquatableArray<stri
     /// </summary>
     /// <param name="Name">The escaped fully qualified managed type.</param>
     /// <param name="Native">Whether transport uses selected-header native size and binding checks.</param>
-    /// <param name="Pointer">Whether the address uses pointer-sized transport instead of an illegal generic type argument.</param>
+    /// <param name="Pointer">
+    /// Whether the address uses pointer-sized transport because its type is illegal as a generic type argument.
+    /// </param>
     internal sealed record ValueContract(string Name, bool Native, bool Pointer)
     {
         /// <summary>

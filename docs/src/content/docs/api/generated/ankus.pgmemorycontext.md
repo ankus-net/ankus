@@ -335,7 +335,7 @@ The individually disposable owner.
 
 ### CreateContextValue&lt;T&gt;(T, PgAllocationOptions, nuint)
 
-Creates an initialized unmanaged value reclaimed by its native context rather than individual disposal.
+Creates an initialized unmanaged value that its native context reclaims, with no disposal of its own.
 
 ```csharp
 public PgContextValue<T> CreateContextValue<T>(T value, PgAllocationOptions options = PgAllocationOptions.None, nuint alignment = 0) where T : unmanaged
@@ -825,9 +825,10 @@ Returns: <code>TResult</code>
 
 The callback's result.
 
-Return copied managed values rather than native pointers. Escaped checked handles become stale
-after successful deletion. Callback, restoration, and deletion failures are preserved together.
-If native cleanup fails, the context remains owned by its parent until cleanup is retried.
+Return copied managed values; native pointers into the context do not survive its deletion.
+Escaped checked handles become stale after successful deletion. Callback, restoration, and
+deletion failures are preserved together. If native cleanup fails, the context remains owned
+by its parent until cleanup is retried.
 Recover actual PostgreSQL errors with [RunInSubtransaction(Action)](/api/ankus.pgtransaction/#member-341f2ab35f47ed4e)
 before retrying cleanup or performing further backend work.
 

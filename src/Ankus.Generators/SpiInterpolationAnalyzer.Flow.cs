@@ -11,7 +11,7 @@ namespace Ankus.Generators;
 public sealed partial class SpiInterpolationAnalyzer
 {
     /// <summary>
-    /// Follows the actual reaching command values and builder objects rather than every historical write.
+    /// Follows the command values and builder objects that actually reach a use; overwritten writes are ignored.
     /// </summary>
     private sealed class SqlFlowAnalysis(INamedTypeSymbol spi, INamedTypeSymbol session, INamedTypeSymbol? enumerable,
         IAssemblySymbol core, CancellationToken cancellationToken)
@@ -963,7 +963,7 @@ public sealed partial class SpiInterpolationAnalyzer
         /// Identifies arguments whose characters a string or builder operation can place into the result text.
         /// </summary>
         /// <param name="argument">The bound argument.</param>
-        /// <returns>Whether the argument supplies inserted text rather than an index, count or option.</returns>
+        /// <returns>Whether the argument supplies inserted text; an index, count or option returns false.</returns>
         private static bool InsertsText(IArgumentOperation argument)
             => argument.Parameter?.Type is { } type && (type.SpecialType is SpecialType.System_String or SpecialType.System_Object or SpecialType.System_Char ||
                 type is IArrayTypeSymbol { ElementType.SpecialType: SpecialType.System_Char } ||

@@ -11,8 +11,8 @@ namespace Ankus.PgConfig;
 /// Control files use ASCII because PostgreSQL cannot determine their encoding.
 /// Comments, optional equals signs, quoted values, doubled quotes, backslash escapes,
 /// and last-assignment precedence follow PostgreSQL's configuration syntax.
-/// Include directives are not supported. Parameter names and values are otherwise
-/// interpreted by the selected PostgreSQL version, not by this text codec.
+/// Include directives are not supported. This text codec handles syntax only; the selected
+/// PostgreSQL version interprets parameter names and values.
 /// </remarks>
 public static partial class ExtensionControlFile
 {

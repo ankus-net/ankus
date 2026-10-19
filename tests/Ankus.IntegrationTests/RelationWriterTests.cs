@@ -121,8 +121,8 @@ public sealed class RelationWriterTests(TestContext context)
         });
 
     /// <summary>
-    /// A change's <c>AFTER</c> triggers fire when the change completes, as the built-in apply worker fires them, not
-    /// when the writer is disposed.
+    /// A change's <c>AFTER</c> triggers fire as soon as the change completes, as the built-in apply worker fires them,
+    /// without waiting for the writer to be disposed.
     /// </summary>
     [TestMethod]
     public async Task AfterTriggersFireAsEachChangeCompletes()
