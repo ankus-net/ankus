@@ -388,7 +388,7 @@ public sealed partial class ToolCommandTests(TestContext context)
             ["init", "--home", home, s_postgresOption, s_installation.PgConfigPath, wrongOption, s_installation.PgConfigPath],
             context.CancellationToken);
         Assert.AreEqual(1, result.ExitCode);
-        Assert.Contains("not PostgreSQL " + wrongMajor.ToString(CultureInfo.InvariantCulture), result.StandardError);
+        Assert.Contains("; PostgreSQL " + wrongMajor.ToString(CultureInfo.InvariantCulture) + " was expected.", result.StandardError);
         Assert.AreEqual(Original, await File.ReadAllTextAsync(configuration, context.CancellationToken));
     }
 

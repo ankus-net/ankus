@@ -156,7 +156,7 @@ public sealed partial class ToolCommandTests
         Assert.DoesNotContain("download", result.StandardOutput, StringComparison.OrdinalIgnoreCase);
         if (value == "wrong-major")
         {
-            Assert.Contains("not PostgreSQL " + major.ToString(CultureInfo.InvariantCulture), result.StandardError);
+            Assert.Contains("; PostgreSQL " + major.ToString(CultureInfo.InvariantCulture) + " was expected.", result.StandardError);
         }
         else
         {
