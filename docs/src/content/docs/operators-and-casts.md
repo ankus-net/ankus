@@ -193,7 +193,7 @@ For an owned mapping, its `PgSqlTypeProvider` must complete the SQL type before
 the generated support functions and families. Ordinary input/output functions
 can follow a shell type; a completed family cannot precede its type provider.
 Multiple CLR wrappers may share one SQL type, but conflicting generated SQL
-signatures are rejected; Ankus does not pick one wrapper's reader.
+signatures are rejected.
 A generic datum mapping emits helpers only for closed types that a function
 signature, managed type provider or closed mapping declaration selects. Closed
 declarations with their own SQL identities generate independent families. Closed

@@ -148,7 +148,7 @@ int answer = Spi.ExecuteScalar<int>(
 
 `ExecuteScalar<T>` reads the first column of the first row. SQL NULL or an absent
 cell returns null when `T` is a reference or nullable value type. A non-nullable
-value type throws `InvalidOperationException`; Ankus never substitutes a default.
+value type throws `InvalidOperationException`.
 An incompatible result type throws `InvalidCastException`; numeric values are not
 implicitly widened or parsed from text.
 
@@ -235,7 +235,7 @@ another SPI command or after the original SPI connection is released.
 PostgreSQL first materializes the complete result in SPI memory, as with pgrx's
 `SpiClient::select`, and Ankus then copies it. One result is limited to 2,147,483,647
 rows and to the backend's maximum allocation; a larger result fails with SQLSTATE
-`54000` and is never truncated. Use a [cursor](#cursors-and-batched-results)
+`54000`. Use a [cursor](#cursors-and-batched-results)
 to stream large results in batches.
 
 `Select` follows pgrx's transaction policy. Before the transaction has a real

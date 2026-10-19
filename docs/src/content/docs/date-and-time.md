@@ -22,7 +22,7 @@ public static DateTimeOffset AddHour(DateTimeOffset instant) => instant.AddHours
 | `TimeSpan` | `interval` | Elapsed microseconds, with no calendar months or days |
 
 PostgreSQL stores temporal values at microsecond precision. Ankus rejects .NET
-values containing sub-microsecond ticks; it never rounds them.
+values containing sub-microsecond ticks.
 Unrepresentable values throw; .NET minimum and maximum dates are never treated
 as infinity sentinels.
 
@@ -196,7 +196,7 @@ On earlier servers, writing an infinite interval raises an unsupported-feature
 error (`0A000`), while parsing infinity text reports invalid interval syntax
 (`22007`). The all-maximum and all-minimum component triples remain finite on
 those older servers. On PostgreSQL 17+, writing those triples as finite values
-raises a range error and never changes their meaning to infinity.
+raises a range error.
 
 ## Parsing and formatting
 

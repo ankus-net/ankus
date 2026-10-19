@@ -34,7 +34,7 @@ string. The table functions return named C# tuples as SQL rows.
 The age calculation preserves nullable names and breeds, requires a non-NULL
 age, and uses checked multiplication. Invalid ages raise an error; the caller
 can recover with an ordinary PostgreSQL savepoint. The breed filter preserves
-NULL ages and never converts them to zero.
+NULL ages.
 
 Functions use volatile, parallel-unsafe declarations because they access backend
 state. In particular, the random lookup must remain volatile even though pgrx's

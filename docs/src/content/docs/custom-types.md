@@ -95,7 +95,7 @@ Serialized keys, enum names and string discriminators preserve their exact
 Unicode text in JSON and CBOR, including empty strings and zero characters.
 This also applies to attributes imported from another assembly and attributes
 inherited by overridden properties. UTF-8 encoding rejects unpaired UTF-16
-surrogates and never replaces them. PostgreSQL `jsonb` cannot
+surrogates. PostgreSQL `jsonb` cannot
 represent zero characters; keep such values in the custom type's storage or
 its JSON text representation.
 
@@ -106,8 +106,8 @@ exact type, including nullability. Remaining members need accessible setters or
 init accessors, or writable fields. Constructor-bound members keep the value
 assigned by the constructor, including any normalization. A constructor that
 binds or deliberately ignores C# `required` members must carry
-`[SetsRequiredMembers]`; Ankus diagnoses missing annotations and never overwrites
-the constructor's values to satisfy C# initializer requirements.
+`[SetsRequiredMembers]`. Ankus diagnoses missing annotations, which keeps the
+constructor's values intact.
 
 Generated code follows ordinary C# assembly access. Types, constructors and
 setters may be `public`, `internal` or `protected internal` when accessible from

@@ -31,7 +31,7 @@ as `string` requires a value; `string?` accepts SQL NULL. Array elements, set
 columns and aggregate callback values follow the same rule.
 
 Disabled annotations leave reference nullability ambiguous. Ankus reports
-`ANKUS024` at the affected declaration and does not infer a required SQL value.
+`ANKUS024` at the affected declaration.
 Explicit `NullInput` settings do not replace the managed value contract. Value
 types and injected contexts do not need reference annotations.
 
@@ -348,7 +348,7 @@ request after handling it. For an unsupported request, return a **present zero
 pointer**, as above. A null `PgInternal` represents SQL NULL and is not PostgreSQL's
 “request unsupported” response. New PostgreSQL versions can add request kinds.
 
-The estimate affects planning only; the function returns the same values. Other request
+The estimate affects only planning. Other request
 kinds have their own PostgreSQL contracts. Installation with a support routine
 requires a superuser. The usual managed/native error boundary also applies when
 PostgreSQL invokes the method during planning.

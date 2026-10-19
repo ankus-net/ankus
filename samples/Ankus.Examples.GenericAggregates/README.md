@@ -24,7 +24,7 @@ SELECT count_changes(v) FROM (SELECT 1 WHERE false) t(v);
 -- 0
 ```
 
-SQL NULL inputs are ignored and do not count as changes. Use an aggregate
+SQL NULL inputs are ignored. Use an aggregate
 `ORDER BY` clause: PostgreSQL does not otherwise define the input order.
 
 ## How pgrx maps to C#

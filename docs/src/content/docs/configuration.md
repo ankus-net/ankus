@@ -194,7 +194,7 @@ and EXPLAIN settings. `RuntimeComputed` requires PostgreSQL 15 or later.
 `PgGucUnit` separately selects one memory or time unit for numeric settings;
 block conversions use the selected server's compiled block sizes.
 
-Options map directly to the native flags and add no policy of their own. In
+Options map directly to the native flags. In
 PostgreSQL 18, `DisallowInFile` blocks `ALTER SYSTEM` and affects configuration
 help, but does not itself reject a custom `UserSet` parameter supplied manually
 in a configuration file. Choose the appropriate context and check hook for

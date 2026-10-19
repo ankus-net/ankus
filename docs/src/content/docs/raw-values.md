@@ -291,7 +291,7 @@ first typedef in ordinal order, or a generated name for an unnamed signature.
 
 Named record fields also expose a `<Record>_<Field>Callback` type. Use these
 names for method-table callbacks that have no C typedef; their names come from
-the record and field and do not use a collected type index. For example, given
+the record and field. For example, given
 an initialized `CustomExecMethods` table and a valid `CustomScanState` address:
 
 ```csharp

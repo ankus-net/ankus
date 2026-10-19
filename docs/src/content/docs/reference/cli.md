@@ -366,8 +366,8 @@ paths or mismatched versions fail before changing the registry.
 `connect`, `test`, `regress` and `bench`, matching cargo-pgrx. Acceptable values
 are `13` through `19`, including labels such as `pg18`. Explicit command selectors
 and forwarded MSBuild properties take precedence; project defaults apply when
-the variable is absent or empty. An unavailable or invalid selection fails;
-Ankus never falls back to another version. PostgreSQL's Docker image supplies a full
+the variable is absent or empty. An unavailable or invalid selection fails.
+PostgreSQL's Docker image supplies a full
 package version, such as `18.x-1.pgdg...`, which is not a major selector. For these
 commands, pass `--pg` or a matching `--pg-config`, or set `PG_VERSION` to a
 supported major. The value `all` is currently unsupported; use `ankus test --all`
@@ -711,8 +711,7 @@ Client input and output stay interactive, and its exit code becomes the Ankus
 exit code. In an interactive session, Ctrl+C interrupts the query while keeping
 the client open. During preparation or noninteractive execution, Ctrl+C cancels
 the command. Database names are literal, including quotes and connection-string
-characters. Names exceeding PostgreSQL's identifier limit are rejected; Ankus
-never truncates them.
+characters. Names exceeding PostgreSQL's identifier limit are rejected.
 
 ### Publish without starting a server
 

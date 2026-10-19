@@ -37,7 +37,7 @@ preserves empty members and the first-member boundary without changing runtime
 compression settings or using a patched serializer.
 
 Malformed gzip data raises `InvalidDataException`. Invalid UTF-8 raises
-`DecoderFallbackException` and never inserts replacement characters; binary
+`DecoderFallbackException`; binary
 `gunzip` still returns those bytes exactly. Ankus reports these ordinary .NET
 exceptions as SQLSTATE `38000`. pgrx's `expect` failures panic and report `XX000`.
 After an error, roll back the failed transaction or savepoint before issuing
