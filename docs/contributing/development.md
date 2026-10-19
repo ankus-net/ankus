@@ -183,8 +183,8 @@ another repository, such as a worktree inside the main checkout, set
 `RUNNER_TEMP` to a short directory outside both checkouts; PostgreSQL Unix
 socket paths beneath it must stay within 107 bytes. Build outputs and NuGet extraction
 need that capacity even though the fixture removes its temporary directories
-after the run. A full temporary filesystem is a failed prerequisite, not a
-reason to skip consumer tests.
+after the run. A full temporary filesystem is a failed prerequisite; fix the
+space and keep the consumer tests running.
 
 The six worker-cancellation cases share one immutable installed-package
 publication; the two lightweight-lock interrupt cases share another. Each case

@@ -583,8 +583,8 @@ record metadata; it does not reinterpret the headers with different compiler
 options. Cancellation terminates the worker and waits for its exit. The AST and
 worker request/observation files are diagnostic artifacts that can contain local
 paths. The final `native-records.json` couples the existing symbol signatures with
-a validated graph whose identities are numeric indices, not native addresses or
-source paths. A failed operation preserves the previous final record contract.
+a validated graph whose identities are numeric indices, free of native addresses
+and source paths. A failed operation preserves the previous final record contract.
 
 The graph retains declared and canonical types, typedef annotations, exact native
 size/alignment, array/vector extents, function ABI shapes, struct/union/enum
