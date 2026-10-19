@@ -116,6 +116,23 @@ public sealed class ClangSelectionTests(TestContext context)
         Assert.AreEqual(compiler, await ClangSelection.FindAsync([compiler], context.CancellationToken));
     }
 
+    /// <summary>
+    /// A command keeps the compiler it was given, and one given none searches for Clang 20 or later instead of taking
+    /// whichever <c>clang</c> is first on <c>PATH</c>, which on macOS is Xcode's older Apple clang.
+    /// </summary>
+    [TestMethod]
+    public async Task ResolvesOnlyAMissingCompiler()
+    {
+        Assert.AreEqual("explicit-compiler", await ClangSelection.ResolveAsync("explicit-compiler", context.CancellationToken));
+        foreach (string? missing in new[] { null, "" })
+        {
+            string compiler = await ClangSelection.ResolveAsync(missing, context.CancellationToken);
+            Assert.IsTrue(Path.IsPathRooted(compiler), compiler);
+            int major = (await ClangSelection.GetVersionAsync(compiler, context.CancellationToken))?.Major ?? 0;
+            Assert.IsGreaterThanOrEqualTo(ClangSelection.MinimumMajor, major);
+        }
+    }
+
     [UnsupportedOSPlatform("windows")]
     private async Task<string> WriteClangAsync(string directory, string output)
     {

@@ -31,8 +31,7 @@ internal static class NativeBindingCollectionCommand
             throw new InvalidOperationException($"Expected PostgreSQL {major}, but the selected installation is {installation.Label}.");
         }
 
-        string compiler = arguments.Length >= 8 && arguments[7].Length != 0 ? arguments[7]
-            : OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang";
+        string compiler = await ClangSelection.ResolveAsync(arguments.Length >= 8 ? arguments[7] : null, cancellationToken);
         // Windows process working directories cannot exceed MAX_PATH, even when managed file APIs support longer paths.
         string directory = Directory.CreateTempSubdirectory("ankus-node-").FullName;
         try

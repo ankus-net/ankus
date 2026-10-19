@@ -92,7 +92,7 @@ internal static class NativeBindingHeaderCommand
             throw new ArgumentException("Select one native AST output format.", nameof(serializedAst));
         }
 
-        string compiler = arguments.Length >= 5 && arguments[4].Length != 0 ? arguments[4] : OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang";
+        string compiler = await ClangSelection.ResolveAsync(arguments.Length >= 5 ? arguments[4] : null, cancellationToken);
         List<string> options = await CreateArgumentsAsync(installation, arguments, cancellationToken);
         options.Add(OperatingSystem.IsWindows() ? "/Zs" : "-fsyntax-only");
         if (dumpAst)
