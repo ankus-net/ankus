@@ -36,7 +36,7 @@
          installation's build values, its headers and the bindings measured there. An archive is extracted once
          into a directory named by its hash, which `ankus` commands share. -->
     <Error Condition="'$(AnkusTargetInfo)' != '' and '$(AnkusPgConfigPath)' != ''"
-           Text="Select either AnkusTargetInfo or AnkusPgConfigPath, not both." />
+           Text="Set only one of AnkusTargetInfo and AnkusPgConfigPath." />
     <PropertyGroup Condition="'$(AnkusTargetInfo)' != ''">
       <_AnkusTargetInfoPath>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(AnkusTargetInfo)'))</_AnkusTargetInfoPath>
       <_AnkusTargetCacheDirectory Condition="'$(AnkusBindingCacheDirectory)' != ''">$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(AnkusBindingCacheDirectory)', 'targets'))</_AnkusTargetCacheDirectory>
@@ -76,7 +76,7 @@
        machines can build for this runtime (`ankus target export`). -->
   <Target Name="AnkusExportTargetInfo" DependsOnTargets="_ResolveAnkusPostgresSelection;ResolveReferences;_PrepareAnkusBindingToolchain">
     <Error Condition="'$(AnkusTargetInfo)' != ''"
-           Text="Export target information from the target machine's own pg_config, not from AnkusTargetInfo." />
+           Text="Export target information from the target machine's own pg_config with AnkusTargetInfo unset." />
     <Error Condition="'$(PublishAot)' != 'true' or '$(RuntimeIdentifier)' == ''"
            Text="Exporting target information requires PublishAot and a RuntimeIdentifier." />
     <PropertyGroup>
@@ -156,7 +156,7 @@
     </ReadLinesFromFile>
     <PropertyGroup>
       <!-- A final dot keeps directory arguments literal when Windows parses a closing quote after a backslash. -->
-      <!-- The .NET SDK that resolved this project, not MSBuild's own directory, which is Visual Studio's under VS. -->
+      <!-- The .NET SDK that resolved this project. Under Visual Studio, MSBuild's own directory is Visual Studio's. -->
       <_AnkusBindingSdkDirectory>$([MSBuild]::NormalizeDirectory('$(NetCoreRoot)', 'sdk', '$(NETCoreSdkVersion)')).</_AnkusBindingSdkDirectory>
       <_AnkusBindingCompileCommand>dotnet &quot;$(_AnkusBuildTool)&quot; binding-compile &quot;$(_AnkusBindingsOutput)&quot; &quot;@(_AnkusBindingRuntime)&quot; &quot;$(TargetFramework)&quot; &quot;$(Configuration)&quot;</_AnkusBindingCompileCommand>
       <_AnkusBindingCompileCommand>$(_AnkusBindingCompileCommand) &quot;$(NETCoreSdkVersion)&quot; &quot;$(_AnkusBindingSdkDirectory)&quot; &quot;$(ProjectAssetsFile)&quot; &quot;$(_AnkusBindingCacheDirectory)&quot;</_AnkusBindingCompileCommand>
