@@ -31,7 +31,7 @@ as `string` requires a value; `string?` accepts SQL NULL. Array elements, set
 columns and aggregate callback values follow the same rule.
 
 Disabled annotations leave reference nullability ambiguous. Ankus reports
-`ANKUS024` at the affected declaration instead of inferring a required SQL value.
+`ANKUS024` at the affected declaration and does not infer a required SQL value.
 Explicit `NullInput` settings do not replace the managed value contract. Value
 types and injected contexts do not need reference annotations.
 
@@ -280,8 +280,7 @@ returns or throws. Native error guards and managed exception unwinding apply
 to every execution mode.
 
 Use `PgSearchPath.ExtensionSchema` when the path should follow the schema chosen
-by `CREATE EXTENSION ... WITH SCHEMA`, rather than a schema name known at build
-time:
+at installation by `CREATE EXTENSION ... WITH SCHEMA`:
 
 ```csharp
 [PgFunction(SearchPath = ["pg_catalog", PgSearchPath.ExtensionSchema, "pg_temp"])]

@@ -51,8 +51,8 @@ creates the shared value, after registration finishes. It can read configuration
 write log messages and use memory contexts; SQL is unavailable in the postmaster.
 Factories run in registration order and may read values whose initialization has
 already completed. Access to a value before its initialization completes fails.
-`PgSharedMemory.Initialize(State)` uses the default zero value instead of a
-factory. Registering the same descriptor again keeps its original initializer.
+`PgSharedMemory.Initialize(State)`, which takes no factory, uses the default zero
+value. Registering the same descriptor again keeps its original initializer.
 
 Shared-memory names are cluster-wide, case-sensitive UTF-8 strings. Include your
 extension's name to avoid collisions. Names must be nonempty, contain no zero

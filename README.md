@@ -648,7 +648,7 @@ and selects a child context, restores the caller, and attempts deletion on every
 `PgNativeBox<T>`, `PgContextValue<T>`, and `PgNativeReference<T>` distinguish
 individual ownership, context ownership, and borrowed access to unmanaged values.
 Borrowed Slab, Generation, and Bump contexts preserve their native allocation
-restrictions; Bump storage requires context cleanup instead of individual free.
+restrictions; Bump storage is released only by context cleanup.
 
 Reset and transaction cleanup invalidate managed handles before they can access
 freed memory. `RegisterResetCallback` roots one-shot managed cleanup until the

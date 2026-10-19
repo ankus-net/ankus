@@ -46,7 +46,7 @@ and orders support functions, types and dependent SQL during the build.
 
 Rust's `Option<T>` becomes nullable C# value types or nullable reference
 annotations. Enable nullable reference types in the extension project; oblivious
-reference parameters are rejected rather than silently made strict.
+reference parameters are rejected and never silently made strict.
 
 ```csharp
 [PgFunction]

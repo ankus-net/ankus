@@ -85,8 +85,8 @@ Ankus includes a patched Native AOT runtime for PostgreSQL process and preload
 behavior. The SDK automatically restores a matching patched Native AOT compiler
 for the build machine and runtime for the extension's target platform. These
 packages are versioned together, and each target framework has its own: a
-`net11.0` extension embeds .NET 11's runtime with the same patch, never a .NET 10
-runtime behind a .NET 11 compiler.
+`net11.0` extension embeds .NET 11's runtime with the same patch, matching its
+.NET 11 compiler.
 
 Ankus also selects the matching framework-library patch. Projects targeting an
 unsupported framework or overriding `RuntimeFrameworkVersion` to a different

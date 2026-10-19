@@ -24,7 +24,7 @@ SELECT count_changes(v) FROM (SELECT 1 WHERE false) t(v);
 -- 0
 ```
 
-SQL NULL inputs are ignored rather than counted as changes. Use an aggregate
+SQL NULL inputs are ignored and do not count as changes. Use an aggregate
 `ORDER BY` clause: PostgreSQL does not otherwise define the input order.
 
 ## How pgrx maps to C#
@@ -50,7 +50,7 @@ creates a child context in it, and `PgAnyElement.CopyTo` copies each retained
 value there. Before retaining a new value, the state resets the child context,
 which releases the previous copy. PostgreSQL deletes the child with the
 group's state. Retained values are checked handles: using one after its
-context has been reset raises an error instead of reading freed memory.
+context has been reset raises an error before it can read freed memory.
 
 Ankus's generated support functions call `AggCheckCallContext` themselves and
 reject a call outside an aggregate with SQLSTATE `55000`, so the sample does not

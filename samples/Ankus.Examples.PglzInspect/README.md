@@ -132,7 +132,7 @@ even.
   the text's bytes in the database encoding, which is exactly what TOAST
   compresses for a text column.
 - An unknown strategy reports SQLSTATE `22023` (`invalid_parameter_value`)
-  instead of pgrx's `XX000`, with pgrx's message. Some clients, including
+  with pgrx's message; pgrx reports `XX000`. Some clients, including
   Npgsql, close a connection after an internal error.
 - pgrx builds the sampling query from the `regclass` text of an arbitrary OID; a
   missing relation then fails as a syntax error. Ankus looks the relation up in

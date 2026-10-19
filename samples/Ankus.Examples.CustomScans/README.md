@@ -33,8 +33,8 @@ EXPLAIN. `TraceScan.Parallel.cs` implements PostgreSQL's estimate, initialize,
 reinitialize, worker-attach and shutdown callbacks with selected-header native
 atomics. PostgreSQL owns both the segment and the child scan's work distribution.
 Shutdown copies the shared observations before releasing the borrowed address.
-For an early LIMIT, these are snapshots while workers may still be finishing,
-not final totals. A rescan resets shared counters and increments the generation;
+For an early LIMIT, these are snapshots taken while workers may still be
+finishing. A rescan resets shared counters and increments the generation;
 ordinary per-backend lifecycle counters retain their original meaning.
 
 `TraceScan.cs` demonstrates field-named `[PgNativeCallback]` declarations,

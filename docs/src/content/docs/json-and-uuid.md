@@ -68,9 +68,9 @@ each checked native cell through `Utf8JsonWriter`, producing a document with a
 `values` array without collecting an intermediate managed array.
 
 SQL NULL cells become JSON null. Text remains text, including Unicode and
-escaping; each bytea cell becomes an array of byte numbers rather than a base64
-string. Empty arrays produce `{"values":[]}`. Borrowed cells are disposed after
-the writer copies their contents, and the returned `PgJson` owns its text.
+escaping; each bytea cell becomes an array of byte numbers. Empty arrays produce
+`{"values":[]}`. Borrowed cells are disposed after the writer copies their
+contents, and the returned `PgJson` owns its text.
 
 ## Source-generated serialization
 

@@ -27,7 +27,7 @@ are ordinary projects; publish and install one as described in
 | `hooks` | [`Ankus.Examples.Hooks`](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Hooks) | Executor, parse-analysis and utility hooks installed once and chained. See [Raw values](/raw-values/#managed-native-callbacks-and-hooks). |
 | `json` | [`Ankus.Examples.Json`](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Json) | See [JSON and UUID values](/json-and-uuid/). |
 | `memory_contexts` | [`Ankus.Examples.MemoryContexts`](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.MemoryContexts) | Scratch contexts, sets and a worker counter in `TopMemoryContext`. |
-| `nostd` | [`Ankus.Examples.MinimalRuntime`](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.MinimalRuntime) | .NET has no runtime-free mode; the sample removes optional Native AOT runtime features instead. |
+| `nostd` | [`Ankus.Examples.MinimalRuntime`](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.MinimalRuntime) | .NET has no runtime-free mode; the sample removes optional Native AOT runtime features. |
 | `notify` | [`Ankus.Examples.Notify`](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Notify) | LISTEN/NOTIFY wrappers, a cache-invalidation trigger and invalidations coalesced at commit. See [Transaction callbacks](/transaction-callbacks/). |
 | `numeric` | [`Ankus.Examples.Numeric`](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Numeric) | See [Numeric values](/numeric/). |
 | `operators` | [`Ankus.Examples.Operators`](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Operators) | See [Operators and casts](/operators-and-casts/). |

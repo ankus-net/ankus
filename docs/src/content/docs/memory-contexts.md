@@ -177,8 +177,8 @@ default requires PostgreSQL 16 or later. Aligned `TryAllocate` and `TryReallocat
 require PostgreSQL 16.15, 17.11, 18.6, or 19 beta 3 or later because earlier releases have
 unsafe native no-OOM handling. PostgreSQL 19 development snapshots are also
 rejected for these requests, because their version number cannot show whether
-the fix is present. These requests raise SQLSTATE `0A000` instead of returning
-null or acquiring an over-aligned allocation; ordinary alignment remains
+the fix is present. These requests raise SQLSTATE `0A000`; they never return
+null or acquire an over-aligned allocation. Ordinary alignment remains
 available on older servers.
 
 `AllocateUtf8String` copies strict UTF-8 bytes followed by one zero byte. It rejects

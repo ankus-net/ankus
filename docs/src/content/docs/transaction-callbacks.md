@@ -45,7 +45,7 @@ an inner `catch` can continue the scope. Pass `PgSubtransactionMode.Atomic` to
 run the statements directly in the scope's subtransaction instead, as SPI does
 in pgrx. A PostgreSQL error then makes later backend calls in the scope rethrow
 it, and the whole scope rolls back before the caller sees the error. Many writes
-consume one subtransaction ID rather than one each. See
+then consume a single subtransaction ID. See
 [errors and transactions](/spi/#errors-and-transactions).
 
 Catch raw native and memory-operation errors outside the scope. Catching one

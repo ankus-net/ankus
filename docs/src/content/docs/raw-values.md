@@ -291,7 +291,7 @@ first typedef in ordinal order, or a generated name for an unnamed signature.
 
 Named record fields also expose a `<Record>_<Field>Callback` type. Use these
 names for method-table callbacks that have no C typedef; their names come from
-the record and field rather than a collected type index. For example, given
+the record and field and do not use a collected type index. For example, given
 an initialized `CustomExecMethods` table and a valid `CustomScanState` address:
 
 ```csharp
@@ -475,8 +475,8 @@ it, as `s_installed` does above, so a retry never saves your own hook as the
 previous hook. Checking whether the global still holds your callback is not
 enough once another library has chained after yours. If a callback reaches
 itself through such a cycle anyway, the native callback boundary raises
-PostgreSQL's `stack depth limit exceeded` error (SQLSTATE `54001`) instead of
-overflowing the native stack. The
+PostgreSQL's `stack depth limit exceeded` error (SQLSTATE `54001`) before the
+native stack can overflow. The
 [hooks sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Hooks)
 ports three of pgrx's four `hooks` example hooks; it omits
 `ClientAuthentication_hook`.

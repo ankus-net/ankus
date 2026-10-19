@@ -68,7 +68,7 @@ public static class Pairs
 
 The provider block is also ordered after a `[PgSchema]` with the same name. Repeat the attribute
 when one block supplies several types. Its first argument must name a SQL block,
-including a tracked SQL file, rather than a function or schema dependency alias.
+including a tracked SQL file; a function or schema dependency alias is not accepted.
 
 Type and schema names are exact, unquoted catalog identifiers. A dot or quote
 inside `Name` is part of that one identifier. Matching is case-sensitive and
@@ -494,7 +494,7 @@ edges points at its first declaration.
 | --- | --- | --- |
 | `ANKUS490` | `Id` | Give `Id` a non-whitespace value, or omit it. |
 | `ANKUS491`, `ANKUS492` | `Id` | Remove zero characters or unpaired UTF-16 surrogates from the identifier. |
-| `ANKUS493` | `Requires` or `Before` | Omit the option or supply an array instead of `null`. |
+| `ANKUS493` | `Requires` or `Before` | Omit the option or supply an array; the list cannot be `null`. |
 | `ANKUS494` | `Requires` or `Before` entry | Supply a non-null, non-whitespace dependency ID. |
 | `ANKUS495`, `ANKUS496` | `Requires` or `Before` entry | Remove zero characters or unpaired UTF-16 surrogates from the entry. |
 | `ANKUS497` | Later `Id` or SQL block name | Give each declaration a distinct ID; SQL block names and `Id` values share one namespace. |

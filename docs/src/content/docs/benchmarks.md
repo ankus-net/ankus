@@ -100,7 +100,7 @@ ExtensionBenchmarks.AddNumeric(Ankus.PgBencher)
 A `*` marks a group whose build configuration, PostgreSQL major version, runtime
 identifier or non-default server settings differ from the baseline's, so its change
 may not come from your code. Failed runs and runs without an estimate are counted
-under the section instead of drawn. Each group also records its Git commit and the
+under the section with no bar. Each group also records its Git commit and the
 tool version. Add `--json` to a report for the raw results of the latest ten runs.
 
 The default database is `<extension>_benches`. Use `--database` to select another
@@ -172,7 +172,7 @@ Flat sampling reports the mean as its primary estimate.
 Like pgrx's Criterion runner, Ankus uses the complete exponential warmup to select
 an automatic linear or flat iteration plan. It then measures every planned sample
 exactly once and retains its actual iteration count and duration. Short positive
-samples are retained rather than retried. A zero-duration sample or routine
+samples are kept without a retry. A zero-duration sample or routine
 exception ends the benchmark; it is not retried. As in Criterion, a zero-duration
 sample is rejected after the complete planned measurement sequence runs.
 A comparison reports an improvement or regression only when the measured change

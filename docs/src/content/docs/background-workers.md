@@ -311,8 +311,8 @@ transaction rolls back and the worker exits with FATAL `57P01`, so
 `pg_terminate_backend` and fast shutdown do not wait for a long query. Between
 transactions, termination is only an observation: `Wait` returns false, and a
 final cleanup transaction started after that still runs.
-Attaching `Interrupt` makes SIGINT an observation rather than PostgreSQL query
-cancellation. Otherwise a `DatabaseAccess` worker keeps PostgreSQL's handler, so
+Attaching `Interrupt` makes SIGINT only an observation, and PostgreSQL does not
+cancel the query. Otherwise a `DatabaseAccess` worker keeps PostgreSQL's handler, so
 SIGINT, including `pg_cancel_backend`, cancels its wait or active transaction;
 a worker without database access ignores SIGINT.
 The reload and termination handlers also set PostgreSQL's corresponding native
@@ -332,7 +332,7 @@ The extra payload preserves UTF-8, including non-ASCII characters. Static
 registration retains its original UTF-8 metadata.
 
 `Argument` preserves one native-sized unsigned value. Pass an identifier or
-other by-value data, never a process-local address. Managed static fields are
-independent in each worker. For values shared with other processes, register
+other by-value data. Do not pass a process-local address. Managed static fields
+are independent in each worker. For values shared with other processes, register
 `PgAtomic<T>`, `PgShared<T>` or `PgLwLock<T>` descriptors during preload; see
 [shared memory, locks and atomics](/shared-memory/).

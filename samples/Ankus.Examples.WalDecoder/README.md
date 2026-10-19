@@ -95,7 +95,7 @@ These are pgrx's limitations, which the port keeps:
   the new row is complete. A replication slot does not stop VACUUM from removing
   user data, though: if a later change makes the value dead and VACUUM removes it
   before a lagging slot decodes the UPDATE, decoding fails. Built-in plugins
-  report such values as unchanged instead of reading them.
+  report such values as unchanged and do not read them.
 
 ## pgrx mapping
 

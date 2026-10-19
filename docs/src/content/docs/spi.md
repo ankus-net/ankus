@@ -113,8 +113,8 @@ long[] counts = [.. names.Select(name => Spi.ExecuteScalar<long>("SELECT count(*
 
 The analysis is bounded and does not prove arbitrary helper implementations or
 runtime-generated text safe. When construction exceeds the bound, including the
-alternatives of a `string.Format` call, ANKUS044 reports the command instead of
-accepting it. Callers remain responsible for constructing raw SQL safely. Use
+alternatives of a `string.Format` call, ANKUS044 reports the command as an
+error. Callers remain responsible for constructing raw SQL safely. Use
 `Spi.Sql` for values and the quoting APIs below for dynamic identifiers.
 
 Use explicit `E'...'` syntax for literal backslash escapes. `Spi.Sql` checks
@@ -148,7 +148,7 @@ int answer = Spi.ExecuteScalar<int>(
 
 `ExecuteScalar<T>` reads the first column of the first row. SQL NULL or an absent
 cell returns null when `T` is a reference or nullable value type. A non-nullable
-value type throws `InvalidOperationException` instead of substituting a default.
+value type throws `InvalidOperationException`; Ankus never substitutes a default.
 An incompatible result type throws `InvalidCastException`; numeric values are not
 implicitly widened or parsed from text.
 
@@ -235,7 +235,7 @@ another SPI command or after the original SPI connection is released.
 PostgreSQL first materializes the complete result in SPI memory, as with pgrx's
 `SpiClient::select`, and Ankus then copies it. One result is limited to 2,147,483,647
 rows and to the backend's maximum allocation; a larger result fails with SQLSTATE
-`54000` instead of being truncated. Use a [cursor](#cursors-and-batched-results)
+`54000` and is never truncated. Use a [cursor](#cursors-and-batched-results)
 to stream large results in batches.
 
 `Select` follows pgrx's transaction policy. Before the transaction has a real
@@ -398,7 +398,7 @@ JsonElement root = document.RootElement[0].GetProperty("Plan");
 
 `Spi.Explain` and `SpiSession.Explain` run `EXPLAIN (FORMAT JSON)` and return an
 owned JSON value. The server plans the supplied statement with its typed
-parameters, using ordinary EXPLAIN rather than EXPLAIN ANALYZE. The command
+parameters, using ordinary EXPLAIN without ANALYZE. The command
 accepts one SQL statement. Parse and planning errors throw `PgException`.
 
 ## Prepared statements
@@ -600,7 +600,7 @@ per row.
 
 When per-row statements are unavoidable, run them in an atomic scope. Its
 statements share one subtransaction; like pgrx's SPI calls, they do not create
-one per statement, so 200 writes consume one subtransaction ID instead of 200:
+one per statement, so all 200 writes consume a single subtransaction ID:
 
 ```csharp
 PgTransaction.RunInSubtransaction(() =>

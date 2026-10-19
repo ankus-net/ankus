@@ -79,7 +79,7 @@ block cannot.
   the oldest commit-log ID because the shared variable was renamed. Ankus reads
   `TransamVariables->oldestClogXid` (`ShmemVariableCache` before 17) while
   holding `XactTruncationLock`, as the original C function does, so a truncated
-  ID is reported as unavailable instead of failing in the commit-log lookup.
+  ID is reported as unavailable before the commit-log lookup can fail.
 - pgrx calls `GetActiveSnapshot()` unconditionally and checks for NULL; that
   function asserts an active snapshot. Ankus calls `ActiveSnapshotSet()` first.
 - pgrx's unit tests call private helpers directly. Samples have no unit-test
@@ -88,6 +88,7 @@ block cannot.
 
 `PgTransaction.RegisterSubtransactionCallback` observes savepoints as they
 start, commit and roll back. Its `PgSubtransactionId` values are PostgreSQL's
-backend-local subtransaction counters, not the `xid` values reported here. See
+backend-local subtransaction counters, separate from the `xid` values reported
+here. See
 [transaction callbacks](https://ankus.net/transaction-callbacks/#savepoints-and-subtransactions)
 and [transaction IDs](https://ankus.net/transaction-ids/).

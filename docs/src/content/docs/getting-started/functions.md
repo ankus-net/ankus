@@ -89,8 +89,8 @@ nested types. `protected`, `private protected` and `private` do not grant that
 assembly access. Generic methods, generic containing types and file-local types
 cannot provide the concrete call required by the generated Native AOT dispatcher.
 
-Pass parameters and return values by value. PostgreSQL supplies SQL datums, not
-C# `ref`, `in`, `out` or `ref readonly` slots. Injected `PgMemoryContext` and
+Pass parameters and return values by value. PostgreSQL supplies SQL datums and has
+no C# `ref`, `in`, `out` or `ref readonly` slots. Injected `PgMemoryContext` and
 `PgFunctionContext` parameters also use by-value passing. At most 100 SQL
 arguments are allowed; injected contexts do not count toward that limit.
 

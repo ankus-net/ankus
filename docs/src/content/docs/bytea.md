@@ -39,7 +39,7 @@ The sample owns gzip framing around .NET's standard raw DEFLATE codec. This
 preserves empty members and the first-member boundary.
 
 Malformed gzip data raises `InvalidDataException`. Invalid UTF-8 raises
-`DecoderFallbackException` rather than inserting replacement characters; binary
+`DecoderFallbackException` and never inserts replacement characters; binary
 `gunzip` still returns those bytes exactly. Ankus reports these ordinary .NET
 exceptions as SQLSTATE `38000`. pgrx's `expect` failures panic and report `XX000`.
 After an error, roll back the failed transaction or savepoint before issuing

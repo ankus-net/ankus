@@ -139,8 +139,8 @@ lifetime restrictions described above. `PgCStringView.ToOwned()` makes an
 independent byte-preserving value that survives the native owner.
 
 Both representations provide `ToUtf8String()` for explicit strict UTF-8 decoding.
-Invalid UTF-8 remains valid raw C-string data; decoding it throws instead of
-replacing bytes. `FromUtf8` likewise rejects unpaired managed surrogates and
+Invalid UTF-8 remains valid raw C-string data; decoding it throws without
+replacing any bytes. `FromUtf8` likewise rejects unpaired managed surrogates and
 embedded zero characters. When calling a native API that expects the server's
 encoding, supply bytes in that encoding.
 
