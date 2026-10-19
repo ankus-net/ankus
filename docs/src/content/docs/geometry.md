@@ -91,8 +91,8 @@ can differ from PostgreSQL's output, such as `1E+20` for `1e+20`; use
 PostgreSQL validates them when converting to SQL: near-zero `A` and `B`
 coefficients together are invalid, as is a negative radius. In particular,
 `default(PgLine)` must be initialized before it is used as a SQL line. An invalid
-line or circle raises a PostgreSQL error when it is converted, not when it is
-constructed.
+line or circle raises a PostgreSQL error when it is converted to a SQL value.
+Constructing it succeeds.
 
 Empty paths and polygons can be constructed and exchanged, matching pgrx's owned
 geometries. An empty polygon has a zero bounding box. PostgreSQL's text parser

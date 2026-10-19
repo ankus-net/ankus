@@ -6,7 +6,7 @@ description: What crossing between PostgreSQL and managed code costs, and how to
 Every call into an extension crosses from PostgreSQL's C code into managed code
 and converts values in both directions. The figures below come from a
 PostgreSQL 18.6 release build on one Linux x64 machine. Use them to compare
-approaches, not as guarantees, and measure your own code with
+approaches. They aren't guarantees, so measure your own code with
 [benchmarks](/benchmarks/).
 
 | Path | Cost |

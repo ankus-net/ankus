@@ -81,8 +81,8 @@ exclusive guard to publish the update. Writes take effect immediately; a SQL
 rollback or exception does not undo them. Readers in other backends see the
 updated value after the writer releases its lock.
 
-Use a guard's `Read` callback to operate on inline atomic or spinlock fields in
-shared storage, not on a copy. Both shared and exclusive guards support it:
+Use a guard's `Read` callback to operate on inline atomic or spinlock fields
+directly in shared storage. Both shared and exclusive guards support it:
 
 ```csharp
 public readonly struct LiveCounters(long initial)
@@ -275,7 +275,7 @@ and requires eight-byte alignment; unaligned packed layouts fail before access.
 Operate directly on fields of the `in` parameter. Assigning a field or the whole
 aggregate to a local variable copies its storage; later updates to that copy do
 not change the shared value. Separate field reads and updates are independent
-atomic operations, not a consistent snapshot or transaction across all fields.
+atomic operations, so together they don't form a consistent snapshot.
 Use `PgLwLock<T>` when updates must preserve a relationship between fields.
 
 The scoped callback prevents safe C# from retaining the borrowed reference.
@@ -372,8 +372,8 @@ including through another reference to the same guard. Forgotten child guards
 expire before that reader returns or throws. These reads keep the parent locked
 and preserve the same short-critical-section and backend-call restrictions.
 
-Both forms expose `IsLocked` before PostgreSQL 19. This is an instantaneous
-observation, not permission to read the protected value without a guard.
+Both forms expose `IsLocked` before PostgreSQL 19. It reports the state at that
+instant; reading the protected value still requires a guard.
 PostgreSQL 19 removed the native state query, so `IsLocked` throws
 `NotSupportedException` there; locking and guarded values remain available.
 

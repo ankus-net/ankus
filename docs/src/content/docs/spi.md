@@ -654,8 +654,8 @@ subsequent SPI calls, and the transaction ending. Available fields include:
 
 Optional strings are null when absent; an explicitly empty diagnostic remains an
 empty string. SPI typically reports parse positions through `InternalPosition`
-and `InternalQuery`. Positions count PostgreSQL characters, not UTF-8 bytes or
-UTF-16 code units.
+and `InternalQuery`. Positions count PostgreSQL characters, which differ from
+UTF-8 bytes and UTF-16 code units for non-ASCII text.
 
 Extension-authored errors can supply structured object/context fields:
 

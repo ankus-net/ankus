@@ -167,7 +167,7 @@ their output.
 
 | Diagnostic | Required correction |
 | --- | --- |
-| ANKUS515 | Use an ordinary named method, not a local function, lambda or explicit interface implementation. |
+| ANKUS515 | Use an ordinary named method. Local functions, lambdas and explicit interface implementations can't be callbacks. |
 | ANKUS516 | Make the initializer static. |
 | ANKUS517 | Remove `async`. |
 | ANKUS518 | Remove method type parameters. |

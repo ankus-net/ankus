@@ -271,8 +271,8 @@ declare the behavior the method actually implements. The average example reads
 its state without consuming it and supports bounded moving frames.
 
 `FinalExtra` and `MovingFinalExtra` add typed NULL input slots after the state and
-direct arguments. They convey type information, not the last row's values, and
-require a non-strict final method.
+direct arguments. They carry the argument types only, and they require a
+non-strict final method.
 
 ## Polymorphic values
 

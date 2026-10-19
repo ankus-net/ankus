@@ -367,7 +367,8 @@ replacement does not register them in SQL.
 
 Preserve the declared type name and schema so generated consumers can resolve
 its identity. Preserve its by-reference, variable-length storage contract;
-`NativeLayout` changes the payload, not the PostgreSQL datum representation.
+`NativeLayout` changes the payload; the PostgreSQL datum representation stays the
+same.
 This option does not map arbitrary fixed-length or by-value base types. A type
 with `NullInputErrorMessage` needs `CALLED ON NULL INPUT` on its text input
 declaration for that managed policy to execute. See [custom types](/custom-types/).

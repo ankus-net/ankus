@@ -260,14 +260,14 @@ that survives individual queries and transactions. The sample allocates them in
 a child of `TopMemoryContext`.
 
 Registry keys are case-sensitive. A name must fit the selected headers'
-`EXTNODENAME_MAX_LEN`, including its terminating zero byte; PostgreSQL checks
-encoded bytes, not managed character counts. Duplicate registration raises a
+`EXTNODENAME_MAX_LEN`, including its terminating zero byte; PostgreSQL counts
+the encoded bytes. Duplicate registration raises a
 native error and leaves the original method table installed.
 `NativeMethods.GetCustomScanMethods` returns the retained table, returns a null
 address for an optional missing lookup, or raises an error when the requested
 name is required. These calls use the generated native error guard.
 
-Registration belongs to the backend, not to a SQL transaction. Rolling back the
+Registration belongs to the backend and outlives the transaction. Rolling back the
 registering transaction does not remove its entry. Keep successful registrations
 alive until the backend exits, and reclaim attempted storage when registration
 fails. A different backend has its own registry and must load the provider too.
@@ -351,8 +351,8 @@ EXPLAIN's `Trace Parameters` displays the retained variables through PostgreSQL'
 deparser and ancestor plan context. `Trace Parameter Remaps` counts the provider's
 partition transformations. These diagnostics do not evaluate the original
 clauses or repeat their volatile calls. Variables behind placeholder evaluation
-barriers are left to the child; the list is diagnostic, not a complete inventory
-of every dependency. Unparameterized paths omit both fields.
+barriers are left to the child, so the list is a diagnostic that can omit some
+dependencies. Unparameterized paths omit both fields.
 
 ## Marking and restoring positions
 
@@ -422,8 +422,8 @@ The existing `Trace Rows`, `Trace Calls`, `Trace Rescans` and
 `trace_scan_counts()` remain local to the reporting backend.
 
 Shared EXPLAIN values are copied at shutdown. After early termination, workers
-may still be finishing, so each counter is an independent snapshot, not a final
-worker total or a transactionally consistent group. Do not wait for workers
+may still be finishing, so each counter is an independent snapshot that may
+change before workers finish and may not match the others. Do not wait for workers
 inside a child shutdown callback: its parent Gather may still need to detach
 full tuple queues. On an error, ordinary shutdown and end callbacks are not
 guaranteed; context cleanup must not dereference a borrowed DSM address after

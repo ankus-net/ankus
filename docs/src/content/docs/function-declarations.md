@@ -349,7 +349,7 @@ request after handling it. For an unsupported request, return a **present zero
 pointer**, as above. A null `PgInternal` represents SQL NULL and is not PostgreSQL's
 “request unsupported” response. New PostgreSQL versions can add request kinds.
 
-The estimate changes planning, not the function's returned values. Other request
+The estimate affects planning only; the function returns the same values. Other request
 kinds have their own PostgreSQL contracts. Installation with a support routine
 requires a superuser. The usual managed/native error boundary also applies when
 PostgreSQL invokes the method during planning.

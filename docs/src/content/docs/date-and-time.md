@@ -26,7 +26,8 @@ values containing sub-microsecond ticks rather than silently rounding them.
 Unrepresentable values throw; .NET minimum and maximum dates are never treated
 as infinity sentinels.
 
-`timestamptz` stores an instant, not its original offset or a time-zone name.
+`timestamptz` stores an instant. The original offset and time-zone name are
+discarded.
 The session's `TimeZone` affects how PostgreSQL displays it. Use `DateTimeOffset`
 for instants and `DateTime` for timezone-free wall-clock values.
 

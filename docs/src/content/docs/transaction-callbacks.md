@@ -151,7 +151,7 @@ PgSubtransactionCallback registration = PgTransaction.RegisterSubtransactionCall
 
 The callback receives `PgSubtransactionId` values for the current and parent IDs.
 Dispose its registration to stop future calls. Subtransaction IDs are
-backend-local counters, not transaction IDs. Subtransactions that Ankus opens
+backend-local counters, separate from transaction IDs. Subtransactions that Ankus opens
 for its private error guards do not appear as events, including those opened by
 another Ankus extension in the same session. Savepoints and PL/pgSQL `EXCEPTION`
 blocks inside SQL that a guard runs do appear.

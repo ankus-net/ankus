@@ -99,7 +99,8 @@ constant references. Invalid project defaults require correcting the project's
 
 This metadata describes the native library. SQL installation names and versions
 still come from `AnkusExtensionName` and `AnkusExtensionVersion`. `AnkusLibraryName`
-and `AnkusVersionedLibrary` change the library's filename, not this identity.
+and `AnkusVersionedLibrary` change only the library's filename; this identity
+stays the same.
 PostgreSQL 13–17 use their ordinary compatibility block and do not expose this
 metadata. Every publication uses the ABI from its selected PostgreSQL headers.
 
