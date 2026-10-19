@@ -105,15 +105,33 @@ public sealed class ClangSelectionTests(TestContext context)
     }
 
     /// <summary>
-    /// The host's own Clang, which the build tests already require, is read as version 20 or later and selected.
+    /// The host's Clang 20 or later, which the build tests already require, is found wherever it is installed, read as
+    /// version 20 or later, and selected again when it is the only candidate.
     /// </summary>
     [TestMethod]
     public async Task SelectsTheHostClang()
     {
-        string compiler = NativeBindingRecordCommand.FindCompiler(OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang");
+        string compiler = await ClangSelection.FindAsync(context.CancellationToken);
         int major = (await ClangSelection.GetVersionAsync(compiler, context.CancellationToken))?.Major ?? 0;
         Assert.IsGreaterThanOrEqualTo(ClangSelection.MinimumMajor, major);
         Assert.AreEqual(compiler, await ClangSelection.FindAsync([compiler], context.CancellationToken));
+    }
+
+    /// <summary>
+    /// A command keeps the compiler it was given, and one given none searches for Clang 20 or later instead of taking
+    /// whichever <c>clang</c> is first on <c>PATH</c>, which on macOS is Xcode's older Apple clang.
+    /// </summary>
+    [TestMethod]
+    public async Task ResolvesOnlyAMissingCompiler()
+    {
+        Assert.AreEqual("explicit-compiler", await ClangSelection.ResolveAsync("explicit-compiler", context.CancellationToken));
+        foreach (string? missing in new[] { null, "" })
+        {
+            string compiler = await ClangSelection.ResolveAsync(missing, context.CancellationToken);
+            Assert.IsTrue(Path.IsPathRooted(compiler), compiler);
+            int major = (await ClangSelection.GetVersionAsync(compiler, context.CancellationToken))?.Major ?? 0;
+            Assert.IsGreaterThanOrEqualTo(ClangSelection.MinimumMajor, major);
+        }
     }
 
     [UnsupportedOSPlatform("windows")]

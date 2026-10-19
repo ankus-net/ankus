@@ -82,7 +82,7 @@ public sealed partial class NativeBindingNativeTests
             string file = Path.Join(directory, "calls.c");
             string nativeObject = Path.Join(directory, OperatingSystem.IsWindows() ? "calls.obj" : "calls.o");
             await File.WriteAllTextAsync(file, native, context.CancellationToken);
-            string compiler = OperatingSystem.IsWindows() ? "cl.exe" : "clang";
+            string compiler = OperatingSystem.IsWindows() ? "cl.exe" : await HostCompilers.ClangAsync();
             string[] arguments = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/O2", "/c", "/Fo" + nativeObject, file]
                 : ["-std=c11", "-Wall", "-Wextra", "-Werror", "-O2", "-fPIC", "-c", file, "-o", nativeObject];

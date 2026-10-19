@@ -168,7 +168,7 @@ public sealed partial class NativeBindingNativeTests
         string executable = stem + (OperatingSystem.IsWindows() ? ".exe" : string.Empty);
         await File.WriteAllTextAsync(file, source + "\n" + main, context.CancellationToken);
         await File.WriteAllBytesAsync(consumer, image, context.CancellationToken);
-        string compiler = OperatingSystem.IsWindows() ? nativeCompiler ? "cl.exe" : "clang-cl.exe" : "clang";
+        string compiler = OperatingSystem.IsWindows() && nativeCompiler ? "cl.exe" : await HostCompilers.ClangAsync();
         string[] arguments = OperatingSystem.IsWindows()
             ? ["/nologo", "/std:c11", "/W4", "/WX", "/O2", "/Fe" + executable, "/Fo" + Path.ChangeExtension(executable, ".obj"), file, "/link", consumer]
             : ["-std=c11", "-Wall", "-Wextra", "-Werror", "-O2", file, consumer, "-o", executable];

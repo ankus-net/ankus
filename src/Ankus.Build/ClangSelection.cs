@@ -25,6 +25,15 @@ internal static partial class ClangSelection
         => FindAsync(GetCandidates(), cancellationToken);
 
     /// <summary>
+    /// Returns the compiler a command was given, or searches for a Clang 20 or later when it was given none.
+    /// </summary>
+    /// <param name="requested">The compiler argument, which may be empty.</param>
+    /// <param name="cancellationToken">Cancels the version queries.</param>
+    /// <returns>The requested compiler unchanged, or the full path of the selected Clang.</returns>
+    internal static async Task<string> ResolveAsync(string? requested, CancellationToken cancellationToken)
+        => string.IsNullOrEmpty(requested) ? await FindAsync(cancellationToken) : requested;
+
+    /// <summary>
     /// Returns the first candidate that is Clang 20 or later, or reports each one that was too old.
     /// </summary>
     /// <param name="candidates">Clang executables in preference order; missing paths are skipped.</param>

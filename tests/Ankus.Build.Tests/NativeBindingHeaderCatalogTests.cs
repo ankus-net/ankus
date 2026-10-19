@@ -167,7 +167,7 @@ public sealed class NativeBindingHeaderCatalogTests(TestContext context)
             string system = Directory.CreateDirectory(Path.Join(directory, "system")).FullName;
             await File.WriteAllTextAsync(Path.Join(include, "test.h"), Header, context.CancellationToken);
             await File.WriteAllTextAsync(Path.Join(system, "outside.h"), Outside, context.CancellationToken);
-            string compiler = NativeBindingRecordCommand.FindCompiler(OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang");
+            string compiler = await HostCompilers.ClangAsync();
             string library = await NativeBindingRecordCommand.FindLibraryAsync(compiler,
                 await NativeBindingHeaderCatalogCommand.ClangMajorAsync(compiler, context.CancellationToken), context.CancellationToken);
             string[] options = OperatingSystem.IsWindows()

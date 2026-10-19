@@ -62,7 +62,7 @@ public sealed partial class NativeBindingNativeTests
             string file = Path.Join(directory, "frontend.c");
             await File.WriteAllTextAsync(file, Source, context.CancellationToken);
             string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "frontend.exe" : "frontend");
-            string compiler = OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang";
+            string compiler = await HostCompilers.ClangAsync();
             string[] options = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/Fe" + executable, "/Fo" + Path.ChangeExtension(executable, ".obj"), file]
                 : ["-std=c11", "-Wall", "-Wextra", "-Werror", file, "-o", executable];

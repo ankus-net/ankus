@@ -26,8 +26,7 @@ internal static class NativeBindingRecordCommand
         PostgresInstallation installation = arguments[2].Length == 0
             ? await PostgresInstallation.DiscoverAsync(major, cancellationToken)
             : await PostgresInstallation.CreateAsync(arguments[2], cancellationToken);
-        string compiler = FindCompiler(arguments.Length >= 5 && arguments[4].Length != 0
-            ? arguments[4] : OperatingSystem.IsWindows() ? "clang-cl.exe" : "clang");
+        string compiler = FindCompiler(await ClangSelection.ResolveAsync(arguments.Length >= 5 ? arguments[4] : null, cancellationToken));
         string library = arguments.Length == 9 && arguments[8].Length != 0 ? Path.GetFullPath(arguments[8])
             : await FindLibraryAsync(compiler, headers.Target.ClangMajor, cancellationToken);
         string output = Path.GetFullPath(arguments[3]);

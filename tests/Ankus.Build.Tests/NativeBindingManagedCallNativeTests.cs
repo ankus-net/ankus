@@ -285,7 +285,7 @@ public sealed partial class NativeBindingNativeTests
             string file = Path.Join(directory, "calls.c");
             await File.WriteAllTextAsync(file, native.ToString(), context.CancellationToken);
             string library = Path.Join(directory, OperatingSystem.IsWindows() ? "calls.dll" : OperatingSystem.IsMacOS() ? "calls.dylib" : "calls.so");
-            string compiler = OperatingSystem.IsWindows() ? nativeCompiler ? "cl.exe" : "clang-cl.exe" : "clang";
+            string compiler = OperatingSystem.IsWindows() && nativeCompiler ? "cl.exe" : await HostCompilers.ClangAsync();
             string[] arguments = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/O2", "/LD", "/Fe" + library, "/Fo" + Path.ChangeExtension(library, ".obj"), file]
                 : ["-std=c11", "-Wall", "-Wextra", "-Werror", "-O2", "-fPIC", OperatingSystem.IsMacOS() ? "-dynamiclib" : "-shared", file, "-o", library];

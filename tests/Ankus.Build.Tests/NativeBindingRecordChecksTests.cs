@@ -497,7 +497,7 @@ public sealed partial class NativeBindingNativeTests
             string file = Path.Join(directory, "checks.c");
             await File.WriteAllTextAsync(file, source + beforeEntryPoint + NativeBindingRecordChecks.ExecutableEntryPoint, context.CancellationToken);
             string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "checks.exe" : "checks");
-            string compiler = compilerOverride ?? (OperatingSystem.IsWindows() ? nativeCompiler ? "cl.exe" : "clang-cl.exe" : "clang");
+            string compiler = compilerOverride ?? (OperatingSystem.IsWindows() && nativeCompiler ? "cl.exe" : await HostCompilers.ClangAsync());
             List<string> arguments = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/O2", "/Fe" + executable, "/Fo" + Path.ChangeExtension(executable, ".obj"), file]
                 : ["-std=c11", "-Wall", "-Wextra", "-Werror", "-O2", file, "-o", executable];

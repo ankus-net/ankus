@@ -60,7 +60,7 @@ public sealed partial class NativeBindingNativeTests
             source.AppendLine("int main(void) { return 0; }");
             string file = Path.Join(directory, "checks.c");
             string executable = Path.Join(directory, OperatingSystem.IsWindows() ? "checks.exe" : "checks");
-            string compiler = OperatingSystem.IsWindows() ? "cl.exe" : "clang";
+            string compiler = OperatingSystem.IsWindows() ? "cl.exe" : await HostCompilers.ClangAsync();
             string[] arguments = OperatingSystem.IsWindows()
                 ? ["/nologo", "/std:c11", "/W4", "/WX", "/Fe" + executable, "/Fo" + Path.ChangeExtension(executable, ".obj"), file]
                 : ["-std=c11", "-Wall", "-Wextra", "-Werror", file, "-o", executable];

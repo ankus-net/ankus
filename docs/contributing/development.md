@@ -21,8 +21,10 @@ deliberately incompatible prototypes which must fail compilation. Header-type
 collection also uses Clang's structured AST and checks the packaged command against
 the selected PostgreSQL installation. Header collection requires LLVM Clang 20
 or later with the `-skip-function-bodies` frontend option; the platform's default
-Clang may be older. Make both `cc` and a supported `clang` on Linux/macOS or
-`clang-cl.exe` on Windows available on `PATH`. Windows also uses `cl.exe` from
+Clang may be older. The build tool and its tests use the first Clang 20 or later
+on `PATH` or in Homebrew's or MacPorts' LLVM, so a Mac whose `PATH` starts with
+Xcode's Apple clang needs no change. Make `cc` available on `PATH`, and
+`clang-cl.exe` on Windows. Windows also uses `cl.exe` from
 Visual Studio 2022 17.9 or later for the selected PostgreSQL header probe. Its
 [`__typeof__` support](https://learn.microsoft.com/cpp/c-language/typeof-c)
 lets the probe measure anonymous native values with a type operand to MSVC's
@@ -49,7 +51,7 @@ compiler output retains its byte limit.
 Hosted CI selects LLVM 20 on Linux/macOS. Dedicated Linux/macOS CI uses its installed
 Clang and matching libclang; Windows uses its installed LLVM frontend. Each
 frontend is verified before running the suite. On macOS, Homebrew's `llvm` formula supplies
-the required compiler; put its `bin` directory on `PATH` for the test process.
+the required compiler, and the tests find it without a `PATH` change.
 Linux packages are available from [LLVM's package repository](https://apt.llvm.org/).
 SDK extension builds and the transitive record collector need the matching `libclang` library;
 install `libclang-20-dev` beside `clang-20` on Linux. Homebrew's LLVM formula and
@@ -100,7 +102,9 @@ defaulting to `~/.ankus`. For a nonstandard path:
 
 A checkout needs the patched runtime and compiler before building or running
 backend tests. When the runtime version it selects has been released, restore
-downloads them from nuget.org and nothing needs staging. After the runtime fork
+downloads them from nuget.org and nothing needs staging; the package consumer tests
+use the published runtime too, and pack a staged one into their feed instead when
+it exists. After the runtime fork
 moves past the last release, stage them as below; without a staged or published
 payload, restore fails with `NU1101` for `Ankus.NativeAot.Runtime.<rid>` or
 `Ankus.NativeAot.Compiler.<rid>`.
