@@ -156,7 +156,7 @@ Deliberate differences are documented where users meet them.
 | read-only and read-write selection, prepared statements in each mode, visibility of prior writes | Covered | IT SpiSelectionTests SelectionPreservesImmutableTransaction, WritableIntentSelectsFreshSnapshotsAndResetsAfterRollback; IT SpiPreparedTests |
 | spi_can_read_domain_types | Covered | IT SpiQueryTests DomainResultsPreserveDeclaredType; IT ExtendedDatumTests DomainResultsResolveBaseTypesAndOwnTheirValues |
 | spi_can_read_domain_types_based_on_domain_types | Added | IT SpiEdgeTests (a domain over a text domain reads as text and keeps the outer domain's OID) |
-| spi_can_read_binary_coercible_types | Different | `cidr` reads as `PgCidr`, not `PgInet` (RT PgNetworkTests BinaryTransportRetainsNetworkBits) |
+| spi_can_read_binary_coercible_types | Different | `cidr` reads as `PgCidr`. It does not read as `PgInet` (RT PgNetworkTests BinaryTransportRetainsNetworkBits) |
 | test_quote_identifier, test_quote_literal | Covered | IT SpiHelperTests IdentifierQuotingUsesServerRules, LiteralQuotingPreservesNativeEscapeSettings |
 | test_quote_qualified_identifier | Added | IT SpiEdgeTests (mixed quoted and unquoted components); IT SpiHelperTests QualifiedIdentifiersPreserveComponentBoundaries |
 | can_return_borrowed_str | Covered | IT SpiExampleTests SpiSampleDetachesCatalogAndCursorResults |
@@ -199,7 +199,7 @@ Deliberate differences are documented where users meet them.
 | array_borrowed: read_array_back, error_cases | Added | `PgMemoryContext.CreateFlatArray<T>` is the counterpart of `FlatArray::new_zeroed_in`: IT TypedArrayCallbackTests FlatArraysBuildInPlaceAndReturn fills, reads back and returns flat arrays of every fixed-size element type, two dimensions and lower bounds; RT PgFlatArrayTests LimitsAreCheckedBeforeAllocation rejects too many elements, a zero-length dimension, too many bytes and too many dimensions before allocating |
 | array_borrowed: borrow_test_count_true | Added | IT TypedArrayCallbackTests GeneratedTypedArraysEnforceNullCellContracts counts true cells through a generated `PgArrayView<bool>` argument |
 | anyarray, anyelement and anynumeric arguments | Covered | IT PolymorphicTests ArrayCopiesAndBuiltinCallsPreserveValues, ScalarValuesPreserveResolvedTypes; IT ArrayJsonTests AnyArrayJsonIterationPreservesNativeWords; IT NumericTests |
-| zero_datum_edge_cases (zero and false are values, not NULL) | Covered | IT BorrowedArrayTests BorrowedArrayCellsShareNativeStorage; IT DatumConversionTests; IT SpiRawTests CopySurvivesDisposalAndExpiresWithDestination. The pair-of-booleans datum array is Rust-specific. |
+| zero_datum_edge_cases (zero and false are non-NULL values) | Covered | IT BorrowedArrayTests BorrowedArrayCellsShareNativeStorage; IT DatumConversionTests; IT SpiRawTests CopySurvivesDisposalAndExpiresWithDestination. The pair-of-booleans datum array is Rust-specific. |
 | borrow_datum (eight `BorrowDatum` clones) | Rust-specific | Values are passed by copy; the same values are covered by IT DatumConversionTests and IT CStringTests |
 | from_into_datum: test_incompatible_datum_returns_error | Added | IT SpiRawTests ManagedConversionsAndErrorsRecover reads a boolean datum as `string` and asserts the message naming both types |
 | from_into_datum: test_cstring_roundtrip, null_string_is_none | Covered | IT CStringTests; IT SpiRawTests; IT BorrowedBufferTests |

@@ -78,7 +78,7 @@ logical replication toolkit, are listed in the migration guide's
 | `PgBox`, `PBox`, `MemCx` | `PgMemoryContext.CreateBox`, `CreateContextValue`, `PgContextValue<T>` | Mapped |
 | `PgRelation`, `ItemPointer`, `PgProc`, `regtypein`, `PgQualifiedNameBuilder` | `PgRelation`, `PgItemPointer`, `PgFunctions.GetInfo`, `PgTypes.GetOid`, `PgQualifiedNameBuilder` | Mapped |
 | `GucRegistry::define_*`, flags, units, hooks, `GucSetting::get` | `[PgGuc*]` properties, `PgGucRegistry.Define*`, `PgGucOptions`, `PgGucUnit`, `PgGucHooks<T>` | Mapped |
-| `GucSetting::as_ptr` | Ankus owns the generated backing variable and exposes its value, not its address | Different |
+| `GucSetting::as_ptr` | Ankus owns the generated backing variable and exposes only its value | Different |
 | GUC enum ordinals, string encoding, preload metadata, hooked runtime definitions | C# enum values as ordinals; UTF-8 strings; ASCII preload metadata; up to 64 hooked run-time definitions ([configuration](../../src/content/docs/configuration.md)) | Different |
 | `BackgroundWorkerBuilder`, `BackgroundWorker` methods, handles | `PgBackgroundWorkerOptions`, `PgBackgroundWorker`, `PgBackgroundWorkerHandle` | Mapped |
 | `From<&BackgroundWorkerBuilder> for pg_sys::BackgroundWorker`, handle lifetime, SIGTERM during a transaction | Registration stays inside Ankus; handles belong to their callback; SIGTERM rolls back and exits ([background workers](../../src/content/docs/background-workers.md)) | Different |
