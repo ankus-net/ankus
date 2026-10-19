@@ -35,7 +35,7 @@ internal static class SqlFunctionProviderDiagnostics
         helpLinkUri: "https://ankus.net/custom-sql/#function-provider-diagnostics");
 
     /// <summary>
-    /// Requires a successfully resolved custom SQL block rather than another declaration alias.
+    /// Requires a successfully resolved custom SQL block; another declaration's alias does not qualify.
     /// </summary>
     internal static readonly DiagnosticDescriptor s_missingBlock = new(
         "ANKUS373", "Function provider must name a custom SQL block",

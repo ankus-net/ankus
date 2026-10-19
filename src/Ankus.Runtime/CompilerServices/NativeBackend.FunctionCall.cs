@@ -263,7 +263,9 @@ public static unsafe partial class NativeBackend
     /// <param name="lifetime">The optional raw result destination.</param>
     /// <param name="convert">The synchronous result copier.</param>
     /// <param name="exactResult">Whether the declared result OID must match before the callee executes.</param>
-    /// <param name="arrayElement">Whether the expected OID describes an array's element rather than the entire result.</param>
+    /// <param name="arrayElement">
+    /// Whether the expected OID describes an array's element; otherwise it describes the entire result.
+    /// </param>
     /// <returns>The owned converted result.</returns>
     private static T RunFunction<T>(string? name, uint oid, PgFunctionCallOptions? options,
         ReadOnlySpan<PgFunctionArgument> arguments, uint resultType, PgDatumLifetime? lifetime, Func<NativeSpiResult, T> convert,

@@ -195,7 +195,7 @@ public sealed class PostgresRegistry(string? homeDirectory = null)
         if (installation.Version.Major != major)
         {
             throw new InvalidOperationException(
-                $"'{installation.PgConfigPath}' is PostgreSQL {installation.Version.Major}, not PostgreSQL {major}.");
+                $"'{installation.PgConfigPath}' is PostgreSQL {installation.Version.Major}; PostgreSQL {major} was expected.");
         }
     }
 

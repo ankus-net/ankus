@@ -11,12 +11,12 @@ namespace Ankus.CompilerServices;
 public static unsafe class NativeGuc
 {
     /// <summary>
-    /// Selects a definition rather than a read in the native read binding; it matches ANKUS_GUC_DEFINE_KIND.
+    /// Makes the native read binding define the setting; other kinds read it. It matches ANKUS_GUC_DEFINE_KIND.
     /// </summary>
     private const int DefineKind = 100;
 
     /// <summary>
-    /// Selects a declared scalar's variable address rather than its value; it matches ANKUS_GUC_LOCATE_KIND.
+    /// Requests a declared scalar's variable address; other reads return its value. It matches ANKUS_GUC_LOCATE_KIND.
     /// </summary>
     private const int LocateKind = 200;
 
@@ -158,8 +158,8 @@ public static unsafe class NativeGuc
     /// <param name="cache">The generated property's last conversion.</param>
     /// <returns>The current string, or null when the setting has no value.</returns>
     /// <remarks>
-    /// The variable holds a pointer PostgreSQL replaces whenever it assigns the setting, so the bytes it points to are
-    /// compared rather than the pointer, which a new value can reuse. Before PostgreSQL registers the setting the
+    /// The variable holds a pointer PostgreSQL replaces whenever it assigns the setting, so the comparison reads the
+    /// bytes it points to; a new value can reuse the same pointer. Before PostgreSQL registers the setting the
     /// variable is null and the declared default is read by name.
     /// </remarks>
     public static string? ReadString(string name, ref nint variable, NativeGucText cache)

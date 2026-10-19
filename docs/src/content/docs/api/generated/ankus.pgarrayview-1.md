@@ -24,7 +24,7 @@ A supported scalar representation, nullable when value-type cells can be SQL NUL
 The array retains its native storage, dimensions, lower bounds and exact type identity.
 Elements are converted on access using PgDatum.Read&lt;T&gt;; ordinary values are copied,
 while borrowed text and bytea elements retain the source lifetime. Dispose such elements
-when finished. Disposing an enumerator releases only its cursor, not its returned elements.
+when finished. Disposing an enumerator releases only its cursor; returned elements stay alive.
 Nonnullable value types reject arrays containing SQL NULL during construction.
 Indexed lookup is O(1) for fixed-size native elements stored without a NULL bitmap,
 and O(n) otherwise; enumeration visits the array in one linear pass and converts each

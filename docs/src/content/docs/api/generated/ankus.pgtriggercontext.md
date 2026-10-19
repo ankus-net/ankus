@@ -121,7 +121,7 @@ Value: [string](https://learn.microsoft.com/dotnet/api/system.string)
 ### New
 
 Gets the owned proposed row for row-level INSERT and UPDATE invocations, otherwise null.
-Undefined generated columns are marked unavailable instead of being exposed as SQL NULL.
+Undefined generated columns are marked unavailable and never read as SQL NULL.
 
 ```csharp
 public PgHeapTuple? New { get; }

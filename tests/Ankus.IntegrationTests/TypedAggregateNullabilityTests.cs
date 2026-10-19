@@ -3,7 +3,8 @@ namespace Ankus.IntegrationTests;
 public sealed partial class AggregateTests
 {
     /// <summary>
-    /// PostgreSQL invokes or skips nullable rows according to the typed interface, not implementation annotations.
+    /// PostgreSQL invokes or skips nullable rows according to the typed interface; implementation annotations have no
+    /// effect.
     /// </summary>
     /// <param name="name">The published aggregate name.</param>
     /// <param name="strict">The expected native transition strictness.</param>

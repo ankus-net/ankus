@@ -6,7 +6,7 @@ namespace Ankus;
 /// <remarks>
 /// Explicit-version overloads work outside PostgreSQL. Other overloads require the calling backend thread
 /// and read the selected native headers' major version. Versions 13 through 19 are supported.
-/// Membership is a constant classification, not proof of catalog existence, permissions, or object type.
+/// Membership is a constant classification. It does not prove catalog existence, permissions, or object type.
 /// </remarks>
 public static partial class PgBuiltInOids
 {

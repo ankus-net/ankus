@@ -94,8 +94,8 @@ unescaped. Input accepts any valid JSON escape.
 Serialized keys, enum names and string discriminators preserve their exact
 Unicode text in JSON and CBOR, including empty strings and zero characters.
 This also applies to attributes imported from another assembly and attributes
-inherited by overridden properties. Unpaired UTF-16 surrogates are rejected
-instead of being replaced during UTF-8 encoding. PostgreSQL `jsonb` cannot
+inherited by overridden properties. UTF-8 encoding rejects unpaired UTF-16
+surrogates. PostgreSQL `jsonb` cannot
 represent zero characters; keep such values in the custom type's storage or
 its JSON text representation.
 
@@ -106,8 +106,8 @@ exact type, including nullability. Remaining members need accessible setters or
 init accessors, or writable fields. Constructor-bound members keep the value
 assigned by the constructor, including any normalization. A constructor that
 binds or deliberately ignores C# `required` members must carry
-`[SetsRequiredMembers]`; Ankus diagnoses missing annotations instead of overwriting
-the constructor's values to satisfy C# initializer requirements.
+`[SetsRequiredMembers]`. Ankus diagnoses missing annotations, which keeps the
+constructor's values intact.
 
 Generated code follows ordinary C# assembly access. Types, constructors and
 setters may be `public`, `internal` or `protected internal` when accessible from
@@ -139,8 +139,8 @@ explicit codec. Passing an undeclared runtime subclass is rejected so additional
 state is not silently discarded. Nesting is limited to 64 containers; cyclic
 graphs fail at that limit. CBOR preserves infinities, negative zero and every
 NaN's sign and payload bits, including signaling NaNs. A NaN uses a full-width
-`float` or `double` encoding instead of CBOR's shorter canonical NaN, which pgrx's
-`serde_cbor` storage writes for every NaN. Input that would narrow a wider CBOR
+`float` or `double` encoding. pgrx's `serde_cbor` storage writes CBOR's shorter
+canonical NaN for every NaN. Input that would narrow a wider CBOR
 value or NaN payload into `float` is rejected. JSON output rejects non-finite
 values because JSON has no exact representation.
 

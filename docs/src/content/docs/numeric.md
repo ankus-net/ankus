@@ -33,7 +33,7 @@ exponents. `Text` and `ToString()` return owned, culture-independent output text
 `ToNormalizedString()` removes insignificant fractional zeroes. `Scale` reports
 display scale and returns null for special values. `PgNumeric` implements
 `IParsable<PgNumeric>` and `ISpanFormattable` with the same rules; format strings
-such as `N2` are rejected rather than reinterpreted, and culture is ignored.
+such as `N2` are rejected, and culture is ignored.
 
 Equality ignores display scale: `1.2300` equals `1.23` and their hashes agree.
 As in PostgreSQL, NaN equals NaN and sorts above all other numeric values.

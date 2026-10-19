@@ -168,7 +168,7 @@ public sealed partial class AggregateTests
     [TestMethod]
     public Task InternalValuePayloadsKeepTheirExactType()
         => Run(nameof(InternalValuePayloadsKeepTheirExactType), async (connection, transaction, token) =>
-            Assert.AreEqual("5|6|True|Internal state contains System.Int32, not System.Int64.",
+            Assert.AreEqual("5|6|True|Internal state contains System.Int32; System.Int64 was requested.",
                 await Scalar<string>(connection, transaction, "SELECT internal_values.internal_value_payloads()", token)));
 
     /// <summary>

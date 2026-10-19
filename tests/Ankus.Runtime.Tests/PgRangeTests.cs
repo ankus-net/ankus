@@ -216,7 +216,8 @@ public sealed class PgRangeTests
     }
 
     /// <summary>
-    /// Missing input returns false but absence of a backend is an operational error, not an invalid range.
+    /// Missing input returns false; parsing without a backend throws an operational error, which is distinct from an
+    /// invalid range.
     /// </summary>
     [TestMethod]
     public void RangeParsingRequiresBackend()

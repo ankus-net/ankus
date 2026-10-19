@@ -53,7 +53,7 @@ the enum's presence alone does not establish availability on every version.
 can be checked without truncation. It reports `Invalid` for zero, `Ambiguous`
 for an unlisted 32-bit value, and `TooBig` above `uint.MaxValue`. A successful
 conversion reports `None` and the typed member. `PgOid.FromBuiltIn` rejects
-undefined or unavailable members instead of accepting arbitrary enum casts.
+undefined or unavailable members, such as an arbitrary value cast to the enum.
 
 The catalog deliberately retains pgrx's constant-name heuristic. It includes
 types, relations, selected functions and other constants, including some that

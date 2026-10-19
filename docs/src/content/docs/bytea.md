@@ -33,13 +33,13 @@ members and trailing content are separate inputs. Like that decoder, it reads
 but does not compare the trailer's ISIZE field and does not independently reject
 unused header flags. A header checksum (FHCRC) is checked against the header as
 libflate re-encodes it, so unknown flag bits and unusual XFL values are ignored.
-These functions are a sample codec, not an archive validator.
+These functions are a sample codec. They don't validate archives.
 
 The sample owns gzip framing around .NET's standard raw DEFLATE codec. This
 preserves empty members and the first-member boundary.
 
 Malformed gzip data raises `InvalidDataException`. Invalid UTF-8 raises
-`DecoderFallbackException` rather than inserting replacement characters; binary
+`DecoderFallbackException`; binary
 `gunzip` still returns those bytes exactly. Ankus reports these ordinary .NET
 exceptions as SQLSTATE `38000`. pgrx's `expect` failures panic and report `XX000`.
 After an error, roll back the failed transaction or savepoint before issuing

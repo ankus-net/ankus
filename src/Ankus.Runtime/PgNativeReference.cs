@@ -82,7 +82,8 @@ public sealed unsafe class PgNativeReference<T> where T : unmanaged
     /// Gets the checked allocation owner or the explicitly supplied raw-reference lifetime anchor.
     /// </summary>
     /// <remarks>
-    /// For a raw reference this is a lifetime anchor, not a claim about native allocator ownership.
+    /// For a raw reference this is only a lifetime anchor. It says nothing about which native
+    /// allocator owns the memory.
     /// </remarks>
     public PgMemoryContext LifetimeContext
     {

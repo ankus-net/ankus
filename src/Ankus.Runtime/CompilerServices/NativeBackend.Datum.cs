@@ -292,7 +292,7 @@ public static unsafe partial class NativeBackend
     /// </summary>
     /// <param name="identity">The native cursor identity.</param>
     /// <param name="count">The number of rows to fetch.</param>
-    /// <param name="forward">Whether to fetch forward rather than backward.</param>
+    /// <param name="forward">Whether to fetch forward; otherwise the fetch moves backward.</param>
     /// <returns>The owned raw batch.</returns>
     internal static SpiRawResult FetchRawCursor(long identity, int count, bool forward)
         => RunRawRequest(new NativeSpiRequest

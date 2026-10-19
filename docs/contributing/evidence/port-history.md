@@ -192,10 +192,10 @@ Paths and anchors refer to the repository root as it was then.
   passes **13,977** total, **13,927** passed and **50** platform skips with zero
   failures in **12m50.602s**. Release has zero warnings/errors; API freshness
   (**245** pages, **2,795** members) and site checks (**297** pages) pass. The new
-  timing summaries show the Windows cost is concurrency, not per-operation
-  speed: a Native AOT consumer publish averages **84s** on Windows, with twenty
-  slots per suite and two suites, against **21s** on Linux with twelve slots on
-  24 processors; idle Windows publishes take 4–8s.
+  timing summaries trace the Windows cost to concurrency. Per-operation speed is
+  not the cause: a Native AOT consumer publish averages **84s** on Windows, with
+  twenty slots per suite and two suites, against **21s** on Linux with twelve
+  slots on 24 processors; idle Windows publishes take 4–8s.
 - Windows test time: primary CI **37825380597** takes **21m50s** for the Windows
   test step, against **11m37s** on Linux and **12m03s** on macOS. Per-class
   durations from the CI reports place the critical path in package-consumer
@@ -300,7 +300,7 @@ Paths and anchors refer to the repository root as it was then.
   Linux x64/PostgreSQL **18.6** passes **13,883** total, **13,833** passed and
   **50** platform skips with zero failures in **12m52.442s**.
   Local sessions cannot run under the runners' service account, so the
-  event-log branch was checked against the CI artifact, not executed locally.
+  event-log branch was checked against the CI artifact without running locally.
 
 - Test scheduling now reserves crash recovery rather than excluding the whole
   integration suite. Isolated SDK rejection projects run alongside read-only
@@ -356,7 +356,8 @@ Paths and anchors refer to the repository root as it was then.
   With SDK **10.0.401**, eight concurrent warm validations of all installed SDK
   file contents take **0.800–0.858s**, versus **1.662–1.685s**, on Windows;
   macOS x64 takes **1.811–2.144s**, versus **2.512–2.682s**. These isolated
-  measurements establish a cache improvement, not a complete-suite speedup.
+  measurements establish a cache improvement. They do not show a complete-suite
+  speedup.
   The packaged-helper relocation, reuse, changed-content and cleanup test also
   passes on Windows/PostgreSQL **17.11**. Release and documentation checks pass.
   Package commands that only inspect or reuse an existing publication no longer
@@ -404,8 +405,8 @@ Paths and anchors refer to the repository root as it was then.
   failures. Test duration changes from **12m00.271s** to **11m40.965s**; total
   command duration changes from **12m20.92s** to **12m03.33s**. The 22 selection
   cases complete in **112.14s**, versus **187.68s** previously, while overlapping
-  other tests. This is a modest complete-suite improvement, not resolution of
-  the Windows latency gap. Release build and site checks pass. Windows profiling
+  other tests. This is a modest complete-suite improvement. The Windows latency
+  gap is unresolved. Release build and site checks pass. Windows profiling
   separates command queue waits from native publication and project evaluation.
 - Primary CI **37716633362** on **358fd04** passed Linux/PostgreSQL 18,
   Windows/PostgreSQL 17, runtime jobs and quality; Docs **37716633355** passed.
@@ -439,8 +440,8 @@ Paths and anchors refer to the repository root as it was then.
   **148m48s**; **13,464** passed, **48** platform skips, zero failures.
   The complete per-case-cleanup run also passes **13,464 + 48**, in **11m52s**
   including build, with 16 package slots. Test execution was **11m28s**, versus
-  **11m29s** with 20 slots; the elapsed reduction mostly came before execution,
-  not from increased throughput. Sampled consumer storage stayed below **9 GiB**
+  **11m29s** with 20 slots; the elapsed reduction mostly came before execution.
+  Throughput gains did not drive it. Sampled consumer storage stayed below **9 GiB**
   instead of retaining **29 GiB** until class cleanup. Consumer builds retain
   stable publication paths and reuse restored dependencies. Completed consumer
   trees are deleted after each case; CI roots use runner-owned temporary storage.
@@ -925,7 +926,7 @@ Read-only Roslyn compiler tests and the current official memory-safety proposal
 also distinguish legacy and updated caller contracts. The [.NET support plan](../dotnet-support.md#compiler-memory-safety-acceptance)
 now requires old/new compiler consumers, generated assemblies, raw calls, globals,
 callbacks and checked managed wrappers to be validated together. This is an open
-acceptance requirement, not a claim of new compiler or runtime support.
+acceptance requirement. It does not claim new compiler or runtime support.
 
 ## Native host signal-mask regression
 
@@ -1411,7 +1412,7 @@ has zero errors, warnings or hints. All 25 distinct literal generator help
 destinations resolve to real rendered pages and anchors, including the nineteen
 added links. All 50 source identities verify afterward. Complete native
 acceptance remains pending. Earlier 32-file results are retained as evidence of
-that earlier revision, not substituted for the expanded composition.
+that earlier revision. They do not substitute for the expanded composition.
 
 ### Complete editor-composition acceptance
 
@@ -1584,8 +1585,8 @@ reached. The retained log records successful completion of the five smaller
 modules, **6,821 total / 6,812 passed / nine skips / zero failures**; integration
 never produces its final summary. Only the runtime artifact is uploaded.
 
-Runner resource starvation and a host/network fault remain possibilities, not
-established causes. The original partial log, completed job metadata and failure
+Runner resource starvation and a host/network fault remain possible causes.
+Neither is established. The original partial log, completed job metadata and failure
 annotation are retained. A rerun of the same failed job with GitHub runner and
 step diagnostics enabled is submitted, preserving its code, full-suite scope
 and timeout. No Intel acceptance or root-cause fix is claimed yet.
@@ -1684,7 +1685,7 @@ Upstream continued seeing that failure in April 27 Preview 5 compiler builds,
 before the May 2 GC correction, and stopped seeing it after moving off Preview 5.
 The old compiler's source and machine code lack this correction. This supports
 the GC defect as the explanation for the intermittent compiler corruption;
-it is an inference from upstream evidence, not a captured local failing GC root.
+it is inferred from upstream evidence; no local failing GC root was captured.
 The unchanged failing compilation never reproduced locally under the retained
 diagnostic workload. Successful replays alone do not establish causation.
 
@@ -1776,18 +1777,18 @@ stack trace therefore does not establish a generic-parameter indexing race.
 An independent instruction decoder checks every method body in the exact
 retained publication inputs: **166,245 instruction streams in 179 assemblies**.
 There are no unknown/truncated instructions or invalid switch operand lengths.
-Each assembly identity is retained. This checks decoding boundaries, not full
-IL type safety or concurrent compiler state. The patched CoreLib remains
-identical to the accepted runtime payload.
+Each assembly identity is retained. This checks decoding boundaries. It does
+not check full IL type safety or concurrent compiler state. The patched CoreLib
+remains identical to the accepted runtime payload.
 
 Targeted debugger instrumentation runs the unchanged compiler with its retained
 response file. It captures registers, thread stacks and a core immediately
 before the recorded exception helper, and otherwise stops at native code
 generation to isolate scanner reproduction. The first baseline and sixteen
 private GC-pressure observations complete scanning without the failure. These
-are diagnostic observations, not full compilations or a resolution. A bounded
-larger reproduction is in progress. Compiler flags, test assertions and CI retry
-policy remain unchanged.
+are diagnostic observations. They are not full compilations or a resolution.
+A bounded larger reproduction is in progress. Compiler flags, test assertions
+and CI retry policy remain unchanged.
 
 Further reproduction separates debugger timing from compiler execution. An
 isolated copy of the exact compiler traps only at the previously identified
@@ -2021,7 +2022,7 @@ import names, layouts, fields and method bodies do not change.
 
 The new metadata regression fails against the unchanged runtime: expected
 `Ankus.CompilerServices`, actual `Ankus`. It executes one case in **1.004s**;
-this is an observed assertion failure, not a build failure. After the migration,
+this is an observed assertion failure; the build succeeds. After the migration,
 the complete Linux x64 runtime module passes **2,070/2,070**, zero skips,
 **4.108s**. The generator module passes **3,096/3,096**, zero skips,
 **2m33.570s**. The build-tool module passes **1,203 total; 1,194 passed;
@@ -2082,8 +2083,9 @@ The Linux compiler failure has the same scanner stack and offsets as
 [dotnet/runtime issue 122845](https://github.com/dotnet/runtime/issues/122845).
 The retained compiler identifies itself as **10.0.12-servicing.26422.108**,
 commit `95017c711e6afc1085133d440e42b4bd78155701`. The upstream discussion is a
-diagnostic lead, not proof of our cause or a validated correction. No speculative
-compiler patch, serial compilation setting or automatic retry is introduced.
+diagnostic lead. It does not prove our cause or provide a validated correction.
+No speculative compiler patch, serial compilation setting or automatic retry is
+introduced.
 
 The replacement complete suites now pass on the unchanged production source.
 Linux x64/PostgreSQL **18.6** completes all six modules with **11,347 total;
@@ -2149,8 +2151,8 @@ PostgreSQL **18.6/Linux x64**, with all six modules complete: **11,346 total;
 11,332 passed; zero failures; 14 platform skips; 39m21.504s**. All **336**
 frozen source and **26** accepted runtime identities verify after terminal
 success. Independent namespace checks and the companion probe share this host
-during part of the run. Its elapsed time is acceptance evidence, not an isolated
-performance comparison. Final Release passes with **zero warnings/errors,
+during part of the run. Its elapsed time is acceptance evidence. It is not an
+isolated performance comparison. Final Release passes with **zero warnings/errors,
 1m34.11s**. API freshness verifies **238 pages / 2,757 members**; the site builds
 **286 pages in 9.41s** and reports zero errors, warnings or hints. All 336 source
 and 26 runtime identities verify again afterward.
@@ -2217,7 +2219,7 @@ Regenerated API freshness verifies **238 pages / 2,757 members**; the site build
 **286 pages in 3.01s** and reports zero errors, warnings or hints. Platform
 acceptance remains required. Concurrent low-priority cache probes and a separate focused
 validation share this machine during part of the run, so its duration is an
-observed acceptance result, not a performance comparison.
+observed acceptance result. It is not a performance comparison.
 
 Earlier corrected-product checks expose two fixture/diagnostic issues. Reports
 are emitted relative to the test command's caller rather than its solution;
@@ -2424,8 +2426,8 @@ and copies only 29 changed owned paths; the accepted worker files already match.
 Release passes with zero warnings/errors (**2m02.43s**), API freshness verifies
 **238 pages / 2,756 members**, and the site builds **286 pages in 10.43s**, with
 zero check errors, warnings or hints. These timings share validation resources
-and are acceptance evidence, not performance comparisons. Final main-composition
-gates and fresh primary-platform CI remain required.
+and are acceptance evidence. They are not performance comparisons. Final
+main-composition gates and fresh primary-platform CI remain required.
 
 The preceding **68fd2de** passes
 [CI 37041069194](https://github.com/ankus-net/ankus/actions/runs/37041069194) and
@@ -2478,7 +2480,7 @@ contract or analyzer is weakened. The corrected literal `dotnet test` passes
 all six modules: **11,250 total; 11,236 passed; zero failures; 14 platform skips;
 34m47.341s**. All **299** source and **26** accepted runtime hashes verify after
 terminal success. Another full validation shares the validation system during
-this run; these durations are acceptance evidence, not a speed comparison.
+this run; these durations are acceptance evidence and do not compare speed.
 
 Twelve verified owned paths are promoted into the e38dce4 source composition.
 Final composed Release passes with zero warnings/errors, **1m22.89s**; API
@@ -2531,9 +2533,9 @@ independent PostgreSQL expressions; raw samples and library/app hashes remain
 retained. Managed decimal returns improve from **7.921ms to 5.720ms**, ratio
 **0.722**. Native SQL control medians are **3.072ms / 3.159ms**, ratio **1.028**.
 Small identity/addition ratios are **0.992 / 1.018**; 1,024-digit identity/addition
-ratios are **0.988 / 1.001**. These are query times, not isolated arithmetic,
-allocation or guard costs. Pure guard improvements and permanent benchmarks
-remain open. Final composed Release passes with **zero warnings/errors,
+ratios are **0.988 / 1.001**. These are query times. They do not isolate
+arithmetic, allocation or guard costs. Pure guard improvements and permanent
+benchmarks remain open. Final composed Release passes with **zero warnings/errors,
 1m22.56s**. API freshness verifies **238 pages / 2,756 members**; site build/check
 passes with **286 pages in 3.27s**, zero errors/warnings/hints. All 290 applicable
 promoted identities match. Fresh platform CI remains required after publishing.
@@ -2725,7 +2727,7 @@ check pass with zero diagnostics. All **279** source identities verify afterward
 The first composed complete-suite launch runs **zero tests**: its requested
 report directory was beneath a linked worktree's `.git` file, so all six test
 hosts reject that directory before discovery (exit **134**). This is an agent
-validation-command error, not a failed product assertion. The corrected launch
+validation-command error. No product assertion failed. The corrected launch
 uses an absolute private report directory and the identical frozen source.
 Its complete outcome remains pending.
 
@@ -2792,7 +2794,7 @@ all six modules report 11,027 total on each primary platform. Linux x64/PG18 has
 has 11,001 passed, 26 skips and zero failures (20m05s); Windows x64/PG17 has
 11,002 passed, 25 skips and zero failures (25m20s). Quality, runtime and Docs
 jobs also pass. These conclusions come from the completed job states and all
-downloaded TRX counters, not partial console output.
+downloaded TRX counters. They do not rely on partial console output.
 
 The isolated timing draft passes Release with zero warnings/errors, **1m16.57s**,
 API freshness **235 pages / 2,726 members**, site build **283 pages / 8.73s** and
@@ -2978,8 +2980,8 @@ An independent read-only namespace audit inventories **53 native helper types,
 **16 distinct types are public**, and each already has `EditorBrowsable(Never)`.
 The review's file count therefore overstates the author-visible surface.
 Compiler-only namespace organization still needs deliberate API work and full
-generated/consumer validation. The audit is syntactic, not complete binding
-resolution, and does not prove a namespace change safe. Author values, codecs,
+generated/consumer validation. The audit is syntactic. It does not perform complete
+binding resolution or prove a namespace change safe. Author values, codecs,
 guards and native layout contracts must retain their behavior.
 
 The final PostgreSQL 19 fixture composition passes **five affected cases,
@@ -3048,7 +3050,7 @@ Linux, and macOS.
 - **.NET lifecycle**: start with .NET 10 LTS, explicitly validate .NET 11 and
   subsequent LTS/STS releases, and service each declared major through its
   upstream lifecycle. Native AOT compiler/runtime servicing is a release
-  requirement, not an incidental SDK upgrade.
+  requirement. It is not an incidental SDK upgrade.
 
 ## Environment
 
@@ -3092,7 +3094,7 @@ relax analyzers or count smoke checks as completed platform validation.
 
 The second comparative review is being checked against the current source and
 the read-only PostgreSQL/pgrx references. Its recommendations are acceptance
-questions, not evidence that every described issue is present. The full port
+questions. They do not show that every described issue is present. The full port
 remains incomplete; the following work is additional to the open parity gates.
 
 | Review area | Current disposition |
@@ -3522,9 +3524,9 @@ on PostgreSQL **18.6/Linux x64**: **10,653 total, 10,641 passed, zero failed,
 12 platform skips**, **52m09.048s**. All six modules finish; integration takes
 **52m07.992s**. Terminal logs are retained and all **126** source hashes match
 after the run; the removed graph-serialization source remains absent. This
-establishes local native acceptance for that draft, not Windows/macOS evidence
-or acceptance of the later signature/search-path drafts. Promotion waits for
-the independently scoped Windows CI repair.
+establishes local native acceptance for that draft. It provides no Windows/macOS
+evidence or acceptance of the later signature/search-path drafts. Promotion
+waits for the independently scoped Windows CI repair.
 
 The later ordinary-signature snapshot also completes plain full `dotnet test`
 on PostgreSQL **18.6/Linux x64**: **10,689 total, 10,677 passed, zero failed,
@@ -3586,7 +3588,7 @@ PostgreSQL **18.6/Linux x64**: **10,663 total, 10,651 passed, zero failed and
 12 platform skips**, **46m51.006s**, across all six modules. Integration takes
 **46m50.254s**. The durable process exits **0**; all **138** owned hashes still
 match and the replaced graph serializer is absent. This evidence belongs to
-the predecessor, not the later diagnostics/search-path composition.
+the predecessor. It does not cover the later diagnostics/search-path composition.
 
 The merged snapshot passes Release with **zero warnings/errors, 3m19.38s**.
 Its first API freshness check identifies the omitted generated namespace index
@@ -3751,7 +3753,7 @@ remaining full backend/platform results are required before promotion.
 Operator CI **36951253669** now has successful quality, all runtime jobs and
 macOS ARM64/PostgreSQL 18 (**20m27s**). Linux x64/PostgreSQL 18 and Windows
 x64/PostgreSQL 17 remain active. Docs **36951253659** succeeds. These outcomes
-belong to committed **c328b30**, not the separate CLI drafts; no running job is
+belong to committed **c328b30** and exclude the separate CLI drafts; no running job is
 reported as complete.
 
 ## MSBuild property forwarding draft
@@ -4091,8 +4093,8 @@ Every original behavior assertion remains: conditional major, exact inherited
 path across three public entry points, and unchanged caller properties. No
 production discovery rule or diagnostic severity changes. All **five** affected
 class cases pass under scoped CI major **18** (**2.869s**) and **17**
-(**3.127s**), zero failures/skips. These are evaluation checks, not a PostgreSQL
-17 server run. The failing original and exact source identities are retained.
+(**3.127s**), zero failures/skips. These are evaluation checks and do not run a
+PostgreSQL 17 server. The failing original and exact source identities are retained.
 
 Final acceptance combines this test-only correction with the pending package
 prefix feature on the committed information baseline. All **199** source hashes
@@ -4215,7 +4217,7 @@ macOS ARM64/PostgreSQL 18 **20m53s**, Windows x64/PostgreSQL 17 **24m00s**.
 Every whole platform job fails only the same inherited-property generator
 fixture; the full integration modules, quality and runtime jobs succeed.
 The terminal logs are checked individually. This is repeated evidence on the
-unchanged committed source, not a new failure in the correction. The remaining
+unchanged committed source; the failure is not new to the correction. The remaining
 Intel timeout investigation uses isolated phase timestamps around the existing
 binding checks; it does not remove ABI verification or change live validators.
 
@@ -4470,7 +4472,7 @@ has **10,822 passed, zero failed, 14 platform skips**; macOS ARM64/PostgreSQL 18
 has **10,810 passed, zero failed, 26 platform skips**; Windows x64/PostgreSQL 17
 has **10,811 passed, zero failed, 25 platform skips**. Whole test-job durations
 are **25m31s**, **19m25s** and **27m22s**, respectively. Docs **36964760249**
-succeeds. These are observed outcomes, not controlled timing comparisons.
+succeeds. These are observed outcomes. They are not controlled timing comparisons.
 
 Scaffold CI **36966035199** has successful quality/runtime jobs and all three
 platform suites active; Docs **36966035246** succeeds. Hosted Intel
@@ -4622,7 +4624,7 @@ limit. Their terminal job durations including cleanup are **61m00s** and
 nine skips, zero failures**; neither has a completed integration report. Both
 restore the same NuGet cache and the native binding cache from **94dcad3**, with
 LLVM **20.1.8**. Initial build steps take **8m53s** and **12m04s** respectively.
-This is incomplete platform validation, not proof of a concurrency improvement.
+This platform validation is incomplete and does not prove a concurrency improvement.
 Their retained native publication/target timings require root-cause analysis;
 the full suite and timeout policy remain unchanged.
 
@@ -4701,8 +4703,8 @@ native-link task from the inclusive target totals. One retained Linux publicatio
 records **4.173s** source verification and **1.601s** companion compilation,
 both reporting reuse, plus **0.923s** native linking preparation. It replays
 existing task timestamps without rebuilding or printing command arguments or
-machine paths. This is diagnostic preparation, not Intel platform evidence or a
-production performance correction. Microsoft-owned MSBuild dependencies remain
+machine paths. This is diagnostic preparation. It is neither Intel platform evidence
+nor a production performance correction. Microsoft-owned MSBuild dependencies remain
 centrally versioned within the private tool folder.
 
 The final composed logging/documentation gate passes: Release has **zero warnings
@@ -4959,8 +4961,8 @@ complete outcomes for that new platform run remain required.
 Retained logs confirm six completed modules and **10,840 total** per platform
 for **36974050149**: Linux x64 has **10,826 passed, zero failed, 14 skips**;
 macOS ARM64 has **10,814 passed, zero failed, 26 skips**; Windows x64 has
-**10,815 passed, zero failed, 25 skips**. These are complete platform results,
-not counts inferred from an unfinished integration report.
+**10,815 passed, zero failed, 25 skips**. These are complete platform results.
+None of the counts is inferred from an unfinished integration report.
 
 SPI CI **36975738742** finishes with successful quality, runtime, Linux
 PostgreSQL 18 and macOS ARM64 PostgreSQL 18 jobs. Windows PostgreSQL 17 reports
@@ -5124,7 +5126,7 @@ SPI checkout is unchanged. Actionlint succeeds with explicit legitimate custom
 runner labels. Compiled preflight succeeds against PostgreSQL **18.6** and its
 real server headers; a PostgreSQL 13 selection against that same installation
 fails with the exact major mismatch. These are prerequisite/configuration
-checks, not complete version-suite evidence.
+checks. They are not complete version-suite evidence.
 
 Both source validators are now terminal and their original hashes verify, so
 the authorized prerequisite installer starts additional PostgreSQL servers and
@@ -5137,7 +5139,7 @@ Installation completes successfully while both validators are idle. Actual
 server binaries, `pg_config` descriptors and selected server headers now verify
 for **13.23, 14.24, 15.19, 16.15, 17.11, 18.6 and 19 beta 4**, Linux x64.
 The compiled seven-major prerequisite check exits **0**. These are installed
-prerequisites, not complete-suite version evidence. The compatibility runner
+prerequisites. They are not complete-suite version evidence. The compatibility runner
 label remains inactive pending final workflow validation and complete tests.
 
 The corrected **215**-identity matrix composition retains the two passing
@@ -5627,7 +5629,7 @@ This SQL-file snapshot is pushed as `8210d81`. CI **36807387606** and Docs
 **36807387783** succeed completely. Full platform jobs pass on macOS
 ARM64/PostgreSQL 18 (**18m26s**), Linux x64/PostgreSQL 18 (**22m44s**) and
 Windows x64/PostgreSQL 17 (**23m42s**). Quality and all three runtime jobs also
-succeed; no job times out. These are observed job durations, not controlled
+succeed; no job times out. These observed job durations are not controlled
 performance measurements.
 
 The appended follow-up review is being checked against current code. The stricter
@@ -5756,7 +5758,7 @@ x64/PostgreSQL 18 **23m55s**, macOS ARM64/PostgreSQL 18 **19m24s**, Windows
 x64/PostgreSQL 17 **22m57s**. Each platform runs **10,293 tests**, with zero
 failures and respectively **12**, **24** and **25** platform skips. The complete
 generator project passes **2,611/2,611** on each platform. Quality and all three
-runtime jobs pass too; no job times out. These are observed CI durations, not
+runtime jobs pass too; no job times out. These observed CI durations are not
 controlled performance comparisons. The pending GUC and path-test changes are
 excluded from this pushed source.
 
@@ -5955,7 +5957,7 @@ CI **36844268550** and Docs **36844268403** now succeed completely for this
 commit. All three full platform jobs pass: Linux x64/PostgreSQL 18
 (**23m59s**), macOS ARM64/PostgreSQL 18 (**19m31s**) and Windows
 x64/PostgreSQL 17 (**23m07s**). Quality and all runtime jobs also pass;
-no job times out. These are observed durations, not a controlled performance
+no job times out. These observed durations are not a controlled performance
 comparison. All six test modules execute on each platform, with **10,316 total
 and zero failures**: Linux has **12** platform skips, macOS **24** and Windows
 **25**. Integration execution takes **22m10.011s** on Linux,
@@ -6237,7 +6239,7 @@ Inspection finds the same LF-only text-edit pattern in the unpublished draft's
 partial-test file-movement case. Its input edit and compilation proof must also
 be repaired before publishing the backend-test milestone. The active native
 snapshot remains immutable; its outcome applies to the recorded twenty-file
-source, not a future repaired test revision.
+source and does not cover a future repaired test revision.
 The original frozen combined snapshot completes all six plain Linux modules:
 **10,421 total, 10,409 passed, zero failed and 12 platform skips**,
 **45m08.548s** reported testing time / **47m35.691s** wall time, exit **0**.
@@ -6631,7 +6633,7 @@ CI **36912867177** now succeeds completely for **16fb2c9**. Full platform jobs
 pass on Linux x64/PostgreSQL 18 (**24m35s**), macOS ARM64/PostgreSQL 18
 (**20m07s**) and Windows x64/PostgreSQL 17 (**24m27s**). Quality, all three
 runtime jobs and Docs **36912867325** also succeed. No job times out or is
-canceled. These durations are observed outcomes, not controlled performance
+canceled. These observed durations are not controlled performance
 measurements. The separate datum and reference/provider/compiler drafts still
 require their own complete native acceptance and fresh platform gates.
 
@@ -6797,7 +6799,7 @@ This milestone is pushed as `010d534`. Fresh CI **36803787045** and Docs
 **36803786977** succeed completely. Full platform jobs pass on Linux
 x64/PostgreSQL 18 (**22m47s**), macOS ARM64/PostgreSQL 18 (**18m44s**) and Windows
 x64/PostgreSQL 17 (**21m31s**). Quality and all three runtime jobs also succeed;
-no job times out. These durations are observed job times, not a controlled
+no job times out. These observed job times are not a controlled
 performance comparison.
 
 Initialization and module-load phase signatures now validate into detached
@@ -7109,7 +7111,7 @@ The exact 30-file source/test snapshot passes plain `dotnet test` on
 **40m44.715s**, generators **53.131s** and Build **2m31.143s**. Its source hashes
 match the committed-base snapshot, including the final function cache tests.
 The previously recorded complete Release, API freshness and site gates pass
-for this same source and contributing guide. The duration is observed evidence,
+for this same source and contributing guide. The observed duration is
 not a controlled performance comparison.
 
 Before commit and push, CI **36786103805** and Docs **36786103797** remain successful
@@ -7137,7 +7139,7 @@ suite, with the later Windows-only export correction and native helper covered
 by separate Linux checks. The final affected Build test project's Release build
 passes with **zero warnings/errors, 1.54s**; the full Release, API freshness and
 documentation gates are recorded above. These durations describe the measured
-runs, not a controlled performance comparison.
+runs. They do not form a controlled performance comparison.
 
 Before committing, CI **36776683824** and Docs **36776683807** remain successful.
 The preceding failure **36762725364** is resolved by the verified Windows repair;
@@ -7830,7 +7832,7 @@ all eleven affected Windows cases pass. Complete Linux verification passes
 retains per-module TRX timing reports. The first completed hosted Ubuntu result
 with reuse passes in 34m57s overall, with a 28m02.838s integration module,
 compared with 41m49s and 35m42.554s in the preceding completed Ubuntu run.
-This is an observed improvement across runs, not an isolated CI benchmark.
+This observed improvement across runs is not an isolated CI benchmark.
 The macOS ARM64 job also passes in 45m38s, with a 35m32.998s integration
 module; Windows x64 passes in 53m41s, with a 38m03.125s integration module.
 Further optimization is deferred
@@ -8059,7 +8061,7 @@ passes. Runtime fork commit `134b853ff766627327405b2fb1f5c0d74266e4b6`, selected
 by payload `10.0.11-ankus.4`, repairs the finalizer retirement request ordering.
 It passes the Linux native recovery pair, the complete Linux suite and 2,048
 retirement/restart cycles. The unrepaired control also passes the stress probe;
-this is a source-identified ordering race, not a deterministic stress reproduction.
+this is a source-identified ordering race without a deterministic stress reproduction.
 The GUC repair requires the unique session's exact server-log diagnostic and a
 healthy independent observer even when Windows reports a connection reset.
 The later mutation run passes all three complete platform suites, including
@@ -8104,9 +8106,9 @@ GC handles, returns each child's process ID, and runs GC, finalizers, newly star
 thread-pool work, timers, and exception handling. Stock Native AOT fails the process-ID
 and finalizer checks; warming its pool and timer before fork also breaks both services.
 This first pass starts with only the calling thread and finalizer, uses workstation
-nonconcurrent GC, and disables diagnostics. These are prototype boundaries, not the
-finished requirement. Other GC modes, platforms, and Ankus SDK integration remain
-unverified.
+nonconcurrent GC, and disables diagnostics. These are prototype boundaries that
+do not satisfy the finished requirement. Other GC modes, platforms, and Ankus SDK
+integration remain unverified.
 
 The next runtime revision also passes the parent-warmed pool/timer case. Framework
 workers retire through their normal exit paths before fork; both processes resume
@@ -8160,8 +8162,8 @@ starts. Independent server/OS PIDs, one-time initialization, inherited random to
 and graph, exact callback markers, same-session SQL, and graceful shutdown are
 checked. Logs and the runner's evidence are in
 `artifacts/preload/pg-proof1-a5s2syh4`; sources are in
-`.git/testagent/preload/postgres-probe/`. This uses a dedicated native probe, not yet
-Ankus's generated `[PgInitialize]` entry point or managed configuration hooks.
+`.git/testagent/preload/postgres-probe/`. This uses a dedicated native probe and does
+not yet use Ankus's generated `[PgInitialize]` entry point or managed configuration hooks.
 The first real generated Ankus probe exposed a separate missing binding: initializers
 outside a transaction could not read settings or log through the transaction-only
 backend binding. The owned generator snapshot now supplies independent guarded
@@ -8224,8 +8226,8 @@ orders and a separate-file copy of the same library pass with the repaired binar
 The host checks every table's owning image, exact module base, distinct runtime/GC
 addresses, unchanged descriptor/table bytes after the second load, and managed GC
 and reentry. ELF inspection confirms a `GLOBAL PROTECTED` export with no dynamic
-symbol relocation. This covers debugger metadata isolation, not a complete debugger
-session or copied-image fork safety. Sources are committed under
+symbol relocation. This covers debugger metadata isolation. It does not cover a
+complete debugger session or copied-image fork safety. Sources are committed under
 `eng/ankus/fork-probes/debug-headers`; evidence is frozen in
 `.git/testagent/preload/debugheader-proof/`. The new SDK is
 `artifacts/preload/runtime-debugheader-proof-sdk`. Actual generated Ankus extensions
@@ -8283,8 +8285,8 @@ All reference checkouts remain read-only. Exact source research is in
 and complete stock/owned logs are retained in `.git/testagent/preload/first-proof/`;
 its matching runtime SDK is retained in `artifacts/preload/runtime-proof1-sdk`.
 Native/CoreLib builds and both probe publications completed without warnings or
-errors. This is runtime engineering work, not a declaration-only or
-delayed-initialization substitute for postmaster callbacks.
+errors. This is runtime engineering work. It does not substitute declarations or
+delayed initialization for postmaster callbacks.
 
 The user replaced the runtime reference with a clone of
 `https://github.com/ankus-net/runtime`. The existing owned runtime working tree
@@ -8325,7 +8327,7 @@ SQL results and hashes are in `.git/testagent/preload/windows-proof/`. This does
 not yet verify Ankus background-worker registration/attachment or the full suite
 on Windows.
 
-The Windows probe hang was output-handle lifetime, not a failed server startup.
+The Windows probe hang came from output-handle lifetime; server startup did not fail.
 `pg_ctl` lets server children inherit its handles, so waiting for captured output
 to reach EOF can outlive `pg_ctl` itself. One native supervisor now owns the whole
 start/query/stop sequence and directs tool output to real files; it waits for the
@@ -8387,7 +8389,7 @@ to the native compiler. Mach-O inspection verifies both the bridge and final lib
 report 12.0 by default and 13.0 with `AppleMinOSVersion=13.0`; both publications have
 no compiler/linker warnings. Plain `dotnet test` again passes all 4089 cases without
 failures/skips (3m48.371s); Release has zero warnings/errors (6.18s). This checks
-artifact target consistency, not execution on macOS 12 or 13. Windows was also
+artifact target consistency without running on macOS 12 or 13. Windows was also
 republished with the complete header/flag fixes and passed another two starts and
 six sessions. Its dedicated validation directory is removed after preserving the
 sources/binaries/logs and verifying the owned clusters had stopped.
@@ -8614,7 +8616,7 @@ absent from the extension libraries. Sources, before/after SDKs, binaries, logs,
 PostgreSQL results and payload hashes are frozen in
 `.git/testagent/preload/server-proof/`.
 
-This is still an owned runtime/generator snapshot, not the production SDK. The new
+This owned runtime/generator snapshot is still not the production SDK. The new
 server-GC revision has not run on macOS or Windows. Enabled diagnostics/EventPipe,
 arbitrary application threads and locks, background-worker attachment, consumer
 packaging/integration and the full PostgreSQL/platform matrix remain required.
@@ -8811,7 +8813,7 @@ shared/leaked cache; Mono copies its borrowed value. Linux also releases a buffe
 left by a failed `getline`. All three process-info wire formats retain their exact
 values and boundaries. Across 64 measured success/disconnect cycles, the old
 Native AOT build grows live native allocations by 16,144 bytes; all three final
-runs show zero growth. This is component allocation evidence, not a claim about
+runs show zero growth. This component allocation evidence makes no claim about
 every runtime allocation path.
 
 The probes now wait for process-info EOF before counting descriptors. A separate
@@ -9288,7 +9290,7 @@ surface and PostgreSQL's native calendar/timezone routines:
 
 The new scalar operations use the existing native guard and owned result/diagnostic transport. The timezone
 helper follows the PG13–15 versus PG16+ native decoder signatures; declarations were checked against local
-PG13–19 bindings, which is compatibility intent, not execution evidence. Offset lookup can resolve wider
+PG13–19 bindings, which shows compatibility intent without execution evidence. Offset lookup can resolve wider
 POSIX offsets than the existing checked timetz type; named construction and converted results reject offsets
 outside that type's strict ±16-hour bound. Fractional interval-zone offsets follow PostgreSQL's whole-second
 truncation. Existing GetPart/Extract(Microseconds) remains second-inclusive, unlike MicrosecondsWithinSecond.
@@ -9430,7 +9432,7 @@ Function, type/enum, aggregate and ordering/hash family SQL controls now expose
 `Sql`, `GenerateSql`, and `SqlRelocatable`; the later SQL-generation entries record their
 distinct ownership contracts and execution evidence. Declared custom-type providers,
 future type-family edges, and standalone schema extraction remain required work. These tests establish the
-implemented installation graph, not full parity with every pgrx SQL-entity feature.
+implemented installation graph. Full parity with every pgrx SQL-entity feature is not established.
 
 Evidence: `artifacts/sql-graph-all-output.txt` records 1152 passing tests with zero failures/skips.
 `sql-graph-{generator,backend,package}-output.txt` records the focused runs; `sql-graph-build-output.txt` records
@@ -10153,7 +10155,7 @@ Source review of PostgreSQL 13–19 release tags found aligned allocation starts
 no-OOM safety requires 16.15/17.11/18.6/19 beta 3, and PostgreSQL 16 aligned realloc loses flags.
 The bridge avoids that resize path and rejects unsupported calls. PostgreSQL 19 prereleases share
 numeric version 190000, so the gate also checks beta labels and rejects ambiguous development
-snapshots for aligned no-OOM calls. These are source-reviewed gates, not an executed version matrix.
+snapshots for aligned no-OOM calls. These gates are source-reviewed; no version matrix was executed.
 
 | Contract | Exact evidence |
 | --- | --- |
@@ -10244,7 +10246,7 @@ retry/disposal and immediate individual-reclamation witnesses; stale views alone
 missed an omitted native free. Initial IDE0305 build failures were fixed with collection expressions
 without weakening byte-copy assertions. Native generation exhaustion is source-reviewed and the
 token bit pattern is tested directly; no actual generation-counter wrap was executed. Absence of
-per-reference native registry allocation is source-reviewed, not inferred from context byte totals.
+per-reference native registry allocation is source-reviewed without inference from context byte totals.
 
 IDE0004 is now an error across repository builds. A non-incremental build first rejected existing
 redundant casts; Roslyn's IDE0004 code fix updated 19 C# files. The subsequent non-incremental
@@ -10377,7 +10379,7 @@ that emits a notice as well as direct managed logging. Actual PG19 execution rem
 The fault module compiles the exact emitted bridge with translation-unit-local allocation controls.
 It counts real C record acquisition/release and payload-boundary calls, checks independent retained
 Bump/raw payloads, retries successfully, then verifies all records were released. These are controlled
-native failure witnesses, not actual machine exhaustion. Test-source extraction checks unique
+native failure witnesses. They do not exhaust the actual machine. Test-source extraction checks unique
 boundaries and fails if emission changes; expected outcomes are independent native observations.
 Independent review added an external 1 MiB -> 2 MiB -> 32 byte Generation resize witness that proves
 at least 2 MiB reclaimed before reset using both native and catalog counters. No production mutation
@@ -10488,7 +10490,7 @@ boundaries and the full port inventory remain active requirements.
 Postgres `dlopen(filename, RTLD_NOW|RTLD_GLOBAL)` then:
 
 1. `dlsym(handle, "Pg_magic_func")` — must return a `const Pg_magic_struct *`
-   (function, not data). Missing ⇒ `ERROR: incompatible library: missing magic block`.
+   (the symbol is a function). Missing ⇒ `ERROR: incompatible library: missing magic block`.
 2. Magic validation:
    - **PG 13–17**: `len == server's len && memcmp(module_magic, &server_magic, len) == 0` (byte-exact).
    - **PG 18, 64-bit**: magic length is **72 bytes**; PostgreSQL compares the ABI fields
@@ -10778,7 +10780,7 @@ Required test-source inventory:
 - Inline unit tests in runtime, macro, SQL graph, binding-generation, and configuration crates; SQL and expected-output
   fixtures in the examples and regression-command paths.
 
-The passing Ankus tests verify the implemented milestones, not this entire corpus. Each family still needs
+The passing Ankus tests verify the implemented milestones and do not cover this entire corpus. Each family still needs
 source-case-level mapping to named .NET tests and any additional boundary cases introduced by AOT/native interop.
 
 ### Release evidence requirements
@@ -10973,7 +10975,7 @@ The phases track implementation of the complete pgrx feature surface.
   `pnpm install --frozen-lockfile`, `pnpm check` and `pnpm build` passed. Local Playwright checks passed at
   1440px and 390px, including navigation, mobile menu, search, theme switching and all 44 internal links/anchors.
   Screenshots are in `artifacts/docs-check/`. Astro emits a duplicate 404 route warning; the generated 404 page works.
-  Sitemap generation awaits the public site URL. These checks cover the current pages, not complete feature documentation.
+  Sitemap generation awaits the public site URL. These checks cover the current pages; they do not establish complete feature documentation.
 - 2026-09-22 — Packable `ankus` tool with registered PostgreSQL selection, atomic configuration updates,
   Native AOT build/publish, manifest-based install and DESTDIR staging. `ToolCommandTests` installs a freshly
   packed tool, publishes an author project, stages its files, and executes it through an isolated PG18 backend.
@@ -11202,7 +11204,7 @@ The phases track implementation of the complete pgrx feature surface.
   declarations, zero omissions; style scan: 433 C# source/template files, no opening-brace blanks or suppressions.
   Public guide/README updates and documentation build/type/API freshness checks pass: 105 API pages,
   1120 members and 134 site pages. Native memory assertions prove warmed GUC allocation equality and bounded
-  libc growth on glibc 2.41, not arbitrary leak absence or cross-platform allocation parity. Raw placeholders,
+  libc growth on glibc 2.41. They do not prove arbitrary leak absence or cross-platform allocation parity. Raw placeholders,
   managed postmaster callbacks, mixed-encoding preload, the broader port inventory and the full supported
   PostgreSQL/platform matrix remain active requirements.
 
@@ -12094,8 +12096,8 @@ The phases track implementation of the complete pgrx feature surface.
   18.6 (4,913 passed, zero skips), macOS ARM64/PostgreSQL 18.6 and Windows
   x64/PostgreSQL 17.11 (4,911 passed and two explicitly Linux-only allocation
   checks skipped on each). Quality, all runtime-package jobs and the documentation
-  workflow also passed. This is the recorded matrix, not PG13–19 parity.
-  At this milestone, polymorphic unions,
+  workflow also passed. This is the recorded matrix; it does not establish
+  PG13–19 parity. At this milestone, polymorphic unions,
   additional framework/collection shapes, custom text with generated storage,
   zero-copy storage and the other full-port requirements remain visible.
 
@@ -12414,9 +12416,10 @@ The phases track implementation of the complete pgrx feature surface.
   Fresh backend reuse
   does not establish postmaster restart or upgrade persistence. The public test
   harness has no data-preserving restart operation.
-  The hash helper specifies exact byte encodings, not arbitrary Rust `Hash` value
-  feeds. Custom SQL generation override/disable hooks, manual raw base-type
-  mappings, and the full PostgreSQL-major/platform matrix remain full-port work.
+  The hash helper specifies exact byte encodings. Arbitrary Rust `Hash` value
+  feeds are not specified. Custom SQL generation override/disable hooks, manual
+  raw base-type mappings, and the full PostgreSQL-major/platform matrix remain
+  full-port work.
 
 - 2026-09-24 — Added function SQL generation controls. `PgFunction.GenerateSql`
   disables installation statements while retaining the managed method, native
@@ -12976,8 +12979,8 @@ The phases track implementation of the complete pgrx feature surface.
   Independent source and assertion reviews found no unresolved selected-scope
   issue. Direct tests establish immediate owner-deletion wiring; later backend
   capture checks establish post-callback expiry. Existing catalog write-then-error
-  and native-pointer error tests provide compositional guard evidence, not a new
-  pointer target that writes and then raises. No empirical mutation or coverage
+  and native-pointer error tests provide compositional guard evidence; there is no
+  new pointer target that writes and then raises. No empirical mutation or coverage
   percentage is claimed. README, source XML and the function-call, raw-value and
   array guides document the capability and its unsafe caller obligations.
   Plain `dotnet test` passes all 6,166 tests with zero failures/skips in 244.676s
@@ -13392,7 +13395,7 @@ The phases track implementation of the complete pgrx feature surface.
   is rejected without being replaced. An independent audit compares every
   compiled public constant and its documented macro with separately parsed
   upstream records, including all aliases and exact version differences.
-  These catalog checks are source evidence, not execution of every PostgreSQL
+  These catalog checks are source evidence. They do not execute every PostgreSQL
   version or every condition that can produce an error.
 
   Existing Native AOT diagnostic and logging probes now use named codes while
@@ -13420,7 +13423,7 @@ The phases track implementation of the complete pgrx feature surface.
   [full Windows job rerun](https://github.com/ankus-net/ankus/actions/runs/36147748841)
   passed all 6,373 eligible cases with the same two skips in 15m55s, with
   diagnostic assertions unchanged. The first failure was not a timeout;
-  transient wire delivery remains an observation, not a proven root cause.
+  transient wire delivery remains an observation; it is not a proven root cause.
   Remaining guard/raw APIs and complete PostgreSQL/platform validation remain
   required.
 
@@ -13883,8 +13886,8 @@ The phases track implementation of the complete pgrx feature surface.
   Linux x64/PostgreSQL 18.6 passed 6,718 tests and failed one, with no skips:
   `GucPreloadTests.ClientDefaultsAndBackendSettingsRetainSources` failed during
   postmaster startup because another process claimed its reserved loopback port
-  after the harness released it. This was a native address-in-use failure, not
-  an analyzer finding or a timeout. macOS ARM64/PostgreSQL 18.6 and Windows
+  after the harness released it. This was a native address-in-use failure,
+  with no analyzer finding or timeout. macOS ARM64/PostgreSQL 18.6 and Windows
   x64/PostgreSQL 17.11 each passed 6,717 tests with zero failures and the two
   existing Linux-only allocation measurements skipped, in 13m09s and 17m40s
   jobs respectively. Quality, runtime preparation and
@@ -14361,7 +14364,7 @@ The phases track implementation of the complete pgrx feature surface.
   | Deterministic ordering and explicit invalid-input/version rejection | `RawCatalogOrderingIsStable`, `MalformedRawDeclarationsFailExplicitly`, `EmptyInventoriesAndArgumentBoundariesAreExplicit`, `UnsupportedRawCatalogMajorsAreRejected` |
   | Packaged per-major inventory and reproducible command output | `PackagedRawDeclarationsRetainVersionedContracts`, `Ankus.Bindings.cs --check`, the isolated stale/missing-file command checks described above |
 
-  This is declaration inventory, not callable raw API parity. General native
+  This is declaration inventory without callable raw API parity. General native
   function generation, selected-header validation of those signatures, global
   access, guarded callback/hook registration and chaining, remaining native shims
   and the full PostgreSQL-major/platform matrix remain required. No runtime API,
@@ -14429,8 +14432,8 @@ The phases track implementation of the complete pgrx feature surface.
   | Compiler-enforced header compatibility and measured storage | `CompiledSignatureProbeChecksHeadersAndMeasuresValues`, the PostgreSQL 18.6 signature command described above |
   | Complete target observations and command failure without output mutation | `InvalidObservationsFailExplicitly`, `InvalidTargetEvidenceIsRejected`, `InvalidArgumentCountsFailExplicitly`, `InvalidFunctionListsPreserveExistingOutput` |
 
-  These are prototype/storage checks, not managed imports, export availability
-  or backend-call evidence. General guarded calls, managed argument/result
+  These are prototype/storage checks. They are not evidence of managed imports,
+  export availability or backend calls. General guarded calls, managed argument/result
   generation, call-site variadic promotion, raw global access, hook registration
   and chaining, and the complete version/platform matrix remain required. No
   analyzer settings, suppressions, production friend assemblies or timeouts change.
@@ -14490,7 +14493,7 @@ The phases track implementation of the complete pgrx feature surface.
   | Bounded output and failure without replacing an existing contract | `InvalidHeaderSelectionsPreserveOutput`, `BoundedCompilerOutputPreservesExactBytes`, `CompilerOutputOverrunsFailExplicitly`, `InvalidBoundsAndPreCancelledCompilationPreserveState` |
   | Installed-package boundary and real selected-header identity | `PackagedBuildToolCollectsSelectedHeaderTypes`, `PackagedBuildToolPreservesHeaderContractOnRuntimeMismatch`, `PackagedBuildToolRejectsMismatchedHeaderMajor` |
 
-  These are compiler type checks, not managed imports or backend-call evidence.
+  These compiler type checks are not evidence of managed imports or backend calls.
   Native scalar/record measurement, export availability, guarded managed calls,
   argument/result ownership, variadic call-site promotion, global access, hook
   registration/chaining and the complete version/platform matrix remain required.
@@ -14535,7 +14538,7 @@ The phases track implementation of the complete pgrx feature surface.
   measurement prototype for all 9,224 symbols and all 22,821 entries. Local
   Windows 11 x64 (build 26200.9457)/Clang 21 also collects and measures eight
   real-header signatures/globals against PostgreSQL 17.7 and 18.1. Those are
-  compiler checks, not new Windows backend-suite evidence.
+  compiler checks and add no new Windows backend-suite evidence.
 
   Focused binding tests pass 417 cases with no failures/skips in 3.560s. The
   declaration/constant regressions also pass 19 cases on Windows x64 in 352ms;
@@ -14771,7 +14774,7 @@ The phases track implementation of the complete pgrx feature surface.
   Linux x64/PostgreSQL 18.6/Clang 21 compiles all 8,629 fixed-prototype
   functions in the selected catalog with warnings as errors. The selection
   excludes 579 globals and 16 variadic/unprototyped functions explicitly; it is
-  compiler evidence, not execution of arbitrary backend functions. Local Windows
+  compiler evidence and does not execute arbitrary backend functions. Local Windows
   x64/Clang 21.1.7/MSVC also validates six selected real-header functions against
   PostgreSQL 17.7 and 18.1. The 17 focused new unit cases pass on Windows x64/
   .NET 10.0.12 in 821ms. The complete Linux build-tool module passes 484 cases
@@ -14878,7 +14881,7 @@ The phases track implementation of the complete pgrx feature surface.
   inferred from the type name and byte size: local Linux x64/Clang 21 reports
   64-bit and 113-bit significands in the same 16-byte long-double storage under
   its default and `-mlong-double-128` modes. That alternate-mode observation is
-  compiler evidence, not backend execution in that mode.
+  compiler evidence. The backend was not executed in that mode.
 
   Both AST interfaces independently observe the numeric model; the native worker
   rejects a different requested interpretation. Storage observation protocol 2
@@ -14900,7 +14903,7 @@ The phases track implementation of the complete pgrx feature surface.
   All 206 focused cases pass on Linux x64 and Windows x64/.NET 10.0.12.
   The actual five-function PostgreSQL fixture also compiles and links against
   Windows x64/PostgreSQL 17.7 with Clang 21.1.7 metadata and MSVC body checks.
-  This is compiler evidence, not local Windows PostgreSQL execution. The Release
+  This is compiler evidence without local Windows PostgreSQL execution. The Release
   build has zero warnings/errors in 38.72s. API freshness retains 170 pages/
   2,254 members; the site builds 212 pages and checks with zero errors, warnings
   or hints. Plain root `dotnet test` passes all six modules against PostgreSQL
@@ -14986,7 +14989,7 @@ The phases track implementation of the complete pgrx feature surface.
   allocation, error copying and utility dispatch collects 318 declarations and
   2,553 types; its entire emitted source also compiles. Its `ErrorData` size and
   representative values agree with independently compiled C.
-  This is compiler/value evidence, not backend execution through the new emitter.
+  This is compiler/value evidence without backend execution through the new emitter.
 
   The Release build passes with zero warnings/errors in 20.94s. API freshness
   retains 170 pages/2,254 members; the site builds 212 pages and checks with zero
@@ -15052,8 +15055,8 @@ The phases track implementation of the complete pgrx feature surface.
   491 values/3,600 fields for PostgreSQL 17.7 and 499 values/3,694 fields for
   PostgreSQL 18.1. Their graphs contain 808 declarations/4,180 types and
   826 declarations/4,268 types respectively; both emitted companions compile
-  with zero warnings/errors. These local Windows checks are compiler evidence,
-  not backend execution.
+  with zero warnings/errors. These local Windows checks are compiler evidence
+  without backend execution.
 
   The complete Linux build-tool module passes 632 cases with zero failures and
   one existing Windows-only cleanup skip in 4.583s. All 53 focused contracts and
@@ -15113,7 +15116,7 @@ The phases track implementation of the complete pgrx feature surface.
   has 8,092 imports, of which 61 are absent from the backend executable and its
   linked dependencies, including PL/pgSQL functions and module entry points.
   Header presence therefore cannot establish the correct export/module scope.
-  These are compiler and symbol observations, not backend execution through a
+  These are compiler and symbol observations without backend execution through a
   complete managed raw API.
 
   Windows x64/PostgreSQL 17.7 exposes 8,304 of the 8,339 pinned function names
@@ -15160,7 +15163,7 @@ The phases track implementation of the complete pgrx feature surface.
   all four companion artifacts remain byte-identical, and an unrelated temporary
   sentinel survives. The same success/failure/recovery sequence passes directly
   on Windows x64/PostgreSQL 17.7 with Clang 21.1.7 and MSVC. These local Windows
-  checks exercise the compiler command, not the complete backend suite.
+  checks exercise the compiler command. They do not run the complete backend suite.
 
   Generated-solution build logs now survive test-project cleanup under the CI
   artifact directory, so a future outer MSBuild failure retains its underlying
@@ -15322,7 +15325,7 @@ The phases track implementation of the complete pgrx feature surface.
   archived observations verify compiler representation agreement; they are not
   a fresh Windows or PostgreSQL backend run. A separate current Windows x64
   run passes all 56 focused native-call/import cases with .NET 10.0.12, Clang
-  and MSVC in 2.787s. These are standalone compiler/execution tests, not a
+  and MSVC in 2.787s. These standalone compiler/execution tests are not a
   complete Windows backend suite.
 
   Release passes with zero warnings and errors in 29.08s. API freshness retains
@@ -15365,7 +15368,7 @@ The phases track implementation of the complete pgrx feature surface.
   Windows completed within the authorized 40-minute maximum; its limit remains
   40 minutes, Linux remains 30 and macOS remains 25. No tests were sharded or
   removed to meet those limits. This is platform evidence for the implemented
-  surface, not completion of the unresolved full-port requirements above.
+  surface. It does not complete the unresolved full-port requirements above.
 
   The preceding `a666022` Windows job in
   [run 36254734532](https://github.com/ankus-net/ankus/actions/runs/36254734532)
@@ -15415,7 +15418,7 @@ The phases track implementation of the complete pgrx feature surface.
   17.7/Windows x64 (993 declarations, 8,848 available roots). Complete native body
   compilation also passes for all 8,629 available fixed functions on Linux and
   8,289 on Windows. These use the installed native headers and Clang/MSVC; they
-  are standalone compiler checks, not another complete backend run. The build
+  are standalone compiler checks and add no complete backend run. The build
   module passes 735 cases with zero failures and two existing Windows-only skips
   on Linux in 6.598s. All 92 focused native record/call/import cases pass on Windows
   x64 with .NET 10.0.12 in 6.717s.
@@ -15479,7 +15482,7 @@ The phases track implementation of the complete pgrx feature surface.
   The Native AOT witness publishes and runs a standalone executable, then reads
   its actual ILC object and checks that only the two used accessors select native
   bodies. Native function execution and exact results are real; error transport
-  uses a scoped public-ABI test provider, not PostgreSQL ERROR/backend execution.
+  uses a scoped public-ABI test provider without PostgreSQL ERROR/backend execution.
   Counting allocator collaborators in the focused compiler tests still allocate
   and free real native bytes, making omitted or mismatched cleanup observable.
 
@@ -15540,7 +15543,7 @@ The phases track implementation of the complete pgrx feature surface.
   Actual top-level header discovery independently reproduces both existing raw
   selections: all 9,224 inventory entries on Linux, and 8,848 available entries
   plus 37 explicitly absent entries on the installed Windows headers. These are
-  compiler observations, not new backend/platform parity claims.
+  compiler observations. They make no new backend/platform parity claims.
 
   The isolated full managed projection is approximately 19 MB and took 15–25s
   to compile locally with warm NuGet/compiler caches. This is not a cold-machine
@@ -15665,7 +15668,7 @@ The phases track implementation of the complete pgrx feature surface.
   parallel content reads retain every hash check; the expanded 26-case Windows
   selection passes in 1m 34.894s with fresh compiler processes. The corresponding
   Linux cache/compiler selection passes 12 cases in 13.491s. These are focused
-  test timings, not cold/warm SDK build baselines.
+  test timings. They are not cold/warm SDK build baselines.
 
   Companion restore now uses the consuming project's resolved feeds, ordered
   NuGet configuration files, package directory and fallback folders. NuGet itself
@@ -15751,7 +15754,7 @@ The phases track implementation of the complete pgrx feature surface.
   source edit measures 14.790s to build and 16.342s to publish; unchanged build
   and publication take 13.549s and 15.658s. The unchanged build spends 9.799s
   in native declaration generation and 1.518s resolving its compiled companion.
-  These are local single-consumer baselines, not hosted CI or Windows timings.
+  These local single-consumer baselines are not hosted CI or Windows timings.
   The corresponding PostgreSQL 18.1/Windows x64 baseline with .NET 10.0.12
   measures 72.794s cold build, 25.365s first publication, 22.359s changed-source
   build, 25.155s changed-source publication, 23.816s unchanged build and 26.068s
@@ -15837,9 +15840,10 @@ The phases track implementation of the complete pgrx feature surface.
   payloads. On PostgreSQL 18.6/.NET 10.0.11 it measures 49.595s cold build,
   9.628s first publication, 8.137s changed-source build, 9.775s changed-source
   publication, 6.983s unchanged build and 8.975s unchanged publication. These are
-  individual wall-time observations, not a statistical benchmark or hosted CI
-  prediction. Repeated builds improve against the earlier baseline; cold-build
-  improvement is not established, and the Windows cold measurement is slower.
+  individual wall-time observations. They are not a statistical benchmark or
+  hosted CI prediction. Repeated builds improve against the earlier baseline;
+  cold-build improvement is not established, and the Windows cold measurement
+  is slower.
 
   Immediately before this milestone's commit, the previous hosted outcomes were
   checked again: [CI run 36274752988](https://github.com/ankus-net/ankus/actions/runs/36274752988)
@@ -15962,8 +15966,8 @@ are enabled only for selected native call bodies and for independent body
 verification, including source-cache hits. This avoids unused internal functions
 without suppressing warnings or compiling unrelated helpers into published
 objects. A standalone PostgreSQL 18.6/Linux x64 header command collects and
-compiles all 47 helper contracts with Clang 21. This is compiler evidence, not
-proof of their backend behavior or of other supported PostgreSQL versions.
+compiles all 47 helper contracts with Clang 21. This is compiler evidence. It does
+not prove their backend behavior or other supported PostgreSQL versions.
 
 `HeaderHelpersRespectSelectedMajorAndExistingDeclarations` verifies all seven
 version partitions; companion cases reject unsupported majors and global
@@ -16213,7 +16217,7 @@ environment variable for its child .NET commands, but the separate restore step
 does not pass through that driver. The restore command now explicitly selects
 the solution's `Any CPU` platform. The same inherited environment reproduces the
 failure on Linux and Windows; the corrected command succeeds on both, including
-a 2.594-second Windows restore. This is restore evidence, not a Windows test-suite
+a 2.594-second Windows restore. This restore evidence is not a Windows test-suite
 result. The cache keys, analyzers, full-suite jobs and timeouts are unchanged.
 
 The exact workflow command also passes through Windows PowerShell with the same
@@ -16431,7 +16435,7 @@ compiled dispatch, malformed frames, owned managed errors, retry and the throwin
 type-initializer case. The native/compiler selection passes **16 tests, zero
 failed** on Linux in 1.750s and on Windows x64/.NET 10.0.12 with Visual Studio
 18.10.1 in 1.089s. Empty native values are checked against the selected compiler's
-actual `sizeof`, not an assumed cross-platform empty-struct size.
+actual `sizeof`. No cross-platform empty-struct size is assumed.
 
 The first packaged PostgreSQL attempt stopped in assembly setup: moving shared
 fork helpers into the common preamble gave the extracted allocator fixture
@@ -16812,7 +16816,7 @@ All compared builds retained the full solution and analyzers. Neither change
 was adopted. Direct phase measurement instead shows one cold Windows companion
 compile taking 30.398s of 32.453s total, with verified warm reuse taking 1.793s.
 These are local Windows x64/SDK 10.0.401/.NET 10.0.12 measurements using existing
-caches and PostgreSQL 18.1 headers, not hosted CI timing improvements.
+caches and PostgreSQL 18.1 headers. They are not hosted CI timing improvements.
 
 The package-consumer class currently serializes many independent publishes
 because pre-18 tests overwrite the same extension control files in one staged
@@ -16872,7 +16876,7 @@ zero failures/skips, in 18m05.184s. Class cleanup succeeds and the fixture's
 temporary package, project and staged-server root is removed. This repairs the
 retained MSBuild task observed in the initial run. The earlier six-case Windows
 focus and the complete Linux suite also passed. These local results validate
-test isolation and cleanup, not the duration of a complete hosted Windows job.
+test isolation and cleanup. A complete hosted Windows job's duration is untested.
 The new hosted run must still establish whether two concurrent consumers provide
 sufficient headroom within the unchanged one-hour limit. No checks are omitted,
 sharded or suppressed. Atomics, bounded shared collections, spinlocks, high-level
@@ -17035,7 +17039,7 @@ Immediately before committing, hosted outcomes were refreshed and recorded:
 for `77e9965` has passed quality, all runtime jobs, Linux in 21m56s and macOS in
 34m54s; its full Windows job remains active. [Docs 36318146663](https://github.com/ankus-net/ankus/actions/runs/36318146663)
 passed. The preceding `d6b5cd5` CI/Docs runs both passed; the older `9a8e907`
-Windows timeout remains recorded as cancelled, not successful. These outcomes
+Windows timeout remains recorded as cancelled and unsuccessful. These outcomes
 are checked and recorded again immediately before pushing. Development continues
 without waiting for the remaining hosted job; the new run must establish the
 aggregate milestone's complete hosted platform results.
@@ -17188,7 +17192,7 @@ the new exit request. Runtime fork commit
 closing admission; Ankus now selects payload `10.0.11-ankus.4`. The rebuilt
 Release runtime passes 2,048 retirement/restart cycles and the existing two-round
 parent/child fork probe. The unrepaired control passes the same stress probe;
-the race is identified from source ordering, not a deterministic stress
+the race is identified from source ordering without a deterministic stress
 reproduction. Linux native recovery validation above uses the repaired runtime.
 Windows focused spinlock validation uses the preceding payload, whose Unix-only
 retirement code is inactive there. Hosted validation of the new payload remains
@@ -17470,7 +17474,7 @@ sample observation, plain full `dotnet test` passes **8,088 tests, zero failures
 and six Windows-only skips, 8,094 total**, in 13m08.957s (integration 13m08.173s).
 Windows x64/PostgreSQL 17.11 passes lifecycle and scaffold in the first native
 run; the sample passes its corrected rerun in 6m34.755s. These are focused Windows
-results, not a claim that the complete current Windows suite has run locally.
+results. They do not claim that the complete current Windows suite has run locally.
 
 Initial native compilation exposed selected-header signal parameters and a
 memory-only bridge's dependency on an SPI typedef; both were corrected. Runtime
@@ -17967,7 +17971,7 @@ at `d42ddcc` also passed in [CI 36361967411](https://github.com/ankus-net/ankus/
 8,132 passed, zero failures, six platform-specific skips, 8,138 total, with
 a 40m54s job and 34m45.965s integration module. Its macOS result above remains
 successful. Windows was superseded after 41m25s, without a completed integration
-result; this was cancellation, not a timeout or platform pass. The newer
+result; this was cancellation, with no timeout or platform pass. The newer
 `35c7970` platform suites are still running at the 2026-09-28 01:26 UTC check;
 quality, runtime jobs and [Docs 36364593994](https://github.com/ankus-net/ankus/actions/runs/36364593994)
 pass. This run's build steps took 5m27s on Ubuntu, 7m41s on macOS and
@@ -17984,8 +17988,8 @@ at `35c7970` confirms quality, every runtime job and the complete Ubuntu
 x64/PostgreSQL 18 suite pass: 8,141 passed, zero failures, six platform skips,
 8,147 total, in a 41m49s job (integration 35m42.554s). macOS and Windows
 remain in progress without a reported failure. Docs 36364593994 passes.
-These hosted results cover the preceding DSM milestone, not the new index or
-package-fixture changes. Outcomes are checked again before the next commit
+These hosted results cover the preceding DSM milestone and exclude the new index
+or package-fixture changes. Outcomes are checked again before the next commit
 and before pushing both locally verified changes.
 
 ### Reuse package fixtures without repeating cold binding builds
@@ -18011,7 +18015,7 @@ The same three representative Linux x64/PostgreSQL 18.6 cases pass before and
 after, with zero failures/skips: 5m03.583s becomes 3m53.082s, a 70.501s (23.2%)
 reduction including fixture setup. Source-cache entries for setup and those
 consumers fall from four to one. This is a local comparison on SDK 10.0.400/
-.NET 10.0.11 with existing machine caches, not a hosted CI speedup claim.
+.NET 10.0.11 with existing machine caches. It makes no hosted CI speedup claim.
 Individual test durations include semaphore waits and should not be summed.
 All eleven affected consumers pass on Windows x64/PostgreSQL 17.11 in
 8m39.187s, including both retained cold-cache cases. The Windows test project
@@ -18099,9 +18103,9 @@ Linux, macOS and Windows suites are still running without a reported failure;
 [Docs 36367477538](https://github.com/ankus-net/ankus/actions/runs/36367477538)
 passes. Hosted savings from package-directory reuse are not yet measured.
 The previous `35c7970` run finished as cancelled overall: its full Ubuntu result
-above passed, while macOS and Windows were superseded, not timed out or proven
-successful. CI is checked and recorded again immediately before push; ongoing
-hosted jobs do not block this independently verified milestone.
+above passed, while macOS and Windows were superseded without timing out or
+proving successful. CI is checked and recorded again immediately before push;
+ongoing hosted jobs do not block this independently verified milestone.
 
 ### Independent custom-scan hooks and registry boundaries
 
@@ -18232,7 +18236,7 @@ execution evidence in this milestone.
 Final focused PostgreSQL 15.19 verification passes all 46 SDK, initialization,
 allocator and direct partition-remapping cases in 3m32.527s, then all five
 remaining prepared-parameter, volatile-expression and parameter-error cases in
-2m11.893s, with zero failures or skips. These are scoped contracts, not full
+2m11.893s, with zero failures or skips. These scoped contracts are not full
 PostgreSQL 15 platform proof. Final Windows Release passes with zero
 warnings/errors in 2m49.48s. Final Linux Release passes with zero warnings/errors
 in 1m14.68s; API freshness checks 200 pages/2,437 members, the site builds 245
@@ -18330,7 +18334,7 @@ The preceding hosted run
 was superseded after `8de4aaf` was pushed: its previously successful Ubuntu and
 macOS results stand, but the Windows integration job was cancelled while still
 running, without a final successful integration summary. This was cancellation,
-not a timeout or complete Windows proof. The replacement
+with no timeout or complete Windows proof. The replacement
 [CI 36377069223](https://github.com/ankus-net/ankus/actions/runs/36377069223)
 had successful runtime, quality, Ubuntu and macOS jobs at the recovery commit;
 Windows was still running and its documentation deployment passed. Ubuntu passes
@@ -18388,8 +18392,8 @@ The first executable Linux x64/PostgreSQL 13.23 affected run passes 177 of 206
 cases, with 29 failures and no skips, in 3m13.686s. PostgreSQL 14.20 passes 204
 of the same 206 cases, with two failures and no skips, in 2m59.517s. The failures
 identify fixture assumptions about newer polymorphic signatures, Memoize,
-memory-context catalogs and session-preload transactions. These are diagnostic
-runs, not passing version validation.
+memory-context catalogs and session-preload transactions. These diagnostic
+runs are not passing version validation.
 
 The test extension now installs an explicit `ankus_test_memory.contexts` view.
 PostgreSQL 14 and later retain their actual catalog as the source. PostgreSQL 13
@@ -18433,7 +18437,7 @@ and its check reports zero diagnostics.
 
 The same corrected scope passes **335 cases, zero failures and zero skips** on
 Linux x64/PostgreSQL 14.20 in 2m35.159s. Both versions execute the following
-boundaries; these are affected-scope results, not full-suite platform proof.
+boundaries; these affected-scope results are not full-suite platform proof.
 
 | Required boundary | Backend evidence on both PostgreSQL 13.23 and 14.20 |
 | --- | --- |
@@ -18455,7 +18459,7 @@ payload; its completed package rerun is recorded below. The other 115 failures r
 further version-specific fixture and native-contract work, including allocator
 availability/accounting, numeric scales, temporal values and diagnostics, node
 formatting, prefix behavior, parameter grants, and event triggers. This is
-recorded failure evidence, not full PostgreSQL 14 validation. The complete
+recorded failure evidence. It is not full PostgreSQL 14 validation. The complete
 supported version and platform matrix and remaining full-port scope remain
 required.
 
@@ -18542,9 +18546,10 @@ Previous outcomes are checked and recorded again immediately before pushing.
 The complete Linux x64/PostgreSQL 13.23 diagnostic run executes all 8,209 cases:
 8,014 pass, 189 fail and six Windows-only cases skip, in 10m06.541s
 (integration 10m04.314s). This run includes the separate, still-uncommitted
-memory-test follow-up described above. It establishes remaining failures,
-not full PostgreSQL 13 parity. Those failures include native feature/version
-boundaries, older SQL syntax and genuine interval construction overflow.
+memory-test follow-up described above. It establishes remaining failures and
+does not establish full PostgreSQL 13 parity. Those failures include native
+feature/version boundaries, older SQL syntax and genuine interval construction
+overflow.
 
 PostgreSQL 13–16's `make_interval` can silently overflow month, day and
 microsecond arithmetic. The generated native boundary now checks those
@@ -18641,8 +18646,8 @@ include native feature availability, older TOAST inspection syntax and node
 formatting, numeric and temporal boundaries, selected-header provider contracts
 and event triggers. Index enumeration also exposes a production defect: its
 physical descriptor has no type OID on PostgreSQL 13, but the tuple transport
-attempts to resolve type zero. These results establish remaining work, not full
-older-version parity.
+attempts to resolve type zero. These results establish remaining work. Full
+older-version parity is not established.
 
 The final plain full Linux x64/PostgreSQL 18.6 regression passes **8,251 tests,
 zero failures and six Windows-only skips, 8,257 total**, in 12m23.357s
@@ -18898,7 +18903,7 @@ checks preserve the fixture parent's top-transaction lifetime: it survives
 savepoint rollback and is reclaimed by explicit deletion or transaction end.
 The encoded diagnostic check distinguishes the managed callback's notice from
 unrelated extension-installation warnings on older servers. Older-version cases
-establish Bump unavailability, not Bump ownership behavior.
+establish Bump unavailability. They do not establish Bump ownership behavior.
 The supported-server paths retain all existing Bump value, alias, callback,
 diagnostic, and lifetime assertions. No rows are skipped or diagnostics relaxed.
 The public allocation and list guides document SQLSTATE `0A000` for unavailable
@@ -19201,7 +19206,7 @@ Actual selected-header source generation and verified cache reuse also pass on
 Linux x64 for the five older installations below. Each reports zero absent
 reference node fields. Both cold generation and warm reuse execute complete
 native declaration checks and the independent layout probe. These are binding
-checks, not new complete backend-suite evidence for those versions.
+checks. They add no new complete backend-suite evidence for those versions.
 
 | PostgreSQL | Native declarations | Node/dependency values | Measured fields |
 |---|---:|---:|---:|
@@ -19428,7 +19433,7 @@ whose native context remains alive after the callback expires.
 
 The expanded 39-case backend run reports **34 passes and five failures**. The
 new physical-storage tests expose an incorrect test observer: labels assigned
-by `PgMemoryContext.Create` appear in PostgreSQL's `ident`, not `name`. Every
+by `PgMemoryContext.Create` appear in PostgreSQL's `ident`; `name` lacks them. Every
 new context-count query and the independent allocation-owner witness now read
 the correct field, including earlier zero-count assertions. The corrected
 **40-case backend scope passes with zero failures/skips** on PostgreSQL
@@ -19559,7 +19564,7 @@ failures and one Linux-only skip**, in 6.294s. Complete cold Windows header
 verification passes with MSVC against PostgreSQL **17.7** (1,285 declarations,
 8,876 available inventory entries, 491 values and 3,600 fields) and **18.1**
 (1,329 declarations, 9,207 available inventory entries, 499 values and 3,694
-fields). These are native compiler checks, not completed Windows backend suites.
+fields). These native compiler checks are not completed Windows backend suites.
 
 Release passes with zero warnings/errors in 1m48.88s; API freshness checks
 201 pages/2,450 members, the site builds 246 pages, and its check reports zero
@@ -19718,8 +19723,8 @@ While that suite runs, predecessor CI 36454069950 completes Linux and macOS
 successfully. Linux executes all **3,520 integration cases** without failures or
 skips in 22m06.546s; its job takes 27m56s. macOS ARM64 executes **3,518 integration
 passes, zero failures and two existing Linux-only skips** in 36m42.055s; its job
-takes 45m01s. These are evidence for the preceding source-lifetime commit, not
-the new buffer APIs. Quality/runtime/docs pass and Windows remains in progress.
+takes 45m01s. These are evidence for the preceding source-lifetime commit and
+exclude the new buffer APIs. Quality/runtime/docs pass and Windows remains in progress.
 The macOS timing report's longest cases are published package/scaffold consumers
 (about 2–5 minutes each), so the passing duration still exceeds the desired
 feedback budget. No timeout or validation standard is changed here.
@@ -19891,7 +19896,7 @@ The complete plain root suite on PostgreSQL **18.6/Linux x64** now passes
 **8,536 tests, zero failures and six Windows-only skips, 8,542 total**, in
 **11m42.456s**. All **3,613 integration cases pass** in **11m40.041s**.
 The immediately preceding two-slot run took **12m02.084s** overall; this one
-run is **19.628s shorter**, not proof of a comparable hosted improvement.
+run is **19.628s shorter**, which does not prove a comparable hosted improvement.
 The package class's recorded first-start/last-end interval decreases from about
 **8m52s to 8m08s**. These local observations include fixture and scheduling
 effects; the Windows consumer run also shared the validation host during the
@@ -19909,7 +19914,7 @@ Previous hosted outcomes are checked and recorded again before pushing.
 The scheduling change is pushed as **651c978**, together with native-array
 spans **cfa2a9b**. The full local Windows x64/PostgreSQL **17.7** package-consumer
 class subsequently passes **83 tests, zero failures/skips**, in **18m20.330s**,
-including class cleanup. This is consumer-class evidence, not a complete
+including class cleanup. This consumer-class evidence is not a complete
 Windows platform run. Hosted CI **36471639303** remains in progress with all
 three runtime jobs passed; Docs **36471639684** passes. The hosted timeout is
 still open until its complete Windows job succeeds within the existing limit.
@@ -20072,7 +20077,7 @@ No analyzer or assertion is relaxed.
 
 Release passes with **zero warnings/errors** in **1m44.28s**. The requirement
 review maps the runtime behavior to these direct regression tests; it is static
-source/assertion analysis, not an executed mutation or line-coverage report.
+source/assertion analysis without an executed mutation or line-coverage report.
 
 | Runtime typed-array requirement | Regression evidence |
 | --- | --- |
@@ -20103,7 +20108,7 @@ CI **36478861010** for the pushed constructor milestone now passes its complete
 Linux x64/PostgreSQL 18 job in **21m44s**. Its integration artifact contains
 **3,673 passes, zero failures/skips**, spanning **16m39.302s**. Quality, all
 runtime jobs and Docs **36478861214** pass; Windows and macOS remain in progress.
-This is constructor-milestone evidence, not hosted proof of the uncommitted
+This constructor-milestone evidence is not hosted proof of the uncommitted
 runtime-dispatch follow-up.
 
 The final complete root suite (with TRX reporting) passes **8,660 tests, zero
@@ -20146,7 +20151,7 @@ The first runtime build identifies a test-only private-field access, corrected
 with the existing unsafe-accessor fixture pattern. Its next run passes 27 cases
 and exposes one missing callback-context response in the new test script; that
 fixture correction is pending the active backend run. The first published
-backend run is in progress. This is implementation evidence, not yet a verified
+backend run is in progress. This implementation evidence is not yet a verified
 milestone or complete parity claim.
 
 CI **36482900415** for `b9730f7` has passed quality and all runtime jobs; all
@@ -20183,7 +20188,7 @@ probe now has a distinct SQL name, leaving all older assertions intact. The
 PostgreSQL 19 beta run completes with **221 passes and two failures** identifying
 that collision; the PostgreSQL 18 full run reports the same two failures and is
 cancelled before repeating the expensive package-consumer work. These are failed
-or cancelled outcomes, not platform proof. Final validation follows the rename.
+or cancelled outcomes without platform proof. Final validation follows the rename.
 
 The final Release rebuild after the probe rename passes with **zero warnings
 and errors** in **1m39.58s**. CI **36482900415** now passes its complete Linux
@@ -20267,8 +20272,9 @@ milestones: configuration and raw native APIs, prepared/parallel transaction
 callbacks, manual mapped equality/ordering/hashing and older custom-scan
 parameter/worker behavior. Nested SQL array containers remain an intentional
 rejection matching pgrx; multidimensional values use a single shaped array.
-These corrections record work already implemented and verified, not new runtime
-features or newly executed platform evidence. Full matrix requirements remain.
+These corrections record work already implemented and verified. They add no new
+runtime features or newly executed platform evidence. Full matrix requirements
+remain.
 
 The read-only pgrx conversion review identifies first-class owned and borrowed
 C strings as a remaining gap. `datum/from.rs` copies `CString` and borrows or
@@ -20360,7 +20366,7 @@ it now uses the public `ElementTypeOid`. Full-suite verification remains require
 Previous overview CI **36489705448** now passes the full Linux platform job in
 **32m53s**, in addition to quality and all runtime jobs. macOS and Windows full
 platform jobs remain in progress. Docs **36489705388** passes; no new hosted
-failure is reported. These results concern the previous commit, not the
+failure is reported. These results concern the previous commit and exclude the
 uncommitted C-string implementation.
 
 The final focused PostgreSQL **18.6/Linux x64** scope passes **31/31 cases**,
@@ -20442,7 +20448,7 @@ before the change and **4.443s** afterward; their completions changed from
 **3.380/6.398/9.359s** to **3.722/4.053/4.441s**. Cold collection measured
 **11.576s → 11.931s**, and a single warm consumer **3.323s → 3.565s**. This
 repairs concurrent serialization rather than speeding up an individual native
-check. These are local measurements, not a hosted Windows speedup claim.
+check. These local measurements make no hosted Windows speedup claim.
 Ten cache tests pass, including corrupt content, changed dependencies,
 cancellation, ownership and failed replacement. Packaged native verification,
 concurrent recovery, Windows measurements and complete validation follow.
@@ -20461,9 +20467,9 @@ aligned with that release. The shared `VersionPrefix` is **0.1.0**, and MSBuild
 evaluates both `Version` and `PackageVersion` as **0.1.0**. New extension
 templates start at **0.1.0**, with real extension-version and generated-solution
 assertions updated accordingly. The generated native companion retains its
-fixed internal assembly version; this is an ABI identity, not an Ankus release.
-Historical prototype versions remain historical evidence. No NuGet publication
-is authorized or performed.
+fixed internal assembly version; this is an ABI identity and does not denote an
+Ankus release. Historical prototype versions remain historical evidence. No NuGet
+publication is authorized or performed.
 
 `PackagedNodeBindingFailurePreservesCompanionAndRecovers` passes on PostgreSQL
 **18.6/Linux x64** in **4m20.868s**, including fixture setup. It rejects false
@@ -20487,8 +20493,8 @@ Immediately before committing, CI **36495722741** has passed quality and all
 runtime jobs; its full Linux, macOS and Windows jobs remain in progress, with
 no reported failure. Docs **36495722766** passes. Previous CI **36489705448**
 and Docs **36489705388** are fully successful; superseded **36488639696** is
-cancelled, not passing platform evidence. Outcomes are checked again before
-push. The faithful port remains incomplete; the full tooling, API and
+cancelled and provides no passing platform evidence. Outcomes are checked again
+before push. The faithful port remains incomplete; the full tooling, API and
 PostgreSQL/platform requirements above are retained.
 
 ## .NET lifecycle policy and .NET 11 readiness
@@ -20634,7 +20640,7 @@ fix. Offline consumers include downloaded framework reference packs while still
 independently rejecting a disallowed compiler dependency and recovering after
 source mapping is repaired. All **17 focused compiler/cache cases pass** under
 SDK 11 RC1 on Linux x64, with **zero failures/skips**, in **13.319s**. This is
-compiler-process evidence, not complete PostgreSQL or platform validation.
+compiler-process evidence. It is not complete PostgreSQL or platform validation.
 
 The same **17 focused cases pass** on stable SDK **10.0.400**, with zero failures
 or skips, in **20.382s**. Release passes with **zero warnings/errors** in
@@ -20907,7 +20913,7 @@ execute all six modules from the same corrected source under Network Service,
 with matching SDK, PostgreSQL and runner settings. They run sequentially after
 the active Windows CI job and Linux validation finish, using the persistent
 NuGet/binding caches. The **2m04.510s** observed improvement is a practical
-sequential-run comparison, not an isolated cold-cache estimate; cache warming
+sequential-run comparison. It is not an isolated cold-cache estimate; cache warming
 can affect the exact difference. The dedicated Windows repository variable is
 now **six**, while the fixture's portable default remains three and its positive
 integer override remains unrestricted. This isolated candidate excludes
@@ -21003,7 +21009,7 @@ native-probe directories**; removing only those artifacts reclaimed approximatel
 artifacts in `finally`; active processes and unrelated temporary directories were
 left intact.
 
-This is a full-script extraction milestone, not completed schema or CLI parity.
+This is a full-script extraction milestone. Schema and CLI parity are not complete.
 Retaining structured graph entities, named-item resolution and transitive
 dependencies, replacement groups, extension-attachment SQL and Graphviz output
 remain required. Full platform validation of this candidate, the remaining
@@ -21688,7 +21694,7 @@ platform runs do not substitute for full CI on the new commit.
 The complete plain `dotnet test` run on Debian **13.5**, Linux x64,
 PostgreSQL **18.6**, SDK **10.0.400**, discovers **9,197 tests**: **9,191 passed,
 0 failed, 6 Windows-only skips**, in **13m06.460s**. Integration takes
-**13m05.630s**. This is warm validation, not a controlled cold-cache measurement.
+**13m05.630s**. This warm validation is not a controlled cold-cache measurement.
 The Release build passes with **0 warnings and 0 errors** in **44.67s**.
 `pnpm build` succeeds for **259 pages**; `pnpm check` reports **0 errors,
 0 warnings and 0 hints**. API freshness passes for **212 pages / 2,554 members**.
@@ -21745,7 +21751,7 @@ cases pass on macOS **26.5.2**, ARM64/PostgreSQL **18.6**, SDK **10.0.401**, in
 complete platform CI. The complete plain `dotnet test` run on Debian **13.5**,
 Linux x64/PostgreSQL **18.6**, SDK **10.0.400**, discovers **9,250 tests**:
 **9,244 passed, 0 failed, 6 Windows-only skips**, in **13m30.421s**; integration
-takes **13m29.772s**. This is warm validation, not a controlled cold-cache
+takes **13m29.772s**. This warm validation is not a controlled cold-cache
 measurement. The Release build passes with **0 warnings and 0 errors** in
 **41.06s**. `pnpm build` produces **260 pages**; `pnpm check` reports **0 errors,
 0 warnings and 0 hints**. API freshness passes for **213 pages / 2,557 members**.
@@ -21811,7 +21817,7 @@ source archives have been removed; the shared runtime remains intact.
 The complete plain `dotnet test` run on Debian **13.5**, Linux x64, PostgreSQL
 **18.6**, SDK **10.0.400**, discovers **9,295 tests**: **9,289 passed, zero failed
 and six Windows-only skips**, in **14m42.975s**. Integration takes
-**14m41.722s**. This is warm validation, not a controlled cold-cache measurement.
+**14m41.722s**. This warm validation is not a controlled cold-cache measurement.
 
 Final-source Windows x64/PostgreSQL **17.11**, SDK **10.0.401**, passes all
 **16 affected installed-tool cases** in **7m36.915s**, with no failures/skips.
@@ -21891,12 +21897,12 @@ code, analyzer setting or CI toolchain is changed for this environment correctio
 The initial candidate's Release solution build passes with **zero warnings/errors** in
 **36.71s**. Documentation builds **260 pages** and checks with **zero errors,
 warnings or hints**; API freshness verifies **213 pages/2,562 members**.
-These are warm candidate validation runs, not controlled cold-cache measurements.
+These warm candidate validation runs are not controlled cold-cache measurements.
 The Windows integration module subsequently passes in **23m09.925s**. The full
 invocation discovers **9,337 tests**, with **9,325 passes, four linker-selection
 failures and eight platform skips**, in **23m11.511s**. The separate corrected
 Build-module run above resolves all four failures. This is recorded as a full
-execution plus a corrected module rerun, not an uninterrupted passing invocation.
+execution plus a corrected module rerun; no single invocation passed uninterrupted.
 
 A final literal-path check reproduces a Unix discrepancy: `child/../scripts`
 installs into a lexically normalized path without creating `child`, while
@@ -22008,7 +22014,7 @@ members**. `pnpm build` produces **260 pages**; `pnpm check` reports **zero
 errors, warnings and hints**. Prior CI **36593981405** and Docs **36593981485**
 were checked again before committing and both remain successful, with all
 platform jobs completed and no timeout.
-These are warm validation measurements, not a controlled cold-cache comparison.
+These warm validation measurements are not a controlled cold-cache comparison.
 All remaining faithful-port requirements stay open.
 
 ### SQL regression suites — implementation and validation
@@ -22042,7 +22048,7 @@ shared private database lookup and byte-length validation.
 | Existing creation and exact-name behavior survives the private helper extraction | `DevelopmentDatabasesPreserveExactNamesAndRejectTruncation` |
 
 PostgreSQL **13.23** source confirms native forced-drop support; this is source
-inspection, not a completed PostgreSQL 13 execution. No new friend assembly or
+inspection without a completed PostgreSQL 13 execution. No new friend assembly or
 diagnostic suppression is introduced. Full-suite, platform and documentation
 validation for these prerequisites remain required before the next milestone.
 API regeneration succeeds with **zero warnings/errors**, producing **213 pages
@@ -22053,7 +22059,7 @@ CI **36599064160** for property-query commit `c593e6b` now passes every job.
 Complete platform jobs take **31m29s** on Linux x64/PostgreSQL 18, **13m00s** on
 macOS ARM64/PostgreSQL 18, and **22m16s** on Windows x64/PostgreSQL 17. Quality
 takes **9m19s**; all runtime jobs and Docs **36599064319** pass. No job times out.
-These are previous-commit outcomes, not evidence for the uncommitted regression command.
+These previous-commit outcomes are not evidence for the uncommitted regression command.
 
 The installed command now composes extension publication/installation, persistent
 development clusters and the selected native regression driver. It preserves
@@ -22145,7 +22151,7 @@ PostgreSQL **18.6**, SDK **10.0.400**: **9,377 tests discovered, 9,370 passed,
 zero failures and seven Windows-only skips**, in **13m54.190s**. Integration
 takes **13m53.574s**, and all six modules execute. The matching affected platform
 runs use Windows **10.0.26200** and macOS **26.5.2**, both with SDK **10.0.401**.
-These are warm validation measurements, not a controlled cold-cache comparison.
+These warm validation measurements are not a controlled cold-cache comparison.
 Static requirement/assertion review confirms actual native outputs, independent
 database state/ownership checks, and failure/recovery observations; no executed
 mutation or coverage percentage is claimed. No analyzer mode, diagnostic or
@@ -22217,7 +22223,7 @@ open.
 
 CI **36608890355** now completes successfully on every job. Its Linux platform
 job takes **31m44s**; Windows **18m29s** and macOS **13m22s**. These are complete
-suites for `c11e4f8`, not evidence for the uncommitted Valgrind change.
+suites for `c11e4f8`. They are not evidence for the uncommitted Valgrind change.
 
 The next instrumented run exposes an actual cancellation cleanup race: after a
 process-tree kill, `pg_ctl status` can briefly observe the dying server, and fast
@@ -22354,7 +22360,7 @@ This is work in progress. Imported-file selection, property ownership, additiona
 failure/encoding/source-mapping boundaries, Native AOT consumer execution,
 cross-platform checks, complete tests and documentation gates remain required.
 Unresolved dynamic imports currently fail explicitly before writes; they are
-still required implementation work, not completed tooling parity.
+still required implementation work and do not count as completed tooling parity.
 
 Previous Valgrind commit `cd4a6e2` Docs **36617656308**, quality and all runtime
 jobs pass. CI **36617656321** passes macOS in **13m13s** and Windows in
@@ -22383,7 +22389,7 @@ fails on Linux/PostgreSQL 18 after **31m56s**. Integration reports **3,931
 passed, one failed and two skipped (3,934 total)** in **28m03.162s**.
 `ValgrindCommandsExecuteNativeExtensionAndPreserveData` loses its server
 connection during the first instrumented Native AOT query. This is a test
-failure, not a timeout. macOS, Windows, quality, all runtime jobs and Docs
+failure. It is not a timeout. macOS, Windows, quality, all runtime jobs and Docs
 pass. Framework-upgrade work is preserved while the native failure is
 investigated; the earlier local pass does not resolve this CI failure.
 
@@ -22403,7 +22409,7 @@ the native syscall trace shows a **134,205,796,352-byte** `PROT_NONE` reservatio
 rejected with `EINVAL`. Ordinary execution succeeds. The workstation GC sizes
 its default region range from physical memory, while Valgrind's Linux address
 space manager places client mappings in a shared **128 GiB** arena. The failure
-is virtual address reservation, not allocation of that much physical memory.
+is virtual address reservation and does not allocate that much physical memory.
 
 The identical library initializes and exits normally under Memcheck with both
 **32 GiB** and **8 GiB** explicit GC ranges. The shared development lifecycle
@@ -22528,7 +22534,7 @@ performs a real upgrade through a computed import using a caller-relative local
 feed and package-source mapping. It selects **0.3.0-beta.10** over
 **0.3.0-beta.2**, preserves every unrelated file and leaves the upgraded sources
 unchanged during a subsequent dry run. The owned probe project/feed are removed
-after validation. This is additional command evidence, not a complete port or
+after validation. This additional command evidence is not a complete port or
 complete-platform acceptance result.
 
 | Framework upgrade boundary | Executed test evidence |
@@ -22649,7 +22655,7 @@ fails with an out-of-range source position. LF and CRLF versions succeed.
 Manifest source positions now count LF, CRLF and CR as XML line boundaries while
 retaining their exact original bytes. The installed-tool formatting regression
 now covers all three endings in both UTF-8 and UTF-16. This expands the pending
-upgrade selection to **53 cases**; that is a discovery scope, not a passing test
+upgrade selection to **53 cases**; that discovery scope is not a passing test
 count.
 
 The Release tool build passes with zero warnings/errors in **4.98s**. The
@@ -22814,7 +22820,7 @@ open; reading the reference and pairing existing tests is not completion proof.
 The preceding milestone is now green: CI **36642212368** succeeds on all three
 platforms, with complete jobs **Linux/PG18 32m33s**, **macOS ARM64/PG18 13m31s**,
 and **Windows x64/PG17 20m23s**. Docs **36642212346** also succeeds. No timeout or
-new failure remains from that run. These results belong to `9e26425`, not the
+new failure remains from that run. These results belong to `9e26425` and exclude the
 uncommitted schema candidate.
 
 The schema candidate now carries a bounded compiler graph through native
@@ -23015,7 +23021,7 @@ GitHub requests fail, local TCP socket creation returns permission denied, and
 the active session keeps Git metadata read-only. No validation process remains
 running. The available compilation, unit, discovery and separate documentation
 checks above are complete; PostgreSQL/platform verification and committing the
-CI correction require restored session access. Work is blocked, not complete.
+CI correction require restored session access. Work is blocked and incomplete.
 
 Session access is restored and validation has resumed. The terminal outcome of
 CI **36649700631** is now confirmed: Linux passes in **32m44s**, macOS passes
@@ -23039,8 +23045,8 @@ also preserves these identifiers. Four independent whitespace regression cases
 fail against the old reader and pass after the correction; empty/NUL alias cases
 remain rejected. All **50** graph cases pass on Linux (**1.488 s**) and an actual
 Windows CRLF source copy (**2.071 s**). The corrected backend selections are
-running again on all three platforms. Initial failures are retained as evidence,
-not counted as passing backend validation.
+running again on all three platforms. Initial failures are retained as evidence
+and do not count as passing backend validation.
 
 Ordinary `pnpm build` now succeeds for **267 pages**; `pnpm check` reports
 zero errors, warnings and hints. The previous CI status is rechecked:
@@ -23075,8 +23081,8 @@ nine Windows-only skips, 15m35.790s**. The stale five-versus-seven expectation
 is its only failure. All other cases, including Valgrind and the new backend
 declarations, pass. The corrected complete rerun will use the existing
 six-package-slot setting, previously validated on this platform; this is a
-validation setting, not a workflow/default change or a controlled timing
-comparison.
+validation setting only. It changes no workflow or default and is not a
+controlled timing comparison.
 
 ### 2026-09-29 — Backend test declarations verified milestone
 
@@ -23131,7 +23137,7 @@ available outside the command.
 Each command invocation owns temporary fixture publication, staged installation,
 PGDATA and socket storage. Cleanup checks for surviving servers after an aborted
 host before deleting that storage; logs remain in the author project. This
-behavior is under active validation, not yet a verified milestone. Installed
+behavior is under active validation and is not yet a verified milestone. Installed
 consumer tests now exercise actual server version/configuration, named backend
 case reports, literal filters/paths, invalid selectors and abrupt host exit.
 The tool Release build passes with zero warnings/errors. The focused integration
@@ -23203,7 +23209,7 @@ binding scope, including enum drift, passes **339** with **six Windows-only
 skips** on Linux (**13.247s**). The Release build initially loses MSBuild worker
 processes during overlapping local checks; no compiler diagnostic explains the
 worker exits. Its isolated retry with node reuse disabled and six build workers
-passes with **zero warnings/errors, 45.48s**. This is local validation evidence,
+passes with **zero warnings/errors, 45.48s**. This local validation evidence is
 not a CI timing comparison. A final plain complete suite is now running.
 
 ### 2026-09-29 — PostgreSQL-aware test command verified milestone
@@ -23250,10 +23256,11 @@ in **14m17s**, and Windows in **20m56s**. Earlier CI **36649700631** failed only
 the Windows expectations already fixed by the current base; the remote branch
 still matches that base. Replacement full platform CI is required after push.
 
-These seven-version cases prove this command and binding milestone, not the
-entire version/platform port. PostgreSQL 19's full platform matrix, test-command
-no-schema/runas/custom data-directory behavior, additional framework templates,
-backend benchmarks and every other unresolved full-port requirement remain open.
+These seven-version cases prove this command and binding milestone. They do not
+prove the entire version/platform port. PostgreSQL 19's full platform matrix,
+test-command no-schema/runas/custom data-directory behavior, additional framework
+templates, backend benchmarks and every other unresolved full-port requirement
+remain open.
 
 ### 2026-09-29 — Custom test data directories
 
@@ -23362,7 +23369,7 @@ Validation:
   hashes verified against this candidate.
 - Windows x64/PostgreSQL **17.11**: the same **77** native cases pass; the
   final four schema cases pass in **9m26.239s**, with source hashes verified.
-  This is focused evidence,
+  This focused evidence is
   not a complete current Windows or macOS suite.
 - Release: zero warnings/errors, **1m24.39s**. API freshness: **221 pages,
   2,611 members**. Site build: **268 pages**, **9.44s**; site checks and all
@@ -23370,7 +23377,7 @@ Validation:
 
 The first complete run found stale GUC/SDK fixture expectations and the real
 session-close defect; both are corrected in the successful complete run. An
-earlier isolated ILCompiler portable-PDB error has not recurred, but its original
+earlier isolated ILCompiler portable-PDB error has not recurred. Its original
 files were removed before diagnosis. Failure archives and binary logs now retain
 future evidence. Output isolation removes a proven ownership defect; it does not
 establish the cause of that earlier PDB error.
@@ -23423,8 +23430,8 @@ Validation on PostgreSQL **18.6/Linux x64**:
 Before commit, preceding CI **36676480212** has successful quality/runtime jobs,
 macOS ARM64/PostgreSQL 18 (**16m27s**) and Windows x64/PostgreSQL 17
 (**29m32s**). Linux/PostgreSQL 18 is still running. Docs **36676480219** succeeds.
-These platform results validate the preceding cancellation/publication milestone,
-not the new worker change.
+These platform results validate the preceding cancellation/publication milestone.
+They do not cover the new worker change.
 
 Hosted Intel macOS run **36676499264** failed during extension compilation.
 Its cold runtime build succeeded in **20m43s** and was cached; the entire runtime
@@ -23660,7 +23667,7 @@ it will receive its own complete consumer/native validation.
 Raw-error CI **36690992874** subsequently passed the complete macOS
 ARM64/PostgreSQL 18 job in **17m10s**. Quality, all runtime jobs and Docs
 **36690992891** also succeed. Linux and Windows full suites remain active.
-These results validate `a769eb0`, not the uncommitted follow-ups.
+These results validate `a769eb0`. They do not cover the uncommitted follow-ups.
 
 The complete plain Linux rerun passes on PostgreSQL **18.6**: **9,706 total,
 9,696 passed, zero failed, ten platform skips**, **18m36.106s**, six package
@@ -23935,7 +23942,7 @@ Hosted report preparation now replays existing fixture and retained consumer
 binary logs and exports only target/task names and durations. Raw logs, command
 arguments, properties and environment payloads remain local. Unfinished logs
 are explicitly identified instead of being presented as successful builds.
-This is further diagnostic evidence, not a claimed timeout fix.
+This is further diagnostic evidence. It does not claim a timeout fix.
 
 The additional-platform workflow now accepts the same package-test concurrency
 input as the primary workflow. The next comparison uses identical code and full
@@ -24167,7 +24174,7 @@ Interrupt-polling CI **36713330603**, Windows job **109932482344**, failed
 `PackagedExtensionFixtureUsesSavedTestPortAndCleansUp` while reserving a random
 test port. The full test step reported **4,096 total, 4,076 passed, one failed,
 19 skips**, **27m38.399s**; compilation had passed. The failure was socket
-`AccessDenied` before PostgreSQL startup, not a runtime or interrupt assertion.
+`AccessDenied` before PostgreSQL startup. No runtime or interrupt assertion failed.
 
 The test allocator sampled ports without accounting for Windows excluded ranges
 and retried only `AddressAlreadyInUse`. Candidate selection now recognizes both
@@ -24449,7 +24456,7 @@ PostgreSQL **13.23, 14.24, 15.19, 16.15, 17.11, 18.6 and 19 beta 4**.
 All selected inventory entries are available for these installations. An initial
 parallel attempt exhausted the temporary RAM filesystem; the failed workers
 cleaned their staging, and rerunning with disk-backed temporary storage passed.
-This is binding evidence, not complete backend or platform coverage.
+This binding evidence does not provide complete backend or platform coverage.
 
 Release passes with **zero warnings/errors, 1m47.03s**. New backend tests compare
 native hash calls with PostgreSQL's SQL functions and exercise inline addition
@@ -24504,7 +24511,7 @@ fixture correction passed with zero warnings/errors in **36.22s**.
 
 Windows x64/PostgreSQL **17.11** also passes actual refreshed binding collection
 and native layout verification. This completes the focused three-platform
-binding check, not full backend-suite acceptance.
+binding check. It does not constitute full backend-suite acceptance.
 
 The complete PostgreSQL 19 attempt then exposed a real backend assertion in
 anonymous record construction. PostgreSQL 19 requires `TupleDescFinalize()`
@@ -24563,8 +24570,8 @@ clients, and GitHub marked it offline before it accepted a job. The user suspect
 a machine crash. The original Linux routing label was restored and the candidate
 returned to its validation-only label, preserving ongoing CI. A restart and
 previous-boot inspection are required before transferring production routing
-again. The earlier label-transfer paragraph records the attempted transition,
-not a completed migration or successful new-machine test result.
+again. The earlier label-transfer paragraph records the attempted transition.
+It does not record a completed migration or successful new-machine test result.
 
 The prior port-repair CI run **36737755545** is now fully successful. Linux x64/
 PostgreSQL 18 completed in **44m54s**, alongside Windows x64/PostgreSQL 17
@@ -24613,7 +24620,7 @@ and used no swap in the sampled memory observations.
 
 Production Linux routing remains on the replacement. The prior runner continues
 its already assigned aggregate job; no job was canceled. Package-test concurrency
-remains three. These are the initial replacement-machine results, not a controlled
+remains three. These initial replacement-machine results are not a controlled
 concurrency comparison or a guarantee against later hardware failure. Provenance
 macOS ARM64/PostgreSQL 18 also succeeds (**17m59s**); Windows remains active.
 
@@ -24656,7 +24663,7 @@ Before commit, prior CI was checked again. Provenance **36748783637** is fully
 successful: Linux **21m08s**, macOS **17m59s**, Windows **37m44s**. Aggregate
 **36742158434**, port repair **36737755545**, planner **36730262684**, and their
 Docs runs also succeed. Windows used **six package slots / 32 logical processors**;
-its full-test step took **35m30s**. These durations are observed CI outcomes,
+its full-test step took **35m30s**. These observed CI durations are
 not controlled performance comparisons. Hosted Intel macOS timeouts and the
 full-port/review gaps remain open.
 
@@ -24757,8 +24764,8 @@ The current PROGRESS.md and later acceptance entries supersede those statuses.
 
 ## Current complete acceptance evidence
 
-These are complete six-module suites with real Native AOT extensions, not smoke
-tests or binding-only probes. Counts supplement the native behavior assertions.
+These are complete six-module suites with real Native AOT extensions. None is a
+smoke test or binding-only probe. Counts supplement the native behavior assertions.
 
 | Source | Platform / PostgreSQL | Result | Duration |
 | --- | --- | --- | --- |
@@ -24877,9 +24884,9 @@ primary-platform CI pass without weakening the original assertions.
 - Extension commands share evaluated SDK-project resolution for `.sln`, `.slnx`, child SDK elements and imported SDK selection. Visible inherited aggregate roles require their capability interfaces. Focused resolver checks pass **15/15** and inherited capability checks **13/13**. Installed CLI/template framework combinations pass **13/13** with real managed/backend tests. Complete Linux and corrected Windows acceptance pass as recorded above. Environment, diagnostics, namespace, performance and platform-coverage work remains open.
 - [CI 37046774035](https://github.com/ankus-net/ankus/actions/runs/37046774035), **c4a092d**: quality, all runtime jobs and complete Linux/macOS ARM64 suites pass; Windows fails two path-case assertions and one concurrent local-tool restore. Linux reports **11,303 total / 11,289 passed / 14 skips**, and macOS **11,303 / 11,277 / 26**, with zero failures. Windows reports only four completed modules, **8,792 total / 8,764 passed / three failures / 25 skips**; this is not complete Windows acceptance. Both path cases and both original installed consumers pass the focused Windows repair. [Docs 37046774045](https://github.com/ankus-net/ankus/actions/runs/37046774045) passes. Detailed root causes, corrections and validation outcomes are retained in the history.
 - Owned binary numeric is committed and pushed as **ac01b4b**. [Primary CI 37024581268](https://github.com/ankus-net/ankus/actions/runs/37024581268) passes quality, runtime and all three complete primary-platform suites. Counts above come from six completed TRX modules per platform. [Docs 37024581449](https://github.com/ankus-net/ankus/actions/runs/37024581449) passes.
-- Direct-decimal encoding preserves coefficient/sign/scale without intermediate text. Focused runtime checks pass **136/136**, and PostgreSQL **18.6/Linux x64** numeric/range/tuple checks pass **271/271**, with zero skips. The plain complete suite passes **11,248 total; 11,234 passed; zero failures; 14 platform skips; 25m08.623s**. All 293 source and 26 runtime hashes verify afterward. Same-toolchain warm ABBA query comparisons reduce the managed-decimal median from **7.921ms to 5.720ms**, ratio **0.722**, with 20,000 rows and 22 measured samples per variant; all sums match independent PostgreSQL expressions. These are query timings, not isolated arithmetic/guard evidence. Final composed Release passes with zero warnings/errors (**1m22.56s**), API freshness verifies **238 pages / 2,756 members**, and site build/check passes (**286 pages, 3.27s; zero diagnostics**). All 290 applicable promoted identities match. Fresh platform CI remains required after publishing.
+- Direct-decimal encoding preserves coefficient/sign/scale without intermediate text. Focused runtime checks pass **136/136**, and PostgreSQL **18.6/Linux x64** numeric/range/tuple checks pass **271/271**, with zero skips. The plain complete suite passes **11,248 total; 11,234 passed; zero failures; 14 platform skips; 25m08.623s**. All 293 source and 26 runtime hashes verify afterward. Same-toolchain warm ABBA query comparisons reduce the managed-decimal median from **7.921ms to 5.720ms**, ratio **0.722**, with 20,000 rows and 22 measured samples per variant; all sums match independent PostgreSQL expressions. These are query timings. They are not isolated arithmetic/guard evidence. Final composed Release passes with zero warnings/errors (**1m22.56s**), API freshness verifies **238 pages / 2,756 members**, and site build/check passes (**286 pages, 3.27s; zero diagnostics**). All 290 applicable promoted identities match. Fresh platform CI remains required after publishing.
 - PostgreSQL 19 fixture corrections are committed as **7b6ce06**, followed by parameterized SPI commands as **c3db5ed**; both are pushed. [Primary CI 37016083898](https://github.com/ankus-net/ankus/actions/runs/37016083898) passes quality, all runtime jobs and all three complete platform suites. [Docs 37016083680](https://github.com/ankus-net/ankus/actions/runs/37016083680) and [PostgreSQL 19 replacement CI 37016275325](https://github.com/ankus-net/ankus/actions/runs/37016275325) also pass. Each of the four platform/version suites has six downloaded TRX modules independently confirming the counters above.
-- Owned binary numeric passes the plain complete PostgreSQL **18.6/Linux x64** suite: **11,202 total; 11,188 passed; zero failures; 14 platform skips; 26m26.659s**. All six module summaries finish successfully and all **293** frozen source identities verify afterward. Focused managed checks pass **81/81**, and focused numeric/range/tuple checks pass **271/271** on both PostgreSQL **18.6** and **13.23**, with no skips. The latter also verifies all **26** accepted runtime files after completion. Release/API/site gates pass. Measured 20,000-row comparisons retain independent SQL checksums and 22 samples per variant: binary/text median ratios are **0.850** for small identity, **0.940** for small addition, **0.505** for 1,024-digit identity and **0.581** for wide addition; the native SQL control is **1.009**. Managed decimal returns regress to **1.133** and need direct binary encoding rather than intermediate text. These are query timings, not isolated arithmetic/allocation or guard-tier claims. Fresh complete platform CI remains required after committing, and pure guards, array costs, permanent benchmarks and complete version/platform acceptance remain open. Detailed failures, corrections and timings are retained in the history.
+- Owned binary numeric passes the plain complete PostgreSQL **18.6/Linux x64** suite: **11,202 total; 11,188 passed; zero failures; 14 platform skips; 26m26.659s**. All six module summaries finish successfully and all **293** frozen source identities verify afterward. Focused managed checks pass **81/81**, and focused numeric/range/tuple checks pass **271/271** on both PostgreSQL **18.6** and **13.23**, with no skips. The latter also verifies all **26** accepted runtime files after completion. Release/API/site gates pass. Measured 20,000-row comparisons retain independent SQL checksums and 22 samples per variant: binary/text median ratios are **0.850** for small identity, **0.940** for small addition, **0.505** for 1,024-digit identity and **0.581** for wide addition; the native SQL control is **1.009**. Managed decimal returns regress to **1.133** and need direct binary encoding rather than intermediate text. These query timings make no isolated arithmetic/allocation or guard-tier claims. Fresh complete platform CI remains required after committing, and pure guards, array costs, permanent benchmarks and complete version/platform acceptance remain open. Detailed failures, corrections and timings are retained in the history.
 - Explicit `Spi.Sql` interpolation and typed `SpiCommand` overloads now pass the final complete PostgreSQL **18.6/Linux x64** composition: **11,120 total; 11,106 passed; zero failures; 14 platform skips; 24m31.735s**. All six completed TRX modules confirm the counters and all 279 frozen source identities verify afterward. The final Release build has zero warnings/errors (**31.37s**); API freshness verifies **238 pages / 2,756 members**, and site build/check passes with zero diagnostics. Native guards, transaction snapshots and original string APIs remain intact. Fresh primary-platform CI remains required after publishing.
 - Current-helper isolated PostgreSQL **18.6/Linux x64** diagnostics preserve all ten native artifacts and all three managed companion artifacts across cold and two warm calls. Source collection takes **12.151s**, then **3.355s / 3.340s**; companion compilation takes **37.862s**, then **1.568s / 1.579s**. A representative warm source call spends **1.236s** on native declaration verification and **0.727s** on layout measurement; SDK/runtime hashing in a warm companion call takes **0.140s**. This narrows the investigation without establishing Intel's cause or a performance correction. The diagnostic instrumentation remains isolated and is not promoted.
 - Both PostgreSQL 19 regression-fixture corrections now pass the complete six-module Native AOT suite: **11,027 total; 11,013 passed; zero failures; 14 platform skips; 26m39.146s**. All 267 frozen source identities verify after completion. Final composed Release passes with zero warnings/errors (**1m28.83s**); API freshness verifies **235 pages / 2,726 members**; site build/check passes with zero diagnostics. No ambient major override or relaxed CLI validation is used. The focused property fixture also passes against PostgreSQL 18.6. Replacement compatibility CI remains required after publishing the fixes.
@@ -24898,7 +24905,7 @@ primary-platform CI pass without weakening the original assertions.
 - The accepted SPI command composition preserves declared types/SQL NULL, original string APIs, snapshot roles and native guards. Compiler support lives in `Ankus.CompilerServices`. Focused managed/compiler/native checks pass **15/15**, **8/8** and **70/70**; complete final acceptance and final Release/API/site evidence are recorded above. Both unsuccessful validation-launch attempts are retained in the history, with zero product assertions executed by those invalid launches.
 - The first complete PostgreSQL 19 repair run exposes a second fixture defect after the original database-removal repair passes. Both defects are corrected and the final complete suite passes, as recorded above; the original one-failure outcome remains in the retained history.
 - Focused final PostgreSQL 19 checks pass **five cases, zero failures/skips, 4m58.563s**, including database prerequisites and CLI property forwarding. The same property fixture passes against PostgreSQL **18.6/Linux x64**, with **one selected case, zero failures/skips, 4m42.686s**.
-- Intel macOS [37003910952](https://github.com/ankus-net/ankus/actions/runs/37003910952), **906b752 / two package slots**, exceeds the 60-minute limit again; total job duration including cleanup is **61m23s**. Five completed modules report **6,621 total; 6,612 passed; nine skips; zero failures**; integration has no completed report. Preparation takes **13m57s**, and full tests run **43m27s** before timeout. Individual phase evidence now proves initial source production **111.159s** and companion production **219.510s**, with overlapping cache readers waiting; representative later source/companion reuse takes **29.489s / 17.669s** and **15.579s / 9.618s**. These are command durations, including verification and waiting, not isolated CPU costs. A measured correction and complete Intel acceptance remain required.
+- Intel macOS [37003910952](https://github.com/ankus-net/ankus/actions/runs/37003910952), **906b752 / two package slots**, exceeds the 60-minute limit again; total job duration including cleanup is **61m23s**. Five completed modules report **6,621 total; 6,612 passed; nine skips; zero failures**; integration has no completed report. Preparation takes **13m57s**, and full tests run **43m27s** before timeout. Individual phase evidence now proves initial source production **111.159s** and companion production **219.510s**, with overlapping cache readers waiting; representative later source/companion reuse takes **29.489s / 17.669s** and **15.579s / 9.618s**. These are command durations, including verification and waiting. They do not isolate CPU costs. A measured correction and complete Intel acceptance remain required.
 - A read-only compiler-contract namespace audit identifies **53 helper types across 81 declarations**, including **16 public types, all hidden from IntelliSense**, and **211 generated/fixture literal reference sites**. This confirms that file count overstates the public surface. Deliberate relocation of compiler-only contracts and complete generator/consumer validation remain open; author APIs and native behavior must be preserved.
 
 Keep complete version/platform gaps visible. The scheduled workflow, labels,
@@ -25001,7 +25008,7 @@ on **04f0a8a / ankus.4 / PostgreSQL 18.6** now completes successfully:
 All six reports were retained and independently counted. This confirms the
 physical-path repair for the six failures in the preceding complete attempt.
 It uses two package-consumer slots and the approved six-hour limit. This is
-acceptance of the recorded revision, not evidence for later changes. The first
+acceptance of the recorded revision. It is not evidence for later changes. The first
 attempt's hosted-runner communication loss still has no established cause.
 
 [Version CI 37145038020](https://github.com/ankus-net/ankus/actions/runs/37145038020)
@@ -25289,7 +25296,7 @@ all six modules. The complete outcome snapshot is retained with the validation e
   cases and **3,264** generator cases pass. At 10,000 cells the measured native
   storage-witness workload falls from **356.863 to 46.875 ms** for fixed-size
   values, and **510.075 to 195.115 ms** for nullable text. These are medians of
-  seven warmed runs on Linux x64/PostgreSQL 18.6, not isolated accessor timings.
+  seven warmed runs on Linux x64/PostgreSQL 18.6 and do not isolate accessors.
   Release passes with zero warnings/errors; API freshness and site checks pass.
   The ordinary complete Linux x64/PostgreSQL 18.6 suite passes **11,541 total /
   11,527 passed / 14 platform skips / zero failures, 38m36.172s**. All six reports
@@ -25365,8 +25372,8 @@ PostgreSQL **13** and **14**. Job durations are **38m20s** and **39m15s**.
 All six retained reports were checked independently for each major:
 **11,640 total / 11,623 passed / 17 platform skips / zero failures**.
 Module counters and individual case outcomes agree. PostgreSQL 15 is running;
-16, 17 and 19 remain queued. These results refresh current-runtime evidence,
-not the still-uncommitted follow-up corrections.
+16, 17 and 19 remain queued. These results refresh current-runtime evidence
+and do not cover the still-uncommitted follow-up corrections.
 
 ## Complete diagnostic, cleanup and idle-interrupt composition
 
@@ -25478,7 +25485,7 @@ also passes PostgreSQL 15 on **c24297f / 10.0.12-ankus.4**, **39m10s** job.
 All six reports are independently checked: **11,640 total / 11,623 passed /
 17 platform skips / zero failures**. PostgreSQL 16 remains in progress and
 17/19 remain queued at this observation. This CI evidence covers the committed
-source, not the uncommitted review corrections.
+source. It does not cover the uncommitted review corrections.
 
 ## Current-runtime Linux PostgreSQL 16 and 17 refresh
 
@@ -26033,7 +26040,7 @@ replacements. Platform-version **CI 37218985660** passes Windows/18
 and macOS ARM64/15 (**11,927 total / 11,867 passed / 60 skips / zero failures**,
 **28m01s** job). All six reports were independently verified per completed
 platform. Windows/13 and macOS ARM64/16 remain in progress. These version
-reports prove **4c9cc43**, not the new diagnostic composition.
+reports prove **4c9cc43**. They do not cover the new diagnostic composition.
 
 ## Cold editor binding resolution and nullable diagnostics
 
@@ -26288,7 +26295,7 @@ an iterator or aggregate callback raises **42704** while PL/pgSQL runs
 exception handler and producing `AbortSubTransaction while in ABORT state`.
 Ordinary cleanup controls and forty client savepoint cycles pass; they do not
 cover this internal exception-subtransaction path. The failure demonstrates
-interrupted rollback, not a measured resource leak. The phase-aware native
+interrupted rollback. It does not measure a resource leak. The phase-aware native
 correction and proper cross-platform regression acceptance remain pending.
 Complete supported-version/platform, source-case, ergonomic and release scope
 also remain open. No analyzer severity or warning mode was relaxed.
@@ -26299,7 +26306,7 @@ An iterator or aggregate cleanup error during a PL/pgSQL exception subtransactio
 could replace the saved primary error and interrupt rollback. Both independent
 witnesses produced `AbortSubTransaction while in ABORT state`; ordinary cleanup
 and forty client-savepoint cycles passed. Those controls did not cover this
-path. The witnesses prove interrupted rollback, not a measured resource leak.
+path. The witnesses prove interrupted rollback without measuring a resource leak.
 
 Native cleanup now distinguishes ordinary context reset from transaction
 completion. During completion it reports complete secondary diagnostics as
@@ -26653,7 +26660,7 @@ retry. Deterministic tests exercise the delayed pilot, zero and short samples,
 at/above-target retention, bounded doubling and routine failures. All **16**
 benchmark tests pass on Linux x64; the unchanged delayed-calibration Windows
 probe completes **100** comparisons after swapping only the corrected runtime
-assembly. This is focused measurement evidence, not complete platform acceptance.
+assembly. This focused measurement evidence is not complete platform acceptance.
 
 API freshness verifies **244 pages / 2,791 members**. Documentation checks have
 zero errors/warnings/hints; the site builds **293 pages** in **4.75s**.
@@ -26670,7 +26677,7 @@ execution is the identified benchmark comparison. All six modules and all
 The verifier's initial rejection of valid zero-length regular files is corrected
 without accepting nonregular entries. Two staged source replacements are checked
 against their already verified prior-input backup. The rejected run is retained
-as failure evidence, not acceptance.
+as failure evidence and does not count as acceptance.
 
 The corrected **1,748-input** Windows composition passes Release with zero
 warnings/errors in **1m36.64s**. All **16** focused Windows benchmark cases pass
@@ -26751,7 +26758,7 @@ Its plain complete local run is **rejected**: **12,449 total / 12,399 passed /
 verify that only the COMMIT/PREPARE reporter cases fail. Exact logs show
 `Assert(CritSectionCount == 0)` during diagnostic-context creation. The guard
 entered a critical section before creating that context; PostgreSQL forbids
-this allocation there. This is a production allocation-order defect, not a
+this allocation there. This is a production allocation-order defect. It is not a
 permitted difference in client diagnostic delivery. The existing diagnostic,
 termination, recovery and durable-write assertions remain intact.
 
@@ -26951,7 +26958,7 @@ references producing ANKUS206 without a generator exception.
 
 The complete combined Linux x64/PostgreSQL **18.6** composition is running with
 **1,786** frozen authored inputs verified before execution. This is pending
-acceptance, not full platform or version proof.
+acceptance. It is not full platform or version proof.
 
 ### Completed metadata/editor acceptance and preceding CI
 
@@ -27252,7 +27259,7 @@ The complete Windows x64/PostgreSQL 17.11 suite against 1,791 frozen SPI
 candidate inputs completed in 48m10.006s (49m38.842s command): 12,630 total,
 12,601 passed, 28 platform skips and one failure. The generator's 3,890,
 runtime's 2,148 and all other module executions passed. This is rejected
-acceptance, not a green native milestone.
+acceptance. It is not a green native milestone.
 
 `BackgroundWorkersRegisterAndShareState` failed during package-consumer
 publication. Its fixture concatenated the process ID into `pg_cancel_backend`
@@ -27281,7 +27288,7 @@ header-checksum cases. The actual TRX's counters and unique execution identities
 independently verify, including the corrupt-header checksum execution. The real
 Roslyn generator compiles both sample source files and its two generated sources
 with zero compiler/generator warnings or errors. These are managed preparation
-results, not a published extension or complete platform acceptance.
+results. They are not a published extension or complete platform acceptance.
 
 The gzip framing implementation uses standard raw DEFLATE compression while
 preserving the pinned libflate decoder's first-member boundary, complete trailer,
@@ -27333,7 +27340,7 @@ The generator and runtime compile the same PostgreSQL token-layout source;
 quoting helpers must insert complete fragments outside SQL quoting/comment
 contexts. Literal replacement and builder clearing remove earlier formatting.
 The 150 focused analyzer cases pass; the unchanged baseline fails 33 of those
-same cases. The analysis is bounded, not a proof of arbitrary helper bodies or
+same cases. The analysis is bounded. It does not prove arbitrary helper bodies or
 runtime-generated SQL. Public SPI guidance documents that boundary.
 
 The frozen composition's Release build passes with zero warnings/errors in
@@ -27364,7 +27371,7 @@ identity gaps. All 1,112,064 valid scalars also exercise preceding/following sig
 context against independently emitted properties. Twelve actual whole-string
 outputs, three thread cultures and both unpaired-surrogate partitions pass.
 The first compiler run rejected three field names; the enforced naming rule is
-fixed without suppression. This is private managed preparation, not acceptance
+fixed without suppression. This is private managed preparation without acceptance
 of the strings sample or a published PostgreSQL extension. Sample API, byte-slice,
 split/iterator and complete native/platform requirements remain open.
 
@@ -27411,7 +27418,7 @@ validator stages those exact bytes only after Windows CI completes. The complete
 unsharded Windows x64/PostgreSQL 17.11 run is now live, with input hashes checked
 before execution. Expected scope includes the complete normal graph plus 32
 bytea managed cases, 46 strings managed cases, 18 bytea native cases and 57
-strings native cases. These are expected partitions, not completed test evidence.
+strings native cases. These expected partitions are not completed test evidence.
 Neither sample is promoted or accepted before that run and required checks pass.
 
 ## SQL identity diagnostic preparation and managed sample verification, 2026-10-05
@@ -27441,7 +27448,7 @@ The exact final baseline run executes sixteen cases: thirteen fail and three
 controls pass, in 4.596s. The corrected complete generator module executes all
 3,906 cases with zero failures or skips, in 2m39.190s on two cores. Independent
 report verification checks the counters, unique execution identities and every
-named regression partition. These are generator results, not native-platform
+named regression partition. These generator results are not native-platform
 or full-port evidence. The correction remains private pending coherent native,
 Release and documentation acceptance.
 
@@ -27483,8 +27490,8 @@ The corrected coherent candidate freezes 1,813 source inputs: the original
 samples, both fixture corrections and the SQL-identity diagnostic correction.
 It is staged in the existing idle validator and the five affected native cases
 are rerunning before the complete unsharded suite. Complete expected scope is
-12,799 cases, including 3,906 generator and 4,956 integration cases; these are
-scope expectations, not accepted execution evidence. Neither sample nor the
+12,799 cases, including 3,906 generator and 4,956 integration cases; these scope
+expectations are not accepted execution evidence. Neither sample nor the
 diagnostic change is promoted yet.
 
 The five corrected native cases completed successfully in 4m33.772s, with
@@ -27492,7 +27499,7 @@ The five corrected native cases completed successfully in 4m33.772s, with
 identities and zero failures/skips: the four bytea sizes (0, 1, 256 and 65,537)
 and the externally stored substring ownership case. Source hashes match before
 and after. The validator's own clusters were cleaned up; protected user services
-remain untouched. This is focused evidence, not complete-platform acceptance.
+remain untouched. This focused evidence is not complete-platform acceptance.
 
 The sample's original unqualified `substring(text, integer, integer)` documentation
 would resolve the built-in pg_catalog function under PostgreSQL's normal search
@@ -27565,7 +27572,7 @@ the authored partial implementation's async modifier. The callback-only candidat
 freezes 1,818 exact inputs; the combined initialization candidate freezes 1,821.
 Both preserve the complete sample/SQL-identity parent and remain unstaged.
 Expected complete native scope is 12,909 cases, including 4,016 generator and
-4,956 integration cases; this is a scope expectation, not native acceptance.
+4,956 integration cases; this scope expectation is not native acceptance.
 
 ### Complete bytea/strings and SQL-identity acceptance
 
@@ -27710,7 +27717,7 @@ the symbol is undefined; the dispatcher nevertheless returns success. Adding
 only that attribute to the existing observable void-handler test reproduces
 status zero with zero effects instead of one. The fifteen unchanged native-value
 controls pass. This is real generated managed-dispatch execution through an ABI
-shim, not PostgreSQL or published Native AOT acceptance.
+shim. It is not PostgreSQL or published Native AOT acceptance.
 
 The private correction reports `ANKUS276` on the authored Conditional attribute
 and excludes only that invalid callback. It covers ordinary handlers and both
@@ -27773,7 +27780,7 @@ backend-test dispatchers with their respective six/five/six-argument ABIs. For
 each family, ordinary and globally enabled conditional methods return status
 zero and perform 73 recorded effects; an undefined conditional method returns
 the same success status with zero effects. All nine executions verify against
-the current composed generator/runtime. These are managed ABI observations,
+the current composed generator/runtime. These managed ABI observations are
 not Native AOT/PostgreSQL acceptance.
 
 The private shared `ANKUS277` validator rejects `Conditional` at its authored
@@ -28153,8 +28160,8 @@ crash-recovery failure and macOS allocation-regression failure of the previous
 runs. The original macOS allocation variance remains unattributed; the corrected
 workload measures warmed owner lookups and retains its real decoder, exact
 returned values and original allocation bound. This milestone establishes the
-named current source/platform/major combinations, not complete supported-version
-or full-port acceptance.
+named current source/platform/major combinations. It does not establish complete
+supported-version or full-port acceptance.
 
 ### Precise backend-test declaration contracts: managed evidence
 
@@ -28188,7 +28195,7 @@ assemblies; the unrelated generated function still executes and returns **42**.
 The initial child freeze rejected a missing public testing guide before creating
 any candidate archive. The corrected freeze includes that guide and checks all
 authoring preimages, producing **1,834** exact source inputs. This is managed
-preparation, not native acceptance. The preceding enum-schema complete suite
+preparation. It is not native acceptance. The preceding enum-schema complete suite
 remains running unchanged. Neither private correction is promoted; full native,
 Release, API freshness and site acceptance remain required.
 
@@ -28622,7 +28629,7 @@ runner diagnostic writes reporting no space left on device. Quality, all three
 runtime jobs and Docs pass; Windows and Linux full suites remain running. The
 failed-job retry request is rejected by GitHub while its workflow is still
 running; it remains required after the other jobs finish. This is resource
-exhaustion, not evidence of a patched-runtime correctness failure.
+exhaustion. It is not evidence of a patched-runtime correctness failure.
 
 The rejected datetime console reports **13,268** executions: **12,570** passed,
 **60** skips and **638** failures, taking **27m48.600s** for testing and
@@ -28769,7 +28776,7 @@ failing precisely at the second execution after switching from New York to UTC.
 The independent server expressions change while the cached example values do
 not. Each actual mismatch and execution identity independently verifies.
 Testing takes **3m21.284s**, the command **4m04.405s**, and all **1,845** source
-inputs remain unchanged. This is expected rejected-source evidence, not CI.
+inputs remain unchanged. This expected rejected-source evidence is not from CI.
 
 The proper **1,851**-input composition then passes all **63** focused native
 cases with zero skips/failures: every **62** datetime case and the real SQL
@@ -28823,7 +28830,7 @@ diagnostics pass without warnings or errors. Replacement primary-platform CI
 passes; current supported-version and additional-platform acceptance remain required.
 The earlier frozen composition verifies all twelve reports and **1,788** source inputs.
 Its Release build, API freshness and site checks pass. These results prove the
-named source and PostgreSQL/platform combinations, not the complete port.
+named source and PostgreSQL/platform combinations; the complete port is unproven.
 
 
 ## Active validation and work
@@ -29102,7 +29109,7 @@ draft. Corrected tests, complete native acceptance and promotion remain pending.
 The corrected type-provider draft uses an explicit null-or-empty guard; all
 **46** focused and **4,455** complete generator executions now pass on macOS
 ARM64, SDK **10.0.401**. Source hashes match before and after execution. Complete
-generator command duration is **41.8024077s**. These are generator checks, not
+generator command duration is **41.8024077s**. These generator checks are not
 published-extension platform acceptance. A separate plain, unsharded Linux /
 PostgreSQL **18.6** run has been started against all **1,855** ordinary inputs;
 complete native acceptance and promotion remain pending.
@@ -29136,7 +29143,7 @@ result. Private validation remains separate from the busy primary CI machines.
 
 ## Review-status audit and earlier-member cache investigation — 2026-10-06
 
-The review is not fully resolved. The complete requirement inventory remains in scope; diagnostics and semantic code fixes, source-case mapping, remaining representative samples and API/CLI contracts, supported platform/version combinations, servicing and release gates still require acceptance. The full-scope engineering estimate remains about 90%, not a measured parity score.
+The review is not fully resolved. The complete requirement inventory remains in scope; diagnostics and semantic code fixes, source-case mapping, remaining representative samples and API/CLI contracts, supported platform/version combinations, servicing and release gates still require acceptance. The full-scope engineering estimate remains about 90%; it is not a measured parity score.
 
 Primary CI 37480623539 now passes quality and all three runtime preparations. Its three complete platform suites remain in progress; docs 37480623554 passes. Intel refresh 37460600236 remains in progress with runtime preparation passed. No pending outcome is counted as acceptance.
 

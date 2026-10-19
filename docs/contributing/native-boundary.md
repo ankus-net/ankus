@@ -839,7 +839,7 @@ unconditionally on that path would invalidate their borrowed query environments.
 Mutable result/error headers live in the callback memory context, so cleanup
 can read them safely after `longjmp`; their pointers are assigned before
 `PG_TRY`. Managed buffers retain their allocator-matched cleanup. Retained
-plans keep the plan, not a transition table: execution uses the current SPI
+plans keep only the plan, without a transition table: execution uses the current SPI
 query environment, and PostgreSQL's original error is transported when a required
 named tuplestore is absent.
 

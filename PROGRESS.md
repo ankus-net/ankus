@@ -235,7 +235,7 @@ on source **e41c687**, is retained below.
 Normal Release, API freshness and site checks pass. Earlier source counts,
 timings, rejected attempts and superseded
 results remain in the [acceptance history](docs/contributing/evidence/port-history.md#superseded-active-and-primary-acceptance-detail-before-sqldatetime-acceptance-2026-10-06).
-These results establish the named combinations, not full-port completion.
+These results establish the named combinations only; the full port is still incomplete.
 
 The first rows below use the current runtime, `10.0.13-ankus.1`. With the primary
 CI above, every supported major passes on Linux x64, macOS ARM64, Windows x64 and
@@ -378,7 +378,7 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   the output directory stays empty, yet it still copies the documentation file
   from there; extensions with documentation could not publish, and a plain
   `PublishAot` console app fails the same way. This looks like an SDK bug and
-  is recorded here, not reported. `Ankus.Sdk` defaults `UseOptimizedPublish` to
+  is recorded here without an upstream report. `Ankus.Sdk` defaults `UseOptimizedPublish` to
   `false`, which keeps the SDK 10 publish path and output. The test fixture's
   publish no longer inherits the MSBuild paths of the SDK that ran the tests,
   which had loaded SDK 11 tasks into an SDK 10 build. `dotnet sln add` now
@@ -738,7 +738,8 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   `Directory.CreateTempSubdirectory()` for its asset files and never deletes
   the directory, so every `dotnet tool install`, `update` or `restore` leaves
   one or two behind, and a suite leaves about a hundred. This is a suspected
-  SDK bug, not yet reported; a maintainer files it if it is confirmed again.
+  SDK bug that has no upstream report yet; a maintainer files it if it is
+  confirmed again.
   The space was in Ankus test roots that cancelled suites had left, such as a
   30 GB one from 2026-10-06; cleanup removed only `ankus package tests *`
   directories. `runner-cleanup` now removes every `ankus*` temporary directory
@@ -931,7 +932,7 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   again without a lock (`LocalProcessControlFile` in `launch_backend.c`), so it
   can see a half-written file, and the suites' frequent forced checkpoints make
   that likelier. Its rerun passed. This looks like a PostgreSQL bug; it is
-  recorded here, not reported. If it happens again, a maintainer reports it
+  recorded here without an upstream report. If it happens again, a maintainer reports it
   upstream.
 - The same matrix found two test races. On Windows, a test that ends its
   backend with FATAL can see a connection reset instead of the report, so all
@@ -1881,7 +1882,7 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   15 and 16 formulae. **7777c83** and **5c053d8** pass the Windows x64 suites on
   PostgreSQL 17.11 and 13.23 (**14,478** total each; zero failures; **23m40s** and
   **22m07s**).
-- Code-fix tests now compare the complete fixed document, not fragments of it.
+- Code-fix tests now compare the complete fixed document.
   The exact comparisons exposed three defects: the injected-parameter fix left a
   space inside the brackets when it removed one attribute of several (`[ Keep]`,
   `[Keep ]`) and doubled the space where a list between comments disappeared, and
@@ -2198,7 +2199,7 @@ PostgreSQL 19 RC1, Linux ARM64, and Intel macOS on 13–18 and 19 RC1 all pass o
 declaration audit against pgrx 0.19.3 has no open option, and the third code
 review's findings are fixed or kept by documented design.
 
-1. Resolve discovered correctness and CI failures before accepting affected work. The macOS ARM64 test-host crashes are a suspected macOS bug, not yet reported: on 2026-10-14 the build-tool tests' host died after 698 of 1,346 tests, and its crash report shows `fork()`, called by .NET's `Process.Start`, aborting in libmalloc's xzone allocator (`_malloc_fork_parent`: unlock of an `os_unfair_lock` the thread does not own) while two other threads waited on xzone's fork lock to allocate. macOS 26 uses xzone for every ARM64 process, with no setting to turn it off outside Apple, and Intel Macs never use it. Rerun a job that ends this way and record it. If it happens once more, a maintainer files the report with Apple and .NET.
+1. Resolve discovered correctness and CI failures before accepting affected work. The macOS ARM64 test-host crashes are a suspected macOS bug with no upstream report yet: on 2026-10-14 the build-tool tests' host died after 698 of 1,346 tests, and its crash report shows `fork()`, called by .NET's `Process.Start`, aborting in libmalloc's xzone allocator (`_malloc_fork_parent`: unlock of an `os_unfair_lock` the thread does not own) while two other threads waited on xzone's fork lock to allocate. macOS 26 uses xzone for every ARM64 process, with no setting to turn it off outside Apple, and Intel Macs never use it. Rerun a job that ends this way and record it. If it happens once more, a maintainer files the report with Apple and .NET.
 2. Keep the pgrx 0.19.3 [release-delta gates](docs/contributing/evidence/parity-requirements.md#pgrx-0193-release-delta-and-refresh-gates) satisfied: each has implementation and complete-suite evidence on runtime 10.0.13-ankus.1, which must be refreshed on each later serviced runtime.
 3. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
 4. Measured hot paths are done: a trimming row trigger costs about the same as PL/pgSQL (0.72 µs against 0.72 µs per row on one host, 0.55 µs against 0.52 µs on another), as the [guard-tier evidence](docs/contributing/evidence/guard-tiers.md#row-triggers) shows. Keep the in-backend baseline, and measure again when boundary code changes, preserving recovery and ownership guarantees.

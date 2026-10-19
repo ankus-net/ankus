@@ -65,7 +65,7 @@ apply to trigger callbacks. Trigger functions cannot be invoked with `SELECT`.
 `Name`, `TriggerOid`, `RelationOid`, `TableName`, and `TableSchema` identify the
 current trigger and relation. `Descriptor` describes the relation's physical
 columns. `Arguments` contains the exact strings from `EXECUTE FUNCTION f('arg', ...)`.
-Arguments are trigger configuration strings, not SQL function parameters.
+Arguments are trigger configuration strings, separate from SQL function parameters.
 
 `UpdateOfColumns` lists the zero-based ordinals named by `UPDATE OF`, and is empty
 for a trigger that fires for any column. For an UPDATE, `UpdatedColumns` lists the

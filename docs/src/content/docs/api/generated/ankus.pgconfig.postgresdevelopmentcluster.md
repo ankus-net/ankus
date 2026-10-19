@@ -180,7 +180,7 @@ Parameters:
 
 `database` — [string](https://learn.microsoft.com/dotnet/api/system.string)
 
-The literal database name, not a connection string.
+The literal database name, escaped into the connection string's database path.
 
 `cancellationToken` — [CancellationToken](https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken)
 

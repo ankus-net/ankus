@@ -26,7 +26,7 @@ internal static class ExtensionInstaller
         if (manifest.PostgresMajor != installation.Version.Major)
         {
             throw new InvalidOperationException(
-                $"The extension was built for PostgreSQL {manifest.PostgresMajor}, not {installation.Label}.");
+                $"The extension was built for PostgreSQL {manifest.PostgresMajor}; the selected installation is {installation.Label}.");
         }
 
         if (installation.TargetInfo is not null && !packageLayout)
@@ -39,7 +39,7 @@ internal static class ExtensionInstaller
         if (manifest.RuntimeIdentifier != runtime)
         {
             throw new InvalidOperationException(
-                $"The extension targets {manifest.RuntimeIdentifier}, not {runtime}.");
+                $"The extension targets {manifest.RuntimeIdentifier}; the installation runs on {runtime}.");
         }
 
         string libraryDirectory = StagePath(installation.LibraryDirectory, destinationRoot);
@@ -165,7 +165,7 @@ internal static class ExtensionInstaller
         ArgumentException.ThrowIfNullOrWhiteSpace(prefixDirectory);
         if (Path.IsPathRooted(prefixDirectory) && !Path.IsPathFullyQualified(prefixDirectory))
         {
-            throw new ArgumentException("Package prefixes must be relative or fully qualified, not partially rooted.", nameof(prefixDirectory));
+            throw new ArgumentException("Package prefixes must be relative or fully qualified; partially rooted paths are rejected.", nameof(prefixDirectory));
         }
 
         string relative = Path.IsPathFullyQualified(prefixDirectory)

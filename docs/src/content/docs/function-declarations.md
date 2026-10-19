@@ -31,7 +31,7 @@ as `string` requires a value; `string?` accepts SQL NULL. Array elements, set
 columns and aggregate callback values follow the same rule.
 
 Disabled annotations leave reference nullability ambiguous. Ankus reports
-`ANKUS024` at the affected declaration instead of inferring a required SQL value.
+`ANKUS024` at the affected declaration.
 Explicit `NullInput` settings do not replace the managed value contract. Value
 types and injected contexts do not need reference annotations.
 
@@ -280,8 +280,7 @@ returns or throws. Native error guards and managed exception unwinding apply
 to every execution mode.
 
 Use `PgSearchPath.ExtensionSchema` when the path should follow the schema chosen
-by `CREATE EXTENSION ... WITH SCHEMA`, rather than a schema name known at build
-time:
+at installation by `CREATE EXTENSION ... WITH SCHEMA`:
 
 ```csharp
 [PgFunction(SearchPath = ["pg_catalog", PgSearchPath.ExtensionSchema, "pg_temp"])]
@@ -349,7 +348,7 @@ request after handling it. For an unsupported request, return a **present zero
 pointer**, as above. A null `PgInternal` represents SQL NULL and is not PostgreSQL's
 “request unsupported” response. New PostgreSQL versions can add request kinds.
 
-The estimate changes planning, not the function's returned values. Other request
+The estimate affects only planning. Other request
 kinds have their own PostgreSQL contracts. Installation with a support routine
 requires a superuser. The usual managed/native error boundary also applies when
 PostgreSQL invokes the method during planning.

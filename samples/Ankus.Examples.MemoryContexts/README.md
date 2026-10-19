@@ -57,7 +57,7 @@ pgrx's module documentation warns that writing through a pointer after
   PostgreSQL context only affects native allocations, such as
   `PgMemoryContext.Current.Allocate`. pgrx's Rust `Vec` is likewise not a
   PostgreSQL allocation.
-- Set functions keep iterator state on the managed heap instead of in
+- Set functions keep iterator state on the managed heap, outside
   `multi_call_memory_ctx`. Declare a `PgMemoryContext` parameter to receive the
   multi-call context when native state must live there.
 - The worker installs PostgreSQL's reload and termination handlers through its

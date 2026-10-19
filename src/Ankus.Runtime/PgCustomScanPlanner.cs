@@ -117,9 +117,9 @@ public readonly ref struct PgCustomScanPlanner
     /// </param>
     /// <param name="workers">The workers the path plans for, at most PostgreSQL's <c>max_parallel_workers_per_gather</c>.</param>
     /// <remarks>
-    /// PostgreSQL considers the path only for a table and query that can run in parallel, and not for a scan whose
-    /// conditions depend on an outer row. The processes divide the rows through the provider's shared memory; see
-    /// <see cref="IPgParallelCustomScan{TState, TShared}"/>.
+    /// PostgreSQL considers the path only for a table and query that can run in parallel, and only when the scan's
+    /// conditions are independent of any outer row. The processes divide the rows through the provider's shared
+    /// memory; see <see cref="IPgParallelCustomScan{TState, TShared}"/>.
     /// </remarks>
     /// <exception cref="InvalidOperationException">The provider does not implement
     /// <see cref="IPgParallelCustomScan{TState, TShared}"/>.</exception>

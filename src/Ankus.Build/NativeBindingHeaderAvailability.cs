@@ -81,8 +81,8 @@ internal static class NativeBindingHeaderAvailability
                 continue;
             }
 
-            // The reference inventory identifies names, not the selected platform's ABI. PostgreSQL can
-            // declare one name as a function on ARM64 and a dispatch-pointer global on x64.
+            // The reference inventory identifies names only; the selected platform's headers decide the ABI.
+            // PostgreSQL can declare one name as a function on ARM64 and a dispatch-pointer global on x64.
             available.Add(request with
             {
                 IsFunction = declarationKind == "FunctionDecl"

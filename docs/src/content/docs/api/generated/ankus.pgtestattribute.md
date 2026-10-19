@@ -97,7 +97,7 @@ Value: [string[]](https://learn.microsoft.com/dotnet/api/system.string)
 
 ### SecurityDefiner
 
-Gets or sets whether the test function runs with its owner's privileges instead of the caller's.
+Gets or sets whether the test function runs with its owner's privileges; otherwise it uses the caller's.
 
 ```csharp
 public bool SecurityDefiner { get; set; }

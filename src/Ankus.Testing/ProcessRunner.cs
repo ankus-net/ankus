@@ -16,7 +16,7 @@ internal static class ProcessRunner
     /// <param name="arguments">Individual command-line arguments.</param>
     /// <param name="environment">Environment variables to add or replace.</param>
     /// <param name="cancellationToken">Cancels and terminates the process.</param>
-    /// <param name="captureOutput">Whether to redirect output rather than inherit the host's handles.</param>
+    /// <param name="captureOutput">Whether to redirect output; otherwise the child inherits the host's handles.</param>
     /// <param name="workingDirectory">The child process directory, or the current directory when omitted.</param>
     /// <param name="terminateProcessTree">
     /// Whether cancellation terminates the child's descendants too. <c>sudo</c> children belong to another account,
@@ -113,7 +113,7 @@ internal static class ProcessRunner
     /// <param name="arguments">Individual command-line arguments.</param>
     /// <param name="environment">Environment variables to add or replace.</param>
     /// <param name="cancellationToken">Cancels and terminates the process.</param>
-    /// <param name="captureOutput">Whether to redirect output rather than inherit the host's handles.</param>
+    /// <param name="captureOutput">Whether to redirect output; otherwise the child inherits the host's handles.</param>
     /// <param name="workingDirectory">The child process directory, or the current directory when omitted.</param>
     /// <returns>The successful process result.</returns>
     internal static async Task<ProcessResult> RunCheckedAsync(

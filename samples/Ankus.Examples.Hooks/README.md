@@ -63,8 +63,8 @@ extension's hook is not enough either, because another library can install its
 own hook after this one.
 
 If a hook is nevertheless installed twice, Ankus reports the recursion as
-PostgreSQL's `stack depth limit exceeded` error (SQLSTATE `54001`) instead of
-overflowing the native stack and restarting the server. The affected session
+PostgreSQL's `stack depth limit exceeded` error (SQLSTATE `54001`) before the
+native stack can overflow and restart the server. The affected session
 remains connected; other sessions are unaffected.
 
 ## Deliberate differences

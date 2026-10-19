@@ -232,7 +232,7 @@ public readonly partial record struct PgTime : IComparable<PgTime>
     public static PgTime FromTimeOnly(TimeOnly value) => new(PgTemporal.ToMicroseconds(value.Ticks));
 
     /// <summary>
-    /// Converts to TimeOnly, rejecting 24:00:00 rather than wrapping to midnight.
+    /// Converts to TimeOnly and rejects 24:00:00, which TimeOnly could only represent by wrapping to midnight.
     /// </summary>
     /// <returns>The .NET time.</returns>
     /// <exception cref="InvalidOperationException">The value is 24:00:00.</exception>

@@ -47,8 +47,8 @@ rollback. The values last until the server stops or recovers from a crash.
 | `pg_shmem_init!` in `_PG_init` | `PgSharedMemory.Initialize` in `[PgModuleLoad]`. |
 | `process_shared_preload_libraries_in_progress` | `NativeGlobals.process_shared_preload_libraries_in_progress`. |
 
-Exclusive updates use `Mutate`, which edits the original shared value instead of
-copying all 400 elements. Readers copy `Value` and enumerate the copy after the
+Exclusive updates use `Mutate`, which edits the original shared value in place
+without copying its 400 elements. Readers copy `Value` and enumerate the copy after the
 shared lock is released. The full-collection warnings are written after the
 exclusive lock is released because a mutation callback cannot call PostgreSQL.
 

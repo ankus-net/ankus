@@ -48,7 +48,7 @@ public static unsafe class PgReplicationOrigin
     /// Drops an origin.
     /// </summary>
     /// <param name="name">The origin's name.</param>
-    /// <param name="missingOk">Whether a missing origin is ignored rather than an error.</param>
+    /// <param name="missingOk">Whether a missing origin is ignored; otherwise it is an error.</param>
     /// <exception cref="PgException">The origin does not exist, or a session is using it.</exception>
     public static void Drop(string name, bool missingOk = false) => Invoke(3, name, value: missingOk ? 1 : 0);
 

@@ -271,8 +271,8 @@ declare the behavior the method actually implements. The average example reads
 its state without consuming it and supports bounded moving frames.
 
 `FinalExtra` and `MovingFinalExtra` add typed NULL input slots after the state and
-direct arguments. They convey type information, not the last row's values, and
-require a non-strict final method.
+direct arguments. They carry the argument types only, and they require a
+non-strict final method.
 
 ## Polymorphic values
 
@@ -409,7 +409,7 @@ declarations still generate normally.
 | `ANKUS103` | Use one trailing variadic array on a normal aggregate. |
 | `ANKUS104` | Specify `SortOperator` only for an aggregate with one SQL input. |
 | `ANKUS105` | Use a valid PostgreSQL operator token, optionally qualified by one schema. |
-| `ANKUS106` | Initialize internal state in the transition callback instead of supplying textual initial state. |
+| `ANKUS106` | Initialize internal state in the transition callback; internal state cannot use a textual initial condition. |
 | `ANKUS107` | Supply an initial condition or make the first declared and aggregated inputs binary compatible with the strict transition's state. |
 | `ANKUS108` | Match the final callback's state and direct inputs to the corresponding aggregate contracts. |
 | `ANKUS109` | Use a non-strict final callback with `FinalExtra` or `MovingFinalExtra`; generated extra inputs are nullable. |
@@ -419,7 +419,7 @@ declarations still generate normally.
 | `ANKUS113` | Remove optional C# defaults and pass callback parameters by value. |
 | `ANKUS114` | Remove attributes and `params` from the invocation context parameter. |
 | `ANKUS115` | Remove trigger, event-trigger, operator, cast, or table-column attributes from the callback. |
-| `ANKUS116` | Return one state or SQL result instead of a sequence. |
+| `ANKUS116` | Return one state or SQL result per call; aggregate callbacks cannot return a sequence. |
 | `ANKUS117` | Use a supported SQL result type or concrete `PgAggregateState<T>`. |
 | `ANKUS118` | Select an existing tuple element by its exact `Element` name; do not mark the tuple group `params`. |
 | `ANKUS119` | Remove metadata from an empty `ValueTuple` group, which has no SQL inputs. |

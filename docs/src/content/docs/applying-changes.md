@@ -76,8 +76,8 @@ The writer converts each value with its column type's input or receive
 function, as the built-in apply worker does, so any type works, including
 extension types. An insert gives columns it does not send their defaults; an
 update keeps their current values. A sent NULL stays NULL. Text bytes from a
-replication connection are already in the database's encoding and are checked
-rather than converted; text from a string is converted. `Clear` resets a row
+replication connection are already in the database's encoding, so the writer
+only checks them; text from a string is converted. `Clear` resets a row
 for the next change, so an apply loop can reuse one row per table.
 
 Writers for a table share one `Descriptor` instance until the table's

@@ -33,7 +33,7 @@ public sealed class PgRange<T> : IEquatable<PgRange<T>>, IPgRange where T : stru
     }
 
     /// <summary>
-    /// Gets whether this value represents an empty range rather than an interval with bounds.
+    /// Gets whether this value represents an empty range, which has no bounds.
     /// </summary>
     public bool IsEmpty { get; }
 

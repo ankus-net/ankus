@@ -43,7 +43,7 @@ internal sealed unsafe class NativeSpinLockLease(nint address, nint data, nint f
     }
 
     /// <summary>
-    /// Queries lock state through SpinLockFree rather than interpreting opaque native bytes.
+    /// Queries lock state through SpinLockFree, leaving the native lock bytes opaque.
     /// </summary>
     internal static bool Query(nint address) => Invoke(address, 2)._value != 0;
 

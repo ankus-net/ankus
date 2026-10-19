@@ -41,7 +41,7 @@ internal static class NativeBindingNumericModel
     private static readonly FrozenSet<string> s_factNames = s_facts.Select(static fact => "ankus_header_" + fact.Name).ToFrozenSet(StringComparer.Ordinal);
 
     /// <summary>
-    /// Recognizes an exact numeric target constant rather than arbitrary compiler declarations.
+    /// Recognizes an exact numeric target constant by name. Arbitrary compiler declarations never match.
     /// </summary>
     internal static bool IsFact(string name) => s_factNames.Contains(name);
 

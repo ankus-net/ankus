@@ -37,7 +37,7 @@ internal sealed record AggregateParameter(AggregateType Type, string Name, bool 
             AttributeValues.Get(attribute, "Variadic", false));
 
     /// <summary>
-    /// Recognizes metadata that belongs to individual SQL values rather than their managed tuple container.
+    /// Recognizes metadata that applies to each individual SQL value inside a managed tuple container.
     /// </summary>
     internal static bool IsSqlMetadata(AttributeData attribute)
         => attribute.AttributeClass?.ToDisplayString() is "Ankus.PgParameterAttribute" or "Ankus.PgSqlTypeAttribute" or

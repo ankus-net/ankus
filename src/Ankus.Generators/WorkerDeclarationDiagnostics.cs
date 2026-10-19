@@ -246,7 +246,7 @@ internal static class WorkerDeclarationDiagnostics
     /// Stores the error for sql argument metadata does not apply to workers.
     /// </summary>
     private static readonly DiagnosticDescriptor s_parameterMetadata = new("ANKUS271", "SQL argument metadata does not apply to workers",
-        "'{0}' receives a native Datum rather than a SQL argument; remove {1} from its parameter", "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: HelpLink);
+        "'{0}' receives a native Datum and has no SQL argument; remove {1} from its parameter", "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: HelpLink);
 
     /// <summary>
     /// Gets the error for sql argument metadata does not apply to workers.

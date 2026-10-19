@@ -14,7 +14,7 @@ public enum PgSubtransactionMode
     /// <summary>
     /// Statements share the scope's single subtransaction, as SPI statements do in pgrx. A PostgreSQL error cannot be
     /// recovered inside the scope: later backend calls in it rethrow that error, and the whole scope rolls back before
-    /// the error reaches the caller. Use this for many writes, which then consume one subtransaction ID instead of one each.
+    /// the error reaches the caller. Use this for many writes, which then share one subtransaction ID.
     /// </summary>
     Atomic = 1,
 }

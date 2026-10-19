@@ -37,7 +37,7 @@ public sealed class PgTestAttribute : Attribute
     }
 
     /// <summary>
-    /// Gets or sets whether the test function runs with its owner's privileges instead of the caller's.
+    /// Gets or sets whether the test function runs with its owner's privileges; otherwise it uses the caller's.
     /// </summary>
     public bool SecurityDefiner
     {

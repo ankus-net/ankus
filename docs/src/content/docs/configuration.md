@@ -32,7 +32,7 @@ the current native value. Reads outside a backend callback or on another thread
 throw `InvalidOperationException`.
 
 A getter reads the variable PostgreSQL assigns, as pgrx's `GucSetting::get`
-does, instead of calling into the backend. After the first read it only repeats
+does, and makes no backend call. After the first read it only repeats
 the thread and callback checks. A string getter also reuses its last
 conversion from the server encoding while the setting's bytes are unchanged
 and the converted string is still alive.
@@ -194,7 +194,7 @@ and EXPLAIN settings. `RuntimeComputed` requires PostgreSQL 15 or later.
 `PgGucUnit` separately selects one memory or time unit for numeric settings;
 block conversions use the selected server's compiled block sizes.
 
-Options map to the native flags rather than adding an independent policy. In
+Options map directly to the native flags. In
 PostgreSQL 18, `DisallowInFile` blocks `ALTER SYSTEM` and affects configuration
 help, but does not itself reject a custom `UserSet` parameter supplied manually
 in a configuration file. Choose the appropriate context and check hook for

@@ -567,7 +567,7 @@ internal static class NativeCustomScanBridge
             return ExecStoreVirtualTuple(slot);
         }
 
-        /* Rows come from the provider, not from a locked heap tuple, so a recheck accepts what the scan produced. */
+        /* Rows come from the provider and lock no heap tuple, so a recheck accepts what the scan produced. */
         static bool
         ankus_custom_scan_recheck(ScanState *node, TupleTableSlot *slot)
         {

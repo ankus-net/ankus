@@ -10,8 +10,8 @@ namespace Ankus.Generators;
 /// <param name="Role">The comparison or hashing operation.</param>
 /// <param name="Expression">The statically bound interface expression.</param>
 /// <param name="Value">The immutable input conversion contract.</param>
-/// <param name="Comparison">Whether the result is a boolean rather than an index support integer.</param>
-/// <param name="Unary">Whether the helper takes one argument instead of two.</param>
+/// <param name="Comparison">Whether the result is a boolean; otherwise it is an index support integer.</param>
+/// <param name="Unary">Whether the helper takes one argument; otherwise it takes two.</param>
 internal sealed record DerivedHelperModel(string Managed, string Symbol, string Role, string Expression,
     FunctionType Value, bool Comparison, bool Unary)
 {

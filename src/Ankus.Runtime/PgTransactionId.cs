@@ -34,7 +34,7 @@ public readonly record struct PgTransactionId(uint Value)
     public bool IsValid => Value != Invalid.Value;
 
     /// <summary>
-    /// Gets whether this is an ordinary transaction ID rather than a PostgreSQL special value.
+    /// Gets whether this is an ordinary transaction ID; PostgreSQL's special values lie below FirstNormal.
     /// </summary>
     public bool IsNormal => Value >= FirstNormal.Value;
 

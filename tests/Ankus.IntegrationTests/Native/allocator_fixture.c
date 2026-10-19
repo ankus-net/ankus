@@ -23,7 +23,7 @@
 
 PG_MODULE_MAGIC;
 
-/* Independent observation through deconstruct_array, not the borrowed-view iterator path. */
+/* Independent observation through deconstruct_array, separate from the borrowed-view iterator path. */
 PGDLLEXPORT Datum ankus_test_array_bits(PG_FUNCTION_ARGS);
 PG_FUNCTION_INFO_V1(ankus_test_array_bits);
 PGDLLEXPORT Datum

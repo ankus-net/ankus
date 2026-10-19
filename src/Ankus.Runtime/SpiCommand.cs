@@ -21,7 +21,7 @@ public readonly struct SpiCommand
     }
 
     /// <summary>
-    /// Gets SQL text containing positional placeholders rather than formatted parameter values.
+    /// Gets SQL text that refers to each bound parameter value through a positional placeholder.
     /// </summary>
     /// <exception cref="InvalidOperationException">The command was not created with Spi.Sql.</exception>
     public string CommandText => _commandText ?? throw new InvalidOperationException("Create the SQL command with Spi.Sql before executing it.");

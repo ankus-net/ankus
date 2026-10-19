@@ -3,7 +3,8 @@ using System.Text;
 namespace Ankus.Generators;
 
 /// <summary>
-/// Retains a closed, comparable serialization graph using node indexes instead of compiler symbols or recursive objects.
+/// Retains a closed, comparable serialization graph whose nodes refer to each other by index, holding no compiler
+/// symbols or recursive objects.
 /// </summary>
 /// <param name="Nodes">The validated contracts in deterministic reader and writer order.</param>
 internal sealed record SerializationModel(EquatableArray<SerializationModel.Node> Nodes)

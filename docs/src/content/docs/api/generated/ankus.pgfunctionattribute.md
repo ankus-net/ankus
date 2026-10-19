@@ -189,7 +189,7 @@ Value: [string[]](https://learn.microsoft.com/dotnet/api/system.string)
 
 ### SecurityDefiner
 
-Gets or sets whether the function executes with its owner's privileges instead of the caller's.
+Gets or sets whether the function executes with its owner's privileges; otherwise it uses the caller's.
 
 ```csharp
 public bool SecurityDefiner { get; set; }
@@ -226,7 +226,8 @@ Value: [string](https://learn.microsoft.com/dotnet/api/system.string)
 
 Replacement declarations must match the managed wrapper's argument, result and NULL contracts.
 Explicit dependencies and type/schema prerequisites still apply. For an aggregate helper this affects only
-that helper, not the aggregate declaration. SQL syntax and object definitions are checked by PostgreSQL.
+that helper; the aggregate declaration is unchanged. SQL syntax and object definitions are checked by
+PostgreSQL.
 
 <a id="member-c188b5d892201c9f"></a>
 

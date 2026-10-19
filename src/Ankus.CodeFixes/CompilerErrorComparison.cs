@@ -56,7 +56,7 @@ internal static class CompilerErrorComparison
     }
 
     /// <summary>
-    /// Identifies an error by its declaration rather than a span shifted by an unrelated edit.
+    /// Identifies an error by its declaration, which stays stable when an unrelated edit shifts its span.
     /// </summary>
     /// <param name="diagnostic">The compiler error.</param>
     /// <param name="compilation">The compilation containing its source.</param>

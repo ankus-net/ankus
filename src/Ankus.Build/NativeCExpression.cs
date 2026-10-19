@@ -669,7 +669,7 @@ internal sealed class NativeCConstant
     internal ulong CharacterValue { get; private init; }
 
     /// <summary>
-    /// Gets a value indicating whether a character is a raw value above 0x7f rather than a code point.
+    /// Gets a value indicating whether a character is a raw value above 0x7f; otherwise it is a code point.
     /// </summary>
     internal bool IsRawCharacter { get; private init; }
 

@@ -123,7 +123,7 @@ internal static unsafe class NativeBackgroundWorker
     }
 
     /// <summary>
-    /// Checks an exact native Boolean rather than accepting arbitrary nonzero replies.
+    /// Checks for an exact native Boolean, zero or one, and rejects any other reply.
     /// </summary>
     internal static bool Boolean(int operation, nint value = 0)
     {
@@ -276,7 +276,7 @@ internal static unsafe class NativeBackgroundWorker
     }
 
     /// <summary>
-    /// Rejects fractional or overflowing intervals rather than rounding native timing values.
+    /// Rejects fractional or overflowing intervals so native timing values are never rounded.
     /// </summary>
     private static int WholeUnits(TimeSpan? duration, long ticksPerUnit, string parameter)
     {

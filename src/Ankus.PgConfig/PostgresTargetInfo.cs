@@ -316,7 +316,7 @@ public sealed class PostgresTargetInfo
         ArgumentException.ThrowIfNullOrWhiteSpace(archive);
         if (installation.TargetInfo is not null)
         {
-            throw new ArgumentException("Export target information from a PostgreSQL installation, not from other target information.", nameof(installation));
+            throw new ArgumentException("Export target information from a PostgreSQL installation; this installation already comes from exported target information.", nameof(installation));
         }
 
         string stage = Directory.CreateTempSubdirectory("ankus-target-").FullName;

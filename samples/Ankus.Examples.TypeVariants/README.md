@@ -58,7 +58,7 @@ and `extension_sql!` blocks do.
 - Floating-point text uses .NET's round-trip formatting. JSON writes `3` where
   Serde writes `3.0`, and very large or small `complex` parts use exponents such
   as `1E+21` where Rust writes every digit. Parsing uses .NET invariant number
-  syntax, which spells infinity `Infinity` rather than `inf`.
+  syntax, which spells infinity `Infinity` where Rust uses `inf`.
 - `rgb` accepts exactly two hexadecimal digits per component. Rust's
   `from_str_radix` would also accept a leading `+`.
 - The type names follow Ankus's snake-case default: `coord`, `complex`, `rgb`,

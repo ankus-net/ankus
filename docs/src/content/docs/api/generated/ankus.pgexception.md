@@ -178,7 +178,7 @@ Value: [string](https://learn.microsoft.com/dotnet/api/system.string)
 
 ### DetailLog
 
-Gets additional detail intended for the PostgreSQL server log rather than the client error response.
+Gets additional detail written only to the PostgreSQL server log. The client error response omits it.
 
 ```csharp
 public string? DetailLog { get; init; }

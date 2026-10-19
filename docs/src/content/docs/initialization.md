@@ -142,7 +142,7 @@ nongeneric, parameterless static `void` method with a managed implementation.
 | Diagnostic | Correction |
 | --- | --- |
 | `ANKUS230` | Declare separate methods for the two phases. |
-| `ANKUS231` | Use an ordinary named method instead of a local function, lambda or explicit interface implementation. |
+| `ANKUS231` | Use an ordinary named method. Local functions, lambdas and explicit interface implementations cannot initialize an extension. |
 | `ANKUS232`, `ANKUS233` | Declare a static callback and complete its work synchronously on the backend thread. |
 | `ANKUS234` | Remove callback method type parameters. |
 | `ANKUS235`, `ANKUS236`, `ANKUS237` | Provide a concrete, nonvirtual managed implementation; callbacks cannot be abstract or extern. |

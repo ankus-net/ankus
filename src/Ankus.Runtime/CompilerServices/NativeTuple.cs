@@ -370,7 +370,7 @@ public unsafe partial struct NativeValue
 
     /// <summary>
     /// Writes text as <see cref="NativeValue.FromString(string)"/> would transport it, encoding it straight into the
-    /// container instead of into a native buffer that is then copied and freed.
+    /// container, which avoids a native buffer that would be copied and freed.
     /// </summary>
     private static void WriteContainerText(ArrayBufferWriter<byte> buffer, string value)
     {

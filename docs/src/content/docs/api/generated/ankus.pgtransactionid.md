@@ -90,7 +90,7 @@ Value: [PgTransactionId](/api/ankus.pgtransactionid/)
 
 ### IsNormal
 
-Gets whether this is an ordinary transaction ID rather than a PostgreSQL special value.
+Gets whether this is an ordinary transaction ID; PostgreSQL's special values lie below FirstNormal.
 
 ```csharp
 public bool IsNormal { get; }

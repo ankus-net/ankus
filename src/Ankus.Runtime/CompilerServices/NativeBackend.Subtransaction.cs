@@ -7,7 +7,9 @@ public static unsafe partial class NativeBackend
     /// </summary>
     /// <param name="callback">The exception-containing managed entry point.</param>
     /// <param name="state">The callback's synchronous managed handle.</param>
-    /// <param name="atomic">Whether statements in the scope share its subtransaction instead of recovering individually.</param>
+    /// <param name="atomic">
+    /// Whether statements in the scope share its subtransaction; otherwise each recovers individually.
+    /// </param>
     /// <param name="rollBack">Whether the subtransaction is rolled back even when the callback succeeds.</param>
     internal static void RunSubtransaction(nint callback, nint state, bool atomic, bool rollBack = false)
     {

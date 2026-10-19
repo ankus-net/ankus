@@ -22,7 +22,7 @@ public readonly struct SpiCommand
 
 ### CommandText
 
-Gets SQL text containing positional placeholders rather than formatted parameter values.
+Gets SQL text that refers to each bound parameter value through a positional placeholder.
 
 ```csharp
 public string CommandText { get; }

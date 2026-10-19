@@ -12,7 +12,7 @@ namespace Ankus.Tool;
 /// <param name="IsSdk">Whether this reference needs a concrete MSBuild SDK version.</param>
 /// <param name="Prefix">Text preceding the version within the XML value.</param>
 /// <param name="Suffix">Text following the version within the XML value.</param>
-/// <param name="Item">An optional item that needs identity-specific metadata instead of changing the shared version token.</param>
+/// <param name="Item">An optional item that needs identity-specific metadata, leaving the shared version token unchanged.</param>
 /// <param name="Condition">The condition restricting new metadata to its original condition and framework identity.</param>
 internal sealed record UpgradeReference(UpgradeDocument Document, XObject Node, string Package, string Version,
     bool IsSdk, string Prefix = "", string Suffix = "", XElement? Item = null, string? Condition = null);

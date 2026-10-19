@@ -177,8 +177,7 @@ default requires PostgreSQL 16 or later. Aligned `TryAllocate` and `TryReallocat
 require PostgreSQL 16.15, 17.11, 18.6, or 19 beta 3 or later because earlier releases have
 unsafe native no-OOM handling. PostgreSQL 19 development snapshots are also
 rejected for these requests, because their version number cannot show whether
-the fix is present. These requests raise SQLSTATE `0A000` instead of returning
-null or acquiring an over-aligned allocation; ordinary alignment remains
+the fix is present. These requests raise SQLSTATE `0A000`. Ordinary alignment remains
 available on older servers.
 
 `AllocateUtf8String` copies strict UTF-8 bytes followed by one zero byte. It rejects
@@ -212,7 +211,7 @@ invalidation callback marks an AllocSet context nonempty, including after an
 explicit reset. Other native allocators determine emptiness from their own
 blocks or live chunks, so this property does not establish a portable count of
 user allocations.
-These statistics describe native contexts, not the managed heap.
+These statistics cover native contexts only.
 A resize can release a large block while allocating a regular block for its
 replacement; the reported byte change includes both operations.
 
@@ -338,8 +337,7 @@ size policy and exclusivity apply.
 inspecting an allocation header. A null address returns null. Non-null addresses
 can refer to stack, interior, or resource-owned memory when the caller guarantees
 accessible, initialized bytes and the required external lifetime. The resulting
-reference's `LifetimeContext` is an explicit lifetime anchor, not an inferred
-allocator owner. A captured reset generation makes the view stale after context
+reference's `LifetimeContext` is the lifetime anchor you supplied. A captured reset generation makes the view stale after context
 reset even when the context itself survives. No native record is allocated for
 each borrowed view.
 

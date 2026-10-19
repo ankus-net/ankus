@@ -74,7 +74,7 @@ internal static class TriggerPipeline
     /// <summary>
     /// Contains only invocation identities needed to render a trigger boundary.
     /// </summary>
-    /// <param name="EventTrigger">Whether the callback handles database events rather than rows.</param>
+    /// <param name="EventTrigger">Whether the callback handles database events; otherwise it handles rows.</param>
     /// <param name="Target">The fully qualified managed invocation target.</param>
     /// <param name="Callback">The assembly-specific callback identity.</param>
     internal sealed record TriggerModel(bool EventTrigger, string Target, string Callback);

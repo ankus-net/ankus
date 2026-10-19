@@ -51,7 +51,7 @@ internal sealed class PgPropertySource
     internal static PgPropertySource Replay(ulong[] choices) => new(0, choices);
 
     /// <summary>
-    /// Gets whether the source replays recorded choices rather than drawing random ones.
+    /// Gets whether the source replays recorded choices; otherwise it draws random ones.
     /// </summary>
     internal bool Replaying => _replay is not null;
 

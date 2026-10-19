@@ -260,14 +260,14 @@ that survives individual queries and transactions. The sample allocates them in
 a child of `TopMemoryContext`.
 
 Registry keys are case-sensitive. A name must fit the selected headers'
-`EXTNODENAME_MAX_LEN`, including its terminating zero byte; PostgreSQL checks
-encoded bytes, not managed character counts. Duplicate registration raises a
+`EXTNODENAME_MAX_LEN`, including its terminating zero byte; PostgreSQL counts
+the encoded bytes. Duplicate registration raises a
 native error and leaves the original method table installed.
 `NativeMethods.GetCustomScanMethods` returns the retained table, returns a null
 address for an optional missing lookup, or raises an error when the requested
 name is required. These calls use the generated native error guard.
 
-Registration belongs to the backend, not to a SQL transaction. Rolling back the
+Registration belongs to the backend and outlives the transaction. Rolling back the
 registering transaction does not remove its entry. Keep successful registrations
 alive until the backend exits, and reclaim attempted storage when registration
 fails. A different backend has its own registry and must load the provider too.
@@ -339,7 +339,7 @@ partition ancestry, including reordered and dropped columns. PostgreSQL 13–15
 accept relation-id sets for this helper; PostgreSQL 16 and later accept relation
 pointers. The sample selects the matching declaration with the SDK's
 [`ANKUS_PG13` through `ANKUS_PG19` symbols](/reference/build-settings/#postgresql-compilation-symbols).
-It returns new native nodes rather than mutating another path's data.
+It returns new native nodes and leaves another path's data unchanged.
 
 During plan creation, these expressions move into `CustomScan.custom_exprs`.
 PostgreSQL then performs its ordinary outer-variable-to-parameter and plan
@@ -351,8 +351,8 @@ EXPLAIN's `Trace Parameters` displays the retained variables through PostgreSQL'
 deparser and ancestor plan context. `Trace Parameter Remaps` counts the provider's
 partition transformations. These diagnostics do not evaluate the original
 clauses or repeat their volatile calls. Variables behind placeholder evaluation
-barriers are left to the child; the list is diagnostic, not a complete inventory
-of every dependency. Unparameterized paths omit both fields.
+barriers are left to the child, so the list is a diagnostic that can omit some
+dependencies. Unparameterized paths omit both fields.
 
 ## Marking and restoring positions
 
@@ -388,8 +388,8 @@ every supported server version and platform.
 A parallel-aware custom scan can request dynamic shared memory (DSM) through
 `CustomExecMethods`. PostgreSQL owns the segment and supplies a coordinate
 address to the leader and every worker. The address may differ between
-processes. Store only process-independent values in shared memory, never managed
-references or pointers into another process's address space.
+processes. Store only process-independent values in shared memory. Do not store
+managed references or pointers into another process's address space.
 
 The trace sample implements these callbacks:
 
@@ -409,7 +409,7 @@ use the same native atomics.
 
 `ReInitializeDSMCustomScan` resets shared state; `ReScanCustomScan` resets the
 local scan and propagates parameters to its child. Keep the two responsibilities
-independent rather than relying on their relative invocation order. PostgreSQL
+independent of their relative invocation order. PostgreSQL
 can also execute a parallel plan entirely in the leader when workers are
 unavailable.
 
@@ -422,8 +422,8 @@ The existing `Trace Rows`, `Trace Calls`, `Trace Rescans` and
 `trace_scan_counts()` remain local to the reporting backend.
 
 Shared EXPLAIN values are copied at shutdown. After early termination, workers
-may still be finishing, so each counter is an independent snapshot, not a final
-worker total or a transactionally consistent group. Do not wait for workers
+may still be finishing, so each counter is an independent snapshot that may
+change before workers finish and may not match the others. Do not wait for workers
 inside a child shutdown callback: its parent Gather may still need to detach
 full tuple queues. On an error, ordinary shutdown and end callbacks are not
 guaranteed; context cleanup must not dereference a borrowed DSM address after

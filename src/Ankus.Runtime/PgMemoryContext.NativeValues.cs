@@ -66,7 +66,7 @@ public sealed unsafe partial class PgMemoryContext
         where T : unmanaged => new(Allocate<T>(options: options, alignment: alignment));
 
     /// <summary>
-    /// Creates an initialized unmanaged value reclaimed by its native context rather than individual disposal.
+    /// Creates an initialized unmanaged value that its native context reclaims, with no disposal of its own.
     /// </summary>
     /// <typeparam name="T">The unmanaged representation to copy.</typeparam>
     /// <param name="value">The initial value.</param>

@@ -18,7 +18,8 @@ public static class PgFixedKeyComparer
     /// Supported types are Boolean, character, integer primitives, enums, Int128, UInt128,
     /// Guid, Half, Single, Double and Decimal. Equivalent NaNs, signed zeros and decimal scales
     /// hash identically. Other structs require an explicit stable comparer. Hashes are an
-    /// implementation detail, not a persistent wire format or a Rust Hash encoding.
+    /// implementation detail; don't persist them, send them over the wire or expect them to match
+    /// Rust's Hash encoding.
     /// </remarks>
     public static IEqualityComparer<T> Create<T>() where T : unmanaged
     {

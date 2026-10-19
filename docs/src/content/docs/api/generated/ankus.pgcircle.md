@@ -10,7 +10,7 @@ Namespace: [Ankus](/api/ankus/)
 Assembly: `Ankus.Runtime.dll`
 
 A PostgreSQL circle with double-precision center and radius. PostgreSQL validates the radius on datum conversion.
-Equality compares the stored center and radius, not area or geometric tolerance.
+Equality compares the stored center and radius exactly, without geometric tolerance.
 
 ```csharp
 public readonly struct PgCircle : ISpanFormattable, IFormattable, IParsable<PgCircle>, IEquatable<PgCircle>
@@ -25,7 +25,7 @@ Implements: [ISpanFormattable](https://learn.microsoft.com/dotnet/api/system.isp
 ### PgCircle(PgPoint, double)
 
 A PostgreSQL circle with double-precision center and radius. PostgreSQL validates the radius on datum conversion.
-Equality compares the stored center and radius, not area or geometric tolerance.
+Equality compares the stored center and radius exactly, without geometric tolerance.
 
 ```csharp
 public PgCircle(PgPoint Center, double Radius)

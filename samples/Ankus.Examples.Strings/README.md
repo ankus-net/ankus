@@ -16,7 +16,8 @@ SELECT i, s FROM split_table(',a,,b,', ',');
 
 The example assumes installation in `public`. Use your extension's schema when
 qualifying `substring`: PostgreSQL's built-in function has the same name and
-signature but uses character positions and a length rather than byte bounds.
+signature but uses character positions and a length. The sample's function
+uses byte bounds.
 The table form preserves the upstream `i` and `s` column names and zero-based
 ordinals. Sets stream pieces in source order; use the ordinal column with
 `ORDER BY i` when a query needs explicit ordering.
@@ -42,8 +43,7 @@ Matching is ordinal, without case folding or Unicode normalization.
 
 Nullable arguments follow Ankus's inferred PostgreSQL `STRICT` behavior.
 SQL NULL is distinct from present empty text, an empty array and an empty string
-row. Set/table iterators retain managed text rather than borrowed spans across
-native callbacks.
+row. Set/table iterators retain managed text across native callbacks.
 
 The implementation is MIT-licensed. The sample's third-party notice preserves
 the upstream pgrx license and the [Unicode data notice](https://www.unicode.org/license.txt).

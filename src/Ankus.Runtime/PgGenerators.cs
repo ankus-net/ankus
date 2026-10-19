@@ -13,7 +13,7 @@ namespace Ankus;
 public static class PgGenerators
 {
     /// <summary>
-    /// How rarely a number takes one of its range's limits instead of a uniform draw.
+    /// How rarely a number takes one of its range's limits; other draws are uniform.
     /// </summary>
     private const uint LimitOneIn = 16;
 

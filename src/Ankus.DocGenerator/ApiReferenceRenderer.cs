@@ -232,7 +232,7 @@ internal sealed partial class ApiReferenceRenderer
             return $"[{label}]({link})";
         }
 
-        // Tuple syntax names several components, not a single external API declaration.
+        // Tuple syntax names several components, so it has no single external API declaration to link.
         if (label.StartsWith('(') && label.EndsWith(')'))
         {
             return "<code>" + label + "</code>";

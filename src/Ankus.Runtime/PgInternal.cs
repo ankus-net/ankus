@@ -123,7 +123,7 @@ public sealed class PgInternal
         Datum.Lifetime.Validate();
         if (_state is null)
         {
-            throw new InvalidOperationException("This internal value is a native pointer, not managed state created by Ankus.");
+            throw new InvalidOperationException("This internal value is a native pointer; only managed state created by Ankus can be read this way.");
         }
 
         return _state.Get<T>();
@@ -213,7 +213,7 @@ public sealed class PgInternal
             Validate();
             if (typeof(T) != type)
             {
-                throw new InvalidCastException($"Internal state contains {type}, not {typeof(T)}.");
+                throw new InvalidCastException($"Internal state contains {type}; {typeof(T)} was requested.");
             }
 
             return (T)_value!;

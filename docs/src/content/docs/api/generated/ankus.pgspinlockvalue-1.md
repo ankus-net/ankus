@@ -58,7 +58,7 @@ public bool IsLocked { get; }
 
 Value: [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
 
-This is an instantaneous observation, not permission to access the protected value.
+This is an instantaneous observation. It does not grant access to the protected value.
 PostgreSQL 19 and later throw NotSupportedException because SpinLockFree was removed.
 
 

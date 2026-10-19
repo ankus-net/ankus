@@ -41,8 +41,8 @@ internal sealed class NativeBindingHeaderAst
     internal List<string> TopLevelOrder { get; } = [];
 
     /// <summary>
-    /// Gets the identities of the struct and union declarations made at file scope, which bindgen parses on its own
-    /// rather than through a type that names them.
+    /// Gets the identities of the struct and union declarations made at file scope, which bindgen parses as standalone
+    /// items, separately from any type that names them.
     /// </summary>
     internal HashSet<string> FileScope { get; } = new(StringComparer.Ordinal);
 

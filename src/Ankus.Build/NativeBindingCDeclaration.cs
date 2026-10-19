@@ -294,7 +294,7 @@ internal static partial class NativeBindingCDeclaration
         }
 
         /// <summary>
-        /// Rejects trailing expressions instead of emitting only a valid prefix.
+        /// Rejects trailing expressions, so a valid prefix is never emitted on its own.
         /// </summary>
         internal void End()
         {
@@ -307,7 +307,7 @@ internal static partial class NativeBindingCDeclaration
 
         private Atom Named(string path)
         {
-            // Keep native typedefs intact: their target headers, not bindgen's source platform, define the ABI.
+            // Keep native typedefs intact: their target headers define the ABI, whatever bindgen's source platform.
             if (catalog.Aliases.ContainsKey(path) ||
                 path is "NodeTag" or "Oid" or "Datum" or "TransactionId" or "MultiXactId")
             {

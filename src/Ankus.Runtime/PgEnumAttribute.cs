@@ -2,7 +2,7 @@ namespace Ankus;
 
 /// <summary>
 /// Generates a PostgreSQL enum type and Native AOT conversions for a C# enum.
-/// Labels retain member names by default; PostgreSQL ordering follows declaration order, not numeric values.
+/// Labels retain member names by default; PostgreSQL ordering follows declaration order and ignores numeric values.
 /// </summary>
 [AttributeUsage(AttributeTargets.Enum, Inherited = false)]
 public sealed class PgEnumAttribute : Attribute

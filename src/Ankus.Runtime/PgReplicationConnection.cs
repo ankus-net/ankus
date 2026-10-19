@@ -72,7 +72,7 @@ public sealed unsafe class PgReplicationConnection : IDisposable
         int status = Run(command, 0, out _);
         if (status != 1)
         {
-            throw new PgException(PgSqlStates.ProtocolViolation, $"The replication command returned status {status}, not a completed command.");
+            throw new PgException(PgSqlStates.ProtocolViolation, $"The replication command returned status {status}; a completed command was expected.");
         }
     }
 
@@ -101,7 +101,7 @@ public sealed unsafe class PgReplicationConnection : IDisposable
 
         if (status != 2)
         {
-            throw new PgException(PgSqlStates.ProtocolViolation, $"The replication query returned status {status}, not rows.");
+            throw new PgException(PgSqlStates.ProtocolViolation, $"The replication query returned status {status}; a row result was expected.");
         }
 
         int width = ReadInt(ref payload);
@@ -138,7 +138,7 @@ public sealed unsafe class PgReplicationConnection : IDisposable
         int status = Run(command, 0, out _);
         if (status is not (4 or 5))
         {
-            throw new PgException(PgSqlStates.ProtocolViolation, $"The replication command returned status {status}, not a copy.");
+            throw new PgException(PgSqlStates.ProtocolViolation, $"The replication command returned status {status}; a copy was expected.");
         }
     }
 

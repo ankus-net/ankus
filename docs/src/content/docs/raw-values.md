@@ -218,8 +218,8 @@ Signatures follow the selected PostgreSQL version, including native `const` and
 `volatile` contracts. For example, `PageValidateSpecialPointer` returns `bool`
 on PostgreSQL 13–15 and `void` on 16–19; `SpinLockFree` is unavailable on 19.
 Page and tuple helpers require valid native storage with the original owner's
-lifetime. `PgMemoryContext.Id` is an opaque validation token, not a native
-`MemoryContext` address. `GetMemoryChunkContext` obtains the native owner address
+lifetime. `PgMemoryContext.Id` is an opaque validation token; it doesn't hold the
+native `MemoryContext` address. `GetMemoryChunkContext` obtains the native owner address
 of a live PostgreSQL allocation with a chunk header. Keep spinlock critical sections entirely in native code: managed
 execution can allocate or suspend while a lock is held.
 
@@ -291,7 +291,7 @@ first typedef in ordinal order, or a generated name for an unnamed signature.
 
 Named record fields also expose a `<Record>_<Field>Callback` type. Use these
 names for method-table callbacks that have no C typedef; their names come from
-the record and field rather than a collected type index. For example, given
+the record and field. For example, given
 an initialized `CustomExecMethods` table and a valid `CustomScanState` address:
 
 ```csharp
@@ -475,8 +475,8 @@ it, as `s_installed` does above, so a retry never saves your own hook as the
 previous hook. Checking whether the global still holds your callback is not
 enough once another library has chained after yours. If a callback reaches
 itself through such a cycle anyway, the native callback boundary raises
-PostgreSQL's `stack depth limit exceeded` error (SQLSTATE `54001`) instead of
-overflowing the native stack. The
+PostgreSQL's `stack depth limit exceeded` error (SQLSTATE `54001`) before the
+native stack can overflow. The
 [hooks sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Hooks)
 ports three of pgrx's four `hooks` example hooks; it omits
 `ClientAuthentication_hook`.
@@ -522,7 +522,7 @@ binds an entire array of the named type, preserving shape and NULL cells.
 
 `TypeOid` retains type identity, including domains. `Read<T>()` converts to a supported
 C# representation; `ToPostgresString()` calls the type's output function. A nullable wrapper
-accepts SQL NULL. A zero datum is a present value, not NULL.
+accepts SQL NULL. A zero datum is a present value.
 
 For an array datum, `using PgArrayView view = value.Read<PgArrayView>()` borrows
 its native cells under the source lifetime. It retains exact array and element
@@ -910,7 +910,7 @@ an attribute with the same metadata name in another assembly cannot replace it.
 | `ANKUS151` | Remove a slot's `PgSqlType` or `PgCompositeType` override. |
 | `ANKUS152` | Implement `IPgDatumReader<T>` for a SQL input. |
 | `ANKUS153` | Implement `IPgDatumWriter<T>` for a SQL result. |
-| `ANKUS154` | Use a scalar, `T[]` or `PgArray<T>`, not a nested array or other container. |
+| `ANKUS154` | Use a scalar, `T[]` or `PgArray<T>`. Nested arrays and other containers aren't supported. |
 | `ANKUS155` | Keep only one default mapping declaration. |
 | `ANKUS156` | Select a closed construction of the annotated managed type. |
 | `ANKUS157` | Keep only one exact mapping for each closed managed target. |

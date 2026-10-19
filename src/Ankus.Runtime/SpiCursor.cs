@@ -46,7 +46,7 @@ public sealed class SpiCursor : IDisposable
     /// Fetches a batch in the requested direction. Backward fetching requires a scrollable PostgreSQL cursor.
     /// </summary>
     /// <param name="count">The nonnegative number of rows, or zero to fetch the current row.</param>
-    /// <param name="forward">Whether to move forward rather than backward.</param>
+    /// <param name="forward">Whether to move forward; otherwise the cursor moves backward.</param>
     /// <returns>An independently owned managed batch.</returns>
     public SpiResult Fetch(int count, bool forward)
     {
@@ -74,7 +74,7 @@ public sealed class SpiCursor : IDisposable
     /// Fetches raw native values in the requested direction. Backward fetching requires a scrollable cursor.
     /// </summary>
     /// <param name="count">The nonnegative fetch count, or zero to fetch the current row.</param>
-    /// <param name="forward">Whether to move forward rather than backward.</param>
+    /// <param name="forward">Whether to move forward; otherwise the cursor moves backward.</param>
     /// <returns>A raw batch to dispose before leaving the backend callback.</returns>
     public SpiRawResult FetchRaw(int count, bool forward)
     {

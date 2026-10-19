@@ -48,8 +48,8 @@ public unsafe partial struct NativeValue
     }
 
     /// <summary>
-    /// Recognizes a trigger returning the NEW row it was given, unchanged, which PostgreSQL can keep as it is instead
-    /// of receiving a converted copy.
+    /// Recognizes a trigger returning the NEW row it was given, unchanged, which PostgreSQL can keep as it is without
+    /// receiving a converted copy.
     /// </summary>
     /// <param name="context">The trigger's context.</param>
     /// <param name="row">The row the trigger returned.</param>
@@ -73,7 +73,7 @@ public unsafe partial struct NativeValue
     /// <returns>An owned transport: one value per column, or a self-describing row for a row of another shape.</returns>
     /// <remarks>
     /// A cell of the context's NEW row that was not replaced and holds an immutable value is sent as kept, and
-    /// PostgreSQL keeps its original datum instead of converting it back. Text is encoded into the same allocation as
+    /// PostgreSQL keeps its original datum without converting it back. Text is encoded into the same allocation as
     /// the cells.
     /// </remarks>
     public static NativeValue FromTriggerRow(PgTriggerContext context, PgHeapTuple row) => FromTriggerRow(context, row, null, 0);

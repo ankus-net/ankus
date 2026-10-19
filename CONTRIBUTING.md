@@ -62,4 +62,4 @@ x64, macOS ARM64 and Windows x64. CodeQL and the secret scan must report no find
 describe code which must stay as it is carry a `// codeql[rule-id]` comment saying why; see
 [Security checks](docs/contributing/development.md#security-checks).
 
-Report a security problem privately, as [SECURITY.md](SECURITY.md) describes, not in an issue.
+Report a security problem privately, as [SECURITY.md](SECURITY.md) describes. Public issues would expose it before a fix exists.

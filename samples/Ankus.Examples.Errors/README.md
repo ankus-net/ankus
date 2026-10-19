@@ -25,5 +25,5 @@ development cluster.
 
 The nullable array example preserves SQL NULL cells as `int?` values and rejects
 them deliberately. The native relation example shows a PostgreSQL lookup error
-crossing the guarded boundary as an owned diagnostic instead of a native
-`longjmp` crossing managed frames.
+crossing the guarded boundary as an owned diagnostic, so no native `longjmp`
+crosses managed frames.

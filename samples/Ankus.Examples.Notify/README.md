@@ -5,7 +5,7 @@ This ports pgrx's `notify` example. `Notifications` wraps PostgreSQL's
 and `Async_UnlistenAll`) and drives a cache-invalidation broadcast. An
 `AFTER INSERT OR UPDATE OR DELETE` row trigger on `products` sends
 `NOTIFY cache_invalidation, '<id>'` for every changed row, so an application
-that listens on that channel can drop the matching cache entry instead of polling.
+that listens on that channel can drop the matching cache entry without polling.
 
 ```sql
 CREATE EXTENSION ankus_notify;

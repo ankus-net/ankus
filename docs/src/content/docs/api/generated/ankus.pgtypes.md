@@ -62,6 +62,7 @@ Returns: [uint](https://learn.microsoft.com/dotnet/api/system.uint32)
 
 The resolved PostgreSQL OID.
 
-This is a name-based convenience corresponding to pgrx's rust_regtypein helper, not a generated SQL type mapping.
+This is a name-based convenience corresponding to pgrx's rust_regtypein helper.
+It ignores generated SQL type mappings.
 Namespace and declaring-type qualifiers are omitted; generic arity and array suffixes remain in Type.Name.
 PostgreSQL applies its normal unquoted-name rules. SQL renaming, declared schemas and CLR primitive aliases are not inferred.

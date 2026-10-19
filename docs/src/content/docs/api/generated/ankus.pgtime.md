@@ -407,7 +407,7 @@ The managed record diagnostic representation.
 
 ### ToTimeOnly()
 
-Converts to TimeOnly, rejecting 24:00:00 rather than wrapping to midnight.
+Converts to TimeOnly and rejects 24:00:00, which TimeOnly could only represent by wrapping to midnight.
 
 ```csharp
 public TimeOnly ToTimeOnly()

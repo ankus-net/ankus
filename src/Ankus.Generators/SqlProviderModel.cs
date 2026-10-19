@@ -6,7 +6,7 @@ namespace Ankus.Generators;
 /// <summary>
 /// Retains authored provider inventory independently of compiler attributes and current SQL graph ownership.
 /// </summary>
-/// <param name="Function">Whether the provider declares a SQL function signature instead of a type.</param>
+/// <param name="Function">Whether the provider declares a SQL function signature; otherwise it declares a type.</param>
 /// <param name="BlockId">The original custom SQL block identifier.</param>
 /// <param name="Name">The exact type name or authored function signature.</param>
 /// <param name="Schema">The optional explicitly selected type schema.</param>
@@ -61,7 +61,7 @@ internal sealed record SqlProviderModel(bool Function, string? BlockId, string? 
     }
 
     /// <summary>
-    /// Locates constructor values by semantic parameter rather than authored argument order.
+    /// Locates constructor values by semantic parameter, whatever the authored argument order.
     /// </summary>
     /// <param name="attribute">The transient selected provider attribute.</param>
     /// <param name="position">The constructor parameter index.</param>

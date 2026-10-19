@@ -84,7 +84,8 @@ public PgMemoryContext LifetimeContext { get; }
 
 Value: [PgMemoryContext](/api/ankus.pgmemorycontext/)
 
-For a raw reference this is a lifetime anchor, not a claim about native allocator ownership.
+For a raw reference this is only a lifetime anchor. It says nothing about which native
+allocator owns the memory.
 
 <a id="member-ead6c7e3774c8253"></a>
 

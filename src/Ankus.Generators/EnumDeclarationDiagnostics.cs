@@ -27,7 +27,7 @@ internal static class EnumDeclarationDiagnostics
     /// Stores the error for PostgreSQL enum cannot use Flags.
     /// </summary>
     private static readonly DiagnosticDescriptor s_flags = new("ANKUS279", "PostgreSQL enum cannot use Flags",
-        "'{0}' must be declared without Flags; PostgreSQL labels are individual values, not bit masks", "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: HelpLink);
+        "'{0}' must be declared without Flags; PostgreSQL labels are individual values that cannot combine as bit masks", "Ankus", DiagnosticSeverity.Error, isEnabledByDefault: true, helpLinkUri: HelpLink);
 
     /// <summary>
     /// Gets the error for PostgreSQL enum cannot use Flags.

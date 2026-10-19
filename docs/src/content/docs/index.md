@@ -38,7 +38,7 @@ SELECT add(40, 2);  -- 42
   </div>
   <div class="feature-item">
     <span class="feature-key">Spi.Sql</span>
-    <span class="feature-label">Query from inside the backend. Interpolated values become bound parameters, not SQL text.</span>
+    <span class="feature-label">Query from inside the backend. Interpolated values are sent as bound parameters.</span>
   </div>
   <div class="feature-item">
     <span class="feature-key">Replication</span>

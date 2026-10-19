@@ -17,8 +17,8 @@ with .NET lifecycles while choosing its target framework separately: EF Core 9
 targets .NET 8, whereas EF Core 10 targets .NET 10.
 [Npgsql 10](https://www.npgsql.org/doc/release-notes/10.0.html) drops the already
 unsupported .NET 6 target to reduce compatibility code. These examples support
-explicit target and lifecycle decisions, not a rule that every package must
-target every .NET release. Ankus additionally owns a native runtime fork, so
+explicit target and lifecycle decisions; a package need not target every .NET
+release. Ankus additionally owns a native runtime fork, so
 managed assembly compatibility cannot establish its support matrix.
 
 Keep ordinary managed packages on the lowest supported target their APIs need.
@@ -160,7 +160,7 @@ cases target `net11.0`. Releases build and verify every line's packages.
    templates keep `net10.0`, the LTS release, as their default; `--framework
    net11.0` opts in and pins the matching SDK in `global.json`. Rebase the fork
    onto the GA release when it ships and repeat this gate on it. .NET 11 support
-   is required work, not an optional experiment.
+   is required work.
 
 Start with explicit compatibility runs using existing automation. Add a small
 scheduled/manual preview lane if useful; it must record failures without
@@ -220,7 +220,7 @@ A pinned runtime can also stop building after its release: the runtime build
 treats NuGet's audit warnings as errors, so a new advisory against a package its
 build tools restore fails a cold build. Reference the patched package from those
 tools in the fork, as `f97c4de` did for `System.Security.Cryptography.Pkcs`,
-rather than turning the audit off; the payloads they build do not change.
+and keep the audit on; the payloads they build do not change.
 
 For each update, rebase the minimal patch, rebuild the native payloads and update
 the pinned compiler/runtime identities together. Use immutable package versions

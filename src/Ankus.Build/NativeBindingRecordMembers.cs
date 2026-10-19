@@ -15,7 +15,7 @@ internal sealed class NativeBindingRecordMembers(NativeRecordGraph graph)
     internal bool IsInternalDeclaration(int index) => _containers.Contains(index);
 
     /// <summary>
-    /// Reports whether a type spelling denotes an internal anonymous container rather than an exposed native value.
+    /// Reports whether a type spelling denotes an internal anonymous container. Other types are exposed native values.
     /// </summary>
     internal bool IsInternalType(int index)
         => graph.Types[graph.Types[index].Canonical].Declaration is int declaration && IsInternalDeclaration(declaration);

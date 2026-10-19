@@ -44,14 +44,13 @@ multiple dimensions or a non-one lower bound. It never silently flattens the val
 
 PostgreSQL stores arrays of `bool`, `"char"`, `smallint`, `integer`, `bigint`,
 `oid`, `real` and `double precision` as packed native arrays. Without NULL
-elements, these cross the call boundary as whole blocks rather than element by
-element, and `bool[]`, `sbyte[]`, `short[]`, `int[]`, `long[]`, `uint[]`,
-`float[]` and `double[]` copy them in bulk; nullable element types copy each
-element. In a UTF-8 database, `text`, `varchar` and `bpchar` elements are read as
-their UTF-8 bytes with no encoding conversion, and `string` arrays are written
-that way. Domain and mapped element types, and other arrays, convert element by
-element. To read the native elements without any copy, use a
-[contiguous native slice](#contiguous-native-slices).
+elements, these cross the call boundary as whole blocks, and `bool[]`, `sbyte[]`,
+`short[]`, `int[]`, `long[]`, `uint[]`, `float[]` and `double[]` copy them in
+bulk; nullable element types copy each element. In a UTF-8 database, `text`,
+`varchar` and `bpchar` elements are read as their UTF-8 bytes with no encoding
+conversion, and `string` arrays are written that way. Domain and mapped element
+types, and other arrays, convert element by element. To read the native elements
+without any copy, use a [contiguous native slice](#contiguous-native-slices).
 
 ## Dimensions and indexing
 
