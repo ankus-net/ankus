@@ -624,8 +624,13 @@ public sealed partial class ToolCommandTests(TestContext context)
         Assert.IsTrue(File.Exists(compiler));
         string stagedCompiler = Path.Join(IntegrationEnvironment.RepositoryRoot, "artifacts", "nativeaot",
             RuntimeInformation.RuntimeIdentifier, "compiler", OperatingSystem.IsWindows() ? "ilc.exe" : "ilc");
-        Assert.AreSequenceEqual(await File.ReadAllBytesAsync(stagedCompiler, context.CancellationToken),
-            await File.ReadAllBytesAsync(compiler, context.CancellationToken));
+        // Without a staged runtime the feed has none of its own, and the compiler is the published one.
+        if (File.Exists(stagedCompiler))
+        {
+            Assert.AreSequenceEqual(await File.ReadAllBytesAsync(stagedCompiler, context.CancellationToken),
+                await File.ReadAllBytesAsync(compiler, context.CancellationToken));
+        }
+
         string helper = Path.GetFullPath(properties.GetProperty("_AnkusBuildTool").GetString()!);
         Assert.StartsWith(s_environment["NUGET_PACKAGES"]!, helper);
         Assert.IsTrue(File.Exists(helper));
