@@ -151,8 +151,8 @@ dotnet run --file ./eng/Ankus.Ci.cs -- postgresql-check 19 /path/to/pg19/bin/pg_
 ```
 
 The preparation command verifies that `pg_config` matches the selected major,
-including beta and release-candidate identifiers. Completed native test reports,
-not the matrix definition or this prerequisite check, establish version coverage.
+including beta and release-candidate identifiers. Version coverage comes from
+completed native test reports; the matrix and this check only prepare a run.
 
 ### Additional platform and version prerequisites
 

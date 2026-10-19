@@ -220,7 +220,7 @@ A pinned runtime can also stop building after its release: the runtime build
 treats NuGet's audit warnings as errors, so a new advisory against a package its
 build tools restore fails a cold build. Reference the patched package from those
 tools in the fork, as `f97c4de` did for `System.Security.Cryptography.Pkcs`,
-rather than turning the audit off; the payloads they build do not change.
+and keep the audit on; the payloads they build do not change.
 
 For each update, rebase the minimal patch, rebuild the native payloads and update
 the pinned compiler/runtime identities together. Use immutable package versions
