@@ -76,7 +76,7 @@ public static class PropertyFunctions
                 runner.Run(TimesWithTimeZone(), value => LiteralRoundTrip(value, "nop_timetz", ref checkedInputs));
                 break;
             default:
-                throw new ArgumentOutOfRangeException(nameof(name), name, "Unknown pgrx property test.");
+                throw new ArgumentOutOfRangeException(nameof(name), name, "Unknown property test.");
         }
 
         return checkedInputs;

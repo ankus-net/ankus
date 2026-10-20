@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>pgrx's postgres_type_variants example: five ways to define a PostgreSQL type's input and output.</Description>
+    <Description>Five ways to define a PostgreSQL type's input and output.</Description>
     <AnkusExtensionName>ankus_type_variants</AnkusExtensionName>
     <AnkusExtensionControlFile>$(MSBuildProjectDirectory)/ankus_type_variants.control</AnkusExtensionControlFile>
   </PropertyGroup>

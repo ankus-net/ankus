@@ -62,7 +62,7 @@ public sealed class BenchmarkConsoleFormatTests
     /// The running line lists the benchmark's settings and the summary counts results and names missing benchmarks.
     /// </summary>
     [TestMethod]
-    public void RunningLineAndSummaryMatchPgrx()
+    public void RunningLineListsSettingsAndSummaryNamesMissingBenchmarks()
     {
         using JsonDocument descriptor = JsonDocument.Parse("""
             {"bench_name":"benches.insert()","transaction_mode":"shared","setup_function":null,
@@ -92,7 +92,7 @@ public sealed class BenchmarkConsoleFormatTests
     [DataRow(1500.0, "1.5 us")]
     [DataRow(123456789.0, "123.46 ms")]
     [DataRow(2e9, "2.0 s")]
-    public void DurationsUsePgrxUnits(double nanoseconds, string expected)
+    public void DurationsUseScaledUnits(double nanoseconds, string expected)
         => Assert.AreEqual(expected, BenchmarkConsoleFormat.Duration(nanoseconds));
 
     /// <summary>

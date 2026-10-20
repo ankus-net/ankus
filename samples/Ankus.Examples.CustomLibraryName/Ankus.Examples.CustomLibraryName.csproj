@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>pgrx's custom_libname example: a native library named independently of its project and extension.</Description>
+    <Description>A native library named independently of its project and extension.</Description>
     <AnkusLibraryName>other_name</AnkusLibraryName>
     <AnkusExtensionName>ankus_custom_libname</AnkusExtensionName>
     <AnkusExtensionControlFile>$(MSBuildProjectDirectory)/ankus_custom_libname.control</AnkusExtensionControlFile>

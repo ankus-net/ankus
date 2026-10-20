@@ -5,14 +5,14 @@ using System.Text.Encodings.Web;
 namespace Ankus.Examples.Json;
 
 /// <summary>
-/// Preserves pgrx's JSON text by escaping only JSON syntax and ASCII control characters.
+/// Escapes only JSON syntax and ASCII control characters and writes every other character as it is.
 /// </summary>
-internal sealed class PgrxJsonEncoder : JavaScriptEncoder
+internal sealed class MinimalJsonEncoder : JavaScriptEncoder
 {
     /// <summary>
     /// Gets the immutable JSON text encoder shared by the sample's writers.
     /// </summary>
-    internal static PgrxJsonEncoder Instance { get; } = new();
+    internal static MinimalJsonEncoder Instance { get; } = new();
 
     /// <summary>
     /// Gets the largest ASCII control escape, including its reverse solidus and four hexadecimal digits.

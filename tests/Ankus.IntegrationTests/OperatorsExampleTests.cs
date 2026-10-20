@@ -214,12 +214,12 @@ public sealed class OperatorsExampleTests(TestContext context)
                     'pgvarlenathing_eq', 'pgvarlenathing_cmp', 'pgvarlenathing_hash')
                 """, token));
 
-            await transaction.SaveAsync("pgrx_text", token);
+            await transaction.SaveAsync("text_operators", token);
             PostgresException error = await Assert.ThrowsExactlyAsync<PostgresException>(() =>
                 Execute(connection, transaction, """SELECT '"a"'::thing""", token));
             Assert.AreEqual("22P02", error.SqlState);
             Assert.AreEqual("Invalid JSON custom-type value.", error.MessageText);
-            await transaction.RollbackAsync("pgrx_text", token);
+            await transaction.RollbackAsync("text_operators", token);
             Assert.AreEqual(connection.ProcessID, await Scalar<int>(connection, transaction, "SELECT pg_backend_pid()", token));
         }, context.CancellationToken);
 

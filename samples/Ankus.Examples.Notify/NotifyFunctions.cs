@@ -30,27 +30,27 @@ public static class NotifyFunctions
     /// <param name="channel">The channel name.</param>
     /// <param name="payload">The notification payload.</param>
     [PgFunction]
-    public static void PgrxNotify(string channel, string payload) => Notifications.Notify(channel, payload);
+    public static void AnkusNotify(string channel, string payload) => Notifications.Notify(channel, payload);
 
     /// <summary>
     /// Subscribes the calling session to <paramref name="channel"/>, like <c>LISTEN</c>.
     /// </summary>
     /// <param name="channel">The channel name.</param>
     [PgFunction]
-    public static void PgrxListen(string channel) => Notifications.Listen(channel);
+    public static void AnkusListen(string channel) => Notifications.Listen(channel);
 
     /// <summary>
     /// Unsubscribes the calling session from <paramref name="channel"/>, like <c>UNLISTEN</c>.
     /// </summary>
     /// <param name="channel">The channel name.</param>
     [PgFunction]
-    public static void PgrxUnlisten(string channel) => Notifications.Unlisten(channel);
+    public static void AnkusUnlisten(string channel) => Notifications.Unlisten(channel);
 
     /// <summary>
     /// Unsubscribes the calling session from every channel, like <c>UNLISTEN *</c>.
     /// </summary>
     [PgFunction]
-    public static void PgrxUnlistenAll() => Notifications.UnlistenAll();
+    public static void AnkusUnlistenAll() => Notifications.UnlistenAll();
 
     /// <summary>
     /// Broadcasts the ID of every inserted, updated or deleted product on the <c>cache_invalidation</c> channel.

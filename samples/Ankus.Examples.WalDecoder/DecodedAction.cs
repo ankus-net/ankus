@@ -41,7 +41,7 @@ public sealed record DecodedAction(string Type, long? Committed = null, string? 
     public byte[] ToUtf8Json()
     {
         var output = new ArrayBufferWriter<byte>();
-        using (var writer = new Utf8JsonWriter(output, new JsonWriterOptions { Encoder = PgrxJsonEncoder.Instance }))
+        using (var writer = new Utf8JsonWriter(output, new JsonWriterOptions { Encoder = MinimalJsonEncoder.Instance }))
         {
             writer.WriteStartObject();
             writer.WriteString("typ", Type);

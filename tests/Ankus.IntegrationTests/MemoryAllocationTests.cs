@@ -30,8 +30,8 @@ public sealed class MemoryAllocationTests(TestContext context)
     [DataRow(64, false, false)]
     [DataRow(4096, false, false)]
     [DataRow(4096, true, true)]
-    public Task ThirtyTwoAlignedPgrxWitnessesPreserveBytesAndNativeOwnership(int alignment, bool huge, bool tryResize)
-        => CheckAsync(nameof(ThirtyTwoAlignedPgrxWitnessesPreserveBytesAndNativeOwnership),
+    public Task ThirtyTwoAlignedWitnessesPreserveBytesAndNativeOwnership(int alignment, bool huge, bool tryResize)
+        => CheckAsync(nameof(ThirtyTwoAlignedWitnessesPreserveBytesAndNativeOwnership),
             $"SELECT datatype.memory_aligned_allocations({alignment}, {huge}, {tryResize})",
             "32|32|32|32|32|32|32|32|True", overAligned: alignment > 8);
 

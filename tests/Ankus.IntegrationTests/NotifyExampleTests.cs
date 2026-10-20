@@ -158,29 +158,29 @@ public sealed class NotifyExampleTests(TestContext context)
         Listener listener = await Listener.StartAsync(listenerConnection, [Sentinel], token);
         await using NpgsqlConnection writer = await database.OpenAsync(token);
 
-        await ExecuteAsync(listenerConnection, "SELECT pgrx_listen('alpha'), pgrx_listen('MixedCase')", token);
+        await ExecuteAsync(listenerConnection, "SELECT ankus_listen('alpha'), ankus_listen('MixedCase')", token);
         Assert.AreEqual("MixedCase,alpha,sentinel", await ChannelsAsync(listenerConnection, token));
-        await ExecuteAsync(writer, "SELECT pgrx_notify('alpha', 'one'), pgrx_notify('MixedCase', 'two')", token);
+        await ExecuteAsync(writer, "SELECT ankus_notify('alpha', 'one'), ankus_notify('MixedCase', 'two')", token);
         await ExecuteAsync(writer, "NOTIFY MixedCase, 'folded'", token);
         Assert.AreSequenceEqual(["alpha:one", "MixedCase:two"], await listener.DrainAsync(writer, token));
 
-        await ExecuteAsync(listenerConnection, "SELECT pgrx_unlisten('alpha')", token);
+        await ExecuteAsync(listenerConnection, "SELECT ankus_unlisten('alpha')", token);
         Assert.AreEqual("MixedCase,sentinel", await ChannelsAsync(listenerConnection, token));
-        await ExecuteAsync(writer, "SELECT pgrx_notify('alpha', 'ignored')", token);
+        await ExecuteAsync(writer, "SELECT ankus_notify('alpha', 'ignored')", token);
         Assert.IsEmpty(await listener.DrainAsync(writer, token));
 
         // Subscriptions belong to the transaction: a rollback discards them, and they appear only after commit.
-        await ExecuteAsync(listenerConnection, "BEGIN; SELECT pgrx_listen('gamma')", token);
+        await ExecuteAsync(listenerConnection, "BEGIN; SELECT ankus_listen('gamma')", token);
         Assert.AreEqual("MixedCase,sentinel", await ChannelsAsync(listenerConnection, token));
         await ExecuteAsync(listenerConnection, "ROLLBACK", token);
-        await ExecuteAsync(listenerConnection, "BEGIN; SELECT pgrx_listen('delta'); SELECT pgrx_unlisten('MixedCase')", token);
+        await ExecuteAsync(listenerConnection, "BEGIN; SELECT ankus_listen('delta'); SELECT ankus_unlisten('MixedCase')", token);
         await ExecuteAsync(listenerConnection, "COMMIT", token);
         Assert.AreEqual("delta,sentinel", await ChannelsAsync(listenerConnection, token));
 
-        await ExecuteAsync(listenerConnection, "SELECT pgrx_unlisten_all()", token);
+        await ExecuteAsync(listenerConnection, "SELECT ankus_unlisten_all()", token);
         Assert.AreEqual("", await ChannelsAsync(listenerConnection, token));
-        await ExecuteAsync(writer, "SELECT pgrx_notify('delta', 'ignored')", token);
-        await ExecuteAsync(listenerConnection, "SELECT pgrx_listen('sentinel')", token);
+        await ExecuteAsync(writer, "SELECT ankus_notify('delta', 'ignored')", token);
+        await ExecuteAsync(listenerConnection, "SELECT ankus_listen('sentinel')", token);
         Assert.IsEmpty(await listener.DrainAsync(writer, token));
         Assert.AreEqual(1, await ScalarAsync<int>(listenerConnection, "SELECT 1", token));
     });
@@ -198,11 +198,11 @@ public sealed class NotifyExampleTests(TestContext context)
 
         foreach ((string call, string message) in new[]
         {
-            ("pgrx_notify('', 'x')", "channel name cannot be empty"),
-            ("pgrx_notify(repeat('c', 64), 'x')", "channel name too long"),
-            ("pgrx_notify('limits', repeat('x', 8000))", "payload string too long"),
-            ("pgrx_notify('limits', repeat('é', 4000))", "payload string too long"),
-            ("pgrx_notify('limits', repeat('x', 9000))", "payload string too long"),
+            ("ankus_notify('', 'x')", "channel name cannot be empty"),
+            ("ankus_notify(repeat('c', 64), 'x')", "channel name too long"),
+            ("ankus_notify('limits', repeat('x', 8000))", "payload string too long"),
+            ("ankus_notify('limits', repeat('é', 4000))", "payload string too long"),
+            ("ankus_notify('limits', repeat('x', 9000))", "payload string too long"),
         })
         {
             PostgresException error = await Assert.ThrowsExactlyAsync<PostgresException>(() => ExecuteAsync(writer, "SELECT " + call, token));
@@ -211,25 +211,25 @@ public sealed class NotifyExampleTests(TestContext context)
         }
 
         string multibyte = new string('é', 3999) + "x";
-        await ExecuteAsync(writer, "SELECT pgrx_notify(repeat('c', 63), 'boundary'), pgrx_notify('limits', repeat('x', 7999))", token);
-        await ExecuteAsync(writer, "SELECT pgrx_notify('limits', $1)", token, multibyte);
+        await ExecuteAsync(writer, "SELECT ankus_notify(repeat('c', 63), 'boundary'), ankus_notify('limits', repeat('x', 7999))", token);
+        await ExecuteAsync(writer, "SELECT ankus_notify('limits', $1)", token, multibyte);
         Assert.AreSequenceEqual([$"{new string('c', 63)}:boundary", "limits:" + new string('x', 7999), "limits:" + multibyte],
             await listener.DrainAsync(writer, token));
 
         // The failure rolls back only its savepoint; notifications before and after it are delivered at commit.
-        await ExecuteAsync(writer, "BEGIN; SELECT pgrx_notify('limits', 'before'); SAVEPOINT s", token);
-        await Assert.ThrowsExactlyAsync<PostgresException>(() => ExecuteAsync(writer, "SELECT pgrx_notify('limits', repeat('x', 8000))", token));
-        await ExecuteAsync(writer, "ROLLBACK TO SAVEPOINT s; SELECT pgrx_notify('limits', 'after')", token);
+        await ExecuteAsync(writer, "BEGIN; SELECT ankus_notify('limits', 'before'); SAVEPOINT s", token);
+        await Assert.ThrowsExactlyAsync<PostgresException>(() => ExecuteAsync(writer, "SELECT ankus_notify('limits', repeat('x', 8000))", token));
+        await ExecuteAsync(writer, "ROLLBACK TO SAVEPOINT s; SELECT ankus_notify('limits', 'after')", token);
         await ExecuteAsync(writer, "COMMIT", token);
         Assert.AreSequenceEqual(["limits:before", "limits:after"], await listener.DrainAsync(writer, token));
 
         // A failed transaction discards its earlier notification; the same session then notifies normally.
-        await ExecuteAsync(writer, "BEGIN; SELECT pgrx_notify('limits', 'discarded')", token);
-        await Assert.ThrowsExactlyAsync<PostgresException>(() => ExecuteAsync(writer, "SELECT pgrx_notify('', 'x')", token));
+        await ExecuteAsync(writer, "BEGIN; SELECT ankus_notify('limits', 'discarded')", token);
+        await Assert.ThrowsExactlyAsync<PostgresException>(() => ExecuteAsync(writer, "SELECT ankus_notify('', 'x')", token));
         await ExecuteAsync(writer, "ROLLBACK", token);
-        await ExecuteAsync(writer, "SELECT pgrx_notify('limits', 'recovered')", token);
+        await ExecuteAsync(writer, "SELECT ankus_notify('limits', 'recovered')", token);
         Assert.AreSequenceEqual(["limits:recovered"], await listener.DrainAsync(writer, token));
-        Assert.IsTrue(await ScalarAsync<bool>(writer, "SELECT pgrx_notify(NULL, 'x') IS NULL AND pgrx_listen(NULL) IS NULL", token));
+        Assert.IsTrue(await ScalarAsync<bool>(writer, "SELECT ankus_notify(NULL, 'x') IS NULL AND ankus_listen(NULL) IS NULL", token));
     });
 
     /// <summary>
@@ -244,12 +244,12 @@ public sealed class NotifyExampleTests(TestContext context)
         await using NpgsqlConnection writer = await database.OpenAsync(token);
         Assert.AreEqual("LATIN1", await ScalarAsync<string>(writer, "SELECT pg_encoding_to_char(encoding) FROM pg_database WHERE datname = current_database()", token));
 
-        await ExecuteAsync(listenerConnection, "SELECT pgrx_listen('café')", token);
+        await ExecuteAsync(listenerConnection, "SELECT ankus_listen('café')", token);
         Assert.AreEqual("café,sentinel", await ChannelsAsync(listenerConnection, token));
         string payload = new('é', 7999);
-        await ExecuteAsync(writer, "SELECT pgrx_notify('café', 'naïve'), pgrx_notify('café', $1)", token, payload);
+        await ExecuteAsync(writer, "SELECT ankus_notify('café', 'naïve'), ankus_notify('café', $1)", token, payload);
         PostgresException error = await Assert.ThrowsExactlyAsync<PostgresException>(() =>
-            ExecuteAsync(writer, "SELECT pgrx_notify('café', repeat('é', 8000))", token));
+            ExecuteAsync(writer, "SELECT ankus_notify('café', repeat('é', 8000))", token));
         Assert.AreEqual("payload string too long", error.MessageText);
         Assert.AreSequenceEqual(["café:naïve", "café:" + payload], await listener.DrainAsync(writer, token));
     }, "LATIN1");

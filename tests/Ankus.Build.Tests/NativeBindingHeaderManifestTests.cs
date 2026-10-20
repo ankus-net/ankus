@@ -21,7 +21,7 @@ public sealed class NativeBindingHeaderManifestTests(TestContext context)
     /// Supported headers are sorted and generated PostgreSQL inputs are excluded exactly.
     /// </summary>
     [TestMethod]
-    public void GenerateMatchesPgrxHeaderDiscoveryAndFormatting()
+    public void GenerateSortsSupportedHeadersAndExcludesGeneratedInputs()
     {
         Add("access/zeta.h");
         Add("access/alpha.h");

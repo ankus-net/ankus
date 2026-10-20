@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>pgrx PgTryBuilder catch, rethrow and finally patterns as C# exception handling with recovery scopes.</Description>
+    <Description>Catch, rethrow and finally patterns for PostgreSQL errors as C# exception handling with recovery scopes.</Description>
     <AnkusExtensionName>ankus_try_catch</AnkusExtensionName>
     <AnkusExtensionControlFile>$(MSBuildProjectDirectory)/ankus_try_catch.control</AnkusExtensionControlFile>
   </PropertyGroup>

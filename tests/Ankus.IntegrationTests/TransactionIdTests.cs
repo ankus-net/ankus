@@ -45,8 +45,8 @@ public sealed class TransactionIdTests(TestContext context)
     /// Maps PostgreSQL's invalid xid to SQL NULL on generated and SPI output boundaries.
     /// </summary>
     [TestMethod]
-    public Task InvalidTransactionIdUsesPgrxNullSemantics()
-        => PostgresFixture.Cluster.RunInTransactionAsync(nameof(InvalidTransactionIdUsesPgrxNullSemantics),
+    public Task InvalidTransactionIdIsSqlNull()
+        => PostgresFixture.Cluster.RunInTransactionAsync(nameof(InvalidTransactionIdIsSqlNull),
             async (connection, transaction, token) =>
             {
                 await using var command = new NpgsqlCommand("""
