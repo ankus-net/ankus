@@ -27,17 +27,17 @@ Asynchronous notification "cache_invalidation" with payload "1" received from se
 Asynchronous notification "cache_invalidation" with payload "1" received from server process ...
 ```
 
-The wrappers are also available as SQL functions with pgrx's names:
+The wrappers are also available as SQL functions:
 
 ```sql
-SELECT pgrx_listen('alpha');           -- LISTEN, committed with the transaction
-SELECT pgrx_notify('alpha', 'hello');  -- NOTIFY alpha, 'hello'
-SELECT pgrx_unlisten('alpha');         -- UNLISTEN alpha
-SELECT pgrx_unlisten_all();            -- UNLISTEN *
+SELECT ankus_listen('alpha');           -- LISTEN, committed with the transaction
+SELECT ankus_notify('alpha', 'hello');  -- NOTIFY alpha, 'hello'
+SELECT ankus_unlisten('alpha');         -- UNLISTEN alpha
+SELECT ankus_unlisten_all();            -- UNLISTEN *
 ```
 
 Channel names are used exactly as given, without SQL identifier folding:
-`pgrx_listen('MixedCase')` receives `pg_notify('MixedCase', ...)` but not
+`ankus_listen('MixedCase')` receives `pg_notify('MixedCase', ...)` but not
 `NOTIFY MixedCase`, which folds to lowercase.
 
 Notifications and subscription changes take effect when the transaction
@@ -88,7 +88,7 @@ change is harmless.
 | `notify::notify`, `listen`, `unlisten`, `unlisten_all` | `Notifications.Notify`, `Listen`, `Unlisten`, `UnlistenAll` |
 | `pg_sys::Async_Notify(channel.as_ptr(), payload.as_ptr())` | `NativeMethods.Async_Notify(channel, payload)` with server-encoded strings |
 | `CString::new(...)?` and `NulError` | `ArgumentException` for an embedded NUL character |
-| `#[pg_extern] fn pgrx_notify(...) -> Result<(), String>` | `[PgFunction] PgrxNotify(string channel, string payload)` |
+| `#[pg_extern] fn pgrx_notify(...) -> Result<(), String>` | `[PgFunction] AnkusNotify(string channel, string payload)` |
 | `#[pg_trigger] fn products_notify` | `[PgTrigger] ProductsNotify(PgTriggerContext context)` |
 | `trigger.new().or_else(\|\| trigger.old())` | `context.New ?? context.Old` |
 | `row.get_by_name::<i64>("id")?` | `row.Get<long?>("id")` |

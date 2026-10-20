@@ -56,7 +56,7 @@ public sealed class RewriteManipExampleTests(TestContext context)
     /// The functions are installed in the control file's schema with pgrx's names, argument names and strict integer signatures.
     /// </summary>
     [TestMethod]
-    public Task RewriteManipSampleInstallsPgrxSignatures() => RunInstalledAsync(async (connection, transaction, token) =>
+    public Task RewriteManipSampleInstallsItsSignatures() => RunInstalledAsync(async (connection, transaction, token) =>
     {
         Assert.AreEqual(
             "demo_change_var_nodes(old_varno integer, new_varno integer)->integer;" +

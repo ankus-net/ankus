@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>pgrx's versioned_custom_libname_so example: a custom native library name combined with versioned libraries.</Description>
+    <Description>A custom native library name combined with versioned libraries.</Description>
     <AnkusLibraryName>versioned_othername</AnkusLibraryName>
     <AnkusExtensionName>ankus_versioned_custom_libname_so</AnkusExtensionName>
     <AnkusVersionedLibrary>true</AnkusVersionedLibrary>

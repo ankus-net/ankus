@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>pgrx's versioned_so example: a native library named for its extension version so versions install side by side.</Description>
+    <Description>A native library named for its extension version so versions install side by side.</Description>
     <AnkusExtensionName>ankus_versioned_so</AnkusExtensionName>
     <AnkusVersionedLibrary>true</AnkusVersionedLibrary>
     <AnkusExtensionControlFile>$(MSBuildProjectDirectory)/ankus_versioned_so.control</AnkusExtensionControlFile>

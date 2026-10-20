@@ -10,10 +10,10 @@ namespace Ankus.Runtime.Tests;
 public sealed class PgBenchmarkTests
 {
     /// <summary>
-    /// Keeps Ankus defaults aligned with the pgrx benchmark defaults.
+    /// Keeps the defaults the benchmarks guide documents.
     /// </summary>
     [TestMethod]
-    public void AttributeUsesPgrxDefaults()
+    public void AttributeHasDocumentedDefaults()
     {
         var attribute = new PgBenchmarkAttribute();
 

@@ -36,7 +36,7 @@ public static partial class NotifyTests
     public static void OversizePayloadErrors()
     {
         string big = new('x', 9000);
-        _ = Spi.Execute(Spi.Sql($"SELECT pgrx_notify('chan', {big})"));
+        _ = Spi.Execute(Spi.Sql($"SELECT ankus_notify('chan', {big})"));
     }
 
     /// <summary>

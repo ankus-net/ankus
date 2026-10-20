@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>The .NET counterpart of pgrx's nostd example: generated declarations under a minimal Native AOT runtime configuration.</Description>
+    <Description>Generated declarations under a minimal Native AOT runtime configuration.</Description>
     <AnkusExtensionName>ankus_minimal_runtime</AnkusExtensionName>
     <AnkusExtensionControlFile>$(MSBuildProjectDirectory)/ankus_minimal_runtime.control</AnkusExtensionControlFile>
     <!-- .NET has no runtime-free mode. These documented Native AOT switches remove optional runtime features:

@@ -10161,7 +10161,7 @@ snapshots for aligned no-OOM calls. These gates are source-reviewed; no version 
 | --- | --- |
 | Option combinations, alignment bounds, typed overflow and independent copies | `SupportedPoliciesRemainDistinctThroughAllocation`, `ValidAlignmentPreservesExplicitRequest`, `TypedAllocationOverflowNeverReachesNativeCode`, `LargestRepresentableTypedProductReachesNativeSizeValidation`, `TypedAllocationsAndCopiesPreserveExactValuesAndCheckedCounts` |
 | Strict terminated UTF-8, invalid text and UTF8/LATIN1 native bytes | `InvalidUtf8StringsAreRejectedBeforeNativeCalls`, `NativeUtf8StringsKeepExactTerminatedBytesAcrossDatabaseEncodings` |
-| Thirty-two 3319-byte pgrx witnesses, grow/shrink, exact zero tail, alignment and native owner | `ThirtyTwoAlignedPgrxWitnessesPreserveBytesAndNativeOwnership` |
+| Thirty-two 3319-byte pgrx witnesses, grow/shrink, exact zero tail, alignment and native owner | `ThirtyTwoAlignedWitnessesPreserveBytesAndNativeOwnership` |
 | Invalid ordinary/huge payload and padding limits preserve pointer, bytes, policy and session | `InvalidSizeAndAlignmentPaddingErrorsPreservePointerLengthBytesAndSession`; scripted allocator NULL is separately proved by `TryResizeNullPreservesOldHandleAndSuccessfulRetryReplacesIt` |
 | Native AllocSet sizes, presets, non-power-of-two minimum blocks, malformed-size rejection and inventory | `NativeAllocSetSizingPreservesPresetsAndNonPowerOfTwoMinimumBlocks`, `NativeAllocSetValidationRejectsMalformedSizesWithoutLeakingContexts` |
 | Custom initial and maximum ordinary-block growth with retained payloads | `NativeAllocSetGrowthUsesCustomInitialAndMaximumBlockSizes` retains 200 chunks, checks native block counts and growth at each boundary, and verifies reset/deletion |

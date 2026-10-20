@@ -18,7 +18,7 @@ public static class JsonFunctions
     public static PgJson TextArrayToJsonDoc(PgArrayView<PgTextView?> values)
     {
         var output = new ArrayBufferWriter<byte>();
-        using var writer = new Utf8JsonWriter(output, new JsonWriterOptions { Encoder = PgrxJsonEncoder.Instance });
+        using var writer = new Utf8JsonWriter(output, new JsonWriterOptions { Encoder = MinimalJsonEncoder.Instance });
         writer.WriteStartObject();
         writer.WriteStartArray("values");
         foreach (PgTextView? cell in values)
@@ -52,7 +52,7 @@ public static class JsonFunctions
     public static PgJson ByteaArrayToJsonDoc(PgArrayView<PgByteaView?> values)
     {
         var output = new ArrayBufferWriter<byte>();
-        using var writer = new Utf8JsonWriter(output, new JsonWriterOptions { Encoder = PgrxJsonEncoder.Instance });
+        using var writer = new Utf8JsonWriter(output, new JsonWriterOptions { Encoder = MinimalJsonEncoder.Instance });
         writer.WriteStartObject();
         writer.WriteStartArray("values");
         foreach (PgByteaView? cell in values)

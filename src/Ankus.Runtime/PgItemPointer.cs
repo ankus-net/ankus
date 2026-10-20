@@ -71,7 +71,7 @@ public readonly record struct PgItemPointer(uint BlockNumber, ushort OffsetNumbe
     {
         if ((value & 0xffff0000UL) != 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(value), "The pgrx item-pointer encoding requires bits 16 through 31 to be zero.");
+            throw new ArgumentOutOfRangeException(nameof(value), "The packed item-pointer encoding requires bits 16 through 31 to be zero.");
         }
 
         return FromUInt64Truncating(value);
