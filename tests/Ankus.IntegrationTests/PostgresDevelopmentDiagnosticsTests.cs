@@ -173,17 +173,27 @@ public sealed class PostgresDevelopmentDiagnosticsTests(TestContext context)
             PostgresServerStorage.Delete(home);
         }
 
+        // Keeps each directory's mode, as a rename would: PostgreSQL refuses a data directory others can read.
         static void CopyTree(string source, string destination)
         {
-            Directory.CreateDirectory(destination);
+            CopyDirectory(source, destination);
             foreach (string directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
             {
-                Directory.CreateDirectory(Path.Join(destination, Path.GetRelativePath(source, directory)));
+                CopyDirectory(directory, Path.Join(destination, Path.GetRelativePath(source, directory)));
             }
 
             foreach (string file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
             {
                 File.Copy(file, Path.Join(destination, Path.GetRelativePath(source, file)));
+            }
+        }
+
+        static void CopyDirectory(string source, string destination)
+        {
+            Directory.CreateDirectory(destination);
+            if (!OperatingSystem.IsWindows())
+            {
+                File.SetUnixFileMode(destination, File.GetUnixFileMode(source));
             }
         }
 
