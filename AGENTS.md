@@ -115,6 +115,8 @@ before changing an area.
 - Write docs, comments and messages as direct statements of what something is
   and does. Do not pair contrasts such as "X, not Y", "not X but Y" or
   "X rather than Y"; state a real caveat as its own plain clause.
+- Write commit, merge and PR messages as one short subject line, usually with no
+  body. Never write explanatory prose, lists, headers or em dashes in them.
 - Keep repository maintenance commands in `eng/README.md` or `docs/contributing/`.
   Public user guides should describe extension-author workflows, supported APIs,
   and their limitations without internal development commands.
