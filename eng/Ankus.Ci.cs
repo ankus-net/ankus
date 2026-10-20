@@ -1172,9 +1172,17 @@ static void ConfigureMacOsSdk()
         return;
     }
 
+    // Installing or replacing Xcode removes it for hours, and every link through xcrun fails meanwhile. The Command Line
+    // Tools carry the same linker and SDK and are updated in place, so jobs use them whenever they are installed.
+    const string CommandLineTools = "/Library/Developer/CommandLineTools";
+    if (File.Exists(Path.Join(CommandLineTools, "usr", "bin", "ld")))
+    {
+        WriteEnvironment("DEVELOPER_DIR", CommandLineTools);
+    }
+
     string sdkRoot = Capture("xcrun", ["--sdk", "macosx", "--show-sdk-path"]);
     WriteEnvironment("SDKROOT", sdkRoot);
-    Console.WriteLine($"Selected the macOS SDK: {sdkRoot}");
+    Console.WriteLine($"Selected the developer directory {Capture("xcode-select", ["-p"])} and the macOS SDK {sdkRoot}");
 }
 
 static void VerifyHeaderFrontend(string compiler)
