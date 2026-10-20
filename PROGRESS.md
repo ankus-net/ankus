@@ -16,8 +16,8 @@ Completion requires the supported PostgreSQL 13–18 and 19 RC1 contracts on
 Linux x64, Windows x64, macOS ARM64 and macOS x64, including real published
 extensions, backend recovery, complete suites and release/package validation.
 Ankus is released on nuget.org: 0.1.0 on 2026-10-15, servicing releases
-through 0.1.7, 0.2.0 on 2026-10-17, and 0.2.1 and 0.2.2 on 2026-10-18 (see
-remaining-work item 8).
+through 0.1.7, 0.2.0 on 2026-10-17, 0.2.1 and 0.2.2 on 2026-10-18, and 0.2.3
+on 2026-10-19 (see remaining-work item 8).
 
 The upstream inventory is pinned to pgrx **0.19.3**, commit
 `fc91c63ebad11784647b50ee7e265c1fd9c9924f`. The refresh covers every release
@@ -910,6 +910,11 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   were pushed and listed on nuget.org. On the MacBook, with `/usr/bin/clang`
   first on `PATH`, `Ankus.Tool` 0.2.2 from nuget.org created a solution whose
   7 tests passed.
+- 0.2.3 is released (release run 39377193381 on d8544e8, after CI
+  39374489223, CodeQL, Docs and the secret scan passed on that commit).
+  All seven packages were pushed and listed on nuget.org, and the unchanged
+  runtime packages were skipped as already published. On Linux x64, `Ankus.Tool` 0.2.3 from nuget.org created a
+  solution whose 7 tests passed against PostgreSQL 18.
 - `StartRecordsTheServerLogPath` failed now and then on a dedicated Windows
   runner (PR #41's first CI run, 39197108639) when it renamed the Ankus home
   right after `StopAsync`. On the Windows runner host, a loop that starts a
