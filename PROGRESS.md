@@ -910,20 +910,26 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   were pushed and listed on nuget.org. On the MacBook, with `/usr/bin/clang`
   first on `PATH`, `Ankus.Tool` 0.2.2 from nuget.org created a solution whose
   7 tests passed.
-- `StartRecordsTheServerLogPath` still fails on a dedicated Windows runner now
-  and then (PR #41's first CI run, 39197108639) when it moves the Ankus home
-  right after `StopAsync`; PR #29 made it rarer but did not remove it. A
-  repro on the Windows runner host that starts a development cluster, stops
-  it and moves its home failed 2 of 100, 0 of 150 and 6 of 300 cycles, and
-  each time the home stayed locked for 60 to 93 seconds. At each failure the
-  Restart Manager reported no process holding a file inside the home, and no
-  process the test account can open, which includes every PostgreSQL process
-  the cluster started, had its current directory there. The holder is
-  therefore a process outside the account, such as a system service;
-  Windows Defender scanning the files `initdb` and the server wrote is the
-  leading suspect and is not yet proven. Confirming it needs a cycle run
-  with the temporary directory excluded from Defender, which takes an
-  administrator.
+- `StartRecordsTheServerLogPath` failed now and then on a dedicated Windows
+  runner (PR #41's first CI run, 39197108639) when it renamed the Ankus home
+  right after `StopAsync`. On the Windows runner host, a loop that starts a
+  development cluster, stops it and renames its home passed about 1,500 cycles
+  on an otherwise idle machine and failed 9 of 150 beside two full local
+  suites. Three of those failures lasted under a second, while the server's
+  `cmd /c` wrapper exited; six lasted 45 seconds to 6 minutes. During the long
+  ones no process held a handle anywhere in the home, nothing was delete
+  pending, every file accepted a delete disposition and deletes succeeded;
+  only renames of the directories above the cluster's files were refused, and
+  the refusing directory moved through `global`, `base/1`, `base/4` and
+  `base/5`. Renaming a subdirectory made it refuse again. Copies of the same
+  files written by a .NET process, with or without a staged rename and from a
+  short-lived writer, and `initdb` without a server never failed under the
+  same load, so the hold follows a server run. Microsoft Defender's
+  minifilter is the only antivirus filter on the host and this matches its
+  background scanning; proving it needs an administrator to exclude a test
+  directory. The test now copies the home to its new path, which exercises
+  the same Ankus behavior, and that flow passed every cycle under the same
+  load.
 - Scheduled run 38729094424 lost one Windows/PostgreSQL 18.6 case before its
   test body ran: the server reset the connection during authentication. The
   new backend had failed with `FATAL: incorrect checksum in control file` in

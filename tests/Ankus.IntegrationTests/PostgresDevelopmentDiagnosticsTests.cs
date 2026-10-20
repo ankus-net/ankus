@@ -128,7 +128,9 @@ public sealed class PostgresDevelopmentDiagnosticsTests(TestContext context)
     /// Each start records the file the server writes in the data directory's <c>.ankus-log</c>, so a tool such as a log
     /// tailer can follow it without reproducing Ankus's naming. The server's own output reaches that file, the
     /// <c>.ankus-cluster</c> marker keeps the label every Ankus version checks, and a start after the Ankus home moves
-    /// records the new path.
+    /// records the new path. The home is copied to its new path: on a busy Windows machine, the system can keep a new
+    /// cluster's files referenced for minutes after every process has closed them, and until it lets go, Windows
+    /// refuses to rename any directory above them.
     /// </summary>
     [RetryPortCollisionTestMethod]
     public async Task StartRecordsTheServerLogPath()
@@ -158,7 +160,7 @@ public sealed class PostgresDevelopmentDiagnosticsTests(TestContext context)
             Assert.Contains("WARNING:  " + message, await File.ReadAllTextAsync(recorded, token));
             Assert.AreEqual(installation.Label, await File.ReadAllTextAsync(Path.Join(cluster.DataDirectory, ".ankus-cluster"), token));
 
-            Directory.Move(home, moved);
+            CopyTree(home, moved);
             Assert.IsTrue(await relocated.StartAsync(options, token));
             Assert.AreEqual(relocated.LogFilePath + (OperatingSystem.IsWindows() ? ".stderr.log" : string.Empty),
                 await ReadRecordedLogAsync(relocated, token));
@@ -169,6 +171,20 @@ public sealed class PostgresDevelopmentDiagnosticsTests(TestContext context)
             await cluster.StopAsync(CancellationToken.None);
             PostgresServerStorage.Delete(moved);
             PostgresServerStorage.Delete(home);
+        }
+
+        static void CopyTree(string source, string destination)
+        {
+            Directory.CreateDirectory(destination);
+            foreach (string directory in Directory.EnumerateDirectories(source, "*", SearchOption.AllDirectories))
+            {
+                Directory.CreateDirectory(Path.Join(destination, Path.GetRelativePath(source, directory)));
+            }
+
+            foreach (string file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+            {
+                File.Copy(file, Path.Join(destination, Path.GetRelativePath(source, file)));
+            }
         }
 
         static async Task<string> ReadRecordedLogAsync(PostgresDevelopmentCluster cluster, CancellationToken token)
