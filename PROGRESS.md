@@ -920,6 +920,21 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   All seven packages were pushed and listed on nuget.org, and the unchanged
   runtime packages were skipped as already published. On Linux x64, `Ankus.Tool` 0.2.3 from nuget.org created a
   solution whose 7 tests passed against PostgreSQL 18.
+- PRs #57, #58 and #59 merged minutes apart on 2026-10-21, and each started a
+  full main CI run. Both MacBook runners took a macOS suite at once, the disk
+  filled, and all three runs failed with "No space left on device". Once the
+  MacBook restarted with 42 GB free, main CI 39630723146 was rerun alone and
+  passed on Linux x64, macOS ARM64 and Windows x64; its macOS suite used at
+  most about 15 GB. That day's scheduled version runs predate #57 and #58.
+  .NET versions 39605686971 failed the Windows net11.0 runtime build on MSVC
+  14.52's C4047, and PostgreSQL versions 39596624997 failed
+  `SkipsAnOlderClangForANewerOne` with "Text file busy". Dispatched again on
+  main, the Windows net11.0 runtime built (39664495581) and PostgreSQL 19
+  passed (39661277733). The .NET versions Windows test job then stopped before
+  its build: the workflow passes an empty `PGROOT` when no secret names the
+  major, and `runtime-test-build` took the empty value as the installation
+  root. An empty `PGROOT` now selects the default installation, as an empty
+  `PG{n}_PG_CONFIG` already does on macOS.
 - macOS killed the Generators test host on the MacBook runner (main CI
   39517461878) as the largest process, at 26.7 GB compressed. The generator wrote
   the native source, SQL, graph and exports as single `AssemblyMetadata`

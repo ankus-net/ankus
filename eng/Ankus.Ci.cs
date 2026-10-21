@@ -958,8 +958,11 @@ static void InstallPostgreSql(string repositoryRoot, string version)
 
     if (OperatingSystem.IsWindows())
     {
-        string root = Environment.GetEnvironmentVariable("PGROOT")
-            ?? Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "PostgreSQL", version);
+        // A workflow passes an empty PGROOT when no secret names the major, which selects the default installation.
+        string? configured = Environment.GetEnvironmentVariable("PGROOT");
+        string root = string.IsNullOrWhiteSpace(configured)
+            ? Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "PostgreSQL", version)
+            : configured;
         string pgConfig = Path.Join(root, "bin", "pg_config.exe");
 
         if (!File.Exists(pgConfig))
