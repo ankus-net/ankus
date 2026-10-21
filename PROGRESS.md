@@ -915,6 +915,17 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   All seven packages were pushed and listed on nuget.org, and the unchanged
   runtime packages were skipped as already published. On Linux x64, `Ankus.Tool` 0.2.3 from nuget.org created a
   solution whose 7 tests passed against PostgreSQL 18.
+- macOS killed the Generators test host on the MacBook runner (main CI
+  39517461878) as the largest process, at 26.7 GB compressed. The generator wrote
+  the native source, SQL, graph and exports as single `AssemblyMetadata`
+  literals of up to a megabyte, and Roslyn keeps every small parsed node,
+  literals included, in a process-wide cache, so each compilation in the test
+  host, and each generator run in a compiler server or IDE, left one alive. On
+  debian-dev the suite's live large-object heap reached 5.3 GB and its peak
+  working set 14.4 GB. The generator now writes each value in parts of at most
+  1,024 characters (`Ankus.NativeSource`, then `Ankus.NativeSource#1` and so
+  on), and the build joins them; the large-object heap then peaks at 1.7 GB,
+  ends at 348 MB, and the working set peaks at 9.6 GB.
 - `StartRecordsTheServerLogPath` failed now and then on a dedicated Windows
   runner (PR #41's first CI run, 39197108639) when it renamed the Ankus home
   right after `StopAsync`. On the Windows runner host, a loop that starts a

@@ -1268,8 +1268,44 @@ public sealed class PgFunctionGenerator : IIncrementalGenerator
         return SqlProvenance.Preamble + (sql.Length == 0 ? "-- No installable objects declared.\n" : sql);
     }
 
-    private static string Metadata(string key, string value)
-        => $"[assembly: global::System.Reflection.AssemblyMetadata(\"{key}\", {SymbolDisplay.FormatLiteral(value, quote: true)})]\n";
+    /// <summary>
+    /// The longest value one generated metadata attribute holds.
+    /// </summary>
+    /// <remarks>
+    /// Roslyn keeps small syntax nodes it parses, literals included, in a cache that lives as long as the process. Short
+    /// parts keep each cached literal small in compiler servers, IDEs and test hosts.
+    /// </remarks>
+    internal const int MetadataPartLength = 1024;
+
+    /// <summary>
+    /// Writes a value as assembly metadata, one attribute per part, without splitting a surrogate pair.
+    /// </summary>
+    /// <param name="key">The metadata key; parts after the first append <c>#</c> and their index.</param>
+    /// <param name="value">The complete value.</param>
+    /// <returns>The attribute declarations in part order.</returns>
+    internal static string Metadata(string key, string value)
+    {
+        var attributes = new StringBuilder();
+        int part = 0;
+        int start = 0;
+        do
+        {
+            int length = Math.Min(MetadataPartLength, value.Length - start);
+            if (start + length < value.Length && char.IsHighSurrogate(value[start + length - 1]))
+            {
+                length--;
+            }
+
+            string partKey = part == 0 ? key : key + "#" + part.ToString(CultureInfo.InvariantCulture);
+            attributes.Append("[assembly: global::System.Reflection.AssemblyMetadata(\"").Append(partKey).Append("\", ")
+                .Append(SymbolDisplay.FormatLiteral(value.Substring(start, length), quote: true)).Append(")]\n");
+            start += length;
+            part++;
+        }
+        while (start < value.Length);
+
+        return attributes.ToString();
+    }
 
     internal static string NormalizeLineEndings(string value)
     {
