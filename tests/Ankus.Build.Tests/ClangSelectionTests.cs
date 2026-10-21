@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.Versioning;
 
 namespace Ankus.Build.Tests;
@@ -134,12 +136,33 @@ public sealed class ClangSelectionTests(TestContext context)
         }
     }
 
+    /// <summary>
+    /// Writes a script that prints the given version text and waits until it can run.
+    /// </summary>
+    /// <remarks>
+    /// A process another test forks while the script is open for writing holds that handle until it starts its own
+    /// program, and Linux refuses to run the script meanwhile with "Text file busy".
+    /// </remarks>
     [UnsupportedOSPlatform("windows")]
     private async Task<string> WriteClangAsync(string directory, string output)
     {
         string path = Path.Join(Directory.CreateDirectory(Path.Join(_root, directory)).FullName, "clang");
         await File.WriteAllTextAsync(path, $"#!/bin/sh\necho '{output}'\n", context.CancellationToken);
         File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-        return path;
+        long deadline = Environment.TickCount64 + 10_000;
+        while (true)
+        {
+            try
+            {
+                using Process process = Process.Start(new ProcessStartInfo(path) { RedirectStandardOutput = true })!;
+                _ = await process.StandardOutput.ReadToEndAsync(context.CancellationToken);
+                await process.WaitForExitAsync(context.CancellationToken);
+                return path;
+            }
+            catch (Win32Exception error) when (error.NativeErrorCode == 26 && Environment.TickCount64 < deadline)
+            {
+                await Task.Delay(20, context.CancellationToken);
+            }
+        }
     }
 }
