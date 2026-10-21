@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 
@@ -47,6 +48,7 @@ internal sealed class ExtensionManifest
         using var pe = new PEReader(stream);
         MetadataReader reader = pe.GetMetadataReader();
         var manifest = new ExtensionManifest();
+        var parts = new Dictionary<string, SortedDictionary<int, string>>(StringComparer.Ordinal);
         foreach (CustomAttribute attribute in reader.GetAssemblyDefinition().GetCustomAttributes().Select(handle => reader.GetCustomAttribute(handle)))
         {
             if (attribute.Constructor.Kind != HandleKind.MemberReference)
@@ -77,8 +79,18 @@ internal sealed class ExtensionManifest
             string? value = blob.ReadSerializedString();
             if (key is not null && value is not null && key.StartsWith("Ankus.", StringComparison.Ordinal))
             {
-                manifest._values.Add(key, value);
+                AddPart(parts, key, value);
             }
+        }
+
+        foreach ((string name, SortedDictionary<int, string> values) in parts)
+        {
+            if (values.Keys.Max() != values.Count - 1)
+            {
+                throw new BadImageFormatException($"The generated Ankus metadata '{name}' is missing a part.");
+            }
+
+            manifest._values.Add(name, string.Concat(values.Values));
         }
 
         if (!manifest._values.ContainsKey("Ankus.NativeSource") || !manifest._values.ContainsKey("Ankus.Sql") ||
@@ -88,5 +100,35 @@ internal sealed class ExtensionManifest
         }
 
         return manifest;
+    }
+
+    /// <summary>
+    /// Records one part of a generated value. The first part uses the plain key and later parts append <c>#</c> and
+    /// their index, which keeps manifests from older generators readable.
+    /// </summary>
+    /// <param name="parts">The parts read so far, by key and index.</param>
+    /// <param name="key">The attribute's metadata key.</param>
+    /// <param name="value">The part's text.</param>
+    private static void AddPart(Dictionary<string, SortedDictionary<int, string>> parts, string key, string value)
+    {
+        int separator = key.IndexOf('#', StringComparison.Ordinal);
+        string name = separator < 0 ? key : key[..separator];
+        int index = 0;
+        if (separator >= 0 && (!int.TryParse(key.AsSpan(separator + 1), NumberStyles.None, CultureInfo.InvariantCulture, out index) ||
+            index == 0))
+        {
+            throw new BadImageFormatException($"The generated Ankus metadata key '{key}' has an invalid part number.");
+        }
+
+        if (!parts.TryGetValue(name, out SortedDictionary<int, string>? values))
+        {
+            values = [];
+            parts.Add(name, values);
+        }
+
+        if (!values.TryAdd(index, value))
+        {
+            throw new BadImageFormatException($"The generated Ankus metadata '{name}' repeats part {index}.");
+        }
     }
 }

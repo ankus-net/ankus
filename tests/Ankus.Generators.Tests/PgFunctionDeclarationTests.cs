@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -145,8 +146,20 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.AreEqual("false", ManifestValue(compilation, "Ankus.Relocatable"));
     }
 
+    /// <summary>
+    /// Joins a generated metadata value from its parts: the first uses the plain key and later ones append <c>#</c> and
+    /// their index.
+    /// </summary>
     private static string ManifestValue(Compilation compilation, string key)
-        => (string)compilation.Assembly.GetAttributes().Single(attribute =>
-            attribute.AttributeClass?.ToDisplayString() == "System.Reflection.AssemblyMetadataAttribute" &&
-            (string?)attribute.ConstructorArguments[0].Value == key).ConstructorArguments[1].Value!;
+    {
+        (int Index, string Value)[] parts = [.. compilation.Assembly.GetAttributes()
+            .Where(static attribute => attribute.AttributeClass?.ToDisplayString() == "System.Reflection.AssemblyMetadataAttribute")
+            .Select(static attribute => ((string)attribute.ConstructorArguments[0].Value!, (string)attribute.ConstructorArguments[1].Value!))
+            .Where(item => item.Item1 == key || item.Item1.StartsWith(key + "#", StringComparison.Ordinal))
+            .Select(item => (item.Item1 == key ? 0 : int.Parse(item.Item1[(key.Length + 1)..], CultureInfo.InvariantCulture), item.Item2))
+            .OrderBy(static item => item.Item1)];
+        Assert.IsNotEmpty(parts, "No generated metadata named " + key);
+        Assert.AreSequenceEqual(Enumerable.Range(0, parts.Length), parts.Select(static part => part.Index));
+        return string.Concat(parts.Select(static part => part.Value));
+    }
 }
