@@ -931,10 +931,12 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   `SkipsAnOlderClangForANewerOne` with "Text file busy". Dispatched again on
   main, the Windows net11.0 runtime built (39664495581) and PostgreSQL 19
   passed (39661277733). The .NET versions Windows test job then stopped before
-  its build: the workflow passes an empty `PGROOT` when no secret names the
-  major, and `runtime-test-build` took the empty value as the installation
-  root. An empty `PGROOT` now selects the default installation, as an empty
-  `PG{n}_PG_CONFIG` already does on macOS.
+  its build. Each Windows runner sets `PGROOT` to its PostgreSQL 17.11
+  installation, and the workflow replaced it with an empty value when no secret
+  names the major. #60 then fell back to `Program Files`, which holds 17.7, and
+  the run failed the suite's 17.11 minimum (39675557483). The version workflows
+  now pass a selected root as `ANKUS_PGROOT`, so the runner's `PGROOT` stays in
+  effect for its default major.
 - macOS killed the Generators test host on the MacBook runner (main CI
   39517461878) as the largest process, at 26.7 GB compressed. The generator wrote
   the native source, SQL, graph and exports as single `AssemblyMetadata`

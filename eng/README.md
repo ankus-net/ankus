@@ -180,8 +180,8 @@ Configure repository secrets `ANKUS_WINDOWS_PG13_ROOT` through
 `ANKUS_WINDOWS_PG16_ROOT`, `ANKUS_WINDOWS_PG18_ROOT` and `ANKUS_WINDOWS_PG19_ROOT`
 with each installation's root, containing its `bin`, `include` and `lib`
 directories.
-The workflow selects the matching root for the build step. It does not change
-the runner's default `PGROOT` or store device paths in tracked files.
+The workflow passes the matching root to the build step as `ANKUS_PGROOT`. It does
+not change the runner's default `PGROOT` or store device paths in tracked files.
 
 Check every installation with `postgresql-check` before dispatch. Manual dispatch
 can select one `platform` and one `postgresql` major; the weekly run tests every
