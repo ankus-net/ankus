@@ -77,6 +77,11 @@ jobs:
           ref: ${{ steps.runtime.outputs.commit }}
           path: runtime
 
+      # Without an active developer environment the runtime's build takes the newest Visual Studio, previews included.
+      - name: Select Windows C++ toolchain
+        if: runner.os == 'Windows' && steps.runtime-cache.outputs.cache-hit != 'true'
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- windows-toolchain
+
       - name: Build native runtime
         if: steps.runtime-cache.outputs.cache-hit != 'true'
         run: dotnet run --file ./eng/Ankus.Ci.cs -- runtime-build ${{ matrix.platform }} ${{ matrix.architecture }} ${{ matrix.rid }}
