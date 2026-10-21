@@ -958,11 +958,13 @@ static void InstallPostgreSql(string repositoryRoot, string version)
 
     if (OperatingSystem.IsWindows())
     {
-        // A workflow passes an empty PGROOT when no secret names the major, which selects the default installation.
+        // A version workflow names another major's installation in ANKUS_PGROOT and leaves it empty for the runner's own
+        // PGROOT, so selecting a major never replaces the runner's default.
+        string? selected = Environment.GetEnvironmentVariable("ANKUS_PGROOT");
         string? configured = Environment.GetEnvironmentVariable("PGROOT");
-        string root = string.IsNullOrWhiteSpace(configured)
-            ? Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "PostgreSQL", version)
-            : configured;
+        string root = !string.IsNullOrWhiteSpace(selected) ? selected
+            : !string.IsNullOrWhiteSpace(configured) ? configured
+            : Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "PostgreSQL", version);
         string pgConfig = Path.Join(root, "bin", "pg_config.exe");
 
         if (!File.Exists(pgConfig))

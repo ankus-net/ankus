@@ -149,7 +149,7 @@ jobs:
 
       - name: Build PostgreSQL tests
         env:
-          PGROOT: ${{ runner.os == 'Windows' && secrets[format('ANKUS_WINDOWS_PG{0}_ROOT', matrix.postgresql)] || '' }}
+          ANKUS_PGROOT: ${{ runner.os == 'Windows' && secrets[format('ANKUS_WINDOWS_PG{0}_ROOT', matrix.postgresql)] || '' }}
           # macOS majors without a Homebrew formula on the runner come from `ankus init` builds named by repository variables.
           PG13_PG_CONFIG: ${{ runner.os == 'macOS' && vars.ANKUS_MACOS_PG13_PG_CONFIG || '' }}
           PG14_PG_CONFIG: ${{ runner.os == 'macOS' && vars.ANKUS_MACOS_PG14_PG_CONFIG || '' }}
