@@ -17,22 +17,25 @@ public sealed partial class ToolCommandTests
         CancellationToken token = context.CancellationToken;
         string directory = CreateDirectory();
         _ = await PublishPackageConsumerInDirectoryAsync(directory, "BenchPreload", "ankus_bench_preload", BenchPreloadSource, token);
+        // Before PostgreSQL 18, bench installs the library into the server's own directories, so the case needs a copy it can write.
+        PostgresInstallation installation = await ReserveCaseInstallationAsync(token);
         string home = CreateDirectory();
-        (await InvokeAsync(["init", "--home", home, s_postgresOption, s_installation.PgConfigPath], token)).EnsureSuccess(s_tool, ["init"]);
+        (await InvokeAsync(["init", "--home", home, s_postgresOption, installation.PgConfigPath], token)).EnsureSuccess(s_tool, ["init"]);
         using PortReservation reservation = PortReservation.Create();
         int port = reservation.Port;
         reservation.Dispose();
         try
         {
             ProcessResult run = await InvokeAsync(["bench", "--home", home, "--project", Path.Join(directory, "BenchPreload.csproj"),
-                "--configuration", "Release", "--port", port.ToString(CultureInfo.InvariantCulture), "--group-name", "preload"], token);
+                "--configuration", "Release", "--property", "AnkusPgConfigPath=" + installation.PgConfigPath,
+                "--port", port.ToString(CultureInfo.InvariantCulture), "--group-name", "preload"], token);
             Assert.AreEqual(0, run.ExitCode, run.StandardOutput + run.StandardError);
             Assert.Contains("Ankus: BenchPreload must be loaded through shared_preload_libraries; restarted PostgreSQL with it.", run.StandardError);
             Assert.MatchesRegex(@"Result (\d+) total, \1 ok, 0 failed", run.StandardOutput);
         }
         finally
         {
-            await new PostgresDevelopmentCluster(s_installation, home).StopAsync(CancellationToken.None);
+            await new PostgresDevelopmentCluster(installation, home).StopAsync(CancellationToken.None);
         }
     }
 
