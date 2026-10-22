@@ -981,6 +981,15 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   Linux x64 against PostgreSQL 18.6, and Linux ARM64 39807696041 on the branch
   passed net10.0 and net11.0 against PostgreSQL 18, with 5,564 net10.0
   integration tests and no failure.
+- The MSTest consumer templates imported
+  `Microsoft.VisualStudio.TestTools.UnitTesting`, which MSTest already imports
+  when implicit usings are on, as the templates set them. A consumer that
+  enforces code style failed its test build on IDE0005. The templates drop the
+  import, and the installed-template test now runs the generated tests with
+  IDE0005 as an error. On Linux x64 against PostgreSQL 18.6 it failed all three
+  template cases on the old templates, and they pass on the new ones along with
+  every `ankus new` scaffold case. xUnit and NUnit add no implicit usings, so
+  their templates keep theirs.
 - macOS killed the Generators test host on the MacBook runner (main CI
   39517461878) as the largest process, at 26.7 GB compressed. The generator wrote
   the native source, SQL, graph and exports as single `AssemblyMetadata`

@@ -1,7 +1,6 @@
 using System.Runtime.CompilerServices;
 using Ankus;
 using Ankus.Testing;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Npgsql;
 
 namespace __NAMESPACE__.Tests;

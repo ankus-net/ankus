@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Npgsql;
 
 namespace __NAMESPACE__.Tests;
