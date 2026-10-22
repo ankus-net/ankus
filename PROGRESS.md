@@ -993,11 +993,11 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 - The templates' `.gitignore` listed only build output and regression results.
   Microsoft's project templates ship none and leave it to `dotnet new
   gitignore`, while templates that create a whole solution, such as Avalonia's,
-  ABP's and both Clean Architecture templates, ship the Visual Studio file that
-  command writes. The Ankus templates now ship the .NET SDK 10.0.400 file
-  unchanged, followed by the `pg_regress` output entries. The template test also
-  checks that Git ignores Visual Studio and Rider state and project `.user`
-  files.
+  ABP's and both Clean Architecture templates, ship the same `.gitignore` that
+  `dotnet new gitignore` creates. The Ankus templates' `.gitignore` is now that
+  one, as the .NET 10.0.400 SDK creates it, with the `pg_regress` output entries
+  added at the end. The template test also checks that Git ignores Visual Studio
+  and Rider files and project `.user` files.
 - macOS killed the Generators test host on the MacBook runner (main CI
   39517461878) as the largest process, at 26.7 GB compressed. The generator wrote
   the native source, SQL, graph and exports as single `AssemblyMetadata`
