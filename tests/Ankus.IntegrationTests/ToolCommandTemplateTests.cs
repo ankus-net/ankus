@@ -53,7 +53,7 @@ public sealed partial class ToolCommandTests
         Assert.IsEmpty(properties.Descendants("EnforceCodeStyleInBuild"));
         Assert.IsFalse(File.Exists(Path.Join(output, ".editorconfig")));
         Assert.IsTrue(File.Exists(Path.Join(output, ".gitignore")));
-        await AssertTemplateRegressionIgnoreAsync(output, name, token);
+        await AssertTemplateIgnoreAsync(output, name, token);
 
         Dictionary<string, string?> environment = CreateConsumerEnvironment();
         await RestoreConsumerToolAsync(output, environment, token);
@@ -90,22 +90,24 @@ public sealed partial class ToolCommandTests
     }
 
     /// <summary>
-    /// Checks Git's actual ignore behavior without hiding authored regression SQL or expected results.
+    /// Checks Git's actual ignore behavior for regression output and the editor state that <c>dotnet new gitignore</c>
+    /// ignores, without hiding authored regression SQL or expected results.
     /// </summary>
     /// <param name="directory">The generated consumer solution.</param>
     /// <param name="name">The generated project name.</param>
     /// <param name="token">Cancels Git and fixture file creation.</param>
-    private static async Task AssertTemplateRegressionIgnoreAsync(string directory, string name, CancellationToken token)
+    private static async Task AssertTemplateIgnoreAsync(string directory, string name, CancellationToken token)
     {
         (await PackageProcessRunner.RunAsync("git", ["init", "--quiet", "--initial-branch=main"], s_environment, token,
             workingDirectory: directory)).EnsureSuccess("git", ["init"]);
         string root = "src/" + name + "/pg_regress/";
-        string[] generated = [root + "results/setup.out", root + "regression.diffs", root + "regression.out"];
+        string[] generated = [root + "results/setup.out", root + "regression.diffs", root + "regression.out",
+            ".vs/" + name + "/v18/.suo", ".idea/workspace.xml", "src/" + name + "/" + name + ".csproj.user"];
         foreach (string path in generated)
         {
             string file = Path.Join(directory, path.Replace('/', Path.DirectorySeparatorChar));
             Directory.CreateDirectory(Path.GetDirectoryName(file)!);
-            await File.WriteAllTextAsync(file, "generated regression output", token);
+            await File.WriteAllTextAsync(file, "generated output", token);
         }
 
         ProcessResult ignored = await PackageProcessRunner.RunAsync("git", ["check-ignore", "--", .. generated],
@@ -124,6 +126,12 @@ public sealed partial class ToolCommandTests
         Assert.AreEqual(1, visible.ExitCode);
         Assert.IsEmpty(visible.StandardOutput);
         Assert.IsEmpty(visible.StandardError);
+
+        // MSBuild imports a project's .user file, so none of these may remain for the build.
+        foreach (string path in generated)
+        {
+            File.Delete(Path.Join(directory, path.Replace('/', Path.DirectorySeparatorChar)));
+        }
     }
 
     /// <summary>
