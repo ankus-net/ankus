@@ -96,7 +96,7 @@ internal static partial class ToolCommand
                 }
 
                 IReadOnlyList<string> installed;
-                if (installation.Version.Major >= 18)
+                if (ExtensionStaging.CanStage(installation, output))
                 {
                     string controlBase = StageBenchmarkExtension(output, token, out installed);
                     char separator = OperatingSystem.IsWindows() ? ';' : ':';

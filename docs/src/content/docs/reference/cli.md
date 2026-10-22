@@ -564,7 +564,8 @@ On PostgreSQL 18 or later, Ankus stages benchmark control and SQL files beside
 the benchmark publication and uses private server search paths. The selected
 PostgreSQL installation does not need to be writable. Earlier PostgreSQL
 versions require a writable local installation because they do not provide
-`extension_control_path`.
+`extension_control_path`, as does a Windows project path with non-ASCII
+characters.
 
 Each benchmark invocation runs inside `BEGIN` and is rolled back before its
 result is retained in the runner-owned `ankus_bench` schema. `--report` prints
@@ -604,7 +605,10 @@ the server. On PostgreSQL 18 and later it stages the extension's files beside th
 publication and points the server at them through `extension_control_path`, as
 `ankus bench` does, so the installation, such as a distribution's, needs no write
 access. Earlier versions have no such setting, so the extension is installed into
-the selected installation, which must be writable. It uses a database named `<extension>_regress`.
+the selected installation, which must be writable. PostgreSQL on Windows opens
+the paths in its settings in the system's ANSI code page, so when the project
+path there has non-ASCII characters, the extension is installed as it is for
+earlier versions. It uses a database named `<extension>_regress`.
 `--database` selects another literal name. Ordinary runs preserve that database
 and skip setup on reuse.
 `--resetdb` recreates it and reruns setup. A setup script newer than its expected

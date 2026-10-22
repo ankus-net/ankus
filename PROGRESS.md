@@ -937,6 +937,42 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   the run failed the suite's 17.11 minimum (39675557483). The version workflows
   now pass a selected root as `ANKUS_PGROOT`, so the runner's `PGROOT` stays in
   effect for its default major.
+- Scheduled PostgreSQL versions 39775310216 failed four Windows jobs on
+  2026-10-22 when file opens returned Windows error 1450, "Insufficient system
+  resources", in builds, `initdb` and action setup. Rerun under a two-second
+  memory sampler, PG14 failed with the same error at 15:08:51 UTC as the commit
+  charge reached its 70 GB limit (RAM plus a system-managed 23.5 GB page file),
+  and PG13's build failed when available memory read zero. Three Windows suites
+  were building at once while WSL on the same host held its full 32 GB, which
+  also counts against that limit. PG19's publish failed while Windows shrank the
+  page file back. The 2026-10-15 scheduled run passed with the same three
+  suites. The host now has a fixed 64 GB page file, a 111 GB commit limit; on
+  the next rerun commit peaked at 77.6 GB and no build failed for resources.
+- That rerun followed a reboot, after which Visual Studio Preview installed an
+  update it had deferred until close. The update replaced the shared Windows SDK
+  headers from 15:44 to 16:03 UTC, and every PG14 and PG19 failure in that
+  window was a missing SDK header such as `winsock2.h`.
+- Two failures were real. On PostgreSQL 18 and later, `ankus regress` and
+  `ankus bench` stage the extension beside the publication and name it in
+  `extension_control_path` (#21). Ankus writes that setting as UTF-8, and
+  PostgreSQL on Windows opens the path in the ANSI code page, so
+  `NewSolutionScaffoldsRunnableRegressionSetup` with a `Café.Δelta` project
+  could not create its extension on PG18 or PG19. A PostgreSQL 18.6 server on the
+  host found a probe control file under an ASCII path and under an accented path
+  written in code page 1252, and missed both paths written as UTF-8. Windows
+  publications with non-ASCII paths now install into the installation as before
+  PostgreSQL 18. `StartRecordsTheServerLogPath` failed on PG13 and PG14 because
+  PostgreSQL before 15 writes a Windows service's output to the event log
+  instead of stderr, and the runners are services; under a service the test now
+  reads the warning from the combined log, where Ankus retains those events.
+- Linux ARM64 39776359356 failed `WorkerIdleWaitRecoversRepeatedCancellation`
+  on net10.0. Its worker reported that the idle wait ended without
+  cancellation. PostgreSQL's `SIGUSR1` handler sets the latch for every process
+  signal, so a latch wait can end for something other than the event it waits
+  for. The worker waited once and treated any wake as the cancellation; it and
+  the transactional wait case now keep waiting until cancellation or
+  termination ends the wait. The four worker cancellation tests pass 8/8 on
+  Linux x64 against PostgreSQL 18.
 - macOS killed the Generators test host on the MacBook runner (main CI
   39517461878) as the largest process, at 26.7 GB compressed. The generator wrote
   the native source, SQL, graph and exports as single `AssemblyMetadata`
