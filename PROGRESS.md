@@ -965,6 +965,12 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   PostgreSQL before 15 writes a Windows service's output to the event log
   instead of stderr, and the runners are services; under a service the test now
   reads the warning from the combined log, where Ankus retains those events.
+  On main at c2ebb5d (#62), CI 39822242853 passed on Linux x64, macOS ARM64
+  and Windows x64, and PostgreSQL versions 39822093700 passed every Windows
+  major from 13 through 19 except 17, which primary CI covers. PG13, PG14, PG18
+  and PG19 each executed 5,543 integration tests with no failure, including
+  both `Café.Δelta` cases and `StartRecordsTheServerLogPath`. Commit on the host
+  peaked at 86.8 GB during those runs, above the old 70 GB limit.
 - Linux ARM64 39776359356 failed `WorkerIdleWaitRecoversRepeatedCancellation`
   on net10.0. Its worker reported that the idle wait ended without
   cancellation. PostgreSQL's `SIGUSR1` handler sets the latch for every process
@@ -972,7 +978,9 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   for. The worker waited once and treated any wake as the cancellation; it and
   the transactional wait case now keep waiting until cancellation or
   termination ends the wait. The four worker cancellation tests pass 8/8 on
-  Linux x64 against PostgreSQL 18.
+  Linux x64 against PostgreSQL 18.6, and Linux ARM64 39807696041 on the branch
+  passed net10.0 and net11.0 against PostgreSQL 18, with 5,564 net10.0
+  integration tests and no failure.
 - macOS killed the Generators test host on the MacBook runner (main CI
   39517461878) as the largest process, at 26.7 GB compressed. The generator wrote
   the native source, SQL, graph and exports as single `AssemblyMetadata`
