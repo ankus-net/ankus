@@ -937,6 +937,22 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   the run failed the suite's 17.11 minimum (39675557483). The version workflows
   now pass a selected root as `ANKUS_PGROOT`, so the runner's `PGROOT` stays in
   effect for its default major.
+- Scheduled PostgreSQL versions 39775310216 failed four Windows jobs on
+  2026-10-22 when file opens returned Windows error 1450, "Insufficient system
+  resources", in builds, `initdb` and action setup. Rerun under a two-second
+  memory sampler, PG14 failed with the same error at 15:08:51 UTC as the commit
+  charge reached its 70 GB limit (RAM plus a system-managed 23.5 GB page file),
+  and PG13's build failed when available memory read zero. Three Windows suites
+  were building at once while WSL on the same host held its full 32 GB, which
+  also counts against that limit. The 2026-10-15 scheduled run passed with the
+  same three suites.
+- Linux ARM64 39776359356 failed `WorkerIdleWaitRecoversRepeatedCancellation`
+  on net10.0. Its worker reported that the idle wait ended without
+  cancellation. PostgreSQL's `SIGUSR1` handler sets the latch for every process
+  signal, so a latch wait can end for something other than the event it waits
+  for. The worker waited once and treated any wake as the cancellation; it and
+  the transactional wait case now keep waiting until cancellation or
+  termination ends the wait.
 - macOS killed the Generators test host on the MacBook runner (main CI
   39517461878) as the largest process, at 26.7 GB compressed. The generator wrote
   the native source, SQL, graph and exports as single `AssemblyMetadata`

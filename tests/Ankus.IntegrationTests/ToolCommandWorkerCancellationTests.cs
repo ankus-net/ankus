@@ -340,7 +340,10 @@ public sealed partial class ToolCommandTests
                             }
                             else if (mode == 4)
                             {
-                                PgBackgroundWorker.Wait();
+                                // Other signals also set the latch, so only cancellation or termination ends the wait.
+                                while (PgBackgroundWorker.Wait())
+                                {
+                                }
                             }
                             else
                             {
@@ -429,7 +432,10 @@ public sealed partial class ToolCommandTests
                         }
                         else
                         {
-                            PgBackgroundWorker.Wait();
+                            // Other signals also set the latch, so only cancellation or termination ends the wait.
+                            while (PgBackgroundWorker.Wait())
+                            {
+                            }
                         }
                     }
                     catch (PgQueryCanceledException exception) when (exception.Diagnostic.SqlState == "57014" &&
