@@ -157,7 +157,7 @@ internal static partial class ToolCommand
             }
 
             IReadOnlyList<string> installed;
-            if (installation.Version.Major >= 18)
+            if (ExtensionStaging.CanStage(installation, output))
             {
                 // PostgreSQL 18 finds extensions through extension_control_path, so the files stay beside the publication
                 // and the installation, such as a distribution's, needs no write access.
@@ -171,6 +171,13 @@ internal static partial class ToolCommand
                 try
                 {
                     installed = ExtensionInstaller.Install(output, installation, null, token);
+                }
+                catch (UnauthorizedAccessException error) when (installation.Version.Major >= 18)
+                {
+                    throw new UnauthorizedAccessException($"PostgreSQL on Windows can't open the non-ASCII path {output} from its " +
+                        $"settings, so ankus regress installs the extension into the installation, and this account can't write " +
+                        $"there: {error.Message} Use a project path with only ASCII characters, or an installation you own, such as " +
+                        $"one from 'ankus init --pg{installation.Version.Major} download'.", error);
                 }
                 catch (UnauthorizedAccessException error)
                 {

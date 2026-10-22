@@ -1,3 +1,4 @@
+using System.Text;
 using Ankus.PgConfig;
 
 namespace Ankus.Tool;
@@ -9,6 +10,19 @@ namespace Ankus.Tool;
 /// </summary>
 internal static class ExtensionStaging
 {
+    /// <summary>
+    /// Determines whether a server can find files staged beneath a publication through its search-path settings.
+    /// </summary>
+    /// <param name="installation">The PostgreSQL installation that will run the server.</param>
+    /// <param name="output">The publication directory.</param>
+    /// <returns>True for PostgreSQL 18 and later, except on Windows when the publication path is not ASCII.</returns>
+    /// <remarks>
+    /// Ankus writes server settings as UTF-8, and PostgreSQL on Windows opens the paths they name in the ANSI code page,
+    /// so only an ASCII path reaches the same directory there.
+    /// </remarks>
+    internal static bool CanStage(PostgresInstallation installation, string output)
+        => installation.Version.Major >= 18 && (!OperatingSystem.IsWindows() || Ascii.IsValid(Path.GetFullPath(output)));
+
     /// <summary>
     /// Copies the control and SQL files into a directory beneath the publication, replacing any earlier copy.
     /// </summary>
