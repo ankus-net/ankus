@@ -18,7 +18,8 @@ public sealed partial class ToolCommandTests
         => new(s_environment, StringComparer.Ordinal);
 
     /// <summary>
-    /// Installed templates pin every Ankus component and execute managed and real backend tests without repository policy.
+    /// Installed templates pin every Ankus component and execute managed and real backend tests without repository policy,
+    /// and their sources have no unnecessary using directives.
     /// </summary>
     /// <param name="template">The installed template short name.</param>
     /// <param name="name">The managed solution name.</param>
@@ -59,8 +60,12 @@ public sealed partial class ToolCommandTests
         ProcessResult help = await PackageProcessRunner.RunAsync("dotnet", ["ankus", "--help"], environment, token, workingDirectory: output);
         help.EnsureSuccess("dotnet", ["ankus", "--help"]);
         Assert.Contains("PostgreSQL", help.StandardOutput);
-        ProcessResult tests = await PackageProcessRunner.RunAsync("dotnet", ["test", "--report-trx", "-p:AnkusPostgresMajor=" + MajorText()],
-            environment, token, workingDirectory: output);
+
+        // A consumer that enforces code style finds no unnecessary using directives, such as MSTest's namespace, which
+        // MSTest already imports when implicit usings are enabled.
+        await File.WriteAllTextAsync(Path.Join(output, ".editorconfig"), "[*.cs]\ndotnet_diagnostic.IDE0005.severity = error\n", token);
+        ProcessResult tests = await PackageProcessRunner.RunAsync("dotnet", ["test", "--report-trx", "-p:AnkusPostgresMajor=" + MajorText(),
+            "-p:EnforceCodeStyleInBuild=true", "-p:GenerateDocumentationFile=true"], environment, token, workingDirectory: output);
         tests.EnsureSuccess("dotnet", ["test"]);
         XDocument report = XDocument.Load(Directory.GetFiles(output, "*.trx", SearchOption.AllDirectories).Single());
         XNamespace ns = "http://microsoft.com/schemas/VisualStudio/TeamTest/2010";
