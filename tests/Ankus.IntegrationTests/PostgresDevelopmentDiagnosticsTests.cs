@@ -1,3 +1,4 @@
+using System.Security.Principal;
 using Ankus.PgConfig;
 using Ankus.Testing;
 using Npgsql;
@@ -126,7 +127,8 @@ public sealed class PostgresDevelopmentDiagnosticsTests(TestContext context)
 
     /// <summary>
     /// Each start records the file the server writes in the data directory's <c>.ankus-log</c>, so a tool such as a log
-    /// tailer can follow it without reproducing Ankus's naming. The server's own output reaches that file, the
+    /// tailer can follow it without reproducing Ankus's naming. The server's own output reaches that file, or the combined
+    /// log when PostgreSQL 14 or earlier runs as a Windows service and writes to the event log instead. The
     /// <c>.ankus-cluster</c> marker keeps the label every Ankus version checks, and a start after the Ankus home moves
     /// records the new path. The home is copied to its new path: on a busy Windows machine, the system can keep a new
     /// cluster's files referenced for minutes after every process has closed them, and until it lets go, Windows
@@ -157,7 +159,8 @@ public sealed class PostgresDevelopmentDiagnosticsTests(TestContext context)
             }
 
             Assert.IsTrue(await cluster.StopAsync(token));
-            Assert.Contains("WARNING:  " + message, await File.ReadAllTextAsync(recorded, token));
+            Assert.Contains("WARNING:  " + message, WritesToEventLog(installation)
+                ? cluster.ReadServerLog(token) : await File.ReadAllTextAsync(recorded, token));
             Assert.AreEqual(installation.Label, await File.ReadAllTextAsync(Path.Join(cluster.DataDirectory, ".ankus-cluster"), token));
 
             CopyTree(home, moved);
@@ -246,6 +249,25 @@ public sealed class PostgresDevelopmentDiagnosticsTests(TestContext context)
         {
             PostgresServerStorage.Delete(home);
         }
+    }
+
+    /// <summary>
+    /// Applies the check PostgreSQL 14 and earlier make on Windows: a server running as LocalSystem or in the service group
+    /// writes its output to the event log instead of stderr. The server inherits this process's account.
+    /// </summary>
+    /// <param name="installation">The PostgreSQL installation that runs the server.</param>
+    /// <returns>Whether the server's output reaches only the combined log.</returns>
+    private static bool WritesToEventLog(PostgresInstallation installation)
+    {
+        if (!OperatingSystem.IsWindows() || installation.Version.Major >= 15)
+        {
+            return false;
+        }
+
+        using WindowsIdentity identity = WindowsIdentity.GetCurrent();
+        var principal = new WindowsPrincipal(identity);
+        return principal.IsInRole(new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null)) ||
+            principal.IsInRole(new SecurityIdentifier(WellKnownSidType.ServiceSid, null));
     }
 
     /// <summary>
