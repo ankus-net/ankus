@@ -1021,7 +1021,10 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   `store_att_byval`, `att_isnull`, `Datum` conversions, varlena and item
   pointer helpers with the same code on every major, and passes against
   PostgreSQL 13, 15, 16, 18 and 19 on Linux x64; on 13 it does not build
-  without the change.
+  without the change. On main at d3851b3 (#68), CI 39894316353 passed on Linux
+  x64, macOS ARM64 and Windows x64, PostgreSQL versions 39894333622 passed every
+  other Linux major, and platform versions 39894336001 passed every other
+  Windows and macOS major.
 - macOS killed the Generators test host on the MacBook runner (main CI
   39517461878) as the largest process, at 26.7 GB compressed. The generator wrote
   the native source, SQL, graph and exports as single `AssemblyMetadata`
