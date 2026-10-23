@@ -388,6 +388,47 @@ public sealed partial class ToolCommandTests
                 }
 
                 [PgFunction]
+                public static unsafe string NativeVersionedHelperValues()
+                {
+                    // Older majors define these helpers as macros, so the same calls must work there through wrappers.
+                    using PgMemoryContext owner = PgMemoryContext.Create("versioned helpers");
+                    using PgAllocation name = owner.AllocateUtf8String("value");
+                    TupleDescData* descriptor = NativeMethods.CreateTemplateTupleDesc(2);
+                    string attributes;
+                    try
+                    {
+                        NativeMethods.TupleDescInitEntry(descriptor, 1, (sbyte*)name.DangerousGetPointer(), 23, -1, 0);
+                        NativeMethods.TupleDescInitEntry(descriptor, 2, (sbyte*)name.DangerousGetPointer(), 25, -1, 0);
+            #if ANKUS_PG19
+                        NativeMethods.TupleDescFinalize(descriptor);
+            #endif
+                        FormData_pg_attribute* first = NativeMethods.TupleDescAttr(descriptor, 0);
+                        FormData_pg_attribute* second = NativeMethods.TupleDescAttr(descriptor, 1);
+                        attributes = $"{first->atttypid}:{first->attlen}:{first->attbyval}:{second->atttypid}:{second->attlen}:{second->attbyval}";
+                    }
+                    finally
+                    {
+                        NativeMethods.FreeTupleDesc(descriptor);
+                    }
+
+                    int value = -42;
+                    int fetched = NativeMethods.DatumGetInt32(NativeMethods.fetch_att(&value, true, 4));
+                    long stored = 0;
+                    NativeMethods.store_att_byval(&stored, NativeMethods.Int32GetDatum(1234), 4);
+                    byte bits = 0b101;
+                    string nulls = $"{NativeMethods.att_isnull(0, &bits)}:{NativeMethods.att_isnull(1, &bits)}:{NativeMethods.att_isnull(2, &bits)}";
+                    using PgAllocation varlena = owner.AllocateZeroed(16);
+                    void* text = varlena.DangerousGetPointer();
+                    NativeMethods.SET_VARSIZE(text, 9);
+                    bool data = NativeMethods.VARSIZE(text) == 9 && NativeMethods.VARDATA(text) == (sbyte*)text + 4;
+                    ItemPointerData item;
+                    NativeMethods.ItemPointerSet(&item, 70000, 12);
+                    bool pointer = NativeMethods.DatumGetPointer(NativeMethods.PointerGetDatum(text)) == (sbyte*)text;
+                    return $"{attributes}|{fetched}|{*(int*)&stored}|{nulls}|{data}|" +
+                        $"{NativeMethods.ItemPointerGetBlockNumber(&item)}:{NativeMethods.ItemPointerGetOffsetNumber(&item)}|{pointer}|{NativeMethods.BITMAPLEN(9)}";
+                }
+
+                [PgFunction]
                 public static string NativeTypedError(uint functionOid, bool swallow)
                 {
                     unsafe
@@ -594,6 +635,8 @@ public sealed partial class ToolCommandTests
             command.CommandText = "SELECT native_header_helper_values()";
             Assert.AreEqual("16|FEDCBA9876543218|199|16|FFFFFFFFFFFFFFD6|True|True|True|True|True|True|True|True|True|True|True|True",
                 await command.ExecuteScalarAsync(token));
+            command.CommandText = "SELECT native_versioned_helper_values()";
+            Assert.AreEqual("23:4:True:25:-1:False|-42|1234|False:True:False|True|70000:12|True|2", await command.ExecuteScalarAsync(token));
             command.CommandText = "SELECT native_node_call(42)";
             Assert.AreEqual(42, await command.ExecuteScalarAsync(token));
             command.CommandText = "SELECT set_config('dynamic_library_path', current_setting('dynamic_library_path') || $1, false)";

@@ -170,7 +170,8 @@ public sealed partial class NativeBindingNativeTests
             "PageIsValid", "PageSizeIsValid", "SizeOfPageHeaderData", "HeapTupleHeaderGetNatts", "SpinLockInit", "SpinLockAcquire", "SpinLockRelease", "SpinLockFree"];
         NativeBindingRawCatalog inventory = NativeBindingRawParser.Parse("", 18);
         NativeHeaderRequest[] requests = [.. names.Select(name => NativeBindingHeaderAvailability.Request(inventory, name))];
-        string headers = Headers + "\n" + NativeBindingHeaderHelpers.Source(18);
+        // The fake headers declare only these helpers' types, so the other wrappers stay out of this translation unit.
+        string headers = Headers + "\n" + string.Concat(NativeBindingHeaderHelpers.Read(18).Where(helper => names.Contains(helper.Name)).Select(static helper => helper.Source));
         const string Main = """
             #include <stdio.h>
             #define REQUIRE(expression) do { if (!(expression)) { fprintf(stderr, "line %d: %s\n", __LINE__, #expression); return 1; } } while (0)

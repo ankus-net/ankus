@@ -214,6 +214,13 @@ unsafe
 }
 ```
 
+PostgreSQL has turned many macros into inline functions over its releases, among
+them `TupleDescAttr` in 18 and `fetch_att`, `att_isnull` and the `Datum`
+conversions in 16. Each of these is available on every version that defines it,
+through a wrapper where it is still a macro, so the same call builds against
+PostgreSQL 13 through 19. A few went the other way, such as `bms_is_empty` in 16,
+and are wrapped on the newer versions.
+
 Signatures follow the selected PostgreSQL version, including native `const` and
 `volatile` contracts. For example, `PageValidateSpecialPointer` returns `bool`
 on PostgreSQL 13–15 and `void` on 16–19; `SpinLockFree` is unavailable on 19.

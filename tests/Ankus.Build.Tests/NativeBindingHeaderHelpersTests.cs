@@ -37,6 +37,9 @@ public sealed class NativeBindingHeaderHelpersTests
             expected = [.. expected, "SpinLockFree"];
         }
 
+        string[] transitions = [.. NativeBindingHeaderTransitions.Read(major).Select(static transition => transition.Name)];
+        expected = [.. expected, .. transitions];
+
         Assert.AreSequenceEqual(expected.Order(StringComparer.Ordinal), names.Keys.Order(StringComparer.Ordinal));
         Assert.ThrowsExactly<NotSupportedException>(() => ((IList<NativeBindingHeaderHelper>)helpers).Clear());
         var macros = new HashSet<string>(StringComparer.Ordinal)
@@ -70,6 +73,8 @@ public sealed class NativeBindingHeaderHelpersTests
         {
             macros.UnionWith(["SpinLockInit", "SpinLockAcquire", "SpinLockRelease", "SpinLockFree"]);
         }
+
+        macros.UnionWith(transitions);
 
         foreach ((string name, NativeBindingHeaderHelper helper) in names)
         {
