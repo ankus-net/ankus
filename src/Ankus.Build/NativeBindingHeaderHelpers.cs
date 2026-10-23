@@ -106,6 +106,8 @@ internal static class NativeBindingHeaderHelpers
             Direct("HeapTupleHeaderXminFrozen"), Direct("HeapTupleHeaderGetRawCommandId"), Direct("HeapTupleHeaderGetRawXmin"),
             Direct("HeapTupleHeaderGetXmin"), Direct("HeapTupleNoNulls"),
         ]);
+        helpers.AddRange(NativeBindingHeaderTransitions.Read(major).Select(static transition =>
+            Macro(transition.Name, transition.Result, transition.Parameters, NativeBindingHeaderTransitions.Body(transition))));
         return helpers.AsReadOnly();
     }
 

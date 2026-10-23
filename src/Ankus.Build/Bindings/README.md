@@ -19,6 +19,13 @@ Selected-header helpers supplement declarations missing from a major's foreign
 inventory. This includes `pg_add_s32_overflow` from `common/int.h` on all seven
 majors. The compiler measures its actual signature and the native call uses the
 installed header implementation; the pinned inventories remain unchanged.
+Helpers that some majors declare as functions and others define only as
+function-like macros, such as `TupleDescAttr` before PostgreSQL 18, are listed in
+`NativeBindingHeaderTransitions.cs` and wrapped where they are macros. Each
+wrapper uses the prototype of the nearest major that declares the function with
+the macro's arity. With the wrappers written out in `NativeBindingHeaderHelpers.cs`,
+they cover all 276 such helpers in the headers of PostgreSQL 13.23 through 19
+RC1, and every wrapper compiles there with and without assertions.
 
 `ReferenceConstants` retain unevaluated expressions from pgrx's reference build.
 They include configuration values and platform-specific widths. Never use them

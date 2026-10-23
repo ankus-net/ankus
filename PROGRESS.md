@@ -1005,6 +1005,23 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   one, as the .NET 10.0.400 SDK creates it, with the `pg_regress` output entries
   added at the end. The template test also checks that Git ignores Visual Studio
   and Rider files and project `.user` files.
+- `NativeMethods` lacked `TupleDescAttr` before PostgreSQL 18 and `fetch_att`,
+  `att_isnull` and `store_att_byval` before 16, because those majors define them
+  as macros and the bindings follow pgrx's function inventory. An extension
+  calling them needed its own per-version code. Across the seven supported
+  majors 276 helpers change between function and macro, mostly `Datum`
+  conversions and page, item pointer, buffer and heap tuple helpers before 16,
+  heap tuple header helpers before 18 and varlena helpers before 19; a few, such
+  as `bms_is_empty`, became macros later. 26 already had wrappers. The other 250
+  are now wrapped wherever they are macros, using the prototype of the nearest
+  major that declares the function, with three bodies written out where the
+  macro's shape differs. The exact helper source compiles to objects with
+  `-Wall -Wextra -Werror` against the headers of 13.23 through 19 RC1, with and
+  without assertions. A consumer extension calls `TupleDescAttr`, `fetch_att`,
+  `store_att_byval`, `att_isnull`, `Datum` conversions, varlena and item
+  pointer helpers with the same code on every major, and passes against
+  PostgreSQL 13, 15, 16, 18 and 19 on Linux x64; on 13 it does not build
+  without the change.
 - macOS killed the Generators test host on the MacBook runner (main CI
   39517461878) as the largest process, at 26.7 GB compressed. The generator wrote
   the native source, SQL, graph and exports as single `AssemblyMetadata`
