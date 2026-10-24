@@ -1107,8 +1107,11 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   open (#104). Open writers were a singly linked list that every operation
   walked to find its writer, that close walked twice more, and that the context
   reset callback walked again after close had unlinked the writer. They are now
-  in a hash table by id, and the callback does nothing once close has removed
-  the writer. On Linux x64 with PostgreSQL 18, a statement that opens 20,000
+  in a hash table by id, built with PostgreSQL's `simplehash.h`, and the
+  callback does nothing once close has removed the writer. A first version used
+  dynahash, and on macOS every writer crashed its backend, because the static
+  linker bound `hash_create` and `hash_search` to libSystem's functions of the
+  same names. On Linux x64 with PostgreSQL 18, a statement that opens 20,000
   writers on 20,000 tables, inserts a row through each and disposes them took
   14.8 s oldest first and 6.5 s newest first, 10.7 s and 2.7 s of it disposing;
   it now takes 1.0 s and 0.8 s, 28 ms and 30 ms of it disposing. Tests open 500
@@ -2522,7 +2525,7 @@ PostgreSQL 19 RC1, Linux ARM64, and Intel macOS on 13–18 and 19 RC1 all pass o
 declaration audit against pgrx 0.19.3 has no open option, and the third code
 review's findings are fixed or kept by documented design.
 
-1. Resolve discovered correctness and CI failures before accepting affected work. The macOS ARM64 test-host crashes are unexplained: on 2026-10-14 the build-tool tests' host died after 698 of 1,346 tests, and its crash report shows `fork()`, called by .NET's `Process.Start`, aborting in libmalloc's xzone allocator (`_malloc_fork_parent`: unlock of an `os_unfair_lock` the thread does not own) while two other threads waited on xzone's fork lock to allocate. macOS 26 uses xzone for every ARM64 process, with no setting to turn it off outside Apple, and Intel Macs never use it. Rerun a job that ends this way and record it.
+1. Resolve discovered correctness and CI failures before accepting affected work. The macOS ARM64 test-host crashes are unexplained: on 2026-10-14 the build-tool tests' host died after 698 of 1,346 tests, and its crash report shows `fork()`, called by .NET's `Process.Start`, aborting in libmalloc's xzone allocator (`_malloc_fork_parent`: unlock of an `os_unfair_lock` the thread does not own) while two other threads waited on xzone's fork lock to allocate. macOS 26 uses xzone for every ARM64 process, with no setting to turn it off outside Apple, and Intel Macs never use it. Rerun a job that ends this way and record it. On macOS, an extension's references to `hash_create`, `hash_destroy`, `hash_search` and `hash_stats`, which `NativeMethods` bodies also make, bind to libSystem's functions of the same names: the static linker binds a name that a linked system library exports, and `-undefined dynamic_lookup` covers only names it cannot find. A probe linked with Native AOT's macOS libraries binds those four, and `getpeereid` and `timingsafe_bcmp`, which PostgreSQL defines only where the system lacks them, to libSystem; every other catalog function and global is looked up in the backend.
 2. Keep the pgrx 0.19.3 [release-delta gates](docs/contributing/evidence/parity-requirements.md#pgrx-0193-release-delta-and-refresh-gates) satisfied: each has implementation and complete-suite evidence on runtime 10.0.13-ankus.1, which must be refreshed on each later serviced runtime.
 3. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
 4. Measured hot paths are done: a trimming row trigger costs about the same as PL/pgSQL (0.72 µs against 0.72 µs per row on one host, 0.55 µs against 0.52 µs on another), as the [guard-tier evidence](docs/contributing/evidence/guard-tiers.md#row-triggers) shows. Keep the in-backend baseline, and measure again when boundary code changes, preserving recovery and ownership guarantees.
