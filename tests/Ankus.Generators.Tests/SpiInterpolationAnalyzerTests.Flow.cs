@@ -97,6 +97,9 @@ public sealed partial class SpiInterpolationAnalyzerTests
     [DataRow("Spi.Execute($\"SELECT {Spi.ParameterReference(number)}\");")]
     [DataRow("var sql = new System.Text.StringBuilder(\"INSERT INTO t VALUES (\"); for (int i = 1; i <= number; i++) { sql.Append(i > 1 ? \", \" : \"\").Append(Spi.ParameterReference(i)); } sql.Append(')'); Spi.Execute(sql.ToString());")]
     [DataRow("int[] numbers = [1, 2]; Spi.Execute(\"SELECT \" + string.Join(\", \", System.Linq.Enumerable.Select(numbers, Spi.ParameterReference)));")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"INSERT INTO \").Append(Spi.QuoteQualifiedIdentifier(value, value)).Append(\" VALUES (\"); for (int i = 0; i < number; i++) { sql.Append(i > 0 ? \", \" : \"\").Append(Spi.ParameterReference(i + 1)); } sql.Append(')'); Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"INSERT INTO \").Append(Spi.QuoteIdentifier(value)).Append(\" VALUES (\"); for (int i = 0; i < number; i++) { sql.Append(i > 0 ? \", \" : \"\").Append(Spi.ParameterReference(i + 1)); } sql.Append(')'); Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"INSERT INTO t VALUES (\"); for (int i = 0; i < number; i++) { if (i > 0) { sql.Append(\", \"); } sql.Append(Spi.ParameterReference(i + 1)); } sql.Append(')'); Spi.Execute(sql.ToString());")]
     public async Task ProvenCommandConstructionRemainsValid(string body)
         => Assert.IsEmpty(await Analyze(body, FlowHelpers, "bool flag = number != 0;"));
 
@@ -169,6 +172,22 @@ public sealed partial class SpiInterpolationAnalyzerTests
         Diagnostic error = Assert.ContainsSingle(await Analyze(body));
         Assert.AreEqual("ANKUS044", error.Id);
         Assert.AreEqual("sql", error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
+    }
+
+    /// <summary>
+    /// Rejects a loop separator that could extend a parameter reference's number or join it to an identifier.
+    /// </summary>
+    /// <param name="separator">The text appended before every reference but the first.</param>
+    [TestMethod]
+    [DataRow("0")]
+    [DataRow("a")]
+    public async Task LoopSummaryKeepsParameterReferencesApart(string separator)
+    {
+        string body = "var sql = new System.Text.StringBuilder(\"INSERT INTO \").Append(Spi.QuoteIdentifier(value)).Append(\" VALUES (\"); " +
+            "for (int i = 0; i < number; i++) { sql.Append(i > 0 ? \"" + separator + "\" : \"\").Append(Spi.ParameterReference(i + 1)); } " +
+            "sql.Append(')'); Spi.Execute(sql.ToString());";
+        Diagnostic error = Assert.ContainsSingle(await Analyze(body, FlowHelpers, "bool flag = number != 0;"));
+        Assert.AreEqual("ANKUS044", error.Id);
     }
 
     /// <summary>

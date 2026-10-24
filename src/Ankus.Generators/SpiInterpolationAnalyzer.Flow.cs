@@ -1504,8 +1504,7 @@ public sealed partial class SpiInterpolationAnalyzer
             bool unsafeText = left.Unsafe || right.Unsafe || left.Input || right.Input;
             if (unknown)
             {
-                if (!unsafeText && left.IsCompleteSafe && right.IsCompleteSafe &&
-                    (!left.MayBeNonEmpty || !right.MayBeNonEmpty || left.EndsWithBoundary || right.StartsWithBoundary))
+                if (!unsafeText && left.IsCompleteSafe && right.IsCompleteSafe && Separated(left, right))
                 {
                     return Value.SafeConcatenation(left, right);
                 }
@@ -1516,14 +1515,24 @@ public sealed partial class SpiInterpolationAnalyzer
             ImmutableArray<Text> layouts = [.. left.Texts.SelectMany(first => right.Texts.Select(second =>
                 new Text(first.Sql + second.Sql, [.. first.Positions, .. second.Positions.Select(position => position + first.Sql.Length)])))
                 .Take(Value.MaxLayouts + 1)];
-            if (layouts.Length > Value.MaxLayouts && !unsafeText && left.IsCompleteSafe && right.IsCompleteSafe &&
-                (!left.MayBeNonEmpty || !right.MayBeNonEmpty || left.EndsWithBoundary || right.StartsWithBoundary))
+            if (layouts.Length > Value.MaxLayouts && !unsafeText && left.IsCompleteSafe && right.IsCompleteSafe && Separated(left, right))
             {
                 return Value.SafeConcatenation(left, right);
             }
 
             return new(layouts, unsafeText, false, left.Quoted || right.Quoted, false, []);
         }
+
+        /// <summary>
+        /// Determines whether joining two summarized values keeps the last token of one apart from the first of the other.
+        /// A positional parameter ends at its last digit, so a following parameter reference starts a new token.
+        /// </summary>
+        /// <param name="left">The preceding text.</param>
+        /// <param name="right">The following text.</param>
+        /// <returns>Whether no token can continue across the join.</returns>
+        private static bool Separated(Value left, Value right)
+            => !left.MayBeNonEmpty || !right.MayBeNonEmpty || left.EndsWithBoundary || right.StartsWithBoundary ||
+                left.EndsAfterParameter && right.StartsWithParameter;
 
         /// <summary>
         /// Keeps inert SQL text and semantic positions of complete PostgreSQL-quoted fragments together.
@@ -1566,9 +1575,12 @@ public sealed partial class SpiInterpolationAnalyzer
         /// <param name="endsWithBoundary">Whether every summarized nonempty layout ends at a safe concatenation boundary.</param>
         /// <param name="nonEmpty">Whether every summarized layout contains at least one character.</param>
         /// <param name="mayBeNonEmpty">Whether at least one summarized layout contains a character.</param>
+        /// <param name="startsWithParameter">Whether every summarized nonempty layout starts with a boundary or a positional parameter.</param>
+        /// <param name="endsAfterParameter">Whether every summarized nonempty layout ends with a boundary or a complete positional parameter.</param>
         private sealed class Value(ImmutableArray<Text> texts, bool unsafeText, bool unknown, bool quoted, bool input, ImmutableArray<int> references,
             ImmutableArray<Value> elements = default, ImmutableArray<int> functions = default, bool safeSummary = false,
-            bool startsWithBoundary = false, bool endsWithBoundary = false, bool nonEmpty = false, bool mayBeNonEmpty = false)
+            bool startsWithBoundary = false, bool endsWithBoundary = false, bool nonEmpty = false, bool mayBeNonEmpty = false,
+            bool startsWithParameter = false, bool endsAfterParameter = false)
         {
             /// <summary>
             /// Bounds exact alternatives before preserving a conservative unknown layout.
@@ -1635,6 +1647,17 @@ public sealed partial class SpiInterpolationAnalyzer
             internal bool EndsWithBoundary => SafeSummary ? endsWithBoundary : !Unknown && Texts.Length != 0 &&
                 Texts.All(static text => text.Sql.Length == 0 || IsEndBoundary(text.Sql[text.Sql.Length - 1]));
             /// <summary>
+            /// Gets whether every nonempty layout begins with a boundary or a positional parameter such as <c>$2</c>.
+            /// </summary>
+            internal bool StartsWithParameter => SafeSummary ? startsWithParameter : !Unknown && Texts.Length != 0 &&
+                Texts.All(static text => text.Sql.Length == 0 || IsStartBoundary(text.Sql[0]) ||
+                    text.Sql.Length > 1 && text.Sql[0] == '$' && IsDigit(text.Sql[1]));
+            /// <summary>
+            /// Gets whether every nonempty layout ends with a boundary or a complete positional parameter such as <c>$1</c>.
+            /// </summary>
+            internal bool EndsAfterParameter => SafeSummary ? endsAfterParameter : !Unknown && Texts.Length != 0 &&
+                Texts.All(static text => text.Sql.Length == 0 || IsEndBoundary(text.Sql[text.Sql.Length - 1]) || EndsWithParameter(text.Sql));
+            /// <summary>
             /// Gets whether every possible layout contains at least one character.
             /// </summary>
             internal bool NonEmpty => SafeSummary ? nonEmpty : !Unknown && Texts.Length != 0 &&
@@ -1665,7 +1688,7 @@ public sealed partial class SpiInterpolationAnalyzer
             /// Gets the deterministic comparison representation used by the flow worklist.
             /// </summary>
             internal string Key => _key ??= string.Join("|", Texts.Select(static text => TextKey(text)).OrderBy(static item => item, StringComparer.Ordinal)) +
-                $"\0{Unsafe},{Unknown},{Quoted},{SafeSummary},{StartsWithBoundary},{EndsWithBoundary},{NonEmpty},{MayBeNonEmpty},{Input}\0" + string.Join(",", References) +
+                $"\0{Unsafe},{Unknown},{Quoted},{SafeSummary},{StartsWithBoundary},{EndsWithBoundary},{NonEmpty},{MayBeNonEmpty},{StartsWithParameter},{EndsAfterParameter},{Input}\0" + string.Join(",", References) +
                 (Elements.IsDefault ? "" : string.Join(";", Elements.Select(static value => value.Key.Length + ":" + value.Key))) + "\0" + string.Join(",", Functions);
 
             private static string TextKey(Text text) => text.Sql.Length + ":" + text.Sql + ":" + string.Join(",", text.Positions);
@@ -1675,6 +1698,20 @@ public sealed partial class SpiInterpolationAnalyzer
 
             private static bool IsEndBoundary(char value)
                 => IsStartBoundary(value);
+
+            private static bool IsDigit(char value) => value is >= '0' and <= '9';
+
+            // A trailing $n is a parameter when nothing before it can make the dollar part of an identifier or quoted token.
+            private static bool EndsWithParameter(string sql)
+            {
+                int index = sql.Length;
+                while (index > 0 && IsDigit(sql[index - 1]))
+                {
+                    index--;
+                }
+
+                return index < sql.Length && index > 0 && sql[index - 1] == '$' && (index == 1 || IsEndBoundary(sql[index - 2]));
+            }
 
             /// <summary>
             /// Preserves an inert compiler constant and its exact formatting type.
@@ -1726,7 +1763,9 @@ public sealed partial class SpiInterpolationAnalyzer
                     startsWithBoundary: left.StartsWithBoundary && right.StartsWithBoundary,
                     endsWithBoundary: left.EndsWithBoundary && right.EndsWithBoundary,
                     nonEmpty: left.NonEmpty && right.NonEmpty,
-                    mayBeNonEmpty: left.MayBeNonEmpty || right.MayBeNonEmpty);
+                    mayBeNonEmpty: left.MayBeNonEmpty || right.MayBeNonEmpty,
+                    startsWithParameter: left.StartsWithParameter && right.StartsWithParameter,
+                    endsAfterParameter: left.EndsAfterParameter && right.EndsAfterParameter);
 
             /// <summary>
             /// Summarizes a verified concatenation without enumerating every possible layout.
@@ -1736,7 +1775,9 @@ public sealed partial class SpiInterpolationAnalyzer
                     startsWithBoundary: left.StartsWithBoundary && (left.NonEmpty || right.StartsWithBoundary),
                     endsWithBoundary: right.EndsWithBoundary && (right.NonEmpty || left.EndsWithBoundary),
                     nonEmpty: left.NonEmpty || right.NonEmpty,
-                    mayBeNonEmpty: left.MayBeNonEmpty || right.MayBeNonEmpty);
+                    mayBeNonEmpty: left.MayBeNonEmpty || right.MayBeNonEmpty,
+                    startsWithParameter: left.StartsWithParameter && (left.NonEmpty || right.StartsWithParameter),
+                    endsAfterParameter: right.EndsAfterParameter && (right.NonEmpty || left.EndsAfterParameter));
 
             /// <summary>
             /// Retains known hazards and identities after an unmodeled transformation.
@@ -1750,7 +1791,7 @@ public sealed partial class SpiInterpolationAnalyzer
             /// Retains the non-object alternatives of a value whose object identities are formatted separately.
             /// </summary>
             internal Value WithoutReferences() => new(Texts, Unsafe, Unknown, Quoted, Input, [], Elements, Functions,
-                SafeSummary, StartsWithBoundary, EndsWithBoundary, NonEmpty, MayBeNonEmpty);
+                SafeSummary, StartsWithBoundary, EndsWithBoundary, NonEmpty, MayBeNonEmpty, StartsWithParameter, EndsAfterParameter);
             /// <summary>
             /// Converges changing loop text while retaining hazards and object identities.
             /// </summary>
@@ -1764,7 +1805,7 @@ public sealed partial class SpiInterpolationAnalyzer
             internal Value ReplaceReference(int from, int to) => new(Texts, Unsafe, Unknown, Quoted, Input,
                 [.. References.Select(reference => reference == from ? to : reference)],
                 Elements.IsDefault ? default : [.. Elements.Select(value => value.ReplaceReference(from, to))], Functions,
-                SafeSummary, StartsWithBoundary, EndsWithBoundary, NonEmpty, MayBeNonEmpty)
+                SafeSummary, StartsWithBoundary, EndsWithBoundary, NonEmpty, MayBeNonEmpty, StartsWithParameter, EndsAfterParameter)
             {
                 HasConstant = HasConstant,
                 ConstantObject = ConstantObject,
