@@ -12,11 +12,13 @@ internal static class NativeProcessExitBridge
     /// <remarks>
     /// The callback runs before the process detaches from shared memory, after a normal exit or a FATAL error, as
     /// pglogical's worker cleanup does. An ERROR during exit becomes FATAL, so managed failures are reported as
-    /// warnings. Forked children clear inherited exit callbacks, so each process registers its own.
+    /// warnings. Forked children clear inherited exit callbacks, so each process registers its own. Callbacks log through
+    /// the guarded initializer logger, which needs no transaction, as PostgreSQL's own exit callbacks call
+    /// <c>elog(LOG)</c>.
     /// </remarks>
-    internal const string Source = """
+    internal const string Source = NativeErrorBridge.InitializationLogging + """
 
-        typedef int (*AnkusProcessExitDispatch)(intptr_t, AnkusMemoryApi *, AnkusError *);
+        typedef int (*AnkusProcessExitDispatch)(intptr_t, AnkusMemoryApi *, AnkusInitializationLog, AnkusError *);
 
         static AnkusProcessExitDispatch ankus_process_exit_dispatch = NULL;
         static int ankus_process_exit_pid = 0;
@@ -31,7 +33,7 @@ internal static class NativeProcessExitBridge
             if (ankus_process_exit_dispatch == NULL)
                 return;
             ankus_memory_initialize(&memory);
-            ANKUS_MANAGED_INVOKE(status, &error, ankus_process_exit_dispatch((intptr_t) code, &memory, &error));
+            ANKUS_MANAGED_INVOKE(status, &error, ankus_process_exit_dispatch((intptr_t) code, &memory, ankus_initialization_log, &error));
             if (status != 0)
                 ankus_report(&error, WARNING);
             ankus_release_error(&error);

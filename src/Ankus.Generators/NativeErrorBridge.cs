@@ -624,9 +624,12 @@ internal static class NativeErrorBridge
     internal const string Source = Declarations + "\n" + Conversion + "\n" + Logging + "\n" + Capture + "\n" + Reporting + "\n" + ManagedContexts;
 
     /// <summary>
-    /// Gets a guarded initializer logging capability that never opens a transaction or enables SPI.
+    /// Gets a guarded initializer logging capability that never opens a transaction or enables SPI. It is emitted once,
+    /// however many bridges need it.
     /// </summary>
     internal const string InitializationLogging = """
+        #ifndef ANKUS_INITIALIZATION_LOG
+        #define ANKUS_INITIALIZATION_LOG 1
         typedef int (*AnkusInitializationLog)(int, int, AnkusError *, AnkusError *, int *);
 
         static int
@@ -642,7 +645,8 @@ internal static class NativeErrorBridge
                 memset(error, 0, sizeof(*error));
             }
 
-            MemoryContext caller = CurrentMemoryContext;
+            /* The caller is restored after a longjmp, so it lives in memory. */
+            MemoryContext volatile caller = CurrentMemoryContext;
             MemoryContext recovery = ankus_error_recovery_context(caller);
             uint32 interrupt_holdoff = InterruptHoldoffCount;
             uint32 shared_held_before = ankus_shared_held_count;
@@ -716,6 +720,7 @@ internal static class NativeErrorBridge
             QueryCancelHoldoffCount = cancel_holdoff;
             return status;
         }
+        #endif
 
         """;
 

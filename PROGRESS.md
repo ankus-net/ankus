@@ -1109,6 +1109,13 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   `Release`. The copy now keeps it. A test asks for a release build where its
   directory already exists and gets the refusal for that directory, where the
   previous code went on to download a development build.
+- A `PgProcess.OnExit` callback could not log (#101), so a worker could not
+  report its exit as pglogical's `pglogical_worker_detach` does with
+  `elog(LOG)`. The exit bridge now passes the guarded logger that initializers
+  and native callbacks use, which needs no transaction, and every extension
+  that has the exit bridge also has that logger. The shared-array test's exit
+  callback logs each slot release, and the test finds both the normal exit's
+  and the terminated backend's lines in the server log.
 - On Windows with PostgreSQL 13–16, an ordinary connection to a host name that
   resolves to an address the server does not listen on failed instead of trying
   the next address (#95). Its connect loop waited for the socket to become
