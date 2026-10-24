@@ -101,7 +101,10 @@ public sealed partial class PgFunctionGeneratorTests
         Assert.Contains("request->parameter_count > 0 && request->parameters != NULL", native);
         Assert.Contains("ankus_is_builtin_range(request->parameters[0].type_oid)", native);
         Assert.Contains("bool lightweight = !input_recovery && (numeric || temporal || network || geometry ||", native);
-        Assert.Contains("(datum && request->scalar_operation == 6));", native);
+        // Borrowed array cells and function arguments are read as C reads them, with no subtransaction.
+        Assert.Contains("(datum && (request->scalar_operation == 6 || request->scalar_operation == 17)));", native);
+        Assert.Contains("if (request->scalar_operation < 0 || request->scalar_operation > 17)", native);
+        Assert.Contains("case 2:\n        /* Copies a function argument, as 2 does, on the guard's lightweight path. */\n        case 17:", native);
         // TryParse before PostgreSQL 16 nests its own subtransaction, also inside an explicit scope.
         Assert.Contains("!ankus_parallel_without_subtransactions() && (transaction_frame == NULL || transaction_frame->scope);", native);
         Assert.Contains("bool recovery_subtransaction = (!direct_spi || input_recovery || (subtransaction && !ankus_parallel_without_subtransactions())) &&\n" +

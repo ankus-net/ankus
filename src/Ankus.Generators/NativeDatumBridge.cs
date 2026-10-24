@@ -200,7 +200,7 @@ internal static class NativeDatumBridge
         static void
         ankus_datum_operation(AnkusRequest *request, AnkusResult *result)
         {
-            if (request->scalar_operation < 0 || request->scalar_operation > 16)
+            if (request->scalar_operation < 0 || request->scalar_operation > 17)
                 ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("Unknown raw datum operation")));
             if (request->parameter_count != 1 || request->parameters == NULL)
                 ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("Datum operations require one value")));
@@ -279,6 +279,8 @@ internal static class NativeDatumBridge
                     break;
                 }
                 case 2:
+                /* Copies a function argument, as 2 does, on the guard's lightweight path. */
+                case 17:
                     result->text.integral = (int64) (uintptr_t) ankus_copy_raw_datum(datum,
                         parameter->type_oid, request->result_context, request->result_generation);
                     break;

@@ -548,6 +548,13 @@ binds an entire array of the named type, preserving shape and NULL cells.
 C# representation; `ToPostgresString()` calls the type's output function. A nullable wrapper
 accepts SQL NULL. A zero datum is a present value.
 
+A raw parameter is a detoasted copy in the call's memory context. Reading it
+starts no subtransaction, as `PG_GETARG_DATUM` reads an argument in C, so a
+transaction can call the function many times after creating many relations
+without slowing down. An error while reading it, such as a damaged TOAST value,
+fails the call. `ToPostgresString()` and `PgDatum.Create` run in an internal
+subtransaction where PostgreSQL permits one, so their errors can be caught.
+
 For an array datum, `using PgArrayView view = value.Read<PgArrayView>()` borrows
 its native cells under the source lifetime. It retains exact array and element
 OIDs, dimensions, lower bounds and typed NULL cells. Dispose the view before its
