@@ -117,7 +117,8 @@ Exceptions:
 
 ### Dispose()
 
-Closes the writer and releases its executor state. The table stays locked until the transaction ends.
+Writes any buffered inserts, then closes the writer and releases its executor state. The table stays locked
+until the transaction ends.
 
 ```csharp
 public void Dispose()
@@ -165,6 +166,68 @@ Returns: [PgFoundRow](/api/ankus.pgfoundrow/)
 
 The row and the transaction that wrote it, or null when no row matches.
 
+<a id="member-ba43bc8e276b3ee7"></a>
+
+### FindConflict(PgHeapTuple)
+
+Finds and locks a row that inserting <code class="paramref">row</code> would conflict with: one with the same replica
+identity, or else the same values in another unique index, as pglogical's apply checks before an insert.
+
+```csharp
+public PgFoundRow? FindConflict(PgHeapTuple row)
+```
+
+Parameters:
+
+`row` — [PgHeapTuple](/api/ankus.pgheaptuple/)
+
+The row about to be inserted.
+
+Returns: [PgFoundRow](/api/ankus.pgfoundrow/)
+
+The conflicting row, the index it was found through and the transaction that wrote it, or null when no
+            row conflicts.
+
+The search tries the replica identity index, then each other valid unique index without expressions or a
+predicate. A NULL matches only in an index whose NULLs are not distinct. A conflict in an index the search
+skips still raises a unique violation when the row is inserted.
+
+<a id="member-d7d3985a58293e07"></a>
+
+### FindConflict(PgReplicatedRow)
+
+Finds and locks a row that inserting <code class="paramref">row</code> would conflict with: one with the same replica
+identity, or else the same values in another unique index, as pglogical's apply checks before an insert.
+
+```csharp
+public PgFoundRow? FindConflict(PgReplicatedRow row)
+```
+
+Parameters:
+
+`row` — [PgReplicatedRow](/api/ankus.pgreplicatedrow/)
+
+The row about to be inserted.
+
+Returns: [PgFoundRow](/api/ankus.pgfoundrow/)
+
+The conflicting row, the index it was found through and the transaction that wrote it, or null when no
+            row conflicts.
+
+The search tries the replica identity index, then each other valid unique index without expressions or a
+predicate. Columns the row does not send count as NULL, and a NULL matches only in an index whose NULLs are
+not distinct. A conflict in an index the search skips still raises a unique violation when the row is inserted.
+
+<a id="member-16035991f4acf6a8"></a>
+
+### Flush()
+
+Writes the rows that [InsertBuffered(PgHeapTuple)](/api/ankus.pgrelationwriter/#member-59dc40b774f654c5) holds, so SQL and other code see them.
+
+```csharp
+public void Flush()
+```
+
 <a id="member-ab2848f1327d31e8"></a>
 
 ### Insert(PgHeapTuple)
@@ -205,6 +268,49 @@ Exceptions:
 
 - [PgException](/api/ankus.pgexception/): A value is not valid for its type, a constraint or unique index rejects the row,
             or a trigger fails.
+
+<a id="member-59dc40b774f654c5"></a>
+
+### InsertBuffered(PgHeapTuple)
+
+Adds a row to the writer's batch of inserts, which it writes together through PostgreSQL's multi-insert, as
+COPY and pglogical's apply do.
+
+```csharp
+public void InsertBuffered(PgHeapTuple row)
+```
+
+Parameters:
+
+`row` — [PgHeapTuple](/api/ankus.pgheaptuple/)
+
+The row to insert.
+
+The writer holds up to 1,000 rows. It writes them, with their index entries and <code>AFTER ROW</code> triggers, when
+the batch is full, on [Flush()](/api/ankus.pgrelationwriter/#member-16035991f4acf6a8), before any other operation of this writer, and when it is disposed.
+Until then other code, including SQL, does not see them. <code>NOT NULL</code> and check constraints are checked as
+each row is added; unique and foreign key violations are raised when the batch is written. As with COPY, a
+table with <code>BEFORE</code> or <code>INSTEAD OF</code> row insert triggers, or a volatile column default other than
+<code>nextval</code>, receives each row at once.
+
+<a id="member-ac6f307c346f0a0e"></a>
+
+### InsertBuffered(PgReplicatedRow)
+
+Adds a row whose values are in logical replication's form to the writer's batch of inserts; columns not sent
+take their defaults.
+
+```csharp
+public void InsertBuffered(PgReplicatedRow row)
+```
+
+Parameters:
+
+`row` — [PgReplicatedRow](/api/ankus.pgreplicatedrow/)
+
+The row to insert.
+
+The batch behaves as it does for [InsertBuffered(PgHeapTuple)](/api/ankus.pgrelationwriter/#member-59dc40b774f654c5).
 
 <a id="member-12b7031f87836705"></a>
 

@@ -74,6 +74,28 @@ Start and PreCommit exceptions reject the operation. A Commit exception becomes 
 PostgreSQL aborts the enclosing transaction. An Abort exception is reported as a warning, because the
 rollback must finish.
 
+<a id="member-d33157238831b731"></a>
+
+### Run(Action)
+
+Runs synchronous work with SPI in the current transaction, or else in a new transaction that commits when the
+work returns.
+
+```csharp
+public static void Run(Action action)
+```
+
+Parameters:
+
+`action` — [Action](https://learn.microsoft.com/dotnet/api/system.action)
+
+The work to run on the active backend thread.
+
+PostgreSQL calls some extension code outside a transaction, such as an output plugin's startup callback when a
+WAL sender starts streaming, and the same code inside one elsewhere. A new transaction needs a backend
+connected to a database; a failure rolls it back before the exception returns. Inside a transaction, the work
+runs as it would without this call.
+
 <a id="member-341f2ab35f47ed4e"></a>
 
 ### RunInSubtransaction(Action)
@@ -196,3 +218,33 @@ Exceptions:
 - [ArgumentException](https://learn.microsoft.com/dotnet/api/system.argumentexception): <code class="paramref">mode</code> is not defined.
 
 See [RunInSubtransaction(Action, PgSubtransactionMode)](/api/ankus.pgtransaction/#member-15c3008636fcf063).
+
+<a id="member-cc58f1c1a33cb8a6"></a>
+
+### Run&lt;TResult&gt;(Func&lt;TResult&gt;)
+
+Runs synchronous work with SPI in the current transaction, or else in a new transaction that commits when the
+work returns, and returns its result.
+
+```csharp
+public static TResult Run<TResult>(Func<TResult> action)
+```
+
+Type parameters:
+
+`TResult`
+
+The owned result.
+
+Parameters:
+
+`action` — [Func&lt;TResult&gt;](https://learn.microsoft.com/dotnet/api/system.func-1)
+
+The work to run on the active backend thread.
+
+Returns: <code>TResult</code>
+
+The work's result, after commit when this call started the transaction.
+
+A new transaction needs a backend connected to a database; a failure rolls it back before the exception
+returns. Inside a transaction, the work runs as it would without this call.
