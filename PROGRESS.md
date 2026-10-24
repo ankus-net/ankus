@@ -1119,6 +1119,21 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   CodeQL left no open alert, PostgreSQL versions 40074461611 passed every other
   Linux major, and platform versions 40074463443 passed every other Windows and
   macOS major.
+- A function's `PgDatum` argument was copied through the same guarded operation
+  as `PgDatum.CopyTo`, which runs in an internal recovery subtransaction, so
+  every call started one (#92). Each subtransaction's end walks state that grows
+  with the relations a transaction has created, and pglogical's
+  `huge_tx_100k_tables` test, which calls such a function 100,000 times after
+  creating 100,000 tables, had run about 83,000 calls after 3 hours. Arguments
+  are now copied by their own operation on the guard's lightweight path, as
+  borrowed array cells are read, so a failure fails the call as an ERROR from
+  `PG_GETARG_DATUM` does. The copy is still detoasted into the call's context.
+  A test counts PostgreSQL's DEBUG5 subtransaction reports: 200 `name` and
+  `text` argument reads produced 400 lines before the change and none after,
+  and a compressed table value now reads with none. `ToPostgresString()` and
+  `PgDatum.Create` keep their subtransactions, since a type output function,
+  domain check or encoding conversion can fail in a way callers catch and
+  recover from.
 - An exception from a `[PgNativeCallback]` hook or C# trigger nested in a backend
   call reported each enclosing `PgErrorContext` twice, once from the text
   recorded when it was thrown and once from the context callback the backend

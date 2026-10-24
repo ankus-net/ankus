@@ -174,6 +174,17 @@ public static unsafe partial class NativeBackend
             value.TypeOid, result._text.IsNull != 0, lifetime));
 
     /// <summary>
+    /// Copies a function argument into the call's memory owner without a recovery subtransaction, as
+    /// <c>PG_GETARG_DATUM</c> reads it in C. A failure, such as a damaged TOAST value, fails the call.
+    /// </summary>
+    /// <param name="value">The borrowed argument.</param>
+    /// <param name="lifetime">The checked destination.</param>
+    /// <returns>The copied argument.</returns>
+    internal static PgDatum CopyArgument(PgDatum value, PgDatumLifetime lifetime)
+        => RunDatum(value, 17, lifetime, result => new PgDatum(unchecked((nuint)result._text.Integral),
+            value.TypeOid, result._text.IsNull != 0, lifetime));
+
+    /// <summary>
     /// Copies a datum into a managed row or composite cell, keeping an exact copy of a value with no managed conversion.
     /// </summary>
     /// <param name="value">The checked datum.</param>

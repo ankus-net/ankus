@@ -32,6 +32,24 @@ public sealed partial class PgArrayViewTests
     }
 
     /// <summary>
+    /// A generated argument read copies through the guard's lightweight argument operation, which starts no
+    /// subtransaction, while an explicit copy keeps the recoverable copy operation.
+    /// </summary>
+    [TestMethod]
+    public void GeneratedArgumentReadsUseTheArgumentCopy()
+    {
+        using var fixture = new MemoryContextTestFixture();
+        using MemoryContextTestFixture.Scope memory = MemoryContextTestFixture.Enter();
+        using var script = new ArrayScript(fixture);
+        var value = new NativeValue { Integral = 0 };
+        ArrayType(ref value) = 23;
+        PgDatum argument = value.ReadPolymorphic();
+        _ = argument.CopyTo(PgMemoryContext.Current);
+        Assert.AreSequenceEqual<int>([17, 2], script.Requests.Select(static request => request.Operation));
+        Assert.AreSequenceEqual<(uint, bool)>([(23, false), (23, false)], script.Copies);
+    }
+
+    /// <summary>
     /// Generated scalar inputs expire at callback exit while retained inputs use an independently owned snapshot.
     /// </summary>
     [TestMethod]
@@ -442,6 +460,7 @@ public sealed partial class PgArrayViewTests
                 switch (request->_scalarOperation)
                 {
                     case 2:
+                    case 17:
                         NativeSpiParameter input = request->_parameters[0];
                         script.Copies.Add((input._typeOid, input._value.IsNull != 0));
                         result->_text = new NativeValue { IsNull = input._value.IsNull };

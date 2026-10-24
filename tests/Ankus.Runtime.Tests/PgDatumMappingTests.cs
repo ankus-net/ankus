@@ -585,7 +585,7 @@ public sealed unsafe class PgDatumMappingTests
                     return 0;
                 }
 
-                if (request->_operation == SpiOperation.Datum && request->_scalarOperation == 2)
+                if (request->_operation == SpiOperation.Datum && request->_scalarOperation is 2 or 17)
                 {
                     scope.Copies++;
                     NativeDatumReference reference = MemoryMarshal.Read<NativeDatumReference>(request->_parameters[0]._value.ReadBytes());

@@ -26,14 +26,15 @@ public partial struct NativeValue
     }
 
     /// <summary>
-    /// Copies a generated raw or polymorphic input into the active scalar or iterator memory owner.
+    /// Copies a generated raw or polymorphic input into the active scalar or iterator memory owner, detoasted, without
+    /// starting a subtransaction. A failure, such as a damaged TOAST value, fails the call.
     /// </summary>
     /// <returns>The datum with its resolved type and SQL NULL flag.</returns>
     public readonly PgDatum ReadPolymorphic()
     {
         PgMemoryContext context = PgMemoryContext.Current;
         PgDatum borrowed = PgDatum.DangerousCreate(unchecked((nuint)Integral), unchecked((uint)_auxiliary2), context, isNull: IsNull != 0);
-        return borrowed.CopyTo(context);
+        return NativeBackend.CopyArgument(borrowed, new PgDatumLifetime(context));
     }
 
     /// <summary>

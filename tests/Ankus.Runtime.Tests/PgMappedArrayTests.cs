@@ -1506,7 +1506,7 @@ public sealed unsafe class PgMappedArrayTests
             result->_release = &Release;
             if (request->_operation == SpiOperation.Datum)
             {
-                if (request->_scalarOperation == 2)
+                if (request->_scalarOperation is 2 or 17)
                 {
                     NativeDatumReference reference = MemoryMarshal.Read<NativeDatumReference>(request->_parameters[0]._value.ReadBytes());
                     result->_text.Integral = (long)reference._bits;

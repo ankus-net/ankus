@@ -212,8 +212,11 @@ internal static class GuardedBackend
              * needs no subtransaction and its failure is still recovered. */
             bool light_report = reporting && request->log_level >= 0 && request->log_level < 10 && emit_log_hook == NULL;
             volatile bool report_started = false;
+            /* A function reads its arguments, operation 17, as PG_GETARG_DATUM does, with no subtransaction:
+             * one per call makes a transaction that calls a function many times after creating many
+             * relations slow down quadratically. A failure, such as a damaged TOAST value, fails the call. */
             bool lightweight = !input_recovery && (numeric || temporal || network || geometry || light_report ||
-                (range && ankus_uses_builtin_range(request)) || (datum && request->scalar_operation == 6));
+                (range && ankus_uses_builtin_range(request)) || (datum && (request->scalar_operation == 6 || request->scalar_operation == 17)));
             bool direct = quote || reporting || temporal || numeric || network || geometry || range || enumeration || tuple ||
                 transaction_callbacks || transaction_id || datum || function_context || function_call || custom_type || datum_type || array || lookup || relation || subtransaction ||
                 settings;
