@@ -76,6 +76,36 @@ public sealed class PostgresProvisionerTests(TestContext context)
     }
 
     /// <summary>
+    /// A Windows source build keeps debug information, and development builds check assertions and randomize
+    /// allocated memory as Unix builds do.
+    /// </summary>
+    [TestMethod]
+    public void WindowsSourceBuildsMatchUnixBuildChoices()
+    {
+        Assert.AreSequenceEqual(["setup", "b", "s", "--prefix=p", "--vsenv", "--buildtype=debugoptimized", "-Dcassert=true",
+            "-Dc_args=-DRANDOMIZE_ALLOCATED_MEMORY=1"], PostgresProvisioner.GetMesonSetupArguments("s", "b", "p", new PostgresProvisionOptions()));
+        Assert.AreSequenceEqual(["setup", "b", "s", "--prefix=p", "--vsenv", "--buildtype=debugoptimized", "-Dcassert=false"],
+            PostgresProvisioner.GetMesonSetupArguments("s", "b", "p", new PostgresProvisionOptions { Release = true }));
+    }
+
+    /// <summary>
+    /// A Windows source build names every missing program and how to register a build instead, and accepts either
+    /// name for Bison and Flex.
+    /// </summary>
+    [TestMethod]
+    public void WindowsSourceBuildsNameMissingPrograms()
+    {
+        var version = new PostgresVersion(19, 0, PostgresReleaseStage.ReleaseCandidate, 1);
+        PostgresProvisioner.RequireWindowsBuildTools("No archive.", version,
+            static name => name is "meson" or "perl" or "bison" or "win_flex" ? name + ".exe" : null);
+        InvalidOperationException error = Assert.ThrowsExactly<InvalidOperationException>(() =>
+            PostgresProvisioner.RequireWindowsBuildTools("No archive.", version, static name => name == "meson" ? "meson.exe" : null));
+        Assert.AreEqual("No archive. Building it from source needs Visual Studio's C++ tools and these programs on PATH: " +
+            "perl (Strawberry Perl), win_bison or bison (winflexbison), win_flex or flex (winflexbison). Install them, or register " +
+            "an existing build with 'ankus init --pg19 /path/to/pg_config.exe'.", error.Message);
+    }
+
+    /// <summary>
     /// Unlimited or negative native-build parallelism must not be selected accidentally.
     /// </summary>
     /// <param name="jobs">An invalid parallelism limit.</param>

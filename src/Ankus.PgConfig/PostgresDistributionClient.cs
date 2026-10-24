@@ -142,8 +142,7 @@ internal sealed partial class PostgresDistributionClient(HttpClient client, Func
             HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
         if (windowsBinaries && response.StatusCode is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.Forbidden)
         {
-            throw new InvalidOperationException($"EDB has no available PostgreSQL {version} Windows x64 archive. " +
-                $"Register an existing build with 'ankus init --pg{version.Major} /path/to/pg_config.exe'.");
+            throw new PostgresArchiveUnavailableException($"EDB has no available PostgreSQL {version} Windows x64 archive.");
         }
 
         response.EnsureSuccessStatusCode();

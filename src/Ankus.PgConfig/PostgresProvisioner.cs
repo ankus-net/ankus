@@ -20,6 +20,7 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
 
     /// <summary>
     /// Downloads the latest releases, builds Unix sources or extracts Windows x64 binaries, and validates each installation.
+    /// A Windows release without EDB binaries is built from source with meson and Visual Studio's compiler.
     /// Existing completed installations with matching build options are reused. Registration is a separate atomic operation.
     /// </summary>
     /// <param name="majors">The PostgreSQL majors to install, from 13 through 19.</param>
@@ -81,14 +82,35 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
             {
                 progress?.Report($"Downloading PostgreSQL {version}.");
                 string distribution = Path.Join(scratch, "distribution");
-                await _distributions.DownloadAsync(version, distribution, OperatingSystem.IsWindows(), cancellationToken, progress).ConfigureAwait(false);
+                bool binaries = OperatingSystem.IsWindows();
+                try
+                {
+                    await _distributions.DownloadAsync(version, distribution, binaries, cancellationToken, progress).ConfigureAwait(false);
+                }
+                catch (PostgresArchiveUnavailableException unavailable)
+                {
+                    RequireWindowsBuildTools(unavailable.Message, version, ExecutableLocator.Find);
+                    progress?.Report($"{unavailable.Message} Building it from source with meson.");
+                    binaries = false;
+                    await _distributions.DownloadAsync(version, distribution, windowsBinaries: false, cancellationToken, progress).ConfigureAwait(false);
+                }
+
                 string staged = distribution;
-                if (!OperatingSystem.IsWindows())
+                if (!binaries)
                 {
                     progress?.Report($"Building PostgreSQL {version} with {options.Jobs} jobs.");
-                    string stagingRoot = Path.Join(scratch, "install");
-                    staged = Path.Join(stagingRoot, Path.GetRelativePath(Path.GetPathRoot(destination)!, destination));
-                    await BuildAsync(distribution, destination, stagingRoot, options, cancellationToken).ConfigureAwait(false);
+                    if (OperatingSystem.IsWindows())
+                    {
+                        // Windows installations find their files relative to their programs, so they move as built.
+                        staged = Path.Join(scratch, "install");
+                        await BuildWindowsAsync(distribution, staged, destination, options, cancellationToken).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        string stagingRoot = Path.Join(scratch, "install");
+                        staged = Path.Join(stagingRoot, Path.GetRelativePath(Path.GetPathRoot(destination)!, destination));
+                        await BuildAsync(distribution, destination, stagingRoot, options, cancellationToken).ConfigureAwait(false);
+                    }
                 }
 
                 await ValidateInstallationAsync(staged, version, cancellationToken).ConfigureAwait(false);
@@ -202,6 +224,62 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
         await RunAsync("make", ["-j", jobs, "world-bin"], source, flags, pkgConfigPath, cancellationToken, log).ConfigureAwait(false);
         await RunAsync("make", ["-j", jobs, "install-world-bin", $"DESTDIR={stagingRoot}"], source, flags, pkgConfigPath, cancellationToken, log).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// Builds a Windows source tree with meson, which sets up Visual Studio's compiler environment itself, and installs
+    /// it into <paramref name="prefix"/>.
+    /// </summary>
+    private static async Task BuildWindowsAsync(string source, string prefix, string destination, PostgresProvisionOptions options,
+        CancellationToken cancellationToken)
+    {
+        string meson = ExecutableLocator.Find("meson") ?? throw new InvalidOperationException("meson is not on PATH.");
+        string build = Path.Join(source, "build");
+        string log = destination + ".build.log";
+        File.Delete(log);
+        await RunAsync(meson, GetMesonSetupArguments(source, build, prefix, options), source, "", null, cancellationToken, log).ConfigureAwait(false);
+        await RunAsync(meson, ["compile", "-C", build, "-j", options.Jobs.ToString(CultureInfo.InvariantCulture)], source, "", null,
+            cancellationToken, log).ConfigureAwait(false);
+        await RunAsync(meson, ["install", "-C", build, "--quiet"], source, "", null, cancellationToken, log).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Checks for the programs a Windows source build needs besides Visual Studio's C++ tools, which meson finds itself.
+    /// </summary>
+    /// <param name="unavailable">Why a source build is needed.</param>
+    /// <param name="version">The release to build.</param>
+    /// <param name="find">Finds a program on <c>PATH</c>.</param>
+    /// <exception cref="InvalidOperationException">A program is missing.</exception>
+    internal static void RequireWindowsBuildTools(string unavailable, PostgresVersion version, Func<string, string?> find)
+    {
+        ArgumentNullException.ThrowIfNull(find);
+        string[] missing = [.. new (string Name, string?[] Paths)[]
+            {
+                ("meson", [find("meson")]),
+                ("perl (Strawberry Perl)", [find("perl")]),
+                ("win_bison or bison (winflexbison)", [find("win_bison"), find("bison")]),
+                ("win_flex or flex (winflexbison)", [find("win_flex"), find("flex")]),
+            }.Where(static tool => tool.Paths.All(static path => path is null)).Select(static tool => tool.Name)];
+        if (missing.Length != 0)
+        {
+            throw new InvalidOperationException($"{unavailable} Building it from source needs Visual Studio's C++ tools and these " +
+                $"programs on PATH: {string.Join(", ", missing)}. Install them, or register an existing build with " +
+                $"'ankus init --pg{version.Major} /path/to/pg_config.exe'.");
+        }
+    }
+
+    /// <summary>
+    /// Builds meson's setup arguments for a Windows source build: debug information, and for development builds the
+    /// assertions and allocated-memory randomization of a Unix build.
+    /// </summary>
+    /// <param name="source">The source tree.</param>
+    /// <param name="build">The build directory.</param>
+    /// <param name="prefix">The installation directory.</param>
+    /// <param name="options">The build options.</param>
+    /// <returns>The arguments in order.</returns>
+    internal static string[] GetMesonSetupArguments(string source, string build, string prefix, PostgresProvisionOptions options)
+        => ["setup", build, source, "--prefix=" + prefix, "--vsenv", "--buildtype=debugoptimized",
+            "-Dcassert=" + (options.Release ? "false" : "true"),
+            .. options.Release ? Array.Empty<string>() : ["-Dc_args=-DRANDOMIZE_ALLOCATED_MEMORY=1"]];
 
     /// <summary>
     /// Describes a failed build command with its cause on the first line: configure's <c>configure: error:</c> line, or
