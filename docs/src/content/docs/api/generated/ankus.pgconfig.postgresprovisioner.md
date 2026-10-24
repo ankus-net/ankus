@@ -47,6 +47,7 @@ The Ankus home, defaulting to ANKUS_HOME or the current user's ~/.ankus director
 ### InstallAsync(IReadOnlyCollection&lt;int&gt;, PostgresProvisionOptions?, IProgress&lt;string&gt;?, CancellationToken)
 
 Downloads the latest releases, builds Unix sources or extracts Windows x64 binaries, and validates each installation.
+A Windows release without EDB binaries is built from source with meson and Visual Studio's compiler.
 Existing completed installations with matching build options are reused. Registration is a separate atomic operation.
 
 ```csharp
