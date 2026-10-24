@@ -30,6 +30,28 @@ public readonly record struct NativeCallArgument(nint Address, nuint Size);
 public static unsafe class NativeRawCall
 {
     /// <summary>
+    /// Narrows a 64-bit argument to a 32-bit C long, as on Windows, rejecting a value it cannot hold.
+    /// </summary>
+    /// <param name="value">The argument.</param>
+    /// <param name="parameter">The parameter's name.</param>
+    /// <returns>The same value as a 32-bit integer.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">The value does not fit in 32 bits.</exception>
+    public static int NarrowLong(long value, string parameter)
+        => value is >= int.MinValue and <= int.MaxValue ? (int)value
+            : throw new ArgumentOutOfRangeException(parameter, value, "The value does not fit in this platform's 32-bit C long.");
+
+    /// <summary>
+    /// Narrows a 64-bit argument to a 32-bit C unsigned long, as on Windows, rejecting a value it cannot hold.
+    /// </summary>
+    /// <param name="value">The argument.</param>
+    /// <param name="parameter">The parameter's name.</param>
+    /// <returns>The same value as a 32-bit unsigned integer.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">The value does not fit in 32 bits.</exception>
+    public static uint NarrowUnsignedLong(ulong value, string parameter)
+        => value <= uint.MaxValue ? (uint)value
+            : throw new ArgumentOutOfRangeException(parameter, value, "The value does not fit in this platform's 32-bit C unsigned long.");
+
+    /// <summary>
     /// Validates the generated call's complete declaration contract before obtaining or invoking its native body.
     /// </summary>
     /// <param name="identity">The generated UTF-8 identity of the complete selected-header graph.</param>

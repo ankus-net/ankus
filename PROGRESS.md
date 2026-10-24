@@ -1106,6 +1106,14 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   contexts of the callback that converts the exception, since PostgreSQL reports
   the enclosing ones itself. A test fires a C# trigger that rejects a row from a
   function's SPI insert and finds the function's context once.
+- A C `long` parameter was `long` in `NativeMethods` on Linux and macOS and
+  `int` on Windows, where C `long` has 32 bits, so source that passed a `long`
+  built only on Unix (#87). Where C `long` has 32 bits, each function with such
+  parameters now also takes `long` (`ulong` for `unsigned long`) and throws
+  `ArgumentOutOfRangeException` for a value outside 32 bits before calling
+  PostgreSQL. `NativeMethods.FETCH_ALL()` returns `FETCH_ALL` at the platform's
+  width. A generated binding test checks both widths, and a test extension
+  passes a `long` to `pg_usleep` and reads `FETCH_ALL()` on every platform.
 - `PgReplicationConnection` always opened a logical replication connection, so
   a role without `REPLICATION` could not run pglogical's ordinary catalog
   queries and every query took a WAL sender (#72). `Connect(..., replication:

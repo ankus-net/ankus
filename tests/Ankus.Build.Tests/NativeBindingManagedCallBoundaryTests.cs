@@ -33,6 +33,44 @@ public sealed partial class NativeBindingNativeTests
     }
 
     /// <summary>
+    /// C long and unsigned long arguments accept 64-bit values on every target. Where C long has 32 bits, as on
+    /// Windows, a value it cannot hold throws instead of being truncated.
+    /// </summary>
+    [TestMethod]
+    public async Task ManagedCallsAcceptLongArgumentsForCLong()
+    {
+        const string Headers = """
+            long echo_long(long value) { return value; }
+            unsigned long echo_unsigned(unsigned long value) { return value; }
+            """;
+        const string Harness = """
+            public static class BindingAssertions
+            {
+                public static long[] Run()
+                {
+                    using NativeCallTestBridge.Scope scope = new();
+                    long small = -7;
+                    ulong positive = 9;
+                    long large = 5_000_000_000;
+                    long outcome;
+                    try
+                    {
+                        outcome = NativeMethods.echo_long(large) == large ? 1 : 0;
+                    }
+                    catch (System.ArgumentOutOfRangeException error) when (error.ParamName == "value")
+                    {
+                        outcome = 2;
+                    }
+
+                    return [NativeMethods.echo_long(small), (long)NativeMethods.echo_unsigned(positive), outcome];
+                }
+            }
+            """;
+        Assert.AreSequenceEqual<long>([-7, 9, OperatingSystem.IsWindows() ? 2 : 1],
+            await ExecuteManagedCallsAsync(Headers, ["echo_long", "echo_unsigned"], Harness));
+    }
+
+    /// <summary>
     /// True void requires no frame while zero-size records retain distinct logical values and nonnull native addresses.
     /// </summary>
     [TestMethod]

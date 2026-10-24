@@ -45,6 +45,8 @@ internal static class NativeBindingHeaderHelpers
             Macro("PageIsValid", "bool", major < 18 ? "Page value" : "const PageData *value", "return value != NULL;"),
             Macro("PageSizeIsValid", "bool", "Size value", "return value == BLCKSZ;"),
             Macro("SizeOfPageHeaderData", "Size", "void", "return SizeOfPageHeaderData;"),
+            // PortalRun's count for every row, LONG_MAX, with the platform's C long width.
+            Macro("FETCH_ALL", "long", "void", "return FETCH_ALL;"),
             Direct("PageValidateSpecialPointer"),
             Macro("HeapTupleHeaderGetNatts", "uint16", "const HeapTupleHeaderData *value", "return HeapTupleHeaderGetNatts(value);"),
             major < 15

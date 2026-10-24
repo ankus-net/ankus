@@ -21,6 +21,7 @@ internal static partial class NativeBindingRecordCSharp
                     ? Unique(members, "Native_" + call.Name) : call.Name;
                 string accessor = Unique(members, "GetNativeBody_" + call.Name);
                 Method(call, method, accessor);
+                LongOverload(call, method);
                 Summary("Obtains a native body address without entering PostgreSQL.", "    ");
                 Line($"    [global::System.Runtime.InteropServices.LibraryImport(\"Ankus.NativeBodies\", EntryPoint = \"{NativeBindingCallImports.Prefix}{call.Name}\")]");
                 Line("    [global::System.Runtime.InteropServices.UnmanagedCallConv(CallConvs = [typeof(global::System.Runtime.CompilerServices.CallConvCdecl)])]");
@@ -28,6 +29,62 @@ internal static partial class NativeBindingRecordCSharp
             }
 
             Line("}\n");
+        }
+
+        /// <summary>
+        /// Adds an overload taking 64-bit integers for C long parameters where C long has 32 bits, as on Windows, so
+        /// source that passes a long compiles for every target. A value the narrower C long cannot hold throws.
+        /// </summary>
+        private void LongOverload(NativeBindingCall call, string method)
+        {
+            var names = new HashSet<string>(StringComparer.Ordinal) { "allocation", "storage", "arguments", "alignment" };
+            var parameters = new List<(string Name, string Code, string Argument, bool Pointer)>();
+            bool narrowed = false;
+            for (int index = 0; index < call.Parameters.Count; index++)
+            {
+                string observed = index < call.Symbol.ParameterNames.Count ? call.Symbol.ParameterNames[index] : "";
+                string name = Unique(names, observed.Length == 0 ? "argument" + Number(index) : observed);
+                NativeRecordType type = Canonical(call.Parameters[index].StorageType);
+                Value value = CallValue(call.Parameters[index].StorageType);
+                if (type is { Kind: "scalar", Name: "long" or "unsigned long", Size: 4 })
+                {
+                    bool signed = type.Name == "long";
+                    string narrow = signed ? "NarrowLong" : "NarrowUnsignedLong";
+                    parameters.Add((name, signed ? "long" : "ulong",
+                        $"global::Ankus.CompilerServices.NativeRawCall.{narrow}(@{name}, \"{name}\")", false));
+                    narrowed = true;
+                }
+                else
+                {
+                    parameters.Add((name, value.Code, "@" + name, value.Pointer || value.Code.Contains('*', StringComparison.Ordinal)));
+                }
+            }
+
+            if (!narrowed)
+            {
+                return;
+            }
+
+            Value? result = call.Result is { } returned ? CallValue(returned.StorageType) : null;
+            bool pointers = parameters.Any(static parameter => parameter.Pointer) ||
+                (result is not null && (result.Pointer || result.Code.Contains('*', StringComparison.Ordinal)));
+            Summary("Invokes " + call.Symbol.NativeName + " with 64-bit values for its C long parameters, which have 32 bits on this target.", "    ");
+            foreach ((string name, _, _, _) in parameters)
+            {
+                Line($"    /// <param name=\"{name}\">The native value; a C long parameter must fit in 32 bits.</param>");
+            }
+
+            if (result is not null)
+            {
+                Line("    /// <returns>The exact native result. Referenced storage retains its native ownership and lifetime.</returns>");
+            }
+
+            Line("    /// <exception cref=\"System.ArgumentOutOfRangeException\">A C long value does not fit in 32 bits.</exception>");
+            Line("    [global::Ankus.CompilerServices.NativeUnsafeAccess]");
+            string signature = string.Join(", ", parameters.Select(static parameter => parameter.Code + " @" + parameter.Name));
+            string arguments = string.Join(", ", parameters.Select(static parameter => parameter.Argument));
+            string returns = result is null ? "void" : result.Code;
+            Line($"    public static {(pointers ? "unsafe " : "")}{returns} @{method}({signature})\n        => @{method}({arguments});\n");
         }
 
         /// <summary>
