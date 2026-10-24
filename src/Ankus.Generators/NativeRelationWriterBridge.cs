@@ -30,6 +30,7 @@ internal static class NativeRelationWriterBridge
         #include "catalog/catversion.h"
         #include "catalog/pg_am_d.h"
         #include "commands/trigger.h"
+        #include "common/hashfn.h"
         #include "executor/executor.h"
         #include "executor/nodeModifyTable.h"
         #include "mb/pg_wchar.h"
@@ -49,7 +50,7 @@ internal static class NativeRelationWriterBridge
 
         typedef struct AnkusRelationWriter
         {
-            struct AnkusRelationWriter *next;
+            /* Zero once the writer is closed. */
             uint64 id;
             MemoryContext context;
             MemoryContext scratch;
@@ -71,20 +72,39 @@ internal static class NativeRelationWriterBridge
 
         #define ANKUS_RELATION_WRITER_BATCH 1000
 
-        static AnkusRelationWriter *ankus_relation_writers = NULL;
+        typedef struct AnkusRelationWriterEntry
+        {
+            uint64 id;
+            AnkusRelationWriter *writer;
+            char status;
+        } AnkusRelationWriterEntry;
+
+        /* Open writers by id, so finding or closing one takes the same time however many are open. The table lasts
+         * as long as the backend; a writer's entry goes when it closes or its context is deleted. simplehash compiles
+         * the table into this file: macOS would bind dynahash's hash_create and hash_search to libSystem's functions
+         * of the same names. */
+        #define SH_PREFIX ankus_writer_ids
+        #define SH_ELEMENT_TYPE AnkusRelationWriterEntry
+        #define SH_KEY_TYPE uint64
+        #define SH_KEY id
+        #define SH_HASH_KEY(table, key) hash_combine(murmurhash32((uint32) (key)), murmurhash32((uint32) ((key) >> 32)))
+        #define SH_EQUAL(table, a, b) ((a) == (b))
+        #define SH_SCOPE static inline
+        #define SH_DECLARE
+        #define SH_DEFINE
+        #include "lib/simplehash.h"
+
+        static ankus_writer_ids_hash *ankus_relation_writers = NULL;
         static uint64 ankus_relation_writer_next = 1;
         static bool ankus_relation_writer_callback = false;
 
         static void
         ankus_relation_writer_unlink(AnkusRelationWriter *writer)
         {
-            for (AnkusRelationWriter **link = &ankus_relation_writers; *link != NULL; link = &(*link)->next)
+            if (writer->id != 0)
             {
-                if (*link == writer)
-                {
-                    *link = writer->next;
-                    return;
-                }
+                (void) ankus_writer_ids_delete(ankus_relation_writers, writer->id);
+                writer->id = 0;
             }
         }
 
@@ -100,7 +120,7 @@ internal static class NativeRelationWriterBridge
         {
             (void) argument;
             if ((event == XACT_EVENT_PRE_COMMIT || event == XACT_EVENT_PARALLEL_PRE_COMMIT || event == XACT_EVENT_PRE_PREPARE) &&
-                ankus_relation_writers != NULL)
+                ankus_relation_writers != NULL && ankus_relation_writers->members > 0)
                 ereport(ERROR, (errcode(ERRCODE_INVALID_TRANSACTION_STATE),
                     errmsg("a relation writer is still open at commit"),
                     errhint("Dispose every PgRelationWriter before the transaction commits.")));
@@ -109,11 +129,10 @@ internal static class NativeRelationWriterBridge
         static AnkusRelationWriter *
         ankus_relation_writer_find(intptr_t id)
         {
-            for (AnkusRelationWriter *writer = ankus_relation_writers; writer != NULL; writer = writer->next)
-            {
-                if (writer->id == (uint64) id)
-                    return writer;
-            }
+            AnkusRelationWriterEntry *entry = ankus_relation_writers == NULL ? NULL :
+                ankus_writer_ids_lookup(ankus_relation_writers, (uint64) id);
+            if (entry != NULL)
+                return entry->writer;
 
             ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
                 errmsg("the relation writer is closed or its transaction has ended")));
@@ -130,6 +149,8 @@ internal static class NativeRelationWriterBridge
             MemoryContext previous;
             RangeTblEntry *entry;
             EState *estate;
+            AnkusRelationWriterEntry *registered;
+            bool found;
         #if PG_VERSION_NUM >= 160000
             List *permissions = NIL;
         #endif
@@ -148,6 +169,9 @@ internal static class NativeRelationWriterBridge
                 RegisterXactCallback(ankus_relation_writer_xact, NULL);
                 ankus_relation_writer_callback = true;
             }
+
+            if (ankus_relation_writers == NULL)
+                ankus_relation_writers = ankus_writer_ids_create(TopMemoryContext, 64, NULL);
 
             context = AllocSetContextCreate(CurTransactionContext, "Ankus relation writer", ALLOCSET_DEFAULT_SIZES);
             previous = MemoryContextSwitchTo(context);
@@ -198,8 +222,8 @@ internal static class NativeRelationWriterBridge
             writer->reset.func = ankus_relation_writer_reset;
             writer->reset.arg = writer;
             MemoryContextRegisterResetCallback(context, &writer->reset);
-            writer->next = ankus_relation_writers;
-            ankus_relation_writers = writer;
+            registered = ankus_writer_ids_insert(ankus_relation_writers, writer->id, &found);
+            registered->writer = writer;
             MemoryContextSwitchTo(previous);
             result->context = (intptr_t) writer->id;
             result->value = (intptr_t) relation->rd_rel->reltype;
@@ -736,10 +760,10 @@ internal static class NativeRelationWriterBridge
         }
 
         static void
-        ankus_relation_writer_close(intptr_t id)
+        ankus_relation_writer_close(AnkusRelationWriter *writer)
         {
-            AnkusRelationWriter *writer = ankus_relation_writer_find(id);
             EState *estate = writer->estate;
+            /* Unlinked first, so the reset callback that deleting its context runs has nothing left to do. */
             ankus_relation_writer_unlink(writer);
             if (writer->bulk != NULL)
                 FreeBulkInsertState(writer->bulk);
@@ -785,7 +809,7 @@ internal static class NativeRelationWriterBridge
             if (request->flags == 6)
             {
                 MemoryContextSwitchTo(previous);
-                ankus_relation_writer_close(request->context);
+                ankus_relation_writer_close(writer);
                 return;
             }
 
