@@ -1,3 +1,5 @@
+using System.Net;
+
 namespace Ankus.PgConfig.Tests;
 
 /// <summary>
@@ -41,6 +43,32 @@ public sealed class PostgresProvisionerTests(TestContext context)
             {
                 Directory.Delete(home, recursive: true);
             }
+        }
+    }
+
+    /// <summary>
+    /// An installation keeps the caller's build options, so a release build uses its own directory instead of the
+    /// development build's.
+    /// </summary>
+    [TestMethod]
+    public async Task InstallationsKeepTheReleaseBuildOption()
+    {
+        string home = Path.Join(Path.GetTempPath(), "ankus-provision-test-" + Guid.NewGuid().ToString("N"));
+        using var handler = new IndexHandler("<a href=\"v18.6/\"></a>");
+        using var client = new HttpClient(handler);
+        var provisioner = new PostgresProvisioner(client, home);
+        var options = new PostgresProvisionOptions { Release = true };
+        string destination = Path.Join(home, "postgres", "18.6-" + PostgresProvisioner.GetBuildIdentity(options));
+        Directory.CreateDirectory(destination);
+        try
+        {
+            IOException refused = await Assert.ThrowsExactlyAsync<IOException>(() => provisioner.InstallAsync([18], options,
+                cancellationToken: context.CancellationToken));
+            Assert.AreEqual("Refusing to replace an existing PostgreSQL directory: " + destination, refused.Message);
+        }
+        finally
+        {
+            Directory.Delete(home, recursive: true);
         }
     }
 
@@ -174,6 +202,28 @@ public sealed class PostgresProvisionerTests(TestContext context)
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    /// <summary>
+    /// Answers PostgreSQL's source index with fixed release links and refuses any other request.
+    /// </summary>
+    /// <param name="index">The index page.</param>
+    private sealed class IndexHandler(string index) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            if (!request.RequestUri!.AbsoluteUri.EndsWith("/source/", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Only the source index may be requested: " + request.RequestUri);
+            }
+
+            return Task.FromResult(Respond(new StringContent(index)));
+        }
+
+        /// <summary>
+        /// Creates a successful response that the HTTP client owns and disposes.
+        /// </summary>
+        private static HttpResponseMessage Respond(HttpContent content) => new(HttpStatusCode.OK) { Content = content };
     }
 
     /// <summary>

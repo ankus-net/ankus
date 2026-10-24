@@ -1103,6 +1103,12 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   such rows can be found, written back unchanged and deleted, and a C# row
   trigger receives them. An SPI query that returns one as a column still fails
   with `0A000`.
+- `ankus init --release` built PostgreSQL with assertions and memory
+  randomization in the development build's directory (#99), because
+  `PostgresProvisioner.InstallAsync` copied the caller's options without
+  `Release`. The copy now keeps it. A test asks for a release build where its
+  directory already exists and gets the refusal for that directory, where the
+  previous code went on to download a development build.
 - On Windows with PostgreSQL 13–16, an ordinary connection to a host name that
   resolves to an address the server does not listen on failed instead of trying
   the next address (#95). Its connect loop waited for the socket to become

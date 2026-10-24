@@ -44,6 +44,7 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
             Jobs = options.Jobs,
             ConfigureFlags = [.. options.ConfigureFlags],
             EnableValgrind = options.EnableValgrind,
+            Release = options.Release,
         };
         if (OperatingSystem.IsWindows() && RuntimeInformation.OSArchitecture != Architecture.X64)
         {
