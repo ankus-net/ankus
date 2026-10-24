@@ -36,6 +36,46 @@ public sealed class ReplicationConnectionTests(TestContext context)
     }
 
     /// <summary>
+    /// An ordinary connection opens for a role without the REPLICATION attribute, which a replication connection
+    /// refuses, runs as a client backend with replication's text settings, and copies a table.
+    /// </summary>
+    [TestMethod]
+    public async Task OrdinaryConnectionsNeedNoReplicationRole()
+    {
+        CancellationToken token = context.CancellationToken;
+        await using NpgsqlConnection connection = await PostgresFixture.Cluster.OpenConnectionAsync(token);
+        string role = "ordinary_" + Guid.NewGuid().ToString("N");
+        string table = "tests.ordinary_copy_" + Guid.NewGuid().ToString("N");
+        await ExecuteAsync(connection, $"""
+            CREATE ROLE {role} LOGIN;
+            CREATE TABLE {table}(id integer, name text);
+            INSERT INTO {table} VALUES (1, 'café 😀'), (2, NULL);
+            GRANT USAGE ON SCHEMA tests TO {role};
+            GRANT SELECT ON {table} TO {role};
+            """, token);
+        try
+        {
+            var builder = new NpgsqlConnectionStringBuilder(connection.ConnectionString) { Username = role, Password = null };
+            await using var plain = new NpgsqlConnection(builder.ConnectionString);
+            string connectionString = ConnectionString(plain);
+            Assert.AreEqual($"{role}|client backend|\"\"|UTF8|ISO, MDY|postgres|3", await ScalarAsync<string>(connection,
+                "SELECT datatype.ordinary_query(@connection, 'SELECT current_user, backend_type, current_setting(''search_path''), " +
+                "current_setting(''client_encoding''), current_setting(''DateStyle''), current_setting(''IntervalStyle''), " +
+                "current_setting(''extra_float_digits'') FROM pg_stat_activity WHERE pid = pg_backend_pid()', 7)", token, connectionString));
+            Assert.AreEqual("1\tcafé 😀;2\t\\N", await ScalarAsync<string>(connection,
+                $"SELECT datatype.ordinary_copy(@connection, '{table}')", token, connectionString));
+            PostgresException refused = await Assert.ThrowsExactlyAsync<PostgresException>(() => ScalarAsync<string>(connection,
+                "SELECT datatype.replication_query(@connection, 'SELECT 1', 1)", token, connectionString));
+            Assert.AreEqual(PostgresErrorCodes.ConnectionFailure, refused.SqlState);
+            Assert.StartsWith("could not connect for replication:", refused.MessageText);
+        }
+        finally
+        {
+            await ExecuteAsync(connection, $"DROP TABLE {table}; REVOKE USAGE ON SCHEMA tests FROM {role}; DROP ROLE {role}", token);
+        }
+    }
+
+    /// <summary>
     /// A command that fails on the server throws its SQLSTATE and message without failing this backend, and the
     /// connection keeps working. PostgreSQL 13 does not pass the SQLSTATE on.
     /// </summary>

@@ -1092,6 +1092,19 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   other than `nextval` gets each row at once. Tests check the 1,000-row
   batches, ordering with a later update, `AFTER` triggers, both fallbacks and a
   unique violation raised when the batch is written.
+- `PgReplicationConnection` always opened a logical replication connection, so
+  a role without `REPLICATION` could not run pglogical's ordinary catalog
+  queries and every query took a WAL sender (#72). `Connect(..., replication:
+  false)` opens an ordinary connection. PostgreSQL 17 and later open it through
+  `libpqwalreceiver`; before 17 that module connects only for replication, so
+  Ankus connects with the libpq it loaded, polling the socket and latch as
+  `libpqwalreceiver` does, and hands the connection to `libpqwalreceiver`'s
+  query, copy and disconnect functions in the `WalReceiverConn` layout those
+  versions share. The connection then sets the secure search path, the database
+  encoding and the date, interval and float settings a logical connection asks
+  for. A test connects as a role without `REPLICATION`, sees itself as a client
+  backend with those settings, copies a table, and is refused a replication
+  connection.
 - macOS killed the Generators test host on the MacBook runner (main CI
   39517461878) as the largest process, at 26.7 GB compressed. The generator wrote
   the native source, SQL, graph and exports as single `AssemblyMetadata`

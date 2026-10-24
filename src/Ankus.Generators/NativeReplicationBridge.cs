@@ -10,7 +10,7 @@ internal static class NativeReplicationBridge
     /// Implements the guarded replication operations behind <c>PgReplicationConnection</c>.
     /// </summary>
     /// <remarks>
-    /// Operations: 1 connects, 2 runs a command and copies its result, 3 receives one message, 4 sends one, 5 ends
+    /// Operations: 1 connects, for replication or, when the request's value is 1, as an ordinary client; 2 runs a command and copies its result, 3 receives one message, 4 sends one, 5 ends
     /// streaming, 6 closes and 7 reads a running <c>COPY ... TO STDOUT</c> into a local table through
     /// <c>BeginCopyFrom</c>, as the built-in subscriber's table synchronization does. Connections live in <c>TopMemoryContext</c> until closed or the backend exits; each
     /// keeps a scratch context for the result of its last command. The function table's layout and signatures change
@@ -37,6 +37,11 @@ internal static class NativeReplicationBridge
         #include "utils/snapmgr.h"
         #include "utils/timestamp.h"
         #include "utils/tuplestore.h"
+        #if PG_VERSION_NUM >= 140000
+        #include "utils/wait_event.h"
+        #else
+        #include "pgstat.h"
+        #endif
 
         typedef struct AnkusReplicationConnection
         {
@@ -90,6 +95,99 @@ internal static class NativeReplicationBridge
                 pfree(utf8);
         }
 
+        #if PG_VERSION_NUM < 170000
+        /* Before PostgreSQL 17, libpqwalreceiver connects only for replication. An ordinary connection uses the libpq
+         * that libpqwalreceiver loaded, connecting as libpqwalreceiver does, and is handed to libpqwalreceiver in the
+         * layout its WalReceiverConn has kept since PostgreSQL 10, so its query, copy and disconnect functions run on
+         * it. libpq's polling and status values are part of its stable interface. */
+        typedef struct pg_conn AnkusLibpqConnection;
+        typedef AnkusLibpqConnection *(*AnkusLibpqStart)(const char *const *, const char *const *, int);
+        typedef int (*AnkusLibpqState)(const AnkusLibpqConnection *);
+        typedef int (*AnkusLibpqPoll)(AnkusLibpqConnection *);
+        typedef char *(*AnkusLibpqMessage)(const AnkusLibpqConnection *);
+        typedef void (*AnkusLibpqFinish)(AnkusLibpqConnection *);
+
+        typedef struct AnkusOrdinaryConnection
+        {
+            AnkusLibpqConnection *streamConn;
+            bool logical;
+            char *recvBuf;
+        } AnkusOrdinaryConnection;
+
+        /* PostgreSQL's dynamic loader searches libpqwalreceiver and the libraries it depends on; on Windows a module's
+         * exports exclude its dependencies, so libpq is found by name. */
+        static void *
+        ankus_libpq_function(const char *name)
+        {
+        #ifdef WIN32
+            HMODULE library = GetModuleHandleA("libpq.dll");
+            void *function = library != NULL ? (void *) GetProcAddress(library, name) : NULL;
+        #else
+            void *function = (void *) load_external_function("libpqwalreceiver", name, false, NULL);
+        #endif
+            if (function == NULL)
+                ereport(ERROR, (errcode(ERRCODE_UNDEFINED_FUNCTION),
+                    errmsg("could not find the libpq function \"%s\" that libpqwalreceiver uses", name)));
+            return function;
+        }
+
+        static WalReceiverConn *
+        ankus_replication_connect_ordinary(const char *conninfo, const char *application, char **failure)
+        {
+            AnkusLibpqStart start = (AnkusLibpqStart) ankus_libpq_function("PQconnectStartParams");
+            AnkusLibpqPoll connect_poll = (AnkusLibpqPoll) ankus_libpq_function("PQconnectPoll");
+            AnkusLibpqState connection_socket = (AnkusLibpqState) ankus_libpq_function("PQsocket");
+            AnkusLibpqState status = (AnkusLibpqState) ankus_libpq_function("PQstatus");
+            AnkusLibpqMessage message = (AnkusLibpqMessage) ankus_libpq_function("PQerrorMessage");
+            AnkusLibpqFinish finish = (AnkusLibpqFinish) ankus_libpq_function("PQfinish");
+            const char *keys[] = { "dbname", "fallback_application_name", NULL };
+            const char *values[] = { conninfo, application, NULL };
+            AnkusOrdinaryConnection *connection = MemoryContextAllocZero(TopMemoryContext, sizeof(AnkusOrdinaryConnection));
+            connection->streamConn = start(keys, values, 1);
+            if (connection->streamConn == NULL)
+            {
+                pfree(connection);
+                ereport(ERROR, (errcode(ERRCODE_OUT_OF_MEMORY), errmsg("out of memory")));
+            }
+
+            PG_TRY();
+            {
+                /* PGRES_POLLING_FAILED is 0, READING 1, WRITING 2 and OK 3; libpq starts as if it were writing. */
+                int state = 2;
+                while (state == 1 || state == 2)
+                {
+                    int events = WaitLatchOrSocket(MyLatch, WL_EXIT_ON_PM_DEATH | WL_LATCH_SET |
+                        (state == 1 ? WL_SOCKET_READABLE : WL_SOCKET_WRITEABLE), connection_socket(connection->streamConn), 0,
+                        WAIT_EVENT_LIBPQWALRECEIVER_CONNECT);
+                    if ((events & WL_LATCH_SET) != 0)
+                    {
+                        ResetLatch(MyLatch);
+                        CHECK_FOR_INTERRUPTS();
+                    }
+
+                    state = connect_poll(connection->streamConn);
+                }
+            }
+            PG_CATCH();
+            {
+                finish(connection->streamConn);
+                pfree(connection);
+                PG_RE_THROW();
+            }
+            PG_END_TRY();
+            /* CONNECTION_OK is 0. */
+            if (status(connection->streamConn) != 0)
+            {
+                *failure = pchomp(message(connection->streamConn));
+                finish(connection->streamConn);
+                pfree(connection);
+                return NULL;
+            }
+
+            return (WalReceiverConn *) connection;
+        }
+        #endif
+
         static void
         ankus_replication_connect(AnkusMemoryRequest *request, AnkusMemoryResult *result)
         {
@@ -98,14 +196,17 @@ internal static class NativeReplicationBridge
             char *failure = NULL;
             WalReceiverConn *connection;
             AnkusReplicationConnection *entry;
+            bool ordinary = request->value == 1;
             if (WalReceiverFunctions == NULL)
                 load_file("libpqwalreceiver", false);
         #if PG_VERSION_NUM >= 170000
-            connection = walrcv_connect(conninfo, true, true, false, application, &failure);
+            connection = walrcv_connect(conninfo, !ordinary, !ordinary, false, application, &failure);
         #elif PG_VERSION_NUM >= 160000
-            connection = walrcv_connect(conninfo, true, false, application, &failure);
+            connection = ordinary ? ankus_replication_connect_ordinary(conninfo, application, &failure) :
+                walrcv_connect(conninfo, true, false, application, &failure);
         #else
-            connection = walrcv_connect(conninfo, true, application, &failure);
+            connection = ordinary ? ankus_replication_connect_ordinary(conninfo, application, &failure) :
+                walrcv_connect(conninfo, true, application, &failure);
         #endif
             if (conninfo != (char *) request->pointer)
                 pfree(conninfo);
@@ -113,7 +214,28 @@ internal static class NativeReplicationBridge
                 pfree(application);
             if (connection == NULL)
                 ereport(ERROR, (errcode(ERRCODE_CONNECTION_FAILURE),
-                    errmsg("could not connect for replication: %s", failure != NULL ? failure : "unknown error")));
+                    errmsg(ordinary ? "could not connect to the server: %s" : "could not connect for replication: %s",
+                        failure != NULL ? failure : "unknown error")));
+            if (ordinary)
+            {
+                /* A logical replication connection asks for these in its startup packet: text in this database's
+                 * encoding and unambiguous dates, intervals and floats. An ordinary connection sets them, and an
+                 * always-secure search path, before it runs anything else. */
+                char *settings = psprintf("SET search_path = ''; SET client_encoding = '%s'; SET datestyle = 'ISO'; "
+                    "SET intervalstyle = 'postgres'; SET extra_float_digits = 3", GetDatabaseEncodingName());
+                WalRcvExecResult *outcome = walrcv_exec(connection, settings, 0, NULL);
+                if (outcome->status != WALRCV_OK_COMMAND)
+                {
+                    char *error = pstrdup(outcome->err != NULL ? outcome->err : "unknown error");
+                    walrcv_clear_result(outcome);
+                    walrcv_disconnect(connection);
+                    ereport(ERROR, (errcode(ERRCODE_CONNECTION_FAILURE), errmsg("could not configure the connection: %s", error)));
+                }
+
+                walrcv_clear_result(outcome);
+                pfree(settings);
+            }
+
             if (ankus_replication_next == 0)
             {
                 walrcv_disconnect(connection);

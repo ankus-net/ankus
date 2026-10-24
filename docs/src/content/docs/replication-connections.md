@@ -32,6 +32,21 @@ Commands take no bind parameters, so quote values with
 [`Spi.QuoteLiteral`](/spi/) and `Spi.QuoteIdentifier`, which also work in a
 background worker between transactions.
 
+Pass `replication: false` for an ordinary connection when the work needs no
+WAL sender, such as reading another server's catalog:
+
+```csharp
+using PgReplicationConnection catalog =
+    PgReplicationConnection.Connect("host=provider dbname=shop user=reader", "shop_catalog", replication: false);
+```
+
+An ordinary connection opens for a role without the `REPLICATION` attribute and
+does not use one of the server's `max_wal_senders`. It runs SQL and `COPY ...
+TO STDOUT`, with the same search path, encoding and date settings as a
+replication connection, but not replication commands such as
+`START_REPLICATION`. On PostgreSQL 13–16, where `libpqwalreceiver` connects only
+for replication, Ankus opens it with the libpq that `libpqwalreceiver` loaded.
+
 `Query` needs a transaction, because PostgreSQL looks up the result's column
 types in the catalog, as the built-in subscriber does inside its transactions.
 A background worker runs such queries inside `PgBackgroundWorker.RunTransaction`.
