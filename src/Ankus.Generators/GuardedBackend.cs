@@ -736,5 +736,10 @@ internal static class GuardedBackend
             return status;
         }
 
+        #ifdef ANKUS_WORKER_BRIDGE
+        /* Lets a transaction that starts outside a background worker run SPI. */
+        static AnkusWorkerExecute ankus_backend_execute = ankus_spi_execute;
+        #endif
+
         """;
 }

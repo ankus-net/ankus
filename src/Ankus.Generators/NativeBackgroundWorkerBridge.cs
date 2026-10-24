@@ -29,13 +29,10 @@ internal static class NativeBackgroundWorkerBridge
         struct AnkusResult;
         typedef int (*AnkusWorkerExecute)(struct AnkusRequest *, struct AnkusResult *, AnkusError *);
 
-        /* SPI is compiled into extensions that declare SQL functions, together with the tuple bridge. */
-        #ifdef ANKUS_TUPLE_BRIDGE
-        static int ankus_spi_execute(struct AnkusRequest *, struct AnkusResult *, AnkusError *);
-        static const AnkusWorkerExecute ankus_backend_execute = ankus_spi_execute;
-        #else
-        static const AnkusWorkerExecute ankus_backend_execute = NULL;
-        #endif
+        /* An extension that declares SQL functions compiles in SPI and defines this as its entry point later in the
+         * file; in any other extension it stays NULL. */
+        #define ANKUS_WORKER_BRIDGE 1
+        static AnkusWorkerExecute ankus_backend_execute;
 
         typedef struct AnkusWorkerDefinition
         {
