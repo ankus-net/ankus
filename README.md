@@ -159,7 +159,7 @@ You can also install the matching `Ankus.Templates` package from your configured
 feed and use ordinary .NET templates:
 
 ```console
-dotnet new install Ankus.Templates@0.2.6
+dotnet new install Ankus.Templates@0.2.7
 dotnet new ankus -n Hello
 cd Hello
 dotnet tool restore
@@ -211,7 +211,7 @@ be relocated afterward. See [function execution options](https://ankus.net/funct
 Extension projects use the `Ankus.Sdk` NuGet project SDK:
 
 ```xml
-<Project Sdk="Ankus.Sdk/0.2.6">
+<Project Sdk="Ankus.Sdk/0.2.7">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -570,14 +570,19 @@ See [native PostgreSQL declarations](https://ankus.net/raw-values/#native-postgr
 
 `[PgOutputPlugin]` exports a static method as `_PG_output_plugin_init`, so the
 library can serve as a logical decoding output plugin. The method receives
-PostgreSQL's callback table and assigns `[PgNativeCallback]` properties. See
+PostgreSQL's callback table and assigns `[PgNativeCallback]` properties.
+`PgTransaction.Run` reads the plugin's own tables at startup, which a WAL sender
+calls outside any transaction. See
 [logical decoding output plugins](https://ankus.net/logical-decoding/).
 
 `PgReplicationConnection` connects from a backend to another server through
 PostgreSQL's own `libpqwalreceiver`, as the built-in subscriber does, to run SQL,
-copy tables and stream logical changes with no client library.
-`PgRelationWriter` applies rows as the built-in apply worker does, and
-`PgReplicationOrigin` tracks how far each source has been applied. They are part
+copy tables and stream logical changes with no client library. An ordinary
+connection runs SQL and copies tables without taking a WAL sender.
+`PgRelationWriter` applies rows as the built-in apply worker does, finds the
+row an insert would collide with and batches inserts through PostgreSQL's
+multi-insert, and `PgReplicationOrigin` tracks how far each source has been
+applied. They are part
 of a toolkit for logical replication extensions such as pglogical, which pgrx
 leaves to raw calls; see
 [replication connections](https://ankus.net/replication-connections/) and

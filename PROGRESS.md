@@ -378,8 +378,7 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   `net10.0` target, as RC1 was. Its Native AOT publish skips the full build, so
   the output directory stays empty, yet it still copies the documentation file
   from there; extensions with documentation could not publish, and a plain
-  `PublishAot` console app fails the same way. This looks like an SDK bug and
-  is recorded here without an upstream report. `Ankus.Sdk` defaults `UseOptimizedPublish` to
+  `PublishAot` console app fails the same way. `Ankus.Sdk` defaults `UseOptimizedPublish` to
   `false`, which keeps the SDK 10 publish path and output. The test fixture's
   publish no longer inherits the MSBuild paths of the SDK that ran the tests,
   which had loaded SDK 11 tasks into an SDK 10 build. `dotnet sln add` now
@@ -738,9 +737,7 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   .NET SDK's tool downloader (`ToolPackageDownloaderBase`) calls
   `Directory.CreateTempSubdirectory()` for its asset files and never deletes
   the directory, so every `dotnet tool install`, `update` or `restore` leaves
-  one or two behind, and a suite leaves about a hundred. This is a suspected
-  SDK bug that has no upstream report yet; a maintainer files it if it is
-  confirmed again.
+  one or two behind, and a suite leaves about a hundred.
   The space was in Ankus test roots that cancelled suites had left, such as a
   30 GB one from 2026-10-06; cleanup removed only `ankus package tests *`
   directories. `runner-cleanup` now removes every `ankus*` temporary directory
@@ -879,8 +876,7 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   stable Visual Studio (18.11, MSVC 14.51.36231), before both runtime builds;
   a release dry run, 39114517547, then built every package. Upstream
   dotnet/runtime still has the same `dn-umap.c` code, so it will meet this
-  warning when a stable MSVC adopts 14.52; that is a suspected upstream issue
-  to confirm before anyone reports it. Nothing from the failed run reached
+  warning when a stable MSVC adopts 14.52. Nothing from the failed run reached
   nuget.org, so its release and tag were recreated at 2b5c98f. nuget.org
   listed all seven packages within four minutes. On Windows x64, `Ankus.Tool`
   0.2.1 from nuget.org created a solution that Visual Studio 2026's MSBuild
@@ -1102,7 +1098,11 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 - With the backend transaction operation, the generated background-worker
   dispatcher reached 101 lines, and CodeQL's C analysis on `main` flagged it once
   for each of the 48 extensions it builds as poorly documented. The latch wait
-  and database connection now have their own functions.
+  and database connection now have their own functions. On main at 06bff4fa
+  (#89), CI 40072947626 passed on Linux x64, macOS ARM64 and Windows x64,
+  CodeQL left no open alert, PostgreSQL versions 40074461611 passed every other
+  Linux major, and platform versions 40074463443 passed every other Windows and
+  macOS major.
 - An exception from a `[PgNativeCallback]` hook or C# trigger nested in a backend
   call reported each enclosing `PgErrorContext` twice, once from the text
   recorded when it was thrown and once from the context callback the backend
@@ -1165,13 +1165,12 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 - Scheduled run 38729094424 lost one Windows/PostgreSQL 18.6 case before its
   test body ran: the server reset the connection during authentication. The
   new backend had failed with `FATAL: incorrect checksum in control file` in
-  the same millisecond the checkpointer finished writing `pg_control`. Windows
-  builds start every backend as a new process that reads `pg_control` from disk
-  again without a lock (`LocalProcessControlFile` in `launch_backend.c`), so it
-  can see a half-written file, and the suites' frequent forced checkpoints make
-  that likelier. Its rerun passed. This looks like a PostgreSQL bug; it is
-  recorded here without an upstream report. If it happens again, a maintainer reports it
-  upstream.
+  the same millisecond the checkpointer finished writing `pg_control`. Its
+  rerun passed. On 2026-10-24, CI 40062484244 for #86 lost
+  `NamespaceLookupTests.TypeSearchPathAndExactSignaturesArePreserved` on
+  Windows/PostgreSQL 17.11 the same way: a new backend logged the same FATAL
+  during an immediate checkpoint that started 57 ms earlier and completed 6 ms
+  later. Its rerun passed.
 - The same matrix found two test races. On Windows, a test that ends its
   backend with FATAL can see a connection reset instead of the report, so all
   three such GUC tests now accept a reset there and read the report from the
@@ -2437,7 +2436,7 @@ PostgreSQL 19 RC1, Linux ARM64, and Intel macOS on 13–18 and 19 RC1 all pass o
 declaration audit against pgrx 0.19.3 has no open option, and the third code
 review's findings are fixed or kept by documented design.
 
-1. Resolve discovered correctness and CI failures before accepting affected work. The macOS ARM64 test-host crashes are a suspected macOS bug with no upstream report yet: on 2026-10-14 the build-tool tests' host died after 698 of 1,346 tests, and its crash report shows `fork()`, called by .NET's `Process.Start`, aborting in libmalloc's xzone allocator (`_malloc_fork_parent`: unlock of an `os_unfair_lock` the thread does not own) while two other threads waited on xzone's fork lock to allocate. macOS 26 uses xzone for every ARM64 process, with no setting to turn it off outside Apple, and Intel Macs never use it. Rerun a job that ends this way and record it. If it happens once more, a maintainer files the report with Apple and .NET.
+1. Resolve discovered correctness and CI failures before accepting affected work. The macOS ARM64 test-host crashes are unexplained: on 2026-10-14 the build-tool tests' host died after 698 of 1,346 tests, and its crash report shows `fork()`, called by .NET's `Process.Start`, aborting in libmalloc's xzone allocator (`_malloc_fork_parent`: unlock of an `os_unfair_lock` the thread does not own) while two other threads waited on xzone's fork lock to allocate. macOS 26 uses xzone for every ARM64 process, with no setting to turn it off outside Apple, and Intel Macs never use it. Rerun a job that ends this way and record it.
 2. Keep the pgrx 0.19.3 [release-delta gates](docs/contributing/evidence/parity-requirements.md#pgrx-0193-release-delta-and-refresh-gates) satisfied: each has implementation and complete-suite evidence on runtime 10.0.13-ankus.1, which must be refreshed on each later serviced runtime.
 3. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
 4. Measured hot paths are done: a trimming row trigger costs about the same as PL/pgSQL (0.72 µs against 0.72 µs per row on one host, 0.55 µs against 0.52 µs on another), as the [guard-tier evidence](docs/contributing/evidence/guard-tiers.md#row-triggers) shows. Keep the in-backend baseline, and measure again when boundary code changes, preserving recovery and ownership guarantees.
