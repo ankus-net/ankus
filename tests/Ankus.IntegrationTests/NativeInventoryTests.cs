@@ -27,6 +27,19 @@ public sealed class NativeInventoryTests(TestContext context)
     }
 
     /// <summary>
+    /// A C long parameter takes a <c>long</c> on every platform, and <c>FETCH_ALL</c> has the platform's C long width:
+    /// 32 bits on Windows and 64 elsewhere.
+    /// </summary>
+    [TestMethod]
+    public async Task CLongArgumentsCompileAndKeepThePlatformWidth()
+    {
+        await using NpgsqlConnection connection = await PostgresFixture.Cluster.OpenConnectionAsync(context.CancellationToken);
+        await using var command = new NpgsqlCommand("SELECT native_inventory.c_long_arguments()", connection);
+        long fetchAll = Assert.IsInstanceOfType<long>(await command.ExecuteScalarAsync(context.CancellationToken));
+        Assert.AreEqual(OperatingSystem.IsWindows() ? int.MaxValue : long.MaxValue, fetchAll);
+    }
+
+    /// <summary>
     /// Native unsigned helper calls preserve signed SQL inputs and full-width hash results.
     /// </summary>
     /// <param name="value">The integer bit pattern.</param>

@@ -221,6 +221,23 @@ through a wrapper where it is still a macro, so the same call builds against
 PostgreSQL 13 through 19. A few went the other way, such as `bms_is_empty` in 16,
 and are wrapped on the newer versions.
 
+A C `long` is 64 bits on Linux and macOS and 32 bits on Windows, so its
+parameters and results are `long` or `int` to match. On Windows, a function
+with `long` parameters also accepts `long` values, so the same call builds on
+every platform; a value that does not fit in 32 bits throws
+`ArgumentOutOfRangeException` before PostgreSQL is called.
+`NativeMethods.FETCH_ALL()` returns `FETCH_ALL`, PostgreSQL's row count for
+`PortalRun` that means all rows, at the platform's width:
+
+```csharp
+unsafe
+{
+    long microseconds = 1000;
+    NativeMethods.pg_usleep(microseconds);
+    long allRows = NativeMethods.FETCH_ALL();
+}
+```
+
 Signatures follow the selected PostgreSQL version, including native `const` and
 `volatile` contracts. For example, `PageValidateSpecialPointer` returns `bool`
 on PostgreSQL 13–15 and `void` on 16–19; `SpinLockFree` is unavailable on 19.

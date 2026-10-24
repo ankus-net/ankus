@@ -27,7 +27,7 @@ public sealed class NativeBindingHeaderHelpersTests
         string[] expected = ["pg_add_s32_overflow", "GETSTRUCT", "TYPEALIGN", "MAXALIGN", "GetMemoryChunkContext", "MemoryContextIsValid", "MemoryContextSwitchTo",
             "TransactionIdIsNormal", "TransactionIdPrecedes", "TransactionIdPrecedesOrEquals", "TransactionIdFollows", "TransactionIdFollowsOrEquals",
             "type_is_array", "BufferIsLocal", "BufferIsValid", "ItemIdGetOffset", "PageIsValid", "PageSizeIsValid", "SizeOfPageHeaderData",
-            "PageValidateSpecialPointer", "HeapTupleHeaderGetNatts", "heap_getattr", "SpinLockInit", "SpinLockAcquire", "SpinLockRelease",
+            "FETCH_ALL", "PageValidateSpecialPointer", "HeapTupleHeaderGetNatts", "heap_getattr", "SpinLockInit", "SpinLockAcquire", "SpinLockRelease",
             "BufferGetBlock", "BufferGetPage", "BufferGetPageSize", "PageIsEmpty", "PageIsNew", "PageGetItemId", "PageGetContents",
             "PageGetPageSize", "PageGetPageLayoutVersion", "PageSetPageSizeAndVersion", "PageGetSpecialSize", "PageGetItem", "PageGetMaxOffsetNumber",
             "PageGetSpecialPointer", "HeapTupleHeaderIsHeapOnly", "HeapTupleHeaderIsHotUpdated", "HeapTupleHeaderXminInvalid",
@@ -45,7 +45,8 @@ public sealed class NativeBindingHeaderHelpersTests
         var macros = new HashSet<string>(StringComparer.Ordinal)
         {
             "GETSTRUCT", "TYPEALIGN", "MAXALIGN", "MemoryContextIsValid", "TransactionIdIsNormal", "type_is_array",
-            "BufferIsLocal", "ItemIdGetOffset", "PageIsValid", "PageSizeIsValid", "SizeOfPageHeaderData", "HeapTupleHeaderGetNatts"
+            "BufferIsLocal", "ItemIdGetOffset", "PageIsValid", "PageSizeIsValid", "SizeOfPageHeaderData", "FETCH_ALL",
+            "HeapTupleHeaderGetNatts"
         };
         if (major < 15)
         {

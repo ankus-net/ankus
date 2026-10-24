@@ -22,6 +22,35 @@ public static class NativeInventoryFunctions
     }
 
     /// <summary>
+    /// Passes a C long argument as a <c>long</c>, which compiles on every platform, and returns PostgreSQL's
+    /// <c>FETCH_ALL</c>. On Windows, where C long has 32 bits, a larger value is rejected before PostgreSQL is called.
+    /// </summary>
+    /// <returns><c>FETCH_ALL</c> with the platform's C long width, or -1 when Windows accepts a value it cannot hold.</returns>
+    [PgFunction]
+    public static long CLongArguments()
+    {
+        unsafe
+        {
+            long microseconds = 1;
+            NativeMethods.pg_usleep(microseconds);
+            if (OperatingSystem.IsWindows())
+            {
+                try
+                {
+                    NativeMethods.pg_usleep(long.MaxValue);
+                    return -1;
+                }
+                catch (ArgumentOutOfRangeException)
+                {
+                    // The overload rejects the value before PostgreSQL could sleep for it.
+                }
+            }
+
+            return NativeMethods.FETCH_ALL();
+        }
+    }
+
+    /// <summary>
     /// Hashes the exact integer bits with PostgreSQL's native unsigned helper.
     /// </summary>
     /// <param name="value">The integer bit pattern.</param>
