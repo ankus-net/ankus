@@ -370,10 +370,10 @@ public sealed class RelationWriterTests(TestContext context)
             await WithTableAsync($"id integer PRIMARY KEY, value integer, note text, mood {type}, moods {type}[]",
                 async (connection, table, token) =>
                 {
-                    await ExecuteAsync(connection, $"""
-                        CREATE TRIGGER observe BEFORE INSERT OR UPDATE ON {table} FOR EACH ROW
+                    await ExecuteAsync(connection, $$"""
+                        CREATE TRIGGER observe BEFORE INSERT OR UPDATE ON {{table}} FOR EACH ROW
                             EXECUTE FUNCTION datatype.trigger_action('observe');
-                        INSERT INTO {table} VALUES (1, 10, 'original', 'happy', '{{sad,happy}}'), (2, 20, 'gone', 'sad', NULL);
+                        INSERT INTO {{table}} VALUES (1, 10, 'original', 'happy', '{sad,happy}'), (2, 20, 'gone', 'sad', NULL);
                         """, token);
                     Assert.AreEqual("1|True|True", await ScalarAsync<string>(connection,
                         $"SELECT datatype.writer_rewrite_found_row('{table}'::regclass::oid)", token));
