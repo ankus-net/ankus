@@ -6,6 +6,44 @@ namespace Ankus;
 public static class PgTransaction
 {
     /// <summary>
+    /// Runs synchronous work with SPI in the current transaction, or else in a new transaction that commits when the
+    /// work returns.
+    /// </summary>
+    /// <param name="action">The work to run on the active backend thread.</param>
+    /// <remarks>
+    /// PostgreSQL calls some extension code outside a transaction, such as an output plugin's startup callback when a
+    /// WAL sender starts streaming, and the same code inside one elsewhere. A new transaction needs a backend
+    /// connected to a database; a failure rolls it back before the exception returns. Inside a transaction, the work
+    /// runs as it would without this call.
+    /// </remarks>
+    public static void Run(Action action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        _ = Run(() =>
+        {
+            action();
+            return true;
+        });
+    }
+
+    /// <summary>
+    /// Runs synchronous work with SPI in the current transaction, or else in a new transaction that commits when the
+    /// work returns, and returns its result.
+    /// </summary>
+    /// <typeparam name="TResult">The owned result.</typeparam>
+    /// <param name="action">The work to run on the active backend thread.</param>
+    /// <returns>The work's result, after commit when this call started the transaction.</returns>
+    /// <remarks>
+    /// A new transaction needs a backend connected to a database; a failure rolls it back before the exception
+    /// returns. Inside a transaction, the work runs as it would without this call.
+    /// </remarks>
+    public static TResult Run<TResult>(Func<TResult> action)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+        return NativeBackend.HasBinding ? action() : NativeBackgroundWorker.RunBackendTransaction(action);
+    }
+
+    /// <summary>
     /// Runs synchronous work in an internal subtransaction, rolling it back if the callback fails.
     /// </summary>
     /// <param name="action">The work to run on the active backend thread.</param>

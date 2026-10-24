@@ -10,6 +10,7 @@ internal static class NativeBackgroundWorkerBridge
     /// </summary>
     internal const string Source = """
         #include <errno.h>
+        #include "access/parallel.h"
         #include "access/xact.h"
         #include "libpq/pqsignal.h"
         #include "postmaster/bgworker.h"
@@ -27,6 +28,14 @@ internal static class NativeBackgroundWorkerBridge
         struct AnkusRequest;
         struct AnkusResult;
         typedef int (*AnkusWorkerExecute)(struct AnkusRequest *, struct AnkusResult *, AnkusError *);
+
+        /* SPI is compiled into extensions that declare SQL functions, together with the tuple bridge. */
+        #ifdef ANKUS_TUPLE_BRIDGE
+        static int ankus_spi_execute(struct AnkusRequest *, struct AnkusResult *, AnkusError *);
+        static const AnkusWorkerExecute ankus_backend_execute = ankus_spi_execute;
+        #else
+        static const AnkusWorkerExecute ankus_backend_execute = NULL;
+        #endif
 
         typedef struct AnkusWorkerDefinition
         {
@@ -63,6 +72,17 @@ internal static class NativeBackgroundWorkerBridge
         static volatile sig_atomic_t ankus_worker_child;
         static volatile sig_atomic_t ankus_worker_transaction_active;
 
+        /* Outside a worker, a backend connected to a database can start its own transaction where PostgreSQL calls
+         * an extension without one, as a WAL sender calls an output plugin's startup callback. */
+        static const char *
+        ankus_backend_transaction_check(AnkusMemoryRequest *request)
+        {
+            if (ankus_backend_execute == NULL)
+                return "a transaction with SPI requires an extension that declares SQL functions";
+            return request->pointer == 0 || IsTransactionOrTransactionBlock() || !OidIsValid(MyDatabaseId) || IsParallelWorker()
+                ? "a transaction can start only in a backend connected to a database, outside any transaction" : NULL;
+        }
+
         static const char *
         ankus_worker_check_phase(AnkusMemoryRequest *request)
         {
@@ -80,6 +100,11 @@ internal static class NativeBackgroundWorkerBridge
                 return "dynamic Ankus workers require an initialized backend after shared preload";
             }
 
+            if (request->flags == 16 && !ankus_worker_active)
+            {
+                return ankus_backend_transaction_check(request);
+            }
+
             if (request->flags >= 7)
             {
                 if (!ankus_worker_active || MyBgworkerEntry == NULL)
@@ -93,7 +118,7 @@ internal static class NativeBackgroundWorkerBridge
                     return "the worker must request database access and connect only once";
                 }
 
-                if (request->flags == 13 && (!ankus_worker_connected || ankus_worker_execute == NULL ||
+                if ((request->flags == 13 || request->flags == 16) && (!ankus_worker_connected || ankus_worker_execute == NULL ||
                     request->pointer == 0 || IsTransactionState()))
                 {
                     return "a worker transaction requires a connected worker outside an existing transaction";
@@ -410,30 +435,54 @@ internal static class NativeBackgroundWorkerBridge
             }
         }
 
+        /* A worker's transaction reports its activity and statistics as worker_spi does. Another backend's leaves
+         * those to the code that called the extension, such as a WAL sender running its replication command. */
         static void
-        ankus_worker_transaction(AnkusMemoryRequest *request, volatile bool *recovered)
+        ankus_worker_transaction(AnkusMemoryRequest *request, volatile bool *recovered, bool backend)
         {
             typedef int (*AnkusWorkerTransaction)(AnkusWorkerExecute, AnkusMemoryApi *);
-            ankus_worker_require();
-            if (!ankus_worker_connected || ankus_worker_execute == NULL || request->pointer == 0 || IsTransactionState())
+            const char *invalid = NULL;
+            if (backend)
             {
-                ereport(ERROR, (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
-                    errmsg("a worker transaction requires a connected worker outside an existing transaction")));
+                invalid = ankus_backend_transaction_check(request);
+            }
+            else
+            {
+                ankus_worker_require();
+                if (!ankus_worker_connected || ankus_worker_execute == NULL || request->pointer == 0 || IsTransactionState())
+                {
+                    invalid = "a worker transaction requires a connected worker outside an existing transaction";
+                }
             }
 
+            if (invalid != NULL)
+            {
+                ereport(ERROR, (errcode(backend ? ERRCODE_INVALID_TRANSACTION_STATE : ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+                    errmsg("%s", invalid)));
+            }
+
+            AnkusWorkerExecute execute = backend ? ankus_backend_execute : ankus_worker_execute;
             MemoryContext caller = CurrentMemoryContext;
             AnkusError *error = palloc0(sizeof(AnkusError));
             PG_TRY();
             {
-                SetCurrentStatementStartTimestamp();
+                if (!backend)
+                {
+                    SetCurrentStatementStartTimestamp();
+                }
+
                 StartTransactionCommand();
-                ankus_worker_transaction_active = 1;
-                pgstat_report_activity(STATE_RUNNING, NULL);
+                if (!backend)
+                {
+                    ankus_worker_transaction_active = 1;
+                    pgstat_report_activity(STATE_RUNNING, NULL);
+                }
+
                 PushActiveSnapshot(GetTransactionSnapshot());
                 AnkusMemoryApi memory = {0};
                 ankus_memory_initialize(&memory);
                 int status;
-                ANKUS_MANAGED_INVOKE(status, error, ((AnkusWorkerTransaction) request->pointer)(ankus_worker_execute, &memory));
+                ANKUS_MANAGED_INVOKE(status, error, ((AnkusWorkerTransaction) request->pointer)(execute, &memory));
                 MemoryContextSwitchTo(caller);
                 if (status == 0)
                 {
@@ -446,12 +495,16 @@ internal static class NativeBackgroundWorkerBridge
                     *recovered = true;
                 }
 
-                ankus_worker_transaction_active = 0;
-                /* As worker_spi does, publish the transaction's table and I/O counts, which otherwise stay in this
-                 * process until it exits, so autovacuum and the statistics views see the worker's writes. Without
-                 * force, PostgreSQL limits how often this flushes. */
-                (void) pgstat_report_stat(false);
-                pgstat_report_activity(STATE_IDLE, NULL);
+                if (!backend)
+                {
+                    ankus_worker_transaction_active = 0;
+                    /* As worker_spi does, publish the transaction's table and I/O counts, which otherwise stay in this
+                     * process until it exits, so autovacuum and the statistics views see the worker's writes. Without
+                     * force, PostgreSQL limits how often this flushes. */
+                    (void) pgstat_report_stat(false);
+                    pgstat_report_activity(STATE_IDLE, NULL);
+                }
+
                 if (error->sqlstate != 0)
                     ankus_report(error, ERROR);
             }
@@ -484,6 +537,12 @@ internal static class NativeBackgroundWorkerBridge
             if (request->flags >= 2 && request->flags <= 5)
             {
                 ankus_worker_observe(request, result);
+                return;
+            }
+
+            if (request->flags == 16)
+            {
+                ankus_worker_transaction(request, recovered, !ankus_worker_active);
                 return;
             }
 
@@ -555,7 +614,7 @@ internal static class NativeBackgroundWorkerBridge
                     ankus_worker_connected = true;
                     break;
                 case 13:
-                    ankus_worker_transaction(request, recovered);
+                    ankus_worker_transaction(request, recovered, false);
                     break;
                 case 14:
                     result->value = (!ShutdownRequestPending && !ankus_worker_term && PostmasterIsAlive()) ? 1 : 0;

@@ -1057,6 +1057,20 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   Bison or Flex first. On the Windows x64 runner PC, with EDB serving no 19rc1
   archive, `ankus init --pg19 download` built 19rc1 with MSVC 19.52, registered
   it, and the server started with `debug_assertions` on.
+- An output plugin's startup callback runs outside a transaction when a WAL
+  sender starts streaming, and native callbacks bound SPI only when entered
+  inside one, so pglogical's startup could not read its catalog (#80).
+  `PgTransaction.Run` runs work with SPI in the current transaction, or else
+  starts one, commits it when the work returns and rolls it back if it fails,
+  as pglogical's startup does with `StartTransactionCommand`. It uses the worker
+  transaction's native path without the worker's activity and statistics
+  reporting, and needs a backend connected to a database. A test output plugin
+  reads the database name at startup; SQL decoding calls it inside a
+  transaction, a WAL sender outside one, and a failing read rolls back and the
+  next stream starts normally. The test also found that from PostgreSQL 18,
+  which keeps `TopTransactionContext` allocated between transactions,
+  `PgMemoryContext.Get(TopTransaction)` returned it outside a transaction where
+  13–17 return null; it is now null whenever no transaction is in progress.
 - macOS killed the Generators test host on the MacBook runner (main CI
   39517461878) as the largest process, at 26.7 GB compressed. The generator wrote
   the native source, SQL, graph and exports as single `AssemblyMetadata`
