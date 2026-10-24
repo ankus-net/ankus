@@ -1092,6 +1092,13 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   other than `nextval` gets each row at once. Tests check the 1,000-row
   batches, ordering with a later update, `AFTER` triggers, both fallbacks and a
   unique violation raised when the batch is written.
+- `PgRelationWriter.Find` failed on a row with an enum type the extension does
+  not declare, because row transport rejected such enums before converting
+  them (#83). A row cell now keeps an exact copy of an undeclared enum, or an
+  array of one, as it does for other types without a managed conversion, so
+  such rows can be found, written back unchanged and deleted, and a C# row
+  trigger receives them. An SPI query that returns one as a column still fails
+  with `0A000`.
 - `PgReplicationConnection` always opened a logical replication connection, so
   a role without `REPLICATION` could not run pglogical's ordinary catalog
   queries and every query took a WAL sender (#72). `Connect(..., replication:
