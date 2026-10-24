@@ -478,6 +478,31 @@ Returns: [SpiCursor](/api/ankus.spicursor/)
 
 An owned cursor that should be disposed or detached.
 
+<a id="member-f59767c73ae0cd27"></a>
+
+### ParameterReference(int)
+
+Writes a reference to a positional parameter, such as <code>$1</code>, for a command whose number of parameters is known
+only at run time.
+
+```csharp
+public static string ParameterReference(int number)
+```
+
+Parameters:
+
+`number` — [int](https://learn.microsoft.com/dotnet/api/system.int32)
+
+The parameter's position, starting at 1.
+
+Returns: [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+The parameter reference.
+
+Exceptions:
+
+- [ArgumentOutOfRangeException](https://learn.microsoft.com/dotnet/api/system.argumentoutofrangeexception): <code class="paramref">number</code> is less than 1.
+
 <a id="member-09b24c05d9940e1e"></a>
 
 ### Prepare(string, params ReadOnlySpan&lt;Type&gt;)

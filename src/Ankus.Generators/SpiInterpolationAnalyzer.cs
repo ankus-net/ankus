@@ -215,7 +215,7 @@ public sealed partial class SpiInterpolationAnalyzer : DiagnosticAnalyzer
             IThrowOperation => true,
             IInvocationOperation { TargetMethod: { IsStatic: true, ReturnType.SpecialType: SpecialType.System_String } method }
                 => SymbolEqualityComparer.Default.Equals(method.ContainingType, spi) &&
-                    method.Name is "QuoteIdentifier" or "QuoteQualifiedIdentifier" or "QuoteLiteral",
+                    method.Name is "QuoteIdentifier" or "QuoteQualifiedIdentifier" or "QuoteLiteral" or "ParameterReference",
             _ => false,
         };
 

@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Ankus;
 
 /// <summary>
@@ -45,6 +47,19 @@ public static partial class Spi
         ArgumentNullException.ThrowIfNull(value);
         return NativeBackend.HasBinding ? NativeBackend.Quote(SpiOperation.QuoteLiteral, SpiParameter.Create(value))
             : NativeQuote.Quote(3, value, null);
+    }
+
+    /// <summary>
+    /// Writes a reference to a positional parameter, such as <c>$1</c>, for a command whose number of parameters is known
+    /// only at run time.
+    /// </summary>
+    /// <param name="number">The parameter's position, starting at 1.</param>
+    /// <returns>The parameter reference.</returns>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="number"/> is less than 1.</exception>
+    public static string ParameterReference(int number)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(number, 1);
+        return "$" + number.ToString(CultureInfo.InvariantCulture);
     }
 
     /// <summary>

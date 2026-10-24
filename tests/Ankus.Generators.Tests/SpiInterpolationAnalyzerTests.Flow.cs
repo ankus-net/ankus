@@ -94,8 +94,23 @@ public sealed partial class SpiInterpolationAnalyzerTests
     [DataRow("string Fragment() => Spi.QuoteLiteral(value); Spi.Execute($\"SELECT {Fragment()}\");")]
     [DataRow("Spi.Execute(string.Format(\"SELECT 1\", value));")]
     [DataRow("Spi.Execute(string.Format(\"SELECT {0}, {1}\", Spi.QuoteLiteral(value), \"'$9999999999999999990000000000'\"));")]
+    [DataRow("Spi.Execute($\"SELECT {Spi.ParameterReference(number)}\");")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"INSERT INTO t VALUES (\"); for (int i = 1; i <= number; i++) { sql.Append(i > 1 ? \", \" : \"\").Append(Spi.ParameterReference(i)); } sql.Append(')'); Spi.Execute(sql.ToString());")]
+    [DataRow("int[] numbers = [1, 2]; Spi.Execute(\"SELECT \" + string.Join(\", \", System.Linq.Enumerable.Select(numbers, Spi.ParameterReference)));")]
     public async Task ProvenCommandConstructionRemainsValid(string body)
         => Assert.IsEmpty(await Analyze(body, FlowHelpers, "bool flag = number != 0;"));
+
+    /// <summary>
+    /// A parameter number formatted from a runtime integer is a runtime value; only the reference helper writes one.
+    /// </summary>
+    [TestMethod]
+    public async Task RuntimeParameterNumbersNeedTheReferenceHelper()
+    {
+        const string body = "var sql = new System.Text.StringBuilder(\"SELECT \"); for (int i = 1; i <= number; i++) " +
+            "{ sql.Append('$').Append(i.ToString(System.Globalization.CultureInfo.InvariantCulture)); } Spi.Execute(sql.ToString());";
+        Diagnostic error = Assert.ContainsSingle(await Analyze(body));
+        Assert.AreEqual("ANKUS044", error.Id);
+    }
 
     /// <summary>
     /// Preserves correctly quoted identifier and literal fragments across loop convergence.

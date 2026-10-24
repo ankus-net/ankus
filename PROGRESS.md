@@ -1043,6 +1043,12 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   subscribes its database to itself by name, records a notice and is refused for
   a role its `pg_hba.conf` rejects; without the environment change the
   subscription fails with the issue's socket error.
+- ANKUS044 rejected an SPI command whose positional parameters are numbered at
+  run time, as pglogical's SPI apply path builds them, because the numbers are
+  appended as runtime text (#78). `Spi.ParameterReference(n)` returns `$n`, and
+  the analyzer accepts it as it accepts the quoting helpers, in interpolations,
+  concatenation, builders and `Select` method groups. A runtime integer appended
+  after `$` is still reported.
 - macOS killed the Generators test host on the MacBook runner (main CI
   39517461878) as the largest process, at 26.7 GB compressed. The generator wrote
   the native source, SQL, graph and exports as single `AssemblyMetadata`
