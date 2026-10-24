@@ -1103,6 +1103,14 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   such rows can be found, written back unchanged and deleted, and a C# row
   trigger receives them. An SPI query that returns one as a column still fails
   with `0A000`.
+- ANKUS044 rejected the SPI guide's own `Spi.ParameterReference` example
+  (#93). In a loop, the analyzer summarizes a command with quoted fragments
+  and accepts a join only at a token boundary, and with an empty first
+  separator one reference could directly precede the next. A positional
+  parameter ends at its last digit, so a summary now records when it ends
+  with one, and a following reference is accepted. Tests compile the guide's
+  example and still reject separators such as `0`, which would extend the
+  number, or `a`, which would join an identifier.
 - With the backend transaction operation, the generated background-worker
   dispatcher reached 101 lines, and CodeQL's C analysis on `main` flagged it once
   for each of the 48 extensions it builds as poorly documented. The latch wait
