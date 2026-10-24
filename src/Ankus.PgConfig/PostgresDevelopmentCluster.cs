@@ -15,6 +15,15 @@ public sealed partial class PostgresDevelopmentCluster
     /// </summary>
     private static readonly Lock s_environmentLock = new();
 
+    /// <summary>
+    /// Lists the libpq variables pg_regress removes from its temporary instance's environment.
+    /// </summary>
+    private static readonly string[] s_clearedClientVariables = ["PGCHANNELBINDING", "PGCLIENTENCODING", "PGCONNECT_TIMEOUT",
+        "PGDATA", "PGDATABASE", "PGGSSDELEGATION", "PGGSSENCMODE", "PGGSSLIB", "PGHOSTADDR", "PGKRBSRVNAME", "PGPASSFILE",
+        "PGPASSWORD", "PGREQUIREPEER", "PGREQUIRESSL", "PGSERVICE", "PGSERVICEFILE", "PGSSLCERT", "PGSSLCRL", "PGSSLCRLDIR",
+        "PGSSLKEY", "PGSSLMAXPROTOCOLVERSION", "PGSSLMINPROTOCOLVERSION", "PGSSLMODE", "PGSSLROOTCERT", "PGSSLSNI",
+        "PGTARGETSESSIONATTRS"];
+
     private readonly PostgresInstallation _installation;
     private readonly PostgresRegistry _registry;
     private readonly string _root;
@@ -412,10 +421,7 @@ public sealed partial class PostgresDevelopmentCluster
     internal static Dictionary<string, string?> CreateServerEnvironment(int port)
     {
         Dictionary<string, string?> environment = new(StringComparer.Ordinal);
-        foreach (string name in (string[])["PGCHANNELBINDING", "PGCLIENTENCODING", "PGCONNECT_TIMEOUT", "PGDATA", "PGDATABASE",
-            "PGGSSDELEGATION", "PGGSSENCMODE", "PGGSSLIB", "PGHOSTADDR", "PGKRBSRVNAME", "PGPASSFILE", "PGPASSWORD",
-            "PGREQUIREPEER", "PGREQUIRESSL", "PGSERVICE", "PGSERVICEFILE", "PGSSLCERT", "PGSSLCRL", "PGSSLCRLDIR", "PGSSLKEY",
-            "PGSSLMAXPROTOCOLVERSION", "PGSSLMINPROTOCOLVERSION", "PGSSLMODE", "PGSSLROOTCERT", "PGSSLSNI", "PGTARGETSESSIONATTRS"])
+        foreach (string name in s_clearedClientVariables)
         {
             environment[name] = null;
         }

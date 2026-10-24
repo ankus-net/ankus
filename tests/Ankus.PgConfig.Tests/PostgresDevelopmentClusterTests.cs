@@ -136,7 +136,8 @@ public sealed class PostgresDevelopmentClusterTests(TestContext context)
         Assert.AreEqual("127.0.0.1", environment["PGHOST"]);
         Assert.AreEqual("28818", environment["PGPORT"]);
         Assert.AreEqual("postgres", environment["PGUSER"]);
-        foreach (string name in (string[])["PGDATABASE", "PGHOSTADDR", "PGPASSWORD", "PGSERVICE", "PGSSLMODE", "PGTARGETSESSIONATTRS"])
+        string[] cleared = ["PGDATABASE", "PGHOSTADDR", "PGPASSWORD", "PGSERVICE", "PGSSLMODE", "PGTARGETSESSIONATTRS"];
+        foreach (string name in cleared)
         {
             Assert.IsTrue(environment.TryGetValue(name, out string? value), name);
             Assert.IsNull(value, name);
