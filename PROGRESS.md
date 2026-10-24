@@ -17,8 +17,8 @@ Linux x64, Windows x64, macOS ARM64 and macOS x64, including real published
 extensions, backend recovery, complete suites and release/package validation.
 Ankus is released on nuget.org: 0.1.0 on 2026-10-15, servicing releases
 through 0.1.7, 0.2.0 on 2026-10-17, 0.2.1 and 0.2.2 on 2026-10-18, 0.2.3 on
-2026-10-19, 0.2.4 on 2026-10-20, 0.2.5 on 2026-10-22 and 0.2.6 on 2026-10-22
-(see remaining-work item 8).
+2026-10-19, 0.2.4 on 2026-10-20, 0.2.5 on 2026-10-22, 0.2.6 on 2026-10-22
+and 0.2.7 on 2026-10-24 (see remaining-work item 8).
 
 The upstream inventory is pinned to pgrx **0.19.3**, commit
 `fc91c63ebad11784647b50ee7e265c1fd9c9924f`. The refresh covers every release
@@ -907,6 +907,14 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   were pushed and listed on nuget.org. On the MacBook, with `/usr/bin/clang`
   first on `PATH`, `Ankus.Tool` 0.2.2 from nuget.org created a solution whose
   7 tests passed.
+- 0.2.7 is released (release run 40083608945 on 67c1268a, after CI
+  40082070145, CodeQL, Docs and the secret scan passed on that commit). All
+  seven packages were pushed and listed on nuget.org, and the unchanged
+  runtime packages were skipped as already published. On Linux x64, a
+  solution from `Ankus.Tool` 0.2.7 on nuget.org with a backend check that
+  runs a command built with `Spi.ParameterReference`, passes a `long` to
+  `pg_usleep` and reads `FETCH_ALL()` passed its 8 tests against
+  PostgreSQL 18.
 - 0.2.6 is released (release run 39910251927 on 3c0b6c11, after CI
   39907909470, CodeQL, Docs and the secret scan passed on that commit). All
   seven packages were pushed and listed on nuget.org. On Linux x64, a solution
