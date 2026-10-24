@@ -10,6 +10,11 @@ namespace Ankus.PgConfig;
 /// </summary>
 public sealed partial class PostgresDevelopmentCluster
 {
+    /// <summary>
+    /// Serializes changes to this process's environment while a shell-executed program inherits it.
+    /// </summary>
+    private static readonly Lock s_environmentLock = new();
+
     private readonly PostgresInstallation _installation;
     private readonly PostgresRegistry _registry;
     private readonly string _root;
@@ -73,8 +78,8 @@ public sealed partial class PostgresDevelopmentCluster
     /// <returns>True when a server was started, or false when it was already running.</returns>
     public async Task<bool> StartAsync(PostgresDevelopmentOptions? options = null, CancellationToken cancellationToken = default)
     {
-        string configuration = CreateConfiguration(_installation.Version.Major, options ?? new PostgresDevelopmentOptions(),
-            options?.Port ?? _registry.GetPort(_installation.Version.Major));
+        int port = options?.Port ?? _registry.GetPort(_installation.Version.Major);
+        string configuration = CreateConfiguration(_installation.Version.Major, options ?? new PostgresDevelopmentOptions(), port);
         int timeout = options?.TimeoutSeconds ?? 60;
         cancellationToken.ThrowIfCancellationRequested();
         bool useValgrind = options?.UseValgrind == true;
@@ -126,13 +131,13 @@ public sealed partial class PostgresDevelopmentCluster
         {
             string[] arguments = ["start", "-l", _log.NativeFilePath, "-w", "-t",
                 (useValgrind ? timeout + 60 : timeout).ToString(CultureInfo.InvariantCulture)];
-            Dictionary<string, string?>? environment = null;
+            Dictionary<string, string?> environment = CreateServerEnvironment(port);
             if (useValgrind)
             {
                 // pg_ctl inserts -D before -o arguments. Supply PGDATA instead so Valgrind
                 // receives its own options before the shell-quoted PostgreSQL executable.
                 arguments = [.. arguments, "-p", "valgrind", "-o", ValgrindArguments(_installation, suppressions)];
-                environment = new Dictionary<string, string?> { ["PGDATA"] = DataDirectory };
+                environment["PGDATA"] = DataDirectory;
                 if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DOTNET_GCRegionRange")))
                 {
                     // Memcheck shares a bounded virtual address space with its client. The
@@ -168,7 +173,7 @@ public sealed partial class PostgresDevelopmentCluster
             else
             {
                 await RunCheckedAsync(_installation.PgCtlPath, arguments, cancellationToken,
-                    allowDescendants: OperatingSystem.IsWindows()).ConfigureAwait(false);
+                    allowDescendants: OperatingSystem.IsWindows(), environment: environment).ConfigureAwait(false);
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -374,11 +379,16 @@ public sealed partial class PostgresDevelopmentCluster
                 throw new ArgumentException($"Invalid PostgreSQL setting: {name}", nameof(options));
             }
 
-            if (name.ToLowerInvariant() is "data_directory" or "config_file" or "hba_file" or "ident_file" or
+            if (name.ToLowerInvariant() is "data_directory" or "config_file" or "ident_file" or
                 "external_pid_file" or "port" or "listen_addresses" or "unix_socket_directories" or
                 "log_destination" or "logging_collector" or "event_source" or "include" or "include_dir" or "include_if_exists")
             {
                 throw new ArgumentException($"Ankus manages the PostgreSQL setting '{name}'. Use the port option to select a TCP port.", nameof(options));
+            }
+
+            if (string.Equals(name, "hba_file", StringComparison.OrdinalIgnoreCase) && !Path.IsPathFullyQualified(value))
+            {
+                throw new ArgumentException($"The PostgreSQL setting '{name}' requires an absolute path: {value}", nameof(options));
             }
 
             configuration.Append(name).Append(" = '").Append(value.Replace("\\", "\\\\", StringComparison.Ordinal)
@@ -391,6 +401,29 @@ public sealed partial class PostgresDevelopmentCluster
         configuration.AppendLine("log_destination = 'stderr'");
         configuration.AppendLine("logging_collector = off");
         return configuration.ToString();
+    }
+
+    /// <summary>
+    /// Gives the server the client environment pg_regress gives its temporary instance, with the cluster's superuser,
+    /// so a backend's own connection string, such as <c>dbname=postgres</c>, reaches this server.
+    /// </summary>
+    /// <param name="port">The server's TCP port.</param>
+    /// <returns>Variables to set, and those to remove with null values.</returns>
+    internal static Dictionary<string, string?> CreateServerEnvironment(int port)
+    {
+        Dictionary<string, string?> environment = new(StringComparer.Ordinal);
+        foreach (string name in (string[])["PGCHANNELBINDING", "PGCLIENTENCODING", "PGCONNECT_TIMEOUT", "PGDATA", "PGDATABASE",
+            "PGGSSDELEGATION", "PGGSSENCMODE", "PGGSSLIB", "PGHOSTADDR", "PGKRBSRVNAME", "PGPASSFILE", "PGPASSWORD",
+            "PGREQUIREPEER", "PGREQUIRESSL", "PGSERVICE", "PGSERVICEFILE", "PGSSLCERT", "PGSSLCRL", "PGSSLCRLDIR", "PGSSLKEY",
+            "PGSSLMAXPROTOCOLVERSION", "PGSSLMINPROTOCOLVERSION", "PGSSLMODE", "PGSSLROOTCERT", "PGSSLSNI", "PGTARGETSESSIONATTRS"])
+        {
+            environment[name] = null;
+        }
+
+        environment["PGHOST"] = "127.0.0.1";
+        environment["PGPORT"] = port.ToString(CultureInfo.InvariantCulture);
+        environment["PGUSER"] = "postgres";
+        return environment;
     }
 
     private static async Task ReplaceFileAsync(string path, string content, CancellationToken cancellationToken)
@@ -564,16 +597,31 @@ public sealed partial class PostgresDevelopmentCluster
             start.StandardErrorEncoding = Encoding.UTF8;
         }
 
-        if (environment is not null)
+        if (environment is not null && !detached)
         {
             foreach ((string name, string? value) in environment)
             {
-                start.Environment[name] = value;
+                if (value is null)
+                {
+                    start.Environment.Remove(name);
+                }
+                else
+                {
+                    start.Environment[name] = value;
+                }
             }
         }
 
         using var process = new Process { StartInfo = start };
-        process.Start();
+        if (detached && environment is not null)
+        {
+            StartWithProcessEnvironment(process, environment);
+        }
+        else
+        {
+            process.Start();
+        }
+
         if (!detached && input is null)
         {
             process.StandardInput.Close();
@@ -609,5 +657,33 @@ public sealed partial class PostgresDevelopmentCluster
         }
 
         return (process.ExitCode, await output.ConfigureAwait(false) + await error.ConfigureAwait(false));
+    }
+
+    /// <summary>
+    /// Starts a shell-executed program, which inherits this process's environment instead of its start information's,
+    /// with the given variables in place until it has started.
+    /// </summary>
+    private static void StartWithProcessEnvironment(Process process, IReadOnlyDictionary<string, string?> environment)
+    {
+        lock (s_environmentLock)
+        {
+            Dictionary<string, string?> previous = environment.Keys.ToDictionary(static name => name, Environment.GetEnvironmentVariable);
+            try
+            {
+                foreach ((string name, string? value) in environment)
+                {
+                    Environment.SetEnvironmentVariable(name, value);
+                }
+
+                process.Start();
+            }
+            finally
+            {
+                foreach ((string name, string? value) in previous)
+                {
+                    Environment.SetEnvironmentVariable(name, value);
+                }
+            }
+        }
     }
 }

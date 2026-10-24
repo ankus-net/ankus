@@ -93,7 +93,6 @@ public sealed class PostgresDevelopmentClusterTests(TestContext context)
     [TestMethod]
     [DataRow("data_directory")]
     [DataRow("config_file")]
-    [DataRow("hba_file")]
     [DataRow("ident_file")]
     [DataRow("external_pid_file")]
     [DataRow("port")]
@@ -110,6 +109,38 @@ public sealed class PostgresDevelopmentClusterTests(TestContext context)
         ArgumentException error = Assert.ThrowsExactly<ArgumentException>(() => PostgresDevelopmentCluster.CreateConfiguration(18,
             new PostgresDevelopmentOptions { Settings = new Dictionary<string, string> { [name] = "anything" } }));
         Assert.Contains(name, error.Message);
+    }
+
+    /// <summary>
+    /// A caller's own pg_hba.conf is accepted by absolute path; a relative path would be read from the data directory.
+    /// </summary>
+    [TestMethod]
+    public void AcceptsAnAbsoluteHbaFile()
+    {
+        string path = Path.Join(Path.GetTempPath(), "regress café", "pg_hba.conf");
+        string configuration = PostgresDevelopmentCluster.CreateConfiguration(18,
+            new PostgresDevelopmentOptions { Settings = new Dictionary<string, string> { ["hba_file"] = path } });
+        Assert.StartsWith("hba_file = '" + path.Replace("\\", "\\\\", StringComparison.Ordinal) + "'" + Environment.NewLine, configuration);
+        ArgumentException error = Assert.ThrowsExactly<ArgumentException>(() => PostgresDevelopmentCluster.CreateConfiguration(18,
+            new PostgresDevelopmentOptions { Settings = new Dictionary<string, string> { ["HBA_FILE"] = "regress-pg_hba.conf" } }));
+        Assert.Contains("absolute path", error.Message);
+    }
+
+    /// <summary>
+    /// The server gets pg_regress's temporary-instance client environment, naming itself and the cluster's superuser.
+    /// </summary>
+    [TestMethod]
+    public void ServerEnvironmentNamesTheServerItself()
+    {
+        Dictionary<string, string?> environment = PostgresDevelopmentCluster.CreateServerEnvironment(28818);
+        Assert.AreEqual("127.0.0.1", environment["PGHOST"]);
+        Assert.AreEqual("28818", environment["PGPORT"]);
+        Assert.AreEqual("postgres", environment["PGUSER"]);
+        foreach (string name in (string[])["PGDATABASE", "PGHOSTADDR", "PGPASSWORD", "PGSERVICE", "PGSSLMODE", "PGTARGETSESSIONATTRS"])
+        {
+            Assert.IsTrue(environment.TryGetValue(name, out string? value), name);
+            Assert.IsNull(value, name);
+        }
     }
 
     /// <summary>

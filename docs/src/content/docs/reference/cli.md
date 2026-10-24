@@ -480,10 +480,18 @@ base. An already running server keeps its current settings and port, even when
 you change the saved base.
 `--timeout` changes the startup wait from 60 seconds, with a range of 1–600.
 
-Ankus manages data and authentication paths, loopback connection routing, and
-log routing, including `logging_collector`. Those settings and configuration
-include directives cannot be overridden through `--postgresql-conf`. Existing unowned or incompatible data
-directories are rejected. A failed start preserves initialized data and reports
+Ankus manages data paths, loopback connection routing, and log routing,
+including `logging_collector`. Those settings and configuration include
+directives cannot be overridden through `--postgresql-conf`. `hba_file` can name
+your own `pg_hba.conf`; a relative path starts from the current directory. That
+file must let the `postgres` role connect from `127.0.0.1`, as Ankus does.
+Existing unowned or incompatible data directories are rejected.
+
+As in pg_regress's temporary instance, the server starts with `PGHOST`, `PGPORT`
+and `PGUSER` naming itself and its `postgres` role, and without the other libpq
+variables of the shell that started it. A connection a backend opens with only
+`dbname=postgres`, such as dblink's or a logical replication subscriber's,
+reaches the same server. A failed start preserves initialized data and reports
 the native diagnostic and server log path so you can correct the setting and retry.
 
 ### Inspect native memory with Valgrind
@@ -636,7 +644,10 @@ Unfiltered runs report and skip tests without expected output. An explicit filte
 that matches nothing, or selects a test without expected output, fails.
 `--no-build` installs the existing publication. `--project`, `--configuration`,
 `--home`, `--port`, `--timeout`, `--valgrind`, and repeated `--postgresql-conf name=value`
-options select the project and development environment. `--dry-run` reports the
+options select the project and development environment.
+Like `cargo pgrx regress`, Ankus sets `client_min_messages` to `warning` so
+notices stay out of expected output. A suite written for pg_regress, which
+records notices, can set `--postgresql-conf client_min_messages=notice`. `--dry-run` reports the
 selection and intended actions without building, starting a server, or writing files.
 
 Comparison uses the selected PostgreSQL installation's `pg_regress`, including

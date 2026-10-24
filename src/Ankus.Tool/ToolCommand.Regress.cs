@@ -91,7 +91,8 @@ internal static partial class ToolCommand
             }
 
             Dictionary<string, string> settings = ParseServerSettings(result.GetValue<string[]>("--postgresql-conf") ?? []);
-            settings["client_min_messages"] = "warning";
+            // cargo pgrx regress keeps notices out of expected output; a suite written for pg_regress can restore them.
+            settings.TryAdd("client_min_messages", "warning");
             var options = new PostgresDevelopmentOptions
             {
                 Port = result.GetValue<int?>("--port"),

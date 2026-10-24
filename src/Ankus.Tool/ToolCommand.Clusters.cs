@@ -107,7 +107,13 @@ internal static partial class ToolCommand
                 throw new ArgumentException($"Expected a name=value PostgreSQL setting: {setting}");
             }
 
-            parsed[setting[..separator]] = setting[(separator + 1)..];
+            string name = setting[..separator];
+            string value = setting[(separator + 1)..];
+
+            // PostgreSQL would read a relative pg_hba.conf path from its data directory; use the caller's directory.
+            parsed[name] = string.Equals(name, "hba_file", StringComparison.OrdinalIgnoreCase) && value.Length > 0
+                ? Path.GetFullPath(value)
+                : value;
         }
 
         return parsed;

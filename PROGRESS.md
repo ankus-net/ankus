@@ -1031,6 +1031,18 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   x64, macOS ARM64 and Windows x64, PostgreSQL versions 39894333622 passed every
   other Linux major, and platform versions 39894336001 passed every other
   Windows and macOS major.
+- pglogical's regression suite could not run under `ankus regress` (#71, #73,
+  #75). Its backends connect to their own server with only `dbname=...`, which
+  works in pg_regress's temporary instance because the postmaster inherits
+  `PGHOST` and `PGPORT`. The development server now starts with `PGHOST`,
+  `PGPORT` and `PGUSER` naming itself and its `postgres` role, without the
+  caller's other libpq variables, on every platform. `hba_file` now accepts an
+  absolute path or one relative to the current directory, so a suite keeps its
+  own authentication rules, and a suite's `client_min_messages` replaces the
+  `warning` default that regress shares with `cargo pgrx regress`. A regress test
+  subscribes its database to itself by name, records a notice and is refused for
+  a role its `pg_hba.conf` rejects; without the environment change the
+  subscription fails with the issue's socket error.
 - macOS killed the Generators test host on the MacBook runner (main CI
   39517461878) as the largest process, at 26.7 GB compressed. The generator wrote
   the native source, SQL, graph and exports as single `AssemblyMetadata`
