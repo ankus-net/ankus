@@ -15,6 +15,7 @@ public sealed partial class NativeBindingNativeTests
         const string Headers = """
             typedef struct Payload { unsigned char bytes[8192]; } Payload;
             int observed;
+            volatile int ticks = 3;
             int calls;
             void consume(Payload value) { ++calls; observed = value.bytes[0] * 3 + value.bytes[8191]; }
             int checksum(void) { return observed + calls * 1000; }
@@ -31,11 +32,11 @@ public sealed partial class NativeBindingNativeTests
             extern void *ankus_native_body_checksum(void);
             void *first(void) { return ankus_native_body_consume(); }
             void *second(void) { return ankus_native_body_checksum(); }
-            extern void *ankus_native_global_body_read_observed(void);
-            extern void *ankus_native_global_body_write_observed(void);
             extern void *ankus_native_global_body_address_observed(void);
-            void *third(void) { return ankus_native_global_body_read_observed(); }
-            void *fourth(void) { return ankus_native_global_body_write_observed(); }
+            extern void *ankus_native_global_body_read_ticks(void);
+            extern void *ankus_native_global_body_write_ticks(void);
+            void *third(void) { return ankus_native_global_body_read_ticks(); }
+            void *fourth(void) { return ankus_native_global_body_write_ticks(); }
             void *fifth(void) { return ankus_native_global_body_address_observed(); }
             extern void *ankus_native_body_get_callback(void);
             void *sixth(void) { return ankus_native_body_get_callback(); }
@@ -63,7 +64,9 @@ public sealed partial class NativeBindingNativeTests
                     NativeGlobals.observed = -41;
                     int* address = NativeGlobals.DangerousAddressOf_observed();
                     int indirect = NativeMethods.get_callback().Invoke(37);
-                    Console.WriteLine($"{rejected},{result},{payload.bytes[0]},{payload.bytes[8191]},{original},{*address},{NativeMethods.checksum()},{indirect},{scope.Validations},{scope.Invocations}");
+                    int ticks = NativeGlobals.ticks;
+                    NativeGlobals.ticks = ticks + 1;
+                    Console.WriteLine($"{rejected},{result},{payload.bytes[0]},{payload.bytes[8191]},{original},{*address},{NativeMethods.checksum()},{indirect},{ticks},{NativeGlobals.ticks},{scope.Validations},{scope.Invocations}");
                 }
             }
             """;
@@ -71,7 +74,7 @@ public sealed partial class NativeBindingNativeTests
         try
         {
             string[] names = ["consume", "checksum", "get_callback", "unavailable"];
-            string[] globals = ["observed", "calls", "unavailable_global", "unavailable_callback"];
+            string[] globals = ["observed", "ticks", "calls", "unavailable_global", "unavailable_callback"];
             NativeHeaderRecords records = await CollectCallRecordsAsync(Headers,
                 [.. names.Select(static name => new NativeHeaderRequest(name, name, true)),
                     .. globals.Select(static name => new NativeHeaderRequest(name, name, false))], directory);
@@ -108,14 +111,15 @@ public sealed partial class NativeBindingNativeTests
             string output = Path.Join(directory, "published");
             await RunAsync("dotnet", ["publish", projectFile, "-c", "Release", "-o", output], directory);
             string executable = Path.Join(output, OperatingSystem.IsWindows() ? "Calls.exe" : "Calls");
-            Assert.AreEqual("1,1222,7,201,222,-41,959,42,9,9\n", (await RunAsync(executable, [], directory)).ReplaceLineEndings("\n"));
+            Assert.AreEqual("1,1222,7,201,222,-41,959,42,3,4,12,12\n", (await RunAsync(executable, [], directory)).ReplaceLineEndings("\n"));
             string objectName = OperatingSystem.IsWindows() ? "Calls.obj" : "Calls.o";
             string compiled = Assert.ContainsSingle(Directory.EnumerateFiles(Path.Join(directory, "obj"), objectName, SearchOption.AllDirectories));
             byte[] image = await File.ReadAllBytesAsync(compiled, context.CancellationToken);
             NativeObjectImports actual = NativeObjectSymbols.Read(image, NativeBindingCallImports.Prefix);
             Assert.AreSequenceEqual<string>(["ankus_native_body_checksum", "ankus_native_body_consume", "ankus_native_body_get_callback"], actual.Symbols);
-            Assert.AreSequenceEqual<NativeBindingGlobalAccess>([new("observed", NativeBindingGlobalOperation.Read),
-                new("observed", NativeBindingGlobalOperation.Write), new("observed", NativeBindingGlobalOperation.Address)], NativeBindingGlobalImports.Select(image));
+            // A plain global is copied in place through its address; a volatile one keeps its guarded read and write bodies.
+            Assert.AreSequenceEqual<NativeBindingGlobalAccess>([new("observed", NativeBindingGlobalOperation.Address),
+                new("ticks", NativeBindingGlobalOperation.Read), new("ticks", NativeBindingGlobalOperation.Write)], NativeBindingGlobalImports.Select(image));
             Assert.AreSequenceEqual<int>([signature], NativeBindingIndirectImports.Select(image));
             Assert.AreEqual(native, NativeBindingCallImports.Generate(records, "#define PG_VERSION_NUM 180006\n" + Headers, image));
         }

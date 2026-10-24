@@ -34,6 +34,7 @@ internal static partial class NativeBindingRecordCSharp
                     Summary("Obtains a native body address without invoking its target or entering PostgreSQL.", "    ");
                     Line($"    [global::System.Runtime.InteropServices.LibraryImport(\"Ankus.NativeBodies\", EntryPoint = \"{NativeBindingIndirectImports.Prefix}{Number(call.FunctionType)}\")]");
                     Line("    [global::System.Runtime.InteropServices.UnmanagedCallConv(CallConvs = [typeof(global::System.Runtime.CompilerServices.CallConvCdecl)])]");
+                    Line("    [global::System.Runtime.InteropServices.SuppressGCTransition]");
                     Line("    private static partial nint GetNativeBody();\n");
                 }
 

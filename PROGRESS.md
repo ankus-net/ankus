@@ -1148,6 +1148,28 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   `PgDatum.Create` keep their subtransactions, since a type output function,
   domain check or encoding conversion can fail in a way callers catch and
   recover from.
+- A `NativeMethods` call cost about 150 ns and a `NativeGlobals` access about
+  as much, where the C call or variable access takes a few (#98). Each made two
+  native round trips, one to check the binding and one to run the body, and each
+  round trip zeroed the 2.6 KB managed error buffer; the SPI and datum boundary
+  zeroed it too. A binding the provider accepted is now accepted again in managed
+  code while the guard would admit the call: the native callback publishes its
+  failed-frame count and ErrorContext cleanup flag, and any other state takes the
+  native check, which reports exactly as before. A raw call runs through a native
+  entry that writes the error only when it fails, the body lookup no longer makes
+  a GC transition, and boundaries clear only the error fields native code reads.
+  Plain globals are read and written in place through an address cached after
+  the first checked access, since copying a variable cannot raise an ERROR;
+  volatile, atomic and thread-local globals keep their guarded C bodies. Heap
+  frames and function-pointer calls still validate before allocating or checking
+  for null. On Linux x64 with PostgreSQL 18, best of 15 runs of a million
+  iterations on a loaded host, `GetCurrentTransactionNestLevel` went from 145 to
+  49 ns, a `CurrentMemoryContext` read from 145 to 18 ns, a read and write from
+  288 to 35 ns, `palloc` and `pfree` from 299 to 106 ns, and a binding check
+  alone from 64 to 18 ns. Integration tests make generated calls and global
+  accesses from a thread with no callback, after a caught ERROR with and without
+  a subtransaction, and across in-place writes that `pg_settings` reports; they
+  pass against the previous runtime as well.
 - An exception from a `[PgNativeCallback]` hook or C# trigger nested in a backend
   call reported each enclosing `PgErrorContext` twice, once from the text
   recorded when it was thrown and once from the context callback the backend

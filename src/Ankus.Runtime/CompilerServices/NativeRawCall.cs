@@ -59,8 +59,10 @@ public static unsafe class NativeRawCall
     /// <exception cref="InvalidOperationException">No usable backend callback is active.</exception>
     /// <exception cref="PgException">The active extension has no matching native declaration contract.</exception>
     /// <remarks>
-    /// Validation applies to the current callback and must not be cached across extension capabilities.
-    /// The subsequent body accessor must be a pure native address lookup; invocation still uses <see cref="Invoke"/>.
+    /// A provider's native contract does not change, so a contract it accepted is accepted again without entering
+    /// PostgreSQL while its guard would admit the check; a different provider, identity or major is checked natively.
+    /// The subsequent body accessor must be a pure native address lookup; invocation still uses
+    /// <see cref="Invoke(nint, ReadOnlySpan{NativeCallArgument}, nint, nuint)"/>.
     /// </remarks>
     public static void ValidateBinding(ReadOnlySpan<byte> identity, int postgresMajor)
     {
@@ -83,7 +85,97 @@ public static unsafe class NativeRawCall
     {
         ArgumentOutOfRangeException.ThrowIfZero(body);
         NativeSubtransaction.CheckAccess();
-        _ = NativeMemoryContext.Provider;
+        NativeMemoryApi* api = NativeMemoryContext.Api;
+        NativeBorrowScope.CheckBackendAccess();
+        Execute(api, body, arguments, result, resultSize);
+    }
+
+    /// <summary>
+    /// Validates the generated call's declaration contract, then looks up and executes its C body, as
+    /// <see cref="ValidateBinding"/> followed by <see cref="Invoke(nint, ReadOnlySpan{NativeCallArgument}, nint, nuint)"/> do.
+    /// </summary>
+    /// <param name="identity">The generated UTF-8 identity of the complete selected-header graph.</param>
+    /// <param name="postgresMajor">The PostgreSQL major version used to generate the call.</param>
+    /// <param name="accessor">The pure lookup of the generated C body, called only after the contract is accepted.</param>
+    /// <param name="arguments">The borrowed native argument representations.</param>
+    /// <param name="result">The native result destination, or zero for a void call.</param>
+    /// <param name="resultSize">The exact result representation size, or zero for a void call.</param>
+    /// <exception cref="ArgumentOutOfRangeException">The body address is zero.</exception>
+    /// <exception cref="InvalidOperationException">No usable callback is active, or the generated body rejects its storage contract.</exception>
+    /// <exception cref="PgException">
+    /// The active extension has no matching native declaration contract, or PostgreSQL raises an error inside the body.
+    /// </exception>
+    /// <remarks>
+    /// A contract the provider already accepted is not checked again while the guard would admit the call. Otherwise
+    /// the contract is validated natively first, so a refused call fails exactly as the separate validation would.
+    /// </remarks>
+    [NativeUnsafeAccess]
+    public static void Invoke(ReadOnlySpan<byte> identity, int postgresMajor, delegate*<nint> accessor,
+        ReadOnlySpan<NativeCallArgument> arguments, nint result, nuint resultSize)
+    {
+        ArgumentNullException.ThrowIfNull(accessor);
+        NativeSubtransaction.CheckAccess();
+        NativeBorrowScope.CheckBackendAccess();
+        NativeMemoryApi* api = NativeMemoryContext.CurrentApi;
+        if (!NativeMemoryContext.Admits(api) || !NativeBindingContract.Accepted(api, identity, postgresMajor))
+        {
+            NativeBindingContract.Validate(identity, postgresMajor);
+            api = NativeMemoryContext.Api;
+        }
+
+        nint body = accessor();
+        ArgumentOutOfRangeException.ThrowIfZero(body);
+        Execute(api, body, arguments, result, resultSize);
+    }
+
+    /// <summary>
+    /// Gets the address of a native global for a generated access that reads or writes it in place.
+    /// </summary>
+    /// <param name="identity">The generated UTF-8 identity of the complete selected-header graph.</param>
+    /// <param name="postgresMajor">The PostgreSQL major version used to generate the access.</param>
+    /// <param name="address">The access's cached address, or zero before its first use.</param>
+    /// <param name="accessor">The pure lookup of the generated body that writes the global's address.</param>
+    /// <returns>The global's address.</returns>
+    /// <exception cref="InvalidOperationException">No usable backend callback is active.</exception>
+    /// <exception cref="PgException">
+    /// The active extension has no matching native declaration contract, or the guard refuses the access.
+    /// </exception>
+    /// <remarks>
+    /// Reading or writing a variable cannot raise a PostgreSQL error, so an access needs no guard once the contract is
+    /// accepted and the guard would admit it. Otherwise the binding is validated and the address obtained beneath the
+    /// guard, which reports a retained failure exactly as a guarded access would. The global must not be thread-local or
+    /// need qualified C loads and stores.
+    /// </remarks>
+    [NativeUnsafeAccess]
+    public static nint GlobalAddress(ReadOnlySpan<byte> identity, int postgresMajor, ref nint address, delegate*<nint> accessor)
+    {
+        ArgumentNullException.ThrowIfNull(accessor);
+        NativeSubtransaction.CheckAccess();
+        NativeBorrowScope.CheckBackendAccess();
+        nint known = address;
+        NativeMemoryApi* api = NativeMemoryContext.CurrentApi;
+        if (known != 0 && NativeMemoryContext.Admits(api) && NativeBindingContract.Accepted(api, identity, postgresMajor))
+        {
+            return known;
+        }
+
+        NativeBindingContract.Validate(identity, postgresMajor);
+        nint value = 0;
+        Execute(NativeMemoryContext.Api, accessor(), [], (nint)(&value), (nuint)sizeof(nint));
+        address = value;
+        return value;
+    }
+
+    /// <summary>
+    /// Runs one C body beneath the native guard and converts a rejected frame.
+    /// </summary>
+    /// <param name="api">The active callback's native capability, whose backend access was just checked.</param>
+    /// <param name="body">The native generated C body address.</param>
+    /// <param name="arguments">The borrowed native argument representations.</param>
+    /// <param name="result">The native result destination, or zero for a void call.</param>
+    /// <param name="resultSize">The exact result representation size, or zero for a void call.</param>
+    private static void Execute(NativeMemoryApi* api, nint body, ReadOnlySpan<NativeCallArgument> arguments, nint result, nuint resultSize)
+    {
         fixed (NativeCallArgument* values = arguments)
         {
             var frame = new NativeCallFrame
@@ -93,16 +185,10 @@ public static unsafe class NativeRawCall
                 _result = result,
                 _resultSize = resultSize,
             };
-            var request = new NativeMemoryRequest
-            {
-                _operation = NativeMemoryOperation.NativeCall,
-                _pointer = body,
-                _data = (nint)(&frame),
-            };
-            NativeMemoryResult response;
+            nint status;
             try
             {
-                NativeMemoryContext.Invoke(ref request, out response);
+                status = NativeMemoryContext.InvokeCall(api, body, &frame);
             }
             catch (Exception exception) when (exception is PgException or PgQueryCanceledException)
             {
@@ -110,12 +196,12 @@ public static unsafe class NativeRawCall
                 throw;
             }
 
-            if (response._value == 0)
+            if (status == 0)
             {
                 return;
             }
 
-            string reason = response._value switch
+            string reason = status switch
             {
                 1 => "argument count",
                 2 => "argument array",
@@ -125,7 +211,7 @@ public static unsafe class NativeRawCall
                 6 => "function address",
                 _ => "unknown status",
             };
-            throw new InvalidOperationException($"The generated native call rejected its {reason} (status {response._value}).");
+            throw new InvalidOperationException($"The generated native call rejected its {reason} (status {status}).");
         }
     }
 }

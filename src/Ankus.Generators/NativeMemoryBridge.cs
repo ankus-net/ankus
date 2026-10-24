@@ -116,6 +116,7 @@ internal static class NativeMemoryBridge
 
         typedef struct AnkusMemoryApi AnkusMemoryApi;
         typedef int (*AnkusMemoryInvoke)(AnkusMemoryApi *, AnkusMemoryRequest *, AnkusMemoryResult *, AnkusError *);
+        typedef int (*AnkusMemoryCall)(AnkusMemoryApi *, intptr_t, intptr_t, intptr_t *, AnkusError *);
 
         struct AnkusMemoryApi
         {
@@ -128,12 +129,15 @@ internal static class NativeMemoryBridge
             volatile int *signal_queue;
             int *signal_mask;
             int32 direct_reads;
+            bool *error_cleanup;
+            AnkusMemoryCall call;
         };
 
         StaticAssertDecl(sizeof(sig_atomic_t) == sizeof(int32), "managed interrupt flag width");
         StaticAssertDecl(sizeof(int) == sizeof(int32), "managed signal flag width");
 
         static int ankus_memory_invoke(AnkusMemoryApi *, AnkusMemoryRequest *, AnkusMemoryResult *, AnkusError *);
+        static int ankus_memory_call(AnkusMemoryApi *, intptr_t, intptr_t, intptr_t *, AnkusError *);
         static char ankus_memory_provider;
         static void ankus_shared_prepare(void);
 
@@ -203,6 +207,9 @@ internal static class NativeMemoryBridge
             /* Lets managed code read flat values in place: bytes always, and text when the database
              * encoding needs no conversion to UTF-8. */
             memory->direct_reads = GetDatabaseEncoding() == PG_UTF8 ? 2 : 1;
+            /* With failed_frames, lets managed code repeat a binding check it already passed without entering here. */
+            memory->error_cleanup = &ankus_memory_error_cleanup;
+            memory->call = ankus_memory_call;
         }
 
         typedef struct AnkusMemoryAllocation AnkusMemoryAllocation;
@@ -1863,6 +1870,8 @@ internal static class NativeMemoryBridge
                     MemoryContextSwitchTo(diagnostic);
                     ErrorData *data = ankus_copy_error_data();
                     FlushErrorState();
+                    /* ankus_memory_call leaves the error untouched until something fails. */
+                    ankus_error_clear(error);
                     ankus_capture_error(data, error);
                     if (ankus_worker_active &&
                         ((request->operation == ANKUS_MEMORY_WORKER && request->flags == 10) ||
@@ -2009,6 +2018,35 @@ internal static class NativeMemoryBridge
                 status = ankus_recovery_finish(&transaction, error, status);
             }
 
+            return status;
+        }
+
+        /* Runs a generated raw call as ankus_memory_invoke runs ANKUS_MEMORY_NATIVE_CALL, with the same admission
+         * checks, managed error contexts and guard but no request envelope. Every failure writes the whole error, so a
+         * call that succeeds never clears its 2 KB buffer. */
+        static int
+        ankus_memory_call(AnkusMemoryApi *api, intptr_t body, intptr_t frame, intptr_t *value, AnkusError *error)
+        {
+            if (ankus_memory_error_cleanup)
+            {
+                ankus_error_clear(error);
+                error->sqlstate = ERRCODE_OBJECT_IN_USE;
+                strlcpy(error->message, "Guarded memory operations are unavailable during ErrorContext cleanup", sizeof(error->message));
+                return 1;
+            }
+
+            /* This copies the whole retained failure into the error. */
+            if (ankus_recovery_failed(error))
+                return 1;
+
+            AnkusMemoryRequest request = { .operation = ANKUS_MEMORY_NATIVE_CALL, .pointer = body, .data = frame };
+            AnkusMemoryResult result = {0};
+            volatile bool recovered = false;
+            ErrorContextCallback managed_context;
+            bool context_entered = ankus_error_context_enter(&managed_context);
+            int status = ankus_memory_execute_guarded(api, &request, &result, error, &recovered);
+            ankus_error_context_exit(&managed_context, context_entered);
+            *value = result.value;
             return status;
         }
 

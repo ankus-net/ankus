@@ -174,6 +174,11 @@ alive, and follow the native function's allocation and lifetime rules. Prefer
 Ankus's checked APIs when they cover the operation you need. Publishing includes
 native bodies only for methods referenced by the extension.
 
+Each call runs beneath the native error guard, as C code inside `PG_TRY` would.
+The extension's native binding is checked on its first call and accepted again
+for later calls while the backend has no unrecovered error, so a call costs the
+guard and a few managed checks more than the C function.
+
 Raw calls, raw global accesses and native function-pointer invocations require
 an explicit unsafe context. Pointer signatures enforce this through the C#
 compiler; `ANKUS129` also checks operations whose signatures contain only
@@ -273,9 +278,11 @@ validation remain in progress.
 ### Native globals
 
 `NativeGlobals` exposes global objects declared by the selected server headers.
-Each property reads the current value or writes a complete value through the
-native error guard. Every access requires an active backend callback and the
-matching native binding:
+Each property reads the current value or writes a complete value. Copying a
+variable cannot raise a PostgreSQL error, so a plain global is read and written
+in place through its address once its binding is checked; volatile, atomic and
+thread-local globals go through C code beneath the native error guard. Every
+access requires an active backend callback and the matching native binding:
 
 ```csharp
 unsafe

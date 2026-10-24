@@ -52,9 +52,12 @@ internal static class NativeBindingManagedCallHarness
                 public nint Provider, Current;
                 public delegate* unmanaged[Cdecl]<nint, Request*, Result*, NativeCallError*, int> Invoke;
                 public nint ResultContext;
-                // The rest of the runtime's layout, left empty: no interrupt flags and no direct reads.
+                // The rest of the runtime's layout, left empty: no interrupt flags, no direct reads, no published guard
+                // state and no direct call entry, so every call is validated and dispatched through Invoke.
                 public int* InterruptPending, FailedFrames, SignalQueue, SignalMask;
                 public int DirectReads;
+                public byte* ErrorCleanup;
+                public delegate* unmanaged[Cdecl]<nint, nint, nint, nint*, NativeCallError*, int> Call;
             }
             [StructLayout(LayoutKind.Sequential)]
             public struct Request
