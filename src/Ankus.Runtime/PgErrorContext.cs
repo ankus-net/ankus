@@ -23,7 +23,7 @@ public sealed unsafe class PgErrorContext : IDisposable
 {
     private static readonly UTF8Encoding s_utf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
-    private static readonly ConditionalWeakTable<Exception, string> s_thrown = [];
+    private static readonly ConditionalWeakTable<Exception, CapturedContext[]> s_thrown = [];
 
     [ThreadStatic]
     private static List<PgErrorContext>? s_active;
@@ -120,11 +120,26 @@ public sealed unsafe class PgErrorContext : IDisposable
     }
 
     /// <summary>
-    /// Gets the contexts that were active when a managed exception was first thrown, innermost first.
+    /// Gets the contexts that were active when a managed exception was first thrown, innermost first, without those
+    /// of the callbacks that enclose the current one.
     /// </summary>
     /// <param name="exception">The exception.</param>
-    /// <returns>The context lines, or null when none were active.</returns>
-    internal static string? Captured(Exception exception) => s_thrown.TryGetValue(exception, out string? text) ? text : null;
+    /// <returns>The context lines, or null when none remain.</returns>
+    /// <remarks>
+    /// An enclosing callback reached this one through a backend call, which put the contexts' native callback on
+    /// PostgreSQL's error context stack, so PostgreSQL reports that callback's contexts itself when it raises the error.
+    /// </remarks>
+    internal static string? Captured(Exception exception)
+    {
+        if (!s_thrown.TryGetValue(exception, out CapturedContext[]? contexts))
+        {
+            return null;
+        }
+
+        int depth = NativeMemoryContext.Depth;
+        string[] lines = [.. contexts.Where(context => context.Depth >= depth).Select(static context => context.Text)];
+        return lines.Length == 0 ? null : string.Join('\n', lines);
+    }
 
     /// <summary>
     /// Starts recording contexts for thrown exceptions. No context becomes active on any thread until the handler is
@@ -154,17 +169,8 @@ public sealed unsafe class PgErrorContext : IDisposable
             return;
         }
 
-        StringBuilder lines = new();
-        for (int index = active.Count - 1; index >= 0; index--)
-        {
-            lines.Append(active[index]._text);
-            if (index > 0)
-            {
-                lines.Append('\n');
-            }
-        }
-
-        s_thrown.AddOrUpdate(exception, lines.ToString());
+        s_thrown.AddOrUpdate(exception,
+            [.. active.AsEnumerable().Reverse().Select(static context => new CapturedContext(context._scope.Depth, context._text))]);
     }
 
     private static byte[] Encode(string text)
@@ -193,4 +199,11 @@ public sealed unsafe class PgErrorContext : IDisposable
         NativeMemoryContext.Invoke(ref request, out NativeMemoryResult result);
         return result;
     }
+
+    /// <summary>
+    /// Records an active context's text and the callback depth that pushed it.
+    /// </summary>
+    /// <param name="Depth">The depth of the callback that pushed the context.</param>
+    /// <param name="Text">The context's text when the exception was thrown.</param>
+    private sealed record CapturedContext(int Depth, string Text);
 }
