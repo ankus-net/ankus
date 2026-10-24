@@ -47,7 +47,7 @@ public sealed class ErrorContextTests(TestContext context)
         string table = "nested_context_" + Guid.NewGuid().ToString("N");
         await ExecuteAsync(connection, $"""
             CREATE TABLE tests.{table}(id integer, value integer, note text);
-            CREATE TRIGGER reject BEFORE INSERT ON tests.{table} FOR EACH ROW EXECUTE FUNCTION datatype.trigger_action('error');
+            CREATE TRIGGER reject BEFORE INSERT ON tests.{table} FOR EACH ROW EXECUTE FUNCTION trigger_values.trigger_action('error');
             """);
         try
         {

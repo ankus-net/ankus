@@ -372,7 +372,7 @@ public sealed class RelationWriterTests(TestContext context)
                 {
                     await ExecuteAsync(connection, $$"""
                         CREATE TRIGGER observe BEFORE INSERT OR UPDATE ON {{table}} FOR EACH ROW
-                            EXECUTE FUNCTION datatype.trigger_action('observe');
+                            EXECUTE FUNCTION trigger_values.trigger_action('observe');
                         INSERT INTO {{table}} VALUES (1, 10, 'original', 'happy', '{sad,happy}'), (2, 20, 'gone', 'sad', NULL);
                         """, token);
                     Assert.AreEqual("1|True|True", await ScalarAsync<string>(connection,
