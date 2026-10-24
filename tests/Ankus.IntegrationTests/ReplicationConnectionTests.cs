@@ -1,5 +1,9 @@
+using System.Text;
 using Ankus.Testing;
 using Npgsql;
+using Npgsql.Replication;
+using Npgsql.Replication.Internal;
+using NpgsqlTypes;
 
 namespace Ankus.IntegrationTests;
 
@@ -29,6 +33,46 @@ public sealed class ReplicationConnectionTests(TestContext context)
         string[] fields = identity[(identity.IndexOf(':', StringComparison.Ordinal) + 1)..].Split('|');
         Assert.AreEqual(await ScalarAsync<string>(connection, "SELECT system_identifier::text FROM pg_control_system()", token), fields[0]);
         Assert.AreEqual(await ScalarAsync<string>(connection, "SELECT current_database()::text", token), fields[3]);
+    }
+
+    /// <summary>
+    /// An ordinary connection opens for a role without the REPLICATION attribute, which a replication connection
+    /// refuses, runs as a client backend with replication's text settings, and copies a table.
+    /// </summary>
+    [TestMethod]
+    public async Task OrdinaryConnectionsNeedNoReplicationRole()
+    {
+        CancellationToken token = context.CancellationToken;
+        await using NpgsqlConnection connection = await PostgresFixture.Cluster.OpenConnectionAsync(token);
+        string role = "ordinary_" + Guid.NewGuid().ToString("N");
+        string table = "tests.ordinary_copy_" + Guid.NewGuid().ToString("N");
+        await ExecuteAsync(connection, $"""
+            CREATE ROLE {role} LOGIN;
+            CREATE TABLE {table}(id integer, name text);
+            INSERT INTO {table} VALUES (1, 'café 😀'), (2, NULL);
+            GRANT USAGE ON SCHEMA tests TO {role};
+            GRANT SELECT ON {table} TO {role};
+            """, token);
+        try
+        {
+            var builder = new NpgsqlConnectionStringBuilder(connection.ConnectionString) { Username = role, Password = null };
+            await using var plain = new NpgsqlConnection(builder.ConnectionString);
+            string connectionString = ConnectionString(plain);
+            Assert.AreEqual($"{role}|client backend|\"\"|UTF8|ISO, MDY|postgres|3", await ScalarAsync<string>(connection,
+                "SELECT datatype.ordinary_query(@connection, 'SELECT current_user, backend_type, current_setting(''search_path''), " +
+                "current_setting(''client_encoding''), current_setting(''DateStyle''), current_setting(''IntervalStyle''), " +
+                "current_setting(''extra_float_digits'') FROM pg_stat_activity WHERE pid = pg_backend_pid()', 7)", token, connectionString));
+            Assert.AreEqual("1\tcafé 😀;2\t\\N", await ScalarAsync<string>(connection,
+                $"SELECT datatype.ordinary_copy(@connection, '{table}')", token, connectionString));
+            PostgresException refused = await Assert.ThrowsExactlyAsync<PostgresException>(() => ScalarAsync<string>(connection,
+                "SELECT datatype.replication_query(@connection, 'SELECT 1', 1)", token, connectionString));
+            Assert.AreEqual(PostgresErrorCodes.ConnectionFailure, refused.SqlState);
+            Assert.StartsWith("could not connect for replication:", refused.MessageText);
+        }
+        finally
+        {
+            await ExecuteAsync(connection, $"DROP TABLE {table}; REVOKE USAGE ON SCHEMA tests FROM {role}; DROP ROLE {role}", token);
+        }
     }
 
     /// <summary>
@@ -217,6 +261,58 @@ public sealed class ReplicationConnectionTests(TestContext context)
     /// <summary>
     /// Builds a libpq connection string for the server and database a client connection uses.
     /// </summary>
+    /// <summary>
+    /// An output plugin reads the catalog at startup through <c>PgTransaction.Run</c>. The SQL decoding functions call
+    /// it inside their transaction; a WAL sender calls it outside one, so Run starts and commits its own. A failed read
+    /// rolls that transaction back, and the next stream starts normally.
+    /// </summary>
+    [TestMethod]
+    public async Task OutputPluginStartupRunsItsOwnTransaction()
+        => await RunLogicalAsync(async (connection, token) =>
+        {
+            bool trusted = await ScalarAsync<bool>(connection, "SELECT EXISTS (SELECT FROM pg_settings WHERE name = 'output_plugin_libraries')", token);
+            if (trusted)
+            {
+                await ExecuteAsync(connection, "SET output_plugin_libraries = 'pgoutput', 'test_decoding', 'Ankus.TestExtension'", token);
+            }
+
+            await ExecuteAsync(connection, "CREATE TABLE plugin_rows(id integer)", token);
+            await ExecuteAsync(connection, "SELECT pg_create_logical_replication_slot('ankus_transaction', 'Ankus.TestExtension')", token);
+            await ExecuteAsync(connection, "INSERT INTO plugin_rows VALUES (1)", token);
+            Assert.AreEqual($"in a transaction, top transaction context:{connection.Database};change", await ScalarAsync<string>(connection,
+                "SELECT string_agg(data, ';' ORDER BY ordinality) FROM pg_logical_slot_peek_changes('ankus_transaction', NULL, NULL) WITH ORDINALITY",
+                token));
+            PostgresException failed = await Assert.ThrowsExactlyAsync<PostgresException>(() =>
+                StreamFirstMessageAsync(connection, "ankus_transaction", trusted, fail: true, token));
+            Assert.AreEqual(PostgresErrorCodes.DivisionByZero, failed.SqlState);
+            Assert.AreEqual($"outside a transaction, no top transaction context:{connection.Database}",
+                await StreamFirstMessageAsync(connection, "ankus_transaction", trusted, fail: false, token));
+        });
+
+    private static async Task<string> StreamFirstMessageAsync(NpgsqlConnection connection, string slot, bool trusted, bool fail,
+        CancellationToken token)
+    {
+        var builder = new NpgsqlConnectionStringBuilder(connection.ConnectionString)
+        {
+            Options = (trusted ? "-c output_plugin_libraries=pgoutput,test_decoding,Ankus.TestExtension " : "") +
+                (fail ? "-c ankus_transaction_test.fail=on" : ""),
+            Pooling = false,
+        };
+        await using var replication = new LogicalReplicationConnection(builder.ConnectionString);
+        await replication.Open(token);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+        timeout.CancelAfter(TimeSpan.FromSeconds(60));
+        await foreach (XLogDataMessage message in replication.StartLogicalReplication(
+            new TestPluginSlot(new ReplicationSlotOptions(slot, default(NpgsqlLogSequenceNumber))), timeout.Token))
+        {
+            using var buffer = new MemoryStream();
+            await message.Data.CopyToAsync(buffer, timeout.Token);
+            return Encoding.ASCII.GetString(buffer.ToArray());
+        }
+
+        throw new InvalidOperationException("The stream ended before its first message.");
+    }
+
     private static string ConnectionString(NpgsqlConnection connection)
     {
         var builder = new NpgsqlConnectionStringBuilder(connection.ConnectionString);
@@ -265,4 +361,6 @@ public sealed class ReplicationConnectionTests(TestContext context)
         await using var command = new NpgsqlCommand(sql, connection);
         await command.ExecuteNonQueryAsync(token);
     }
+
+    private sealed class TestPluginSlot(ReplicationSlotOptions options) : LogicalReplicationSlot("Ankus.TestExtension", options);
 }

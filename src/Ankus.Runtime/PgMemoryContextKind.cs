@@ -41,7 +41,8 @@ public enum PgMemoryContextKind
     Message,
 
     /// <summary>
-    /// The active top-transaction context, when one exists.
+    /// The active top-transaction context, or none outside a transaction, including on PostgreSQL 18 and later, which
+    /// keep the context allocated between transactions.
     /// </summary>
     TopTransaction,
 

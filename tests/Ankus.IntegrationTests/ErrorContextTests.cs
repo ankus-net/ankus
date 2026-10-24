@@ -37,6 +37,34 @@ public sealed class ErrorContextTests(TestContext context)
     }
 
     /// <summary>
+    /// An exception from a callback nested in a backend call, such as a C# row trigger fired by the function's SPI
+    /// insert, reports the function's context once, as a C error context callback would.
+    /// </summary>
+    [TestMethod]
+    public async Task NestedCallbackErrorsCarryEachContextOnce()
+    {
+        await using NpgsqlConnection connection = await OpenAsync();
+        string table = "nested_context_" + Guid.NewGuid().ToString("N");
+        await ExecuteAsync(connection, $"""
+            CREATE TABLE tests.{table}(id integer, value integer, note text);
+            CREATE TRIGGER reject BEFORE INSERT ON tests.{table} FOR EACH ROW EXECUTE FUNCTION trigger_values.trigger_action('error');
+            """);
+        try
+        {
+            PostgresException error = await Assert.ThrowsExactlyAsync<PostgresException>(() =>
+                ExecuteAsync(connection, $"SELECT datatype.error_context_nested_callback('tests', '{table}')"));
+            Assert.AreEqual("P0001", error.SqlState);
+            Assert.AreEqual("trigger rejected row", error.MessageText);
+            Assert.Contains("SQL statement", error.Where!);
+            Assert.HasCount(1, error.Where!.Split('\n').Where(static line => line == "applying queued change 9"));
+        }
+        finally
+        {
+            await ExecuteAsync(connection, $"DROP TABLE tests.{table}");
+        }
+    }
+
+    /// <summary>
     /// Messages carry the contexts active when they are logged: both, then only the outer one after the inner is
     /// removed.
     /// </summary>

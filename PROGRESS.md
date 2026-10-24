@@ -1057,6 +1057,68 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   Bison or Flex first. On the Windows x64 runner PC, with EDB serving no 19rc1
   archive, `ankus init --pg19 download` built 19rc1 with MSVC 19.52, registered
   it, and the server started with `debug_assertions` on.
+- An output plugin's startup callback runs outside a transaction when a WAL
+  sender starts streaming, and native callbacks bound SPI only when entered
+  inside one, so pglogical's startup could not read its catalog (#80).
+  `PgTransaction.Run` runs work with SPI in the current transaction, or else
+  starts one, commits it when the work returns and rolls it back if it fails,
+  as pglogical's startup does with `StartTransactionCommand`. It uses the worker
+  transaction's native path without the worker's activity and statistics
+  reporting, and needs a backend connected to a database. A test output plugin
+  reads the database name at startup; SQL decoding calls it inside a
+  transaction, a WAL sender outside one, and a failing read rolls back and the
+  next stream starts normally. The test also found that from PostgreSQL 18,
+  which keeps `TopTransactionContext` allocated between transactions,
+  `PgMemoryContext.Get(TopTransaction)` returned it outside a transaction where
+  13–17 return null; it is now null whenever no transaction is in progress.
+- `PgRelationWriter.Find` searched only the replica identity or primary key, so
+  an insert that collided on another unique key failed with `23505` where
+  pglogical resolves the conflict (#76). `FindConflict` searches the replica
+  identity index, then each other valid unique btree index without expressions
+  or a predicate, as `pglogical_tuple_find_conflict` does, and `PgFoundRow`
+  now names the matching index. It ports pglogical's `find_index_tuple`, a
+  dirty-snapshot index scan that waits for a concurrent writer of the row and
+  retries when the row changes before it is locked. PostgreSQL's own
+  `RelationFindReplTupleByIndex` cannot do this from PostgreSQL 16 on, because
+  for any index other than the replica identity or primary key it also requires
+  every column to match. A NULL matches only in a `NULLS NOT DISTINCT` index.
+- `PgRelationWriter` inserted one row per call, so pglogical's batched apply had
+  no equivalent (#77). `InsertBuffered` checks each row as
+  `ExecSimpleRelationInsert` does and holds up to 1,000, then `Flush`, any other
+  writer operation, a full batch or disposal writes them with
+  `table_multi_insert`, adds their index entries and queues their `AFTER ROW`
+  triggers, as COPY's multi-insert buffer does. As with COPY and pglogical, a
+  table with `BEFORE` or `INSTEAD OF` row insert triggers or a volatile default
+  other than `nextval` gets each row at once. Tests check the 1,000-row
+  batches, ordering with a later update, `AFTER` triggers, both fallbacks and a
+  unique violation raised when the batch is written.
+- `PgRelationWriter.Find` failed on a row with an enum type the extension does
+  not declare, because row transport rejected such enums before converting
+  them (#83). A row cell now keeps an exact copy of an undeclared enum, or an
+  array of one, as it does for other types without a managed conversion, so
+  such rows can be found, written back unchanged and deleted, and a C# row
+  trigger receives them. An SPI query that returns one as a column still fails
+  with `0A000`.
+- An exception from a `[PgNativeCallback]` hook or C# trigger nested in a backend
+  call reported each enclosing `PgErrorContext` twice, once from the text
+  recorded when it was thrown and once from the context callback the backend
+  call had put on PostgreSQL's stack (#84). The recorded text now keeps only the
+  contexts of the callback that converts the exception, since PostgreSQL reports
+  the enclosing ones itself. A test fires a C# trigger that rejects a row from a
+  function's SPI insert and finds the function's context once.
+- `PgReplicationConnection` always opened a logical replication connection, so
+  a role without `REPLICATION` could not run pglogical's ordinary catalog
+  queries and every query took a WAL sender (#72). `Connect(..., replication:
+  false)` opens an ordinary connection. PostgreSQL 17 and later open it through
+  `libpqwalreceiver`; before 17 that module connects only for replication, so
+  Ankus connects with the libpq it loaded, polling the socket and latch as
+  `libpqwalreceiver` does, and hands the connection to `libpqwalreceiver`'s
+  query, copy and disconnect functions in the `WalReceiverConn` layout those
+  versions share. The connection then sets the secure search path, the database
+  encoding and the date, interval and float settings a logical connection asks
+  for. A test connects as a role without `REPLICATION`, sees itself as a client
+  backend with those settings, copies a table, and is refused a replication
+  connection.
 - macOS killed the Generators test host on the MacBook runner (main CI
   39517461878) as the largest process, at 26.7 GB compressed. The generator wrote
   the native source, SQL, graph and exports as single `AssemblyMetadata`

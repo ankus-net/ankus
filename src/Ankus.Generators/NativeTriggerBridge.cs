@@ -246,12 +246,6 @@ internal static class NativeTriggerBridge
                     cells[index].auxiliary1 = -12;
                 else if (!attribute->attisdropped && !nulls[index])
                 {
-                    if (!field->enum_checked)
-                    {
-                        ankus_check_result_enum(field->base_type);
-                        field->enum_checked = true;
-                    }
-
                     cells[index].is_null = 0;
                     ankus_convert_base_value(values[index], field->base_type, &cells[index], &owned, true);
                 }

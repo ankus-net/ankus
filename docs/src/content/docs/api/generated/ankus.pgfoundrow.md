@@ -9,8 +9,8 @@ Namespace: [Ankus](/api/ankus/)
 
 Assembly: `Ankus.Runtime.dll`
 
-Describes a row that [Find(PgHeapTuple)](/api/ankus.pgrelationwriter/#member-52c29b397670c43d) found and locked, and the transaction that
-wrote it.
+Describes a row that [Find(PgHeapTuple)](/api/ankus.pgrelationwriter/#member-52c29b397670c43d) or
+[FindConflict(PgHeapTuple)](/api/ankus.pgrelationwriter/#member-ba43bc8e276b3ee7) found and locked, and the transaction that wrote it.
 
 ```csharp
 public sealed record PgFoundRow : IEquatable<PgFoundRow>
@@ -26,8 +26,8 @@ Implements: [IEquatable&lt;PgFoundRow&gt;](https://learn.microsoft.com/dotnet/ap
 
 ### PgFoundRow(PgHeapTuple, ushort, PgTimestampTz?, uint)
 
-Describes a row that [Find(PgHeapTuple)](/api/ankus.pgrelationwriter/#member-52c29b397670c43d) found and locked, and the transaction that
-wrote it.
+Describes a row that [Find(PgHeapTuple)](/api/ankus.pgrelationwriter/#member-52c29b397670c43d) or
+[FindConflict(PgHeapTuple)](/api/ankus.pgrelationwriter/#member-ba43bc8e276b3ee7) found and locked, and the transaction that wrote it.
 
 ```csharp
 public PgFoundRow(PgHeapTuple Row, ushort CommitOrigin, PgTimestampTz? CommitTime, uint TransactionId)
@@ -81,6 +81,18 @@ public PgTimestampTz? CommitTime { get; init; }
 ```
 
 Value: <code>PgTimestampTz?</code>
+
+<a id="member-62679243fa86b5aa"></a>
+
+### IndexOid
+
+Gets the OID of the index the row was found through, or zero when the search compared every column.
+
+```csharp
+public uint IndexOid { get; init; }
+```
+
+Value: [uint](https://learn.microsoft.com/dotnet/api/system.uint32)
 
 <a id="member-0f0ea787f7648727"></a>
 

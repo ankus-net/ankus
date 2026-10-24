@@ -44,6 +44,19 @@ public sealed unsafe class PgReplicationConnection : IDisposable
     /// <returns>The open connection.</returns>
     /// <exception cref="PgException">The server cannot be reached or rejects the connection.</exception>
     public static PgReplicationConnection Connect(string connectionString, string applicationName)
+        => Connect(connectionString, applicationName, replication: true);
+
+    /// <summary>
+    /// Opens a logical replication connection, or an ordinary connection for SQL and copies.
+    /// </summary>
+    /// <param name="connectionString">A libpq connection string naming the server and database.</param>
+    /// <param name="applicationName">The name the server shows for this connection, such as in
+    /// <c>pg_stat_activity</c>.</param>
+    /// <param name="replication">Whether to open a logical replication connection. An ordinary connection needs no
+    /// <c>REPLICATION</c> attribute and no WAL sender; it runs SQL and <c>COPY</c> but not replication commands.</param>
+    /// <returns>The open connection.</returns>
+    /// <exception cref="PgException">The server cannot be reached or rejects the connection.</exception>
+    public static PgReplicationConnection Connect(string connectionString, string applicationName, bool replication)
     {
         byte[] connection = Encode(connectionString, nameof(connectionString));
         byte[] application = Encode(applicationName, nameof(applicationName));
@@ -55,6 +68,7 @@ public sealed unsafe class PgReplicationConnection : IDisposable
                 _flags = 1,
                 _pointer = (nint)connectionAddress,
                 _data = (nint)applicationAddress,
+                _value = replication ? 0 : 1,
             };
             NativeMemoryContext.Invoke(ref request, out NativeMemoryResult result);
             return new PgReplicationConnection(result._context, checked((int)result._value));

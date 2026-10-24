@@ -63,6 +63,11 @@ public static unsafe class NativeMemoryContext
     }
 
     /// <summary>
+    /// Gets how many generated callbacks are active on this thread, each inside a backend call made by the one before.
+    /// </summary>
+    internal static int Depth => s_depth;
+
+    /// <summary>
     /// Gets the current native capability provider identity.
     /// </summary>
     internal static nint Provider

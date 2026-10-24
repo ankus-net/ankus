@@ -200,7 +200,17 @@ internal static unsafe class NativeBackgroundWorker
     /// <summary>
     /// Runs one synchronous callback after native transaction startup and restores its enclosing capabilities.
     /// </summary>
-    internal static TResult RunTransaction<TResult>(Func<TResult> action)
+    internal static TResult RunTransaction<TResult>(Func<TResult> action) => RunTransaction(action, 13);
+
+    /// <summary>
+    /// Runs synchronous work with SPI in a new transaction of a backend connected to a database, or of the current worker.
+    /// </summary>
+    /// <typeparam name="TResult">The owned result.</typeparam>
+    /// <param name="action">The synchronous transaction body.</param>
+    /// <returns>The callback result after successful commit.</returns>
+    internal static TResult RunBackendTransaction<TResult>(Func<TResult> action) => RunTransaction(action, 16);
+
+    private static TResult RunTransaction<TResult>(Func<TResult> action, int operation)
     {
         ArgumentNullException.ThrowIfNull(action);
         if (s_transaction is not null)
@@ -212,7 +222,7 @@ internal static unsafe class NativeBackgroundWorker
         s_transaction = frame;
         try
         {
-            _ = Invoke(13, target: (nint)(delegate* unmanaged[Cdecl]<nint, nint, int>)&Transaction);
+            _ = Invoke(operation, target: (nint)(delegate* unmanaged[Cdecl]<nint, nint, int>)&Transaction);
             frame.Failure?.Throw();
             if (!frame.Invoked)
             {

@@ -57,6 +57,40 @@ Exceptions:
 
 - [PgException](/api/ankus.pgexception/): The server cannot be reached or rejects the connection.
 
+<a id="member-cc4afddb49b55bca"></a>
+
+### Connect(string, string, bool)
+
+Opens a logical replication connection, or an ordinary connection for SQL and copies.
+
+```csharp
+public static PgReplicationConnection Connect(string connectionString, string applicationName, bool replication)
+```
+
+Parameters:
+
+`connectionString` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+A libpq connection string naming the server and database.
+
+`applicationName` — [string](https://learn.microsoft.com/dotnet/api/system.string)
+
+The name the server shows for this connection, such as in
+            <code>pg_stat_activity</code>.
+
+`replication` — [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
+
+Whether to open a logical replication connection. An ordinary connection needs no
+            <code>REPLICATION</code> attribute and no WAL sender; it runs SQL and <code>COPY</code> but not replication commands.
+
+Returns: [PgReplicationConnection](/api/ankus.pgreplicationconnection/)
+
+The open connection.
+
+Exceptions:
+
+- [PgException](/api/ankus.pgexception/): The server cannot be reached or rejects the connection.
+
 <a id="member-7f50abf8c9547d9a"></a>
 
 ### CopyInto(uint, IReadOnlyList&lt;string&gt;?)

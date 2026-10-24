@@ -157,6 +157,13 @@ PgArray<DeliveryStatus?> statuses = Spi.ExecuteScalar<PgArray<DeliveryStatus?>>(
         new DeliveryStatus?[] { status, null })));
 ```
 
+A row can hold an enum the extension does not declare, such as a table row that
+a [relation writer](/applying-changes/) finds or a trigger receives. Its cell
+keeps an exact copy of the value, as for other
+[fields without a managed conversion](/composites/), and writing the row back
+restores it. A query that returns such an enum as a column fails with `0A000`;
+select its label with `::text` instead.
+
 SPI retains enum identity: a different enum with an identical label cannot be
 read as `DeliveryStatus`. Domains over supported enums, domains over their
 arrays, and arrays of enum domains decode to the corresponding owned values.

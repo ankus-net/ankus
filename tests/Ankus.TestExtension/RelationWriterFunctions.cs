@@ -243,6 +243,116 @@ public static class RelationWriterFunctions
     /// <summary>
     /// Builds a row of <c>(id, name)</c> for a writer's table.
     /// </summary>
+    /// <summary>
+    /// Looks for a row that inserting <c>(id, code, tag)</c> would conflict with, in a table whose other columns stay
+    /// NULL or unsent, and names the index it was found through.
+    /// </summary>
+    /// <param name="table">The table's OID.</param>
+    /// <param name="replicated">Whether to search with a row in logical replication's form.</param>
+    /// <param name="id">The new row's <c>id</c>.</param>
+    /// <param name="code">The new row's <c>code</c>, or null.</param>
+    /// <param name="tag">The new row's <c>tag</c>, or null.</param>
+    /// <returns><c>none</c>, or the found row's <c>id</c> and the index's name.</returns>
+    [PgFunction]
+    public static string WriterFindConflict(uint table, bool replicated, int id, string? code, string? tag)
+    {
+        using PgRelationWriter writer = PgRelationWriter.Open(table);
+        PgFoundRow? found;
+        if (replicated)
+        {
+            PgReplicatedRow row = writer.CreateReplicatedRow();
+            row.SetText(writer.Descriptor.GetOrdinal("id"), id.ToString(CultureInfo.InvariantCulture));
+            SetTextOrNull(row, writer.Descriptor.GetOrdinal("code"), code);
+            SetTextOrNull(row, writer.Descriptor.GetOrdinal("tag"), tag);
+            found = writer.FindConflict(row);
+        }
+        else
+        {
+            PgHeapTuple row = writer.CreateRow();
+            row.Set("id", id);
+            row.Set("code", code);
+            row.Set("tag", tag);
+            found = writer.FindConflict(row);
+        }
+
+        return found is null ? "none" : found.Row.Get<int>("id").ToString(CultureInfo.InvariantCulture) + ":" +
+            Spi.ExecuteScalar<string>("SELECT relname::text FROM pg_class WHERE oid = $1", SpiParameter.Create(found.IndexOid));
+
+        static void SetTextOrNull(PgReplicatedRow row, int ordinal, string? value)
+        {
+            if (value is null)
+            {
+                row.SetNull(ordinal);
+            }
+            else
+            {
+                row.SetText(ordinal, value);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Buffers <paramref name="count"/> rows into a table of <c>(id integer, name text)</c>, then flushes, buffers one
+    /// more row and updates it, counting the rows SQL sees at each step.
+    /// </summary>
+    /// <param name="table">The table's OID.</param>
+    /// <param name="count">The number of rows to buffer before the explicit flush.</param>
+    /// <returns>The counts before and after the flush, the update's outcome and the final count.</returns>
+    [PgFunction]
+    public static string WriterInsertBuffered(uint table, int count)
+    {
+        (string schema, string name) = Spi.ExecuteScalars<string, string>(
+            "SELECT n.nspname::text, c.relname::text FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.oid = $1",
+            SpiParameter.Create(table));
+        string qualified = Spi.QuoteQualifiedIdentifier(schema, name);
+        using PgRelationWriter writer = PgRelationWriter.Open(table);
+        for (int id = 1; id <= count; id++)
+        {
+            writer.InsertBuffered(Row(writer, id, "row " + id.ToString(CultureInfo.InvariantCulture)));
+        }
+
+        long before = Count();
+        writer.Flush();
+        long flushed = Count();
+        writer.InsertBuffered(Row(writer, count + 1, "last"));
+        bool updated = writer.Update(Row(writer, count + 1, null), Row(writer, count + 1, "updated"));
+        return string.Join('|', before, flushed, updated, Count());
+
+        long Count() => Spi.ExecuteScalar<long>($"SELECT count(*) FROM {qualified}");
+    }
+
+    /// <summary>
+    /// Buffers two rows with the same key, so the unique violation is raised when the writer flushes at disposal.
+    /// </summary>
+    /// <param name="table">The table's OID.</param>
+    [PgFunction]
+    public static void WriterBufferDuplicate(uint table)
+    {
+        using PgRelationWriter writer = PgRelationWriter.Open(table);
+        writer.InsertBuffered(Row(writer, 1, "one"));
+        writer.InsertBuffered(Row(writer, 1, "again"));
+    }
+
+    /// <summary>
+    /// Finds row 1 of a table with a <c>note</c> column and columns the extension cannot convert, changes the note and
+    /// writes the found row back, then deletes row 2.
+    /// </summary>
+    /// <param name="table">The table's OID.</param>
+    /// <returns>The found row's <c>id</c> and whether the update and delete found their rows.</returns>
+    [PgFunction]
+    public static string WriterRewriteFoundRow(uint table)
+    {
+        using PgRelationWriter writer = PgRelationWriter.Open(table);
+        PgReplicatedRow key = writer.CreateReplicatedRow();
+        key.SetText(writer.Descriptor.GetOrdinal("id"), "1");
+        PgHeapTuple row = (writer.Find(key) ?? throw new InvalidOperationException("No row 1")).Row;
+        row.Set("note", "changed");
+        bool updated = writer.Update(row, row);
+        key.Clear();
+        key.SetText(writer.Descriptor.GetOrdinal("id"), "2");
+        return string.Join('|', row.Get<int>("id"), updated, writer.Delete(key));
+    }
+
     private static PgHeapTuple Row(PgRelationWriter writer, int id, string? name)
     {
         PgHeapTuple row = writer.CreateRow();

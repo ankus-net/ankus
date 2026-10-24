@@ -150,6 +150,28 @@ in `ReorderBufferChange` changed in PostgreSQL 17; select it with the
 Run per-change work inside `PgMemoryContext.RunTransient` so detoasted values are
 released after each change.
 
+## Read tables at startup
+
+A plugin that reads its own configuration tables does so in the startup
+callback. The SQL decoding functions, such as `pg_logical_slot_get_changes`,
+call it inside their transaction, but a WAL sender running `START_REPLICATION`
+calls it outside any transaction. `PgTransaction.Run` covers both: it runs the
+work in the current transaction, or else starts one, commits it when the work
+returns and rolls it back if the work fails.
+
+```csharp
+private static void Startup(LogicalDecodingContext* context, OutputPluginOptions* options, bool isInit)
+{
+    string? format = PgTransaction.Run(static () => Spi.ExecuteScalar<string>("SELECT format FROM my_plugin.settings"));
+    options->output_type = format == "binary"
+        ? OutputPluginOutputType.OUTPUT_PLUGIN_BINARY_OUTPUT
+        : OutputPluginOutputType.OUTPUT_PLUGIN_TEXTUAL_OUTPUT;
+}
+```
+
+PostgreSQL calls the begin, change and commit callbacks inside a transaction of
+its own.
+
 ## Errors
 
 A callback error fails the SQL slot function or the replication command and

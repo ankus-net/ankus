@@ -49,8 +49,8 @@ cannot be changed, and do not resolve by name. An incompatible read or write
 throws; a failed write leaves the cell unchanged. NULL cells require reference
 or nullable value types when read.
 
-A field whose type has no managed conversion, such as `tsvector` or `macaddr`, is
-copied exactly. Read or write it with a [`PgDatumType`](/raw-values/#reusable-scalar-mappings)
+A field whose type has no managed conversion, such as `tsvector`, `macaddr` or an
+enum the extension does not declare with `[PgEnum]`, is copied exactly. Read or write it with a [`PgDatumType`](/raw-values/#reusable-scalar-mappings)
 mapping, or an array of one, which must have exactly the field's type. The indexer
 and other managed types throw `NotSupportedException`. `Get<PgDatum>` rebuilds any
 field that is not dropped, including SQL NULL, as a raw datum owned by the current

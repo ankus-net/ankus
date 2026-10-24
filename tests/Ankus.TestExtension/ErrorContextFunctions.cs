@@ -46,6 +46,19 @@ public static class ErrorContextFunctions
     }
 
     /// <summary>
+    /// Inserts a row through SPI while a context describes the work, into a table whose C# row trigger can reject it,
+    /// so the trigger's exception becomes the error of the function's backend call.
+    /// </summary>
+    /// <param name="schema">The table's schema.</param>
+    /// <param name="table">The table's name.</param>
+    [PgFunction]
+    public static void ErrorContextNestedCallback(string schema, string table)
+    {
+        using PgErrorContext outer = PgErrorContext.Push("applying queued change 9");
+        Spi.Execute($"INSERT INTO {Spi.QuoteQualifiedIdentifier(schema, table)} VALUES (1, 1, 'queued')");
+    }
+
+    /// <summary>
     /// Pushes a context and returns without removing it.
     /// </summary>
     [PgFunction]

@@ -58,6 +58,30 @@ transaction that commits with a writer still open fails with `25000` and rolls
 back. A writer works in any transaction, including one that
 [`PgBackgroundWorker.RunTransaction`](/background-workers/) starts.
 
+### Batching inserts
+
+A transaction that inserts many rows into one table can write them in batches.
+`InsertBuffered` holds up to 1,000 rows and writes them together
+through PostgreSQL's multi-insert, then adds their index entries and queues
+their `AFTER ROW` triggers, as `COPY` and pglogical's apply do:
+
+```csharp
+foreach (PgReplicatedRow row in rows)
+{
+    writer.InsertBuffered(row);
+}
+
+writer.Flush();
+```
+
+The writer also writes the batch when it is full, before any other operation
+on the writer, and when it is disposed. Until then the rows are not in the
+table, so SQL does not see them. `NOT NULL` and check constraints are checked
+as each row is added, while unique and foreign key violations are raised when
+the batch is written. As with `COPY`, a table with `BEFORE` or `INSTEAD OF` row
+insert triggers, or with a volatile column default other than `nextval`,
+receives each row at once.
+
 ## Rows in replication's form
 
 Logical replication sends each column as text, as binary, as NULL, or not at
@@ -105,6 +129,28 @@ if (local is { CommitTime: { } localTime } && localTime > remoteCommitTime)
 `CommitTime` is when it committed. With it off, PostgreSQL does not record
 them, so the origin is zero and the time is null. These are the values the
 built-in subscriber uses to detect conflicts.
+
+Before an insert, `FindConflict` looks for any row the new one would collide
+with, as pglogical's apply does. It searches the replica identity index, then
+each other valid unique index without expressions or a predicate, and returns
+the first row it finds and locks. `IndexOid` names the index it matched:
+
+```csharp
+if (writer.FindConflict(row) is { } existing)
+{
+    // Resolve the conflict, for example by updating the existing row.
+}
+else
+{
+    writer.Insert(row);
+}
+```
+
+Like a unique check, the search waits for a transaction that is still writing
+a matching row. A NULL matches only in an index declared `NULLS NOT DISTINCT`,
+and a column a replicated row does not send counts as NULL. An insert that
+conflicts in an index the search skips still fails with `23505`. For `Find`,
+`IndexOid` is `KeyIndexOid`, or zero when the table has no key.
 
 ## Tracking progress with origins
 

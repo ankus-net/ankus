@@ -152,6 +152,48 @@ public sealed unsafe class PgRelationWriter : IDisposable
     }
 
     /// <summary>
+    /// Adds a row to the writer's batch of inserts, which it writes together through PostgreSQL's multi-insert, as
+    /// COPY and pglogical's apply do.
+    /// </summary>
+    /// <param name="row">The row to insert.</param>
+    /// <remarks>
+    /// The writer holds up to 1,000 rows. It writes them, with their index entries and <c>AFTER ROW</c> triggers, when
+    /// the batch is full, on <see cref="Flush"/>, before any other operation of this writer, and when it is disposed.
+    /// Until then other code, including SQL, does not see them. <c>NOT NULL</c> and check constraints are checked as
+    /// each row is added; unique and foreign key violations are raised when the batch is written. As with COPY, a
+    /// table with <c>BEFORE</c> or <c>INSTEAD OF</c> row insert triggers, or a volatile column default other than
+    /// <c>nextval</c>, receives each row at once.
+    /// </remarks>
+    public void InsertBuffered(PgHeapTuple row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        _ = Run(8, row, null, null);
+    }
+
+    /// <summary>
+    /// Adds a row whose values are in logical replication's form to the writer's batch of inserts; columns not sent
+    /// take their defaults.
+    /// </summary>
+    /// <param name="row">The row to insert.</param>
+    /// <remarks>
+    /// The batch behaves as it does for <see cref="InsertBuffered(PgHeapTuple)"/>.
+    /// </remarks>
+    public void InsertBuffered(PgReplicatedRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        _ = Run(8, row, null, null);
+    }
+
+    /// <summary>
+    /// Writes the rows that <see cref="InsertBuffered(PgHeapTuple)"/> holds, so SQL and other code see them.
+    /// </summary>
+    public void Flush()
+    {
+        NativeMemoryRequest request = new() { _operation = NativeMemoryOperation.RelationWriter, _flags = 9, _context = Id };
+        NativeMemoryContext.Invoke(ref request, out _);
+    }
+
+    /// <summary>
     /// Replaces the row that matches <paramref name="key"/> with <paramref name="row"/>.
     /// </summary>
     /// <param name="key">A row whose key columns identify the row to change.</param>
@@ -233,7 +275,46 @@ public sealed unsafe class PgRelationWriter : IDisposable
     }
 
     /// <summary>
-    /// Closes the writer and releases its executor state. The table stays locked until the transaction ends.
+    /// Finds and locks a row that inserting <paramref name="row"/> would conflict with: one with the same replica
+    /// identity, or else the same values in another unique index, as pglogical's apply checks before an insert.
+    /// </summary>
+    /// <param name="row">The row about to be inserted.</param>
+    /// <returns>The conflicting row, the index it was found through and the transaction that wrote it, or null when no
+    /// row conflicts.</returns>
+    /// <remarks>
+    /// The search tries the replica identity index, then each other valid unique index without expressions or a
+    /// predicate. Columns the row does not send count as NULL, and a NULL matches only in an index whose NULLs are
+    /// not distinct. A conflict in an index the search skips still raises a unique violation when the row is inserted.
+    /// </remarks>
+    public PgFoundRow? FindConflict(PgReplicatedRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        NativeValue found = default;
+        return ReadFound(Run(7, row, null, &found), found);
+    }
+
+    /// <summary>
+    /// Finds and locks a row that inserting <paramref name="row"/> would conflict with: one with the same replica
+    /// identity, or else the same values in another unique index, as pglogical's apply checks before an insert.
+    /// </summary>
+    /// <param name="row">The row about to be inserted.</param>
+    /// <returns>The conflicting row, the index it was found through and the transaction that wrote it, or null when no
+    /// row conflicts.</returns>
+    /// <remarks>
+    /// The search tries the replica identity index, then each other valid unique index without expressions or a
+    /// predicate. A NULL matches only in an index whose NULLs are not distinct. A conflict in an index the search
+    /// skips still raises a unique violation when the row is inserted.
+    /// </remarks>
+    public PgFoundRow? FindConflict(PgHeapTuple row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        NativeValue found = default;
+        return ReadFound(Run(7, row, null, &found), found);
+    }
+
+    /// <summary>
+    /// Writes any buffered inserts, then closes the writer and releases its executor state. The table stays locked
+    /// until the transaction ends.
     /// </summary>
     public void Dispose()
     {
@@ -275,7 +356,10 @@ public sealed unsafe class PgRelationWriter : IDisposable
         }
 
         PgTimestampTz? commitTime = result._data == 0 ? null : new PgTimestampTz(result._data);
-        return new PgFoundRow(row.ReadTuple(), unchecked((ushort)result._context), commitTime, unchecked((uint)result._length));
+        return new PgFoundRow(row.ReadTuple(), unchecked((ushort)result._context), commitTime, unchecked((uint)result._length))
+        {
+            IndexOid = unchecked((uint)result._pointer),
+        };
     }
 
     private NativeMemoryResult Run(int operation, PgReplicatedRow first, PgReplicatedRow? second, NativeValue* output)

@@ -25,6 +25,51 @@ public static class ReplicationConnectionFunctions
     }
 
     /// <summary>
+    /// Runs a query over an ordinary connection and returns its rows.
+    /// </summary>
+    /// <param name="connection">The connection string.</param>
+    /// <param name="query">The query.</param>
+    /// <param name="columns">The query's column count.</param>
+    /// <returns>Rows separated by semicolons and values by bars, with NULL shown as <c>&lt;null&gt;</c>.</returns>
+    [PgFunction]
+    public static string OrdinaryQuery(string connection, string query, int columns)
+    {
+        using PgReplicationConnection ordinary = PgReplicationConnection.Connect(connection, "ankus_ordinary", replication: false);
+        return Format(ordinary.Query(query, columns));
+    }
+
+    /// <summary>
+    /// Copies a table's rows out over an ordinary connection.
+    /// </summary>
+    /// <param name="connection">The connection string.</param>
+    /// <param name="table">The table to copy.</param>
+    /// <returns>The copied lines separated by semicolons.</returns>
+    [PgFunction]
+    public static string OrdinaryCopy(string connection, string table)
+    {
+        using PgReplicationConnection ordinary = PgReplicationConnection.Connect(connection, "ankus_ordinary", replication: false);
+        ordinary.StartCopy("COPY " + table + " TO STDOUT");
+        var lines = new List<string>();
+        while (true)
+        {
+            PgReplicationReceiveStatus status = ordinary.Receive(TimeSpan.FromSeconds(30), out ReadOnlySpan<byte> message);
+            if (status == PgReplicationReceiveStatus.Ended)
+            {
+                break;
+            }
+
+            if (status != PgReplicationReceiveStatus.Message)
+            {
+                throw new InvalidOperationException("The copy stopped without ending: " + status);
+            }
+
+            lines.Add(Encoding.UTF8.GetString(message).TrimEnd('\n'));
+        }
+
+        return string.Join(';', lines);
+    }
+
+    /// <summary>
     /// Runs a failing query, then shows the connection still works.
     /// </summary>
     /// <param name="connection">The connection string.</param>

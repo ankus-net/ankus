@@ -244,6 +244,139 @@ public sealed class RelationWriterTests(TestContext context)
     /// <summary>
     /// Creates a table with the given columns, runs the test, and drops the table.
     /// </summary>
+    /// <summary>
+    /// <c>FindConflict</c> finds the row an insert would collide with by the replica identity, then by another unique
+    /// index, and names the index. It skips expression and partial indexes, a NULL never conflicts in an ordinary
+    /// unique index, and an unsent column counts as NULL.
+    /// </summary>
+    /// <param name="replicated">Whether to search with a row in logical replication's form.</param>
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task ConflictsAreFoundThroughUniqueIndexes(bool replicated)
+        => await WithTableAsync("id integer PRIMARY KEY, code text UNIQUE, tag text", async (connection, table, token) =>
+        {
+            string name = table["tests.".Length..];
+            await ExecuteAsync(connection, $"""
+                CREATE UNIQUE INDEX {name}_lower ON {table} (lower(code));
+                CREATE UNIQUE INDEX {name}_tag ON {table} (tag) WHERE tag <> '';
+                INSERT INTO {table} VALUES (1, 'a', 'x'), (2, NULL, NULL);
+                """, token);
+            async Task<string> FindAsync(int id, string? code, string? tag) => await ScalarAsync<string>(connection,
+                $"SELECT datatype.writer_find_conflict('{table}'::regclass::oid, {replicated}, {id}, " +
+                $"{(code is null ? "NULL" : $"'{code}'")}, {(tag is null ? "NULL" : $"'{tag}'")})", token);
+
+            Assert.AreEqual($"1:{name}_pkey", await FindAsync(1, "z", null));
+            Assert.AreEqual($"1:{name}_code_key", await FindAsync(3, "a", null));
+            Assert.AreEqual("none", await FindAsync(3, "b", null));
+            Assert.AreEqual("none", await FindAsync(3, null, null));
+            Assert.AreEqual("none", await FindAsync(3, "A", null));
+            Assert.AreEqual("none", await FindAsync(3, "c", "x"));
+            string[] skipped = ["(3, 'A', NULL)", "(3, 'c', 'x')"];
+            foreach (string values in skipped)
+            {
+                PostgresException duplicate = await Assert.ThrowsExactlyAsync<PostgresException>(() =>
+                    ExecuteAsync(connection, $"INSERT INTO {table} VALUES {values}", token));
+                Assert.AreEqual(PostgresErrorCodes.UniqueViolation, duplicate.SqlState);
+            }
+        });
+
+    /// <summary>
+    /// In a unique index whose NULLs are not distinct, available from PostgreSQL 15, a NULL conflicts with a NULL.
+    /// </summary>
+    [TestMethod]
+    public async Task NullsConflictWhereTheIndexTreatsThemAsEqual()
+    {
+        if (PostgresFixture.Cluster.Installation.Version.Major < 15)
+        {
+            Assert.Inconclusive("UNIQUE NULLS NOT DISTINCT needs PostgreSQL 15 or later.");
+        }
+
+        await WithTableAsync("id integer PRIMARY KEY, code text UNIQUE NULLS NOT DISTINCT, tag text", async (connection, table, token) =>
+        {
+            await ExecuteAsync(connection, $"INSERT INTO {table} VALUES (1, NULL, NULL)", token);
+            Assert.AreEqual($"1:{table["tests.".Length..]}_code_key", await ScalarAsync<string>(connection,
+                $"SELECT datatype.writer_find_conflict('{table}'::regclass::oid, false, 2, NULL, NULL)", token));
+        });
+    }
+
+    /// <summary>
+    /// Buffered inserts reach the table a thousand at a time, on <c>Flush</c> and before another operation, with their
+    /// AFTER triggers, and in the order the writer received them.
+    /// </summary>
+    [TestMethod]
+    public async Task BufferedInsertsAreWrittenInBatches()
+        => await WithTableAsync("id integer PRIMARY KEY, name text", async (connection, table, token) =>
+        {
+            string log = table + "_log";
+            await ExecuteAsync(connection, $"""
+                CREATE TABLE {log}(id integer);
+                CREATE FUNCTION {log}_after() RETURNS trigger LANGUAGE plpgsql AS
+                    $$BEGIN INSERT INTO {log} VALUES (NEW.id); RETURN NULL; END$$;
+                CREATE TRIGGER after_row AFTER INSERT ON {table} FOR EACH ROW EXECUTE FUNCTION {log}_after();
+                """, token);
+            Assert.AreEqual("2000|2500|True|2501", await ScalarAsync<string>(connection,
+                $"SELECT datatype.writer_insert_buffered('{table}'::regclass::oid, 2500)", token));
+            Assert.AreEqual("2501|1|2501|updated", await ScalarAsync<string>(connection,
+                $"SELECT count(*) || '|' || min(id) || '|' || max(id) || '|' || max(name) FILTER (WHERE id = 2501) FROM {table}", token));
+            Assert.AreEqual(2501L, await ScalarAsync<long>(connection, $"SELECT count(DISTINCT id) FROM {log}", token));
+            await ExecuteAsync(connection, $"DROP TABLE {log}; DROP FUNCTION {log}_after() CASCADE;", token);
+        });
+
+    /// <summary>
+    /// As with COPY, a table with a BEFORE row trigger or a volatile default receives each buffered row at once.
+    /// </summary>
+    /// <param name="setup">SQL that gives the table a reason to write each row at once, with <c>{0}</c> for its name.</param>
+    [TestMethod]
+    [DataRow("CREATE FUNCTION {0}_before() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN NEW; END$$; " +
+        "CREATE TRIGGER before_row BEFORE INSERT ON {0} FOR EACH ROW EXECUTE FUNCTION {0}_before();", DisplayName = "before_trigger")]
+    [DataRow("ALTER TABLE {0} ADD COLUMN stamp timestamptz DEFAULT clock_timestamp();", DisplayName = "volatile_default")]
+    public async Task SomeTablesReceiveBufferedRowsAtOnce(string setup)
+        => await WithTableAsync("id integer PRIMARY KEY, name text", async (connection, table, token) =>
+        {
+            await ExecuteAsync(connection, string.Format(CultureInfo.InvariantCulture, setup, table), token);
+            Assert.AreEqual("1500|1500|True|1501", await ScalarAsync<string>(connection,
+                $"SELECT datatype.writer_insert_buffered('{table}'::regclass::oid, 1500)", token));
+            await ExecuteAsync(connection, $"DROP FUNCTION IF EXISTS {table}_before() CASCADE", token);
+        });
+
+    /// <summary>
+    /// A unique violation among buffered rows is raised when the batch is written, here as the writer is disposed,
+    /// and leaves the table unchanged.
+    /// </summary>
+    [TestMethod]
+    public async Task BufferedUniqueViolationsAreRaisedWhenWritten()
+        => await WithTableAsync("id integer PRIMARY KEY, name text", async (connection, table, token) =>
+        {
+            PostgresException duplicate = await Assert.ThrowsExactlyAsync<PostgresException>(() =>
+                ExecuteAsync(connection, $"SELECT datatype.writer_buffer_duplicate('{table}'::regclass::oid)", token));
+            Assert.AreEqual(PostgresErrorCodes.UniqueViolation, duplicate.SqlState);
+            Assert.AreEqual(0L, await ScalarAsync<long>(connection, $"SELECT count(*) FROM {table}", token));
+        });
+
+    /// <summary>
+    /// A row whose enum and enum-array columns have a type the extension does not declare can be found, written back
+    /// unchanged and deleted, and a C# row trigger receives and returns it.
+    /// </summary>
+    [TestMethod]
+    public Task RowsKeepUndeclaredEnumsExactly()
+        => PostgresFixture.Cluster.RunInTransactionAsync(nameof(RowsKeepUndeclaredEnumsExactly), async (connection, _, token) =>
+        {
+            // The trigger records each row in a table other tests read, so everything here rolls back.
+            string table = "tests.undeclared_enum_" + Guid.NewGuid().ToString("N");
+            await ExecuteAsync(connection, $$"""
+                CREATE TYPE {{table}}_mood AS ENUM ('happy', 'sad');
+                CREATE TABLE {{table}}(id integer PRIMARY KEY, value integer, note text, mood {{table}}_mood, moods {{table}}_mood[]);
+                CREATE TRIGGER observe BEFORE INSERT OR UPDATE ON {{table}} FOR EACH ROW
+                    EXECUTE FUNCTION trigger_values.trigger_action('observe');
+                INSERT INTO {{table}} VALUES (1, 10, 'original', 'happy', '{sad,happy}'), (2, 20, 'gone', 'sad', NULL);
+                """, token);
+            Assert.AreEqual("1|True|True", await ScalarAsync<string>(connection,
+                $"SELECT datatype.writer_rewrite_found_row('{table}'::regclass::oid)", token));
+            Assert.AreEqual("1|changed|happy|{sad,happy}", await ScalarAsync<string>(connection,
+                $"SELECT string_agg(id || '|' || note || '|' || mood || '|' || moods::text, ';') FROM {table}", token));
+        }, context.CancellationToken);
+
     private async Task WithTableAsync(string columns, Func<NpgsqlConnection, string, CancellationToken, Task> test)
     {
         CancellationToken token = context.CancellationToken;

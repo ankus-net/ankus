@@ -1368,7 +1368,9 @@ internal static class NativeMemoryBridge
                         case 4: context = PostmasterContext; break;
                         case 5: context = CacheMemoryContext; break;
                         case 6: context = MessageContext; break;
-                        case 7: context = TopTransactionContext; break;
+                        /* PostgreSQL 18 keeps TopTransactionContext between transactions, where earlier versions delete it;
+                         * CurTransactionContext is set only while a transaction is in progress on every version. */
+                        case 7: context = CurTransactionContext != NULL ? TopTransactionContext : NULL; break;
                         case 8: context = CurTransactionContext; break;
                         default: ereport(ERROR, (errmsg("invalid predefined PostgreSQL memory context")));
                     }

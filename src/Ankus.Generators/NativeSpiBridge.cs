@@ -132,6 +132,7 @@ internal static class NativeSpiBridge
         static void ankus_register_session_plan(SPIPlanPtr plan);
         static void ankus_detach_session_plan(SPIPlanPtr plan);
         static bool ankus_array_element_supported(Oid type);
+        static bool ankus_enum_supported(Oid type);
         static void ankus_read_array(Datum datum, AnkusValue *value, AnkusInputBuffer *owned);
         static void ankus_read_detached(Datum datum, Oid type, AnkusValue *value, AnkusInputBuffer *owned);
         static Datum ankus_write_detached(const AnkusValue *value, Oid type);
@@ -531,7 +532,8 @@ internal static class NativeSpiBridge
                         break;
                     }
 
-                    if (get_typtype(type) == TYPTYPE_ENUM)
+                    /* A row keeps an exact copy of an enum, or an array of one, that the extension does not declare. */
+                    if (get_typtype(type) == TYPTYPE_ENUM && (!detach || ankus_enum_supported(type)))
                     {
                         ankus_read_enum(datum, value, owned);
                         break;
@@ -543,7 +545,9 @@ internal static class NativeSpiBridge
                         break;
                     }
 
-                    if (OidIsValid(get_element_type(type)) && (!detach || ankus_array_element_supported(get_element_type(type))))
+                    if (OidIsValid(get_element_type(type)) && (!detach || (ankus_array_element_supported(get_element_type(type)) &&
+                        (get_typtype(getBaseType(get_element_type(type))) != TYPTYPE_ENUM ||
+                            ankus_enum_supported(getBaseType(get_element_type(type)))))))
                     {
                         ankus_read_array(datum, value, owned);
                         break;

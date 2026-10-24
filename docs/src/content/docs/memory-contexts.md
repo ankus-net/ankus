@@ -47,7 +47,10 @@ ownership transfer under the context lifetime rules below.
 `Current` resolves PostgreSQL's current context at the point of the call.
 `Get(PgMemoryContextKind)` resolves predefined contexts such as `Top`,
 `TopTransaction`, and `CurTransaction`; it returns null when the selected context
-does not exist in the current phase. `Parent` returns a borrowed parent handle.
+does not exist in the current phase. Outside a transaction both transaction
+kinds are null on every version, although PostgreSQL 18 and later keep the top
+transaction context allocated between transactions. `Parent` returns a borrowed
+parent handle.
 
 Functions, operators, and casts can receive a borrowed `PgMemoryContext` as an
 [injected parameter](/function-declarations/#injected-memory-contexts). A scalar
