@@ -46,8 +46,9 @@ when the process crashes or the server restarts after a crash. A background work
 shared-memory slot it claimed, as pglogical's workers do.
 </p>
 <p>
-A callback can use shared memory and lightweight locks, but not SQL or logging, because the transaction may be
-aborted and PostgreSQL is shutting the process down. It must not wait for a lock this process may already hold.
+A callback can use shared memory, lightweight locks and [PgLog](/api/ankus.pglog/) at <code>LOG</code> and below, as
+PostgreSQL's own exit callbacks do, but not SQL, because the transaction may be aborted and PostgreSQL is shutting
+the process down. It must not wait for a lock this process may already hold.
 An exception is reported as a warning and the remaining callbacks still run. Registration belongs to the calling
 process; register in the backend or worker that needs the callback, after the library has loaded there.
 </p>

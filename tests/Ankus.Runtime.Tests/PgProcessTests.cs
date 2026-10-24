@@ -36,7 +36,7 @@ public sealed unsafe class PgProcessTests
         NativeCallError error = default;
         using (MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter())
         {
-            int status = ((delegate* unmanaged[Cdecl]<nint, nint, NativeCallError*, int>)dispatcher)(1, scope.Address, &error);
+            int status = ((delegate* unmanaged[Cdecl]<nint, nint, nint, NativeCallError*, int>)dispatcher)(1, scope.Address, 0, &error);
             Assert.AreEqual(1, status);
         }
 
@@ -54,7 +54,7 @@ public sealed unsafe class PgProcessTests
         NativeCallError again = default;
         using (MemoryContextTestFixture.Scope scope = MemoryContextTestFixture.Enter())
         {
-            Assert.AreEqual(0, ((delegate* unmanaged[Cdecl]<nint, nint, NativeCallError*, int>)dispatcher)(0, scope.Address, &again));
+            Assert.AreEqual(0, ((delegate* unmanaged[Cdecl]<nint, nint, nint, NativeCallError*, int>)dispatcher)(0, scope.Address, 0, &again));
         }
 
         Assert.HasCount(2, ran);

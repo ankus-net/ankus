@@ -251,8 +251,9 @@ PgProcess.OnExit(code => ReleaseSlot(slot));
 
 Callbacks run newest first after a normal exit, a FATAL error or a stop request,
 with the exit code; they do not run when the process crashes. They can use
-shared memory and lightweight locks but not SQL or logging, and must not wait
-for a lock the process may already hold. An exception is reported as a warning
+shared memory, lightweight locks and `PgLog` at `LOG` and below, as
+PostgreSQL's own exit callbacks do, but not SQL, and must not wait for a lock
+the process may already hold. An exception is reported as a warning
 and the other callbacks still run. Register each callback from the process that
 needs it, after the library has loaded there. Disposing the returned
 registration removes the callback.

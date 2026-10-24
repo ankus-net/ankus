@@ -25,8 +25,9 @@ public static unsafe class PgProcess
     /// shared-memory slot it claimed, as pglogical's workers do.
     /// </para>
     /// <para>
-    /// A callback can use shared memory and lightweight locks, but not SQL or logging, because the transaction may be
-    /// aborted and PostgreSQL is shutting the process down. It must not wait for a lock this process may already hold.
+    /// A callback can use shared memory, lightweight locks and <see cref="PgLog"/> at <c>LOG</c> and below, as
+    /// PostgreSQL's own exit callbacks do, but not SQL, because the transaction may be aborted and PostgreSQL is shutting
+    /// the process down. It must not wait for a lock this process may already hold.
     /// An exception is reported as a warning and the remaining callbacks still run. Registration belongs to the calling
     /// process; register in the backend or worker that needs the callback, after the library has loaded there.
     /// </para>
@@ -40,7 +41,7 @@ public static unsafe class PgProcess
             NativeMemoryRequest request = new()
             {
                 _operation = NativeMemoryOperation.ProcessExit,
-                _pointer = (nint)(delegate* unmanaged[Cdecl]<nint, nint, NativeCallError*, int>)&Exit,
+                _pointer = (nint)(delegate* unmanaged[Cdecl]<nint, nint, nint, NativeCallError*, int>)&Exit,
             };
             NativeMemoryContext.Invoke(ref request, out _);
             s_registeredProcess = process;
@@ -56,10 +57,10 @@ public static unsafe class PgProcess
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
-    private static int Exit(nint code, nint memory, NativeCallError* error)
+    private static int Exit(nint code, nint memory, nint log, NativeCallError* error)
     {
         nint previousMemory = NativeMemoryContext.Enter(memory);
-        nint previousLog = NativeLog.Enter(0);
+        nint previousLog = NativeLog.Enter(log);
         int previousTerminal = NativeLog.EnterMemoryTerminal();
         try
         {
