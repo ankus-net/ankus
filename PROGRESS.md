@@ -1103,6 +1103,18 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   such rows can be found, written back unchanged and deleted, and a C# row
   trigger receives them. An SPI query that returns one as a column still fails
   with `0A000`.
+- Disposing a `PgRelationWriter` took time proportional to the writers still
+  open (#104). Open writers were a singly linked list that every operation
+  walked to find its writer, that close walked twice more, and that the context
+  reset callback walked again after close had unlinked the writer. They are now
+  in a hash table by id, and the callback does nothing once close has removed
+  the writer. On Linux x64 with PostgreSQL 18, a statement that opens 20,000
+  writers on 20,000 tables, inserts a row through each and disposes them took
+  14.8 s oldest first and 6.5 s newest first, 10.7 s and 2.7 s of it disposing;
+  it now takes 1.0 s and 0.8 s, 28 ms and 30 ms of it disposing. Tests open 500
+  writers for one table, write through each and dispose them in either order,
+  and open a writer in a subtransaction that rolls back, after which the
+  transaction still commits.
 - `ankus init --release` built PostgreSQL with assertions and memory
   randomization in the development build's directory (#99), because
   `PostgresProvisioner.InstallAsync` copied the caller's options without

@@ -192,6 +192,41 @@ public sealed class RelationWriterTests(TestContext context)
         });
 
     /// <summary>
+    /// Many writers for one table can be open at once, each finds its own state, and disposing them in either order
+    /// closes every one, so the transaction commits.
+    /// </summary>
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task ManyOpenWritersCloseInEitherOrder(bool newestFirst)
+        => await WithTableAsync("id integer PRIMARY KEY, name text", async (connection, table, token) =>
+        {
+            await ExecuteAsync(connection,
+                $"SELECT datatype.writer_open_many('{table}'::regclass::oid, 500, {(newestFirst ? "true" : "false")})", token);
+            Assert.AreEqual(500L, await ScalarAsync<long>(connection, $"SELECT count(DISTINCT id) FROM {table}", token));
+        });
+
+    /// <summary>
+    /// A writer left open in a subtransaction that rolls back closes with it, so the transaction still commits.
+    /// </summary>
+    [TestMethod]
+    public async Task RolledBackSubtransactionsCloseTheirWriters()
+        => await WithTableAsync("id integer PRIMARY KEY, name text", async (connection, table, token) =>
+        {
+            await ExecuteAsync(connection, $$"""
+                DO $$
+                BEGIN
+                    PERFORM datatype.writer_left_open('{{table}}'::regclass::oid);
+                    RAISE EXCEPTION 'roll back';
+                EXCEPTION WHEN raise_exception THEN
+                    PERFORM datatype.writer_insert('{{table}}'::regclass::oid, 2, 'after');
+                END
+                $$
+                """, token);
+            Assert.AreEqual("2|after", await ScalarAsync<string>(connection, $"SELECT string_agg(id || '|' || name, ';') FROM {table}", token));
+        });
+
+    /// <summary>
     /// Finding a row reports the transaction that wrote it; without commit timestamps the time is unknown and the
     /// origin is zero.
     /// </summary>

@@ -353,6 +353,38 @@ public static class RelationWriterFunctions
         return string.Join('|', row.Get<int>("id"), updated, writer.Delete(key));
     }
 
+    /// <summary>
+    /// Opens several writers for one table, inserts a row through each in turn, then disposes them oldest or newest
+    /// first.
+    /// </summary>
+    /// <param name="table">The table's OID.</param>
+    /// <param name="count">The number of writers, and of rows.</param>
+    /// <param name="newestFirst">Whether the newest writer is disposed first.</param>
+    [PgFunction]
+    public static void WriterOpenMany(uint table, int count, bool newestFirst)
+    {
+        var writers = new PgRelationWriter?[count];
+        try
+        {
+            for (int i = 0; i < count; i++)
+            {
+                writers[i] = PgRelationWriter.Open(table);
+            }
+
+            for (int i = 0; i < count; i++)
+            {
+                writers[i]!.Insert(Row(writers[i]!, i + 1, null));
+            }
+        }
+        finally
+        {
+            for (int i = 0; i < count; i++)
+            {
+                writers[newestFirst ? count - 1 - i : i]?.Dispose();
+            }
+        }
+    }
+
     private static PgHeapTuple Row(PgRelationWriter writer, int id, string? name)
     {
         PgHeapTuple row = writer.CreateRow();
