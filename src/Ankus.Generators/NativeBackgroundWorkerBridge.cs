@@ -523,6 +523,53 @@ internal static class NativeBackgroundWorkerBridge
         }
 
         static void
+        ankus_worker_wait(AnkusMemoryRequest *request, AnkusMemoryResult *result)
+        {
+            if (request->value < -1 || request->value > INT_MAX)
+            {
+                ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("invalid background-worker latch timeout")));
+            }
+
+            if (ShutdownRequestPending || ankus_worker_term || !PostmasterIsAlive())
+            {
+                (void) ankus_worker_consume(2);
+                result->value = 0;
+                return;
+            }
+
+            /* Flush counts the rate limit held back before sleeping, as a backend does before going idle. */
+            if (!IsTransactionOrTransactionBlock())
+                (void) pgstat_report_stat(true);
+
+            int events = WaitLatch(MyLatch, WL_LATCH_SET | WL_POSTMASTER_DEATH |
+                (request->value >= 0 ? WL_TIMEOUT : 0), request->value >= 0 ? (long) request->value : 0, PG_WAIT_EXTENSION);
+            ResetLatch(MyLatch);
+            CHECK_FOR_INTERRUPTS();
+            result->value = (ankus_worker_consume(2) == 0 && !ShutdownRequestPending && (events & WL_POSTMASTER_DEATH) == 0) ? 1 : 0;
+        }
+
+        static void
+        ankus_worker_connect(AnkusMemoryRequest *request)
+        {
+            if (ankus_worker_connected || !(MyBgworkerEntry->bgw_flags & BGWORKER_BACKEND_DATABASE_CONNECTION))
+            {
+                ereport(ERROR, (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+                    errmsg("the worker must request database access and connect only once")));
+            }
+
+            if (request->flags == 11)
+            {
+                BackgroundWorkerInitializeConnection((const char *) request->context, (const char *) request->pointer, 0);
+            }
+            else
+            {
+                BackgroundWorkerInitializeConnectionByOid((Oid) request->context, (Oid) request->value, 0);
+            }
+
+            ankus_worker_connected = true;
+        }
+
+        static void
         ankus_memory_worker(AnkusMemoryRequest *request, AnkusMemoryResult *result, volatile bool *recovered)
         {
             if (request->flags == 0 || request->flags == 1)
@@ -567,48 +614,11 @@ internal static class NativeBackgroundWorkerBridge
                     result->value = ankus_worker_consume((int) request->value);
                     break;
                 case 10:
-                {
-                    if (request->value < -1 || request->value > INT_MAX)
-                    {
-                        ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("invalid background-worker latch timeout")));
-                    }
-
-                    if (ShutdownRequestPending || ankus_worker_term || !PostmasterIsAlive())
-                    {
-                        (void) ankus_worker_consume(2);
-                        result->value = 0;
-                        break;
-                    }
-
-                    /* Flush counts the rate limit held back before sleeping, as a backend does before going idle. */
-                    if (!IsTransactionOrTransactionBlock())
-                        (void) pgstat_report_stat(true);
-
-                    int events = WaitLatch(MyLatch, WL_LATCH_SET | WL_POSTMASTER_DEATH |
-                        (request->value >= 0 ? WL_TIMEOUT : 0), request->value >= 0 ? (long) request->value : 0, PG_WAIT_EXTENSION);
-                    ResetLatch(MyLatch);
-                    CHECK_FOR_INTERRUPTS();
-                    result->value = (ankus_worker_consume(2) == 0 && !ShutdownRequestPending && (events & WL_POSTMASTER_DEATH) == 0) ? 1 : 0;
+                    ankus_worker_wait(request, result);
                     break;
-                }
                 case 11:
                 case 12:
-                    if (ankus_worker_connected || !(MyBgworkerEntry->bgw_flags & BGWORKER_BACKEND_DATABASE_CONNECTION))
-                    {
-                        ereport(ERROR, (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
-                            errmsg("the worker must request database access and connect only once")));
-                    }
-
-                    if (request->flags == 11)
-                    {
-                        BackgroundWorkerInitializeConnection((const char *) request->context, (const char *) request->pointer, 0);
-                    }
-                    else
-                    {
-                        BackgroundWorkerInitializeConnectionByOid((Oid) request->context, (Oid) request->value, 0);
-                    }
-
-                    ankus_worker_connected = true;
+                    ankus_worker_connect(request);
                     break;
                 case 13:
                     ankus_worker_transaction(request, recovered, false);
