@@ -201,7 +201,6 @@ internal static class NativeTupleBridge
         {
             Oid base_type;
             int flags;
-            bool enum_checked;
             char *name;
             int name_length;
         } AnkusTupleShapeField;
@@ -224,7 +223,6 @@ internal static class NativeTupleBridge
             if (OidIsValid(field->base_type) &&
                 (field->base_type == RECORDOID || get_typtype(field->base_type) == TYPTYPE_COMPOSITE))
                 field->flags |= 4;
-            field->enum_checked = false;
             field->name_length = strlen(utf8);
             field->name = utf8 == name && persistent ? pnstrdup(name, field->name_length) : utf8;
         }
@@ -263,15 +261,10 @@ internal static class NativeTupleBridge
                 cell.is_null = values == NULL || attribute->attisdropped || nulls[index];
                 if (!cell.is_null)
                 {
-                    if (!field->enum_checked)
-                    {
-                        ankus_check_result_enum(field->base_type);
-                        field->enum_checked = shape != NULL;
-                    }
-
                     /* The field's type is already a base type, so convert without resolving it again. A cell
-                     * keeps an exact copy of a value Ankus cannot convert, as pgrx reads a field only when
-                     * asked; a mapped reader can use it, and writing the row back restores it. */
+                     * keeps an exact copy of a value Ankus cannot convert, such as an enum the extension does not
+                     * declare, as pgrx reads a field only when asked; a mapped reader can use it, and writing the
+                     * row back restores it. */
                     ankus_convert_base_value(values[index], field->base_type, &cell, &cell_owned, true);
                 }
 

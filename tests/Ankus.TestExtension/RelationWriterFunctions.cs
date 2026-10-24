@@ -333,6 +333,26 @@ public static class RelationWriterFunctions
         writer.InsertBuffered(Row(writer, 1, "again"));
     }
 
+    /// <summary>
+    /// Finds row 1 of a table with a <c>note</c> column and columns the extension cannot convert, changes the note and
+    /// writes the found row back, then deletes row 2.
+    /// </summary>
+    /// <param name="table">The table's OID.</param>
+    /// <returns>The found row's <c>id</c> and whether the update and delete found their rows.</returns>
+    [PgFunction]
+    public static string WriterRewriteFoundRow(uint table)
+    {
+        using PgRelationWriter writer = PgRelationWriter.Open(table);
+        PgReplicatedRow key = writer.CreateReplicatedRow();
+        key.SetText(writer.Descriptor.GetOrdinal("id"), "1");
+        PgHeapTuple row = (writer.Find(key) ?? throw new InvalidOperationException("No row 1")).Row;
+        row.Set("note", "changed");
+        bool updated = writer.Update(row, row);
+        key.Clear();
+        key.SetText(writer.Descriptor.GetOrdinal("id"), "2");
+        return string.Join('|', row.Get<int>("id"), updated, writer.Delete(key));
+    }
+
     private static PgHeapTuple Row(PgRelationWriter writer, int id, string? name)
     {
         PgHeapTuple row = writer.CreateRow();

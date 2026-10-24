@@ -354,6 +354,39 @@ public sealed class RelationWriterTests(TestContext context)
             Assert.AreEqual(0L, await ScalarAsync<long>(connection, $"SELECT count(*) FROM {table}", token));
         });
 
+    /// <summary>
+    /// A row whose enum and enum-array columns have a type the extension does not declare can be found, written back
+    /// unchanged and deleted, and a C# row trigger receives and returns it.
+    /// </summary>
+    [TestMethod]
+    public async Task RowsKeepUndeclaredEnumsExactly()
+    {
+        CancellationToken cancellation = context.CancellationToken;
+        await using NpgsqlConnection setup = await PostgresFixture.Cluster.OpenConnectionAsync(cancellation);
+        string type = "tests.mood_" + Guid.NewGuid().ToString("N");
+        await ExecuteAsync(setup, $"CREATE TYPE {type} AS ENUM ('happy', 'sad')", cancellation);
+        try
+        {
+            await WithTableAsync($"id integer PRIMARY KEY, value integer, note text, mood {type}, moods {type}[]",
+                async (connection, table, token) =>
+                {
+                    await ExecuteAsync(connection, $"""
+                        CREATE TRIGGER observe BEFORE INSERT OR UPDATE ON {table} FOR EACH ROW
+                            EXECUTE FUNCTION datatype.trigger_action('observe');
+                        INSERT INTO {table} VALUES (1, 10, 'original', 'happy', '{{sad,happy}}'), (2, 20, 'gone', 'sad', NULL);
+                        """, token);
+                    Assert.AreEqual("1|True|True", await ScalarAsync<string>(connection,
+                        $"SELECT datatype.writer_rewrite_found_row('{table}'::regclass::oid)", token));
+                    Assert.AreEqual("1|changed|happy|{sad,happy}", await ScalarAsync<string>(connection,
+                        $"SELECT string_agg(id || '|' || note || '|' || mood || '|' || moods::text, ';') FROM {table}", token));
+                });
+        }
+        finally
+        {
+            await ExecuteAsync(setup, $"DROP TYPE {type}", cancellation);
+        }
+    }
+
     private async Task WithTableAsync(string columns, Func<NpgsqlConnection, string, CancellationToken, Task> test)
     {
         CancellationToken token = context.CancellationToken;
