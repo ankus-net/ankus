@@ -83,7 +83,8 @@ internal static partial class NativeBindingRecordCSharp
             Line("    [global::Ankus.CompilerServices.NativeUnsafeAccess]");
             string signature = string.Join(", ", parameters.Select(static parameter => parameter.Code + " @" + parameter.Name));
             string arguments = string.Join(", ", parameters.Select(static parameter => parameter.Argument));
-            Line($"    public static {(pointers ? "unsafe " : "")}{result?.Code ?? "void"} @{method}({signature})\n        => @{method}({arguments});\n");
+            string returns = result is null ? "void" : result.Code;
+            Line($"    public static {(pointers ? "unsafe " : "")}{returns} @{method}({signature})\n        => @{method}({arguments});\n");
         }
 
         /// <summary>
