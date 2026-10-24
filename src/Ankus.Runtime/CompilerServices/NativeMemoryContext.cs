@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Ankus.CompilerServices;
@@ -70,18 +71,29 @@ public static unsafe class NativeMemoryContext
     /// <summary>
     /// Gets the current native capability provider identity.
     /// </summary>
-    internal static nint Provider
+    internal static nint Provider => Api->_provider;
+
+    /// <summary>
+    /// Gets the active callback's native capability, read once for a call that checks it and then uses it.
+    /// </summary>
+    internal static NativeMemoryApi* Api
     {
         get
         {
-            if (s_api == 0)
+            nint api = s_api;
+            if (api == 0)
             {
                 throw new InvalidOperationException("PostgreSQL memory contexts require an active backend callback.");
             }
 
-            return ((NativeMemoryApi*)s_api)->_provider;
+            return (NativeMemoryApi*)api;
         }
     }
+
+    /// <summary>
+    /// Gets the active callback's native capability, or null outside a callback.
+    /// </summary>
+    internal static NativeMemoryApi* CurrentApi => (NativeMemoryApi*)s_api;
 
     /// <summary>
     /// Lazily creates a unique lease for buffers retained until this callback exits.
@@ -109,6 +121,16 @@ public static unsafe class NativeMemoryContext
     /// Gets whether this thread has a native memory scope, as a background worker has between transactions.
     /// </summary>
     internal static bool IsActive => s_api != 0;
+
+    /// <summary>
+    /// Determines whether the native guard of a callback would admit an ordinary operation: no native frame retains a
+    /// failure and ErrorContext is not being reset.
+    /// </summary>
+    /// <param name="api">The callback's native capability, or null.</param>
+    /// <returns>Whether the callback publishes its guard state and that state admits the operation.</returns>
+    internal static bool Admits(NativeMemoryApi* api)
+        => api != null && api->_failedFrames != null && api->_errorCleanup != null &&
+            Volatile.Read(ref *api->_failedFrames) == 0 && Volatile.Read(ref *api->_errorCleanup) == 0;
 
     /// <summary>
     /// Gets whether managed code may read flat values in place, and text as well as bytes.
@@ -158,6 +180,11 @@ public static unsafe class NativeMemoryContext
     /// </summary>
     /// <param name="request">The operation request.</param>
     /// <param name="result">The native result.</param>
+    /// <remarks>
+    /// The error transport is over 2 KB and is read only after a failure. The generated guard clears it on entry, so it
+    /// is not zeroed here; a capability without that guard, such as a test double, gets the same clear first.
+    /// </remarks>
+    [SkipLocalsInit]
     internal static void Invoke(ref NativeMemoryRequest request, out NativeMemoryResult result)
     {
         if (request._operation is not (NativeMemoryOperation.SpinLock or NativeMemoryOperation.RecordTerminal) &&
@@ -168,10 +195,16 @@ public static unsafe class NativeMemoryContext
 
         _ = Provider;
         NativeMemoryApi* api = (NativeMemoryApi*)s_api;
-        NativeCallError error = default;
+        NativeCallError error;
+        NativeCallError* transport = &error;
+        if (api->_call == null)
+        {
+            transport->Clear();
+        }
+
         NativeMemoryRequest localRequest = request;
         NativeMemoryResult localResult = default;
-        int status = api->_invoke(s_api, &localRequest, &localResult, &error);
+        int status = api->_invoke(s_api, &localRequest, &localResult, transport);
         result = localResult;
         if (status == 0)
         {
@@ -181,11 +214,59 @@ public static unsafe class NativeMemoryContext
         Exception exception;
         try
         {
-            exception = error.ToManagedException();
+            exception = transport->ToManagedException();
         }
         finally
         {
-            error.Release();
+            transport->Release();
+        }
+
+        throw exception;
+    }
+
+    /// <summary>
+    /// Runs one generated raw call body beneath the native guard of a callback whose backend access was just checked, as
+    /// the native call operation does.
+    /// </summary>
+    /// <param name="api">The active callback's native capability.</param>
+    /// <param name="body">The native generated C body address.</param>
+    /// <param name="frame">The pinned call frame.</param>
+    /// <returns>The body's storage status, zero when it accepted its frame.</returns>
+    /// <remarks>
+    /// A callback that publishes its native call entry writes the error only when the call fails, so the error buffer
+    /// is neither zeroed nor cleared on the way in.
+    /// </remarks>
+    [SkipLocalsInit]
+    internal static nint InvokeCall(NativeMemoryApi* api, nint body, NativeCallFrame* frame)
+    {
+        if (api->_call == null)
+        {
+            NativeMemoryRequest request = new()
+            {
+                _operation = NativeMemoryOperation.NativeCall,
+                _pointer = body,
+                _data = (nint)frame,
+            };
+            Invoke(ref request, out NativeMemoryResult response);
+            return response._value;
+        }
+
+        NativeCallError error;
+        NativeCallError* transport = &error;
+        nint value = 0;
+        if (api->_call((nint)api, body, (nint)frame, &value, transport) == 0)
+        {
+            return value;
+        }
+
+        Exception exception;
+        try
+        {
+            exception = transport->ToManagedException();
+        }
+        finally
+        {
+            transport->Release();
         }
 
         throw exception;
@@ -558,4 +639,13 @@ internal unsafe struct NativeMemoryApi
     /// database encoding needs no conversion to UTF-8.
     /// </summary>
     internal int _directReads;
+    /// <summary>
+    /// Borrows the native flag set while ErrorContext is being reset, when guarded operations are refused.
+    /// </summary>
+    internal byte* _errorCleanup;
+    /// <summary>
+    /// Runs one generated raw call body beneath the native guard without a request envelope, writing the error only when
+    /// the call fails.
+    /// </summary>
+    internal delegate* unmanaged[Cdecl]<nint, nint, nint, nint*, NativeCallError*, int> _call;
 }

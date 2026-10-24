@@ -25,6 +25,7 @@ internal static partial class NativeBindingRecordCSharp
                 Summary("Obtains a native body address without entering PostgreSQL.", "    ");
                 Line($"    [global::System.Runtime.InteropServices.LibraryImport(\"Ankus.NativeBodies\", EntryPoint = \"{NativeBindingCallImports.Prefix}{call.Name}\")]");
                 Line("    [global::System.Runtime.InteropServices.UnmanagedCallConv(CallConvs = [typeof(global::System.Runtime.CompilerServices.CallConvCdecl)])]");
+                Line("    [global::System.Runtime.InteropServices.SuppressGCTransition]");
                 Line($"    private static partial nint @{accessor}();\n");
             }
 
@@ -132,11 +133,22 @@ internal static partial class NativeBindingRecordCSharp
             }
 
             string signature = string.Join(", ", parameters.Skip(indirect ? 1 : 0).Select(static parameter => parameter.Value.Code + " @" + parameter.Name));
-            string unsafeModifier = frame.AllocationSize == 0 ? "" : "unsafe ";
+            // A call with a stack frame validates its binding in the call that runs it, which looks the body up only once
+            // the binding is accepted. An indirect call first rejects a null target, and a heap frame is allocated only
+            // after validation, so both validate first.
+            bool heap = frame.AllocationSize > 4096;
+            bool separate = indirect || heap;
+            string major = Number(graph.Target.PostgresVersion / 10000);
+            string body = separate ? $"@{accessor}()" : $"\"__ANKUS_RECORD_IDENTITY__\"u8, {major}, &@{accessor}";
+            string unsafeModifier = frame.AllocationSize == 0 && separate ? "" : "unsafe ";
             string hide = parameters.Count == 0 && method != "Equals" ? Hide(method) : "";
             string staticModifier = indirect ? "" : "static ";
             Line($"    {visibility} {hide}{staticModifier}{unsafeModifier}{result?.Code ?? "void"} @{method}({signature})\n    {{");
-            Line($"        global::Ankus.CompilerServices.NativeRawCall.ValidateBinding(\"__ANKUS_RECORD_IDENTITY__\"u8, {Number(graph.Target.PostgresVersion / 10000)});");
+            if (separate)
+            {
+                Line($"        global::Ankus.CompilerServices.NativeRawCall.ValidateBinding(\"__ANKUS_RECORD_IDENTITY__\"u8, {major});");
+            }
+
             if (indirect)
             {
                 Line("        if (IsNull)\n        {\n            throw new global::System.InvalidOperationException(\"A null native function pointer cannot be invoked.\");\n        }\n");
@@ -144,11 +156,10 @@ internal static partial class NativeBindingRecordCSharp
 
             if (frame.AllocationSize == 0)
             {
-                Line($"        global::Ankus.CompilerServices.NativeRawCall.Invoke(@{accessor}(), [], 0, 0);\n    }}\n");
+                Line($"        global::Ankus.CompilerServices.NativeRawCall.Invoke({body}, [], 0, 0);\n    }}\n");
                 return;
             }
 
-            bool heap = frame.AllocationSize > 4096;
             Line(heap ? $"        byte* allocation = (byte*)global::System.Runtime.InteropServices.NativeMemory.Alloc({NativeSize(frame.AllocationSize)});"
                 : $"        byte* allocation = stackalloc byte[{Number(frame.AllocationSize)}];");
             if (heap)
@@ -176,7 +187,7 @@ internal static partial class NativeBindingRecordCSharp
             }
 
             string resultAddress = result is null ? "0" : "unchecked((nint)checked(storage + " + NativeSize(frame.Result) + "))";
-            Line($"{indent}global::Ankus.CompilerServices.NativeRawCall.Invoke(@{accessor}(), {(parameters.Count == 0 ? "[]" : "arguments")}, {resultAddress}, {NativeSize(result?.Size ?? 0)});");
+            Line($"{indent}global::Ankus.CompilerServices.NativeRawCall.Invoke({body}, {(parameters.Count == 0 ? "[]" : "arguments")}, {resultAddress}, {NativeSize(result?.Size ?? 0)});");
             if (result is not null)
             {
                 string read = $"global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<{result.Storage}>((void*)checked(storage + {NativeSize(frame.Result)}))";

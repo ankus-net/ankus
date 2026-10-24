@@ -16,6 +16,8 @@ internal static partial class NativeBindingRecordCSharp
             {
                 string member = global.Name == "NativeGlobals" ? Unique(members, "Native_" + global.Name) : global.Name;
                 string hide = member == "Finalize" ? "" : Hide(member);
+                string address = Unique(members, "DangerousAddressOf_" + global.Name);
+                string addressAccessor = Unique(members, "GetNativeAddress_" + global.Name);
                 if (global.IsComplete)
                 {
                     var native = new NativeBindingCallValue(global.Symbol.Type, global.StorageType);
@@ -36,32 +38,60 @@ internal static partial class NativeBindingRecordCSharp
                         Line($"    public {hide}static {pointerModifier}{value.Code} @{member}\n    {{\n        get => @{read}();\n        set => @{write}(value);\n    }}\n");
                     }
 
-                    Method(new(global.Name, global.Symbol, [], native), read, readAccessor, "private");
-                    GlobalImport(global.Name, NativeBindingGlobalOperation.Read, readAccessor);
-                    if (write is not null)
+                    if (!global.RequiresTypedAccess && !global.Symbol.IsThreadLocal && value.Size != 0)
                     {
-                        string writeAccessor = Unique(members, "GetNativeWrite_" + global.Name);
-                        Method(new(global.Name, global.Symbol, [native], null), write, writeAccessor, "private");
-                        GlobalImport(global.Name, NativeBindingGlobalOperation.Write, writeAccessor);
+                        InPlace(global, value, Unique(members, "Address_" + global.Name), addressAccessor, read, write);
+                    }
+                    else
+                    {
+                        Method(new(global.Name, global.Symbol, [], native), read, readAccessor, "private");
+                        GlobalImport(global.Name, NativeBindingGlobalOperation.Read, readAccessor);
+                        if (write is not null)
+                        {
+                            string writeAccessor = Unique(members, "GetNativeWrite_" + global.Name);
+                            Method(new(global.Name, global.Symbol, [native], null), write, writeAccessor, "private");
+                            GlobalImport(global.Name, NativeBindingGlobalOperation.Write, writeAccessor);
+                        }
                     }
                 }
 
-                string address = Unique(members, "DangerousAddressOf_" + global.Name);
-                string addressAccessor = Unique(members, "GetNativeAddress_" + global.Name);
                 Summary("Obtains the original native address of " + global.Symbol.NativeName + ".", "    ");
                 Line("    /// <returns>The original object address, without extending its lifetime or supplying an unknown array extent.</returns>");
                 Line("    /// <remarks>Requires an active backend callback. The caller must preserve native const/volatile qualifications, bounds, synchronization and ownership. Thread-local addresses belong to the active backend thread.</remarks>");
                 string addressType = PointerTarget(global.StorageType) + "*";
                 Line("    [global::Ankus.CompilerServices.NativeUnsafeAccess]");
                 Line($"    public static unsafe {addressType} @{address}()\n    {{");
-                Line($"        global::Ankus.CompilerServices.NativeRawCall.ValidateBinding(\"__ANKUS_RECORD_IDENTITY__\"u8, {Number(graph.Target.PostgresVersion / 10000)});");
                 Line("        nint address = 0;");
-                Line($"        global::Ankus.CompilerServices.NativeRawCall.Invoke(@{addressAccessor}(), [], unchecked((nint)(&address)), (nuint)sizeof(nint));");
+                Line($"        global::Ankus.CompilerServices.NativeRawCall.Invoke(\"__ANKUS_RECORD_IDENTITY__\"u8, {Number(graph.Target.PostgresVersion / 10000)}, " +
+                    $"&@{addressAccessor}, [], unchecked((nint)(&address)), (nuint)sizeof(nint));");
                 Line($"        return unchecked(({addressType})address);\n    }}\n");
                 GlobalImport(global.Name, NativeBindingGlobalOperation.Address, addressAccessor);
             }
 
             Line("}\n");
+        }
+
+        /// <summary>
+        /// Reads and writes a plain global through its cached address. Copying a variable cannot raise a PostgreSQL error,
+        /// so these accesses need no guard; qualified, atomic and thread-local globals keep their guarded C bodies.
+        /// </summary>
+        private void InPlace(NativeBindingGlobalContract global, Value value, string cache, string accessor, string read, string? write)
+        {
+            string target = $"(void*)global::Ankus.CompilerServices.NativeRawCall.GlobalAddress(\"__ANKUS_RECORD_IDENTITY__\"u8, " +
+                $"{Number(graph.Target.PostgresVersion / 10000)}, ref @{cache}, &@{accessor})";
+            Summary("Caches the address of " + global.Symbol.NativeName + " after its first checked access.", "    ");
+            Line($"    private static nint @{cache};\n");
+            Summary("Reads " + global.Symbol.NativeName + " in place once its binding and the native guard admit the access.", "    ");
+            Line("    /// <returns>A copy of the current native value.</returns>");
+            string load = $"global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<{value.Storage}>({target})";
+            Line($"    private static unsafe {value.Code} @{read}() => {(value.Pointer ? $"unchecked(({value.Code}){load})" : load)};\n");
+            if (write is not null)
+            {
+                Summary("Writes " + global.Symbol.NativeName + " in place once its binding and the native guard admit the access.", "    ");
+                Line("    /// <param name=\"value\">The exact native value to store.</param>");
+                string stored = value.Pointer ? "unchecked((nint)@value)" : "@value";
+                Line($"    private static unsafe void @{write}({value.Code} @value) => global::System.Runtime.CompilerServices.Unsafe.WriteUnaligned({target}, {stored});\n");
+            }
         }
 
         /// <summary>
@@ -73,6 +103,7 @@ internal static partial class NativeBindingRecordCSharp
             Summary("Obtains a native global body address without entering PostgreSQL.", "    ");
             Line($"    [global::System.Runtime.InteropServices.LibraryImport(\"Ankus.NativeBodies\", EntryPoint = \"{entry}\")]");
             Line("    [global::System.Runtime.InteropServices.UnmanagedCallConv(CallConvs = [typeof(global::System.Runtime.CompilerServices.CallConvCdecl)])]");
+            Line("    [global::System.Runtime.InteropServices.SuppressGCTransition]");
             Line($"    private static partial nint @{accessor}();\n");
         }
     }

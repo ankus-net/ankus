@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Ankus.CompilerServices;
@@ -885,6 +886,9 @@ public static unsafe partial class NativeBackend
         }
     }
 
+    // The error transport is over 2 KB. Native code reads its message only as a C string, so clearing its fields and
+    // first message byte, as the native guard does, gives it the same contents as zeroing every byte.
+    [SkipLocalsInit]
     private static void Invoke(NativeSpiRequest* request, NativeSpiResult* result)
     {
         // Terminal transport only copies owned diagnostics into the native frame.
@@ -908,17 +912,19 @@ public static unsafe partial class NativeBackend
 
         request->_recoverInput = NativeInputRecovery.IsActive ? (byte)1 : (byte)0;
         var execute = (delegate* unmanaged[Cdecl]<NativeSpiRequest*, NativeSpiResult*, NativeCallError*, int>)s_execute;
-        NativeCallError error = default;
+        NativeCallError error;
+        NativeCallError* transport = &error;
+        transport->Clear();
         try
         {
-            if (execute(request, result, &error) != 0)
+            if (execute(request, result, transport) != 0)
             {
-                throw error.ToManagedException();
+                throw transport->ToManagedException();
             }
         }
         finally
         {
-            error.Release();
+            transport->Release();
         }
     }
 

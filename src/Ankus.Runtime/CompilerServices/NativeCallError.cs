@@ -105,6 +105,22 @@ public unsafe struct NativeCallError
     }
 
     /// <summary>
+    /// Clears every field a failure can write, as the native guard does before each operation. The message is read as a
+    /// C string, so an empty first byte clears it without zeroing its whole buffer on every call.
+    /// </summary>
+    internal void Clear()
+    {
+        SqlState = 0;
+        Message[0] = 0;
+        _position = 0;
+        _internalPosition = 0;
+        _line = 0;
+        _flags = 0;
+        _fields = default;
+        _reportLevel = 0;
+    }
+
+    /// <summary>
     /// Releases every owned diagnostic with its originating allocator, including partially populated errors.
     /// </summary>
     internal void Release()

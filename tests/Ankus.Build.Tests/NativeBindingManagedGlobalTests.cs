@@ -3,10 +3,11 @@ namespace Ankus.Build.Tests;
 public sealed partial class NativeBindingNativeTests
 {
     /// <summary>
-    /// Large global frames retain exact values and release native allocations on success, guarded failure and allocation failure.
+    /// A large plain global is copied in place with no frame allocation, retains exact values, and stays unchanged when the
+    /// guard refuses the access that would have looked up its address.
     /// </summary>
     [TestMethod]
-    public async Task ManagedGlobalsReleaseLargeFramesAndRecover()
+    public async Task ManagedGlobalsCopyLargeValuesInPlace()
     {
         const string Headers = """
             typedef struct Payload { unsigned char bytes[8192]; } Payload;
@@ -47,7 +48,7 @@ public sealed partial class NativeBindingNativeTests
                 }
             }
             """;
-        Assert.AreSequenceEqual<long>([2, 0, 0, 1, 0, 0, 7, 201, 222, 4, 4, 0],
+        Assert.AreSequenceEqual<long>([0, 4, 0, 1, 0, 0, 7, 201, 222, 0, 0, 0],
             await ExecuteManagedCallsAsync(Headers, ["checksum"], Harness, globalNames: ["payload"]));
     }
 
