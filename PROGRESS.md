@@ -1099,6 +1099,10 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   such rows can be found, written back unchanged and deleted, and a C# row
   trigger receives them. An SPI query that returns one as a column still fails
   with `0A000`.
+- With the backend transaction operation, the generated background-worker
+  dispatcher reached 101 lines, and CodeQL's C analysis on `main` flagged it once
+  for each of the 48 extensions it builds as poorly documented. The latch wait
+  and database connection now have their own functions.
 - An exception from a `[PgNativeCallback]` hook or C# trigger nested in a backend
   call reported each enclosing `PgErrorContext` twice, once from the text
   recorded when it was thrown and once from the context callback the backend
