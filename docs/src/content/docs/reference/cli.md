@@ -302,8 +302,11 @@ gets its own directory. Source downloads are checked against upstream SHA-256
 checksums.
 A failed download is tried again after 1, 2 and 4 seconds, with a one-line
 warning before each retry, as `cargo pgrx init` does.
-Windows x64 uses EDB's binary archives over HTTPS. A prerelease can be downloaded
-when its platform distribution is available; otherwise register an existing build.
+Windows x64 uses EDB's binary archives over HTTPS. When EDB has no archive for a
+release, as for some betas and release candidates, Ankus downloads the source
+and builds it with meson and Visual Studio's C++ compiler, with the same debug
+information and assertions as a Unix build. That build needs meson, Strawberry
+Perl and winflexbison on `PATH`; without them, register an existing build.
 When a major has no stable release yet, source downloads select its newest beta
 or release candidate.
 
@@ -322,7 +325,7 @@ the installation directory as `<version>-<identity>.build.log`.
 Use `--jobs 8` to limit parallel compilation. Repeat
 `--configure-flag=--with-icu` for additional Unix configure feature options.
 `--valgrind` enables PostgreSQL's memory-context instrumentation and requires
-Valgrind headers. These source options do not apply to Windows binary archives.
+Valgrind headers. These configure options do not apply on Windows.
 
 Installations live under the Ankus home's `postgres/` directory, by default
 `~/.ankus/postgres/`. Repeating the same request reuses

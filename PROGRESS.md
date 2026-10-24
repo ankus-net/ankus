@@ -1049,6 +1049,14 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   the analyzer accepts it as it accepts the quoting helpers, in interpolations,
   concatenation, builders and `Select` method groups. A runtime integer appended
   after `$` is still reported.
+- `ankus init --pg19 download` failed on Windows while EDB published no
+  PostgreSQL 19 archive (#79). When EDB has no archive for a release, Ankus now
+  downloads the source and builds it with meson and Visual Studio's compiler,
+  with debug information and, unless `--release`, assertions and allocated
+  memory randomization, as Unix builds have; it names any missing meson, Perl,
+  Bison or Flex first. On the Windows x64 runner PC, with EDB serving no 19rc1
+  archive, `ankus init --pg19 download` built 19rc1 with MSVC 19.52, registered
+  it, and the server started with `debug_assertions` on.
 - macOS killed the Generators test host on the MacBook runner (main CI
   39517461878) as the largest process, at 26.7 GB compressed. The generator wrote
   the native source, SQL, graph and exports as single `AssemblyMetadata`

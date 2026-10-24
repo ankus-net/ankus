@@ -203,18 +203,18 @@ public sealed class PostgresDistributionClientTests(TestContext context)
     }
 
     /// <summary>
-    /// A missing Windows release has an actionable diagnostic and never substitutes an older server.
+    /// A missing Windows release is reported for that release, so the provisioner can build its source, and never
+    /// substitutes an older server.
     /// </summary>
     [TestMethod]
-    public async Task MissingWindowsArchivePreservesLatestVersionAndExplainsRegistration()
+    public async Task MissingWindowsArchiveIsReportedForTheLatestVersion()
     {
         using var handler = new DistributionHandler([], status: HttpStatusCode.Forbidden);
         using var client = new HttpClient(handler);
         var version = new PostgresVersion(19, 0, PostgresReleaseStage.Beta, 4);
-        InvalidOperationException error = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
+        PostgresArchiveUnavailableException error = await Assert.ThrowsExactlyAsync<PostgresArchiveUnavailableException>(() =>
             new PostgresDistributionClient(client).DownloadAsync(version, Path.Join(_root, "installed"), true, context.CancellationToken));
-        Assert.Contains("PostgreSQL 19beta4", error.Message);
-        Assert.Contains("ankus init --pg19", error.Message);
+        Assert.AreEqual("EDB has no available PostgreSQL 19beta4 Windows x64 archive.", error.Message);
         Assert.AreEqual("https://get.enterprisedb.com/postgresql/postgresql-19beta4-1-windows-x64-binaries.zip",
             Assert.ContainsSingle(handler.Requests));
         Assert.IsEmpty(Directory.GetFileSystemEntries(_root));
