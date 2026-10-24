@@ -101,6 +101,21 @@ quoted local. Complete quoting results must occur outside SQL strings, quoted
 identifiers, dollar strings and comments; the helpers supply their own delimiters.
 Ordinary positional parameters remain valid in raw SQL.
 
+When a command's number of parameters is known only at run time, write each
+reference with `Spi.ParameterReference`, which returns `$1`, `$2` and so on. The
+compiler check accepts it as it accepts the quoting helpers:
+
+```csharp
+var command = new StringBuilder("INSERT INTO ").Append(Spi.QuoteQualifiedIdentifier(schema, table)).Append(" VALUES (");
+for (int i = 0; i < values.Length; i++)
+{
+    command.Append(i > 0 ? ", " : "").Append(Spi.ParameterReference(i + 1));
+}
+
+command.Append(')');
+Spi.Execute(command.ToString(), values);
+```
+
 Lambdas and local functions are checked even when the method does not invoke them.
 A callback passed to LINQ, stored for later or otherwise not invoked locally is
 checked with the values assigned after its creation, and its parameters are

@@ -9,6 +9,29 @@ namespace Ankus.Runtime.Tests;
 public sealed class SpiCommandTests
 {
     /// <summary>
+    /// Parameter references number from 1 in invariant digits, and there is no parameter 0.
+    /// </summary>
+    [TestMethod]
+    public void ParameterReferencesNumberFromOne()
+    {
+        CultureInfo previous = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = new CultureInfo("ar-SA") { NumberFormat = { NativeDigits = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"] } };
+        try
+        {
+            Assert.AreEqual("$1", Spi.ParameterReference(1));
+            Assert.AreEqual("$65536", Spi.ParameterReference(65536));
+            Assert.AreEqual("$2147483647", Spi.ParameterReference(int.MaxValue));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
+
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(static () => Spi.ParameterReference(0));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(static () => Spi.ParameterReference(-1));
+    }
+
+    /// <summary>
     /// Literal text is preserved exactly, including empty SQL and Unicode.
     /// </summary>
     /// <param name="text">The literal SQL.</param>

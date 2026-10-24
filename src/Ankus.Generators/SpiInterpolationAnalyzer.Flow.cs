@@ -808,7 +808,7 @@ public sealed partial class SpiInterpolationAnalyzer
 
             if (IsQuotedCall(invocation, spi))
             {
-                return Value.Quote(method.Name == "QuoteLiteral" ? '\'' : '"');
+                return QuotedResult(method);
             }
 
             if (IsBuilder(method.ContainingType) && receiver is { } builder)
@@ -1102,15 +1102,28 @@ public sealed partial class SpiInterpolationAnalyzer
 
             if (operation is IMethodReferenceOperation { Method: { IsStatic: true, ReturnType.SpecialType: SpecialType.System_String } method } &&
                 SymbolEqualityComparer.Default.Equals(method.ContainingType, spi) &&
-                method.Name is "QuoteIdentifier" or "QuoteLiteral")
+                method.Name is "QuoteIdentifier" or "QuoteLiteral" or "ParameterReference")
             {
-                quoted = Value.Quote(method.Name == "QuoteLiteral" ? '\'' : '"');
+                quoted = QuotedResult(method);
                 return true;
             }
 
             quoted = Value.Raw();
             return false;
         }
+
+        /// <summary>
+        /// Represents a runtime-owned fragment: a complete quoted identifier or literal, or a positional parameter reference.
+        /// </summary>
+        /// <param name="method">The SPI method that produced the fragment.</param>
+        /// <returns>A representative fragment for SQL context checks.</returns>
+        private static Value QuotedResult(IMethodSymbol method)
+            => method.Name switch
+            {
+                "ParameterReference" => Value.Constant("$1"),
+                "QuoteLiteral" => Value.Quote('\''),
+                _ => Value.Quote('"'),
+            };
 
         private Value Execute(ControlFlowGraph function, FlowState state, IMethodSymbol? signature = null,
             List<(IArgumentOperation Argument, Value Value)>? arguments = null)
