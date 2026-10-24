@@ -1071,6 +1071,17 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   which keeps `TopTransactionContext` allocated between transactions,
   `PgMemoryContext.Get(TopTransaction)` returned it outside a transaction where
   13–17 return null; it is now null whenever no transaction is in progress.
+- `PgRelationWriter.Find` searched only the replica identity or primary key, so
+  an insert that collided on another unique key failed with `23505` where
+  pglogical resolves the conflict (#76). `FindConflict` searches the replica
+  identity index, then each other valid unique btree index without expressions
+  or a predicate, as `pglogical_tuple_find_conflict` does, and `PgFoundRow`
+  now names the matching index. It ports pglogical's `find_index_tuple`, a
+  dirty-snapshot index scan that waits for a concurrent writer of the row and
+  retries when the row changes before it is locked. PostgreSQL's own
+  `RelationFindReplTupleByIndex` cannot do this from PostgreSQL 16 on, because
+  for any index other than the replica identity or primary key it also requires
+  every column to match. A NULL matches only in a `NULLS NOT DISTINCT` index.
 - macOS killed the Generators test host on the MacBook runner (main CI
   39517461878) as the largest process, at 26.7 GB compressed. The generator wrote
   the native source, SQL, graph and exports as single `AssemblyMetadata`

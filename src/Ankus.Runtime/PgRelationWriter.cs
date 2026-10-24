@@ -233,6 +233,44 @@ public sealed unsafe class PgRelationWriter : IDisposable
     }
 
     /// <summary>
+    /// Finds and locks a row that inserting <paramref name="row"/> would conflict with: one with the same replica
+    /// identity, or else the same values in another unique index, as pglogical's apply checks before an insert.
+    /// </summary>
+    /// <param name="row">The row about to be inserted.</param>
+    /// <returns>The conflicting row, the index it was found through and the transaction that wrote it, or null when no
+    /// row conflicts.</returns>
+    /// <remarks>
+    /// The search tries the replica identity index, then each other valid unique index without expressions or a
+    /// predicate. Columns the row does not send count as NULL, and a NULL matches only in an index whose NULLs are
+    /// not distinct. A conflict in an index the search skips still raises a unique violation when the row is inserted.
+    /// </remarks>
+    public PgFoundRow? FindConflict(PgReplicatedRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        NativeValue found = default;
+        return ReadFound(Run(7, row, null, &found), found);
+    }
+
+    /// <summary>
+    /// Finds and locks a row that inserting <paramref name="row"/> would conflict with: one with the same replica
+    /// identity, or else the same values in another unique index, as pglogical's apply checks before an insert.
+    /// </summary>
+    /// <param name="row">The row about to be inserted.</param>
+    /// <returns>The conflicting row, the index it was found through and the transaction that wrote it, or null when no
+    /// row conflicts.</returns>
+    /// <remarks>
+    /// The search tries the replica identity index, then each other valid unique index without expressions or a
+    /// predicate. A NULL matches only in an index whose NULLs are not distinct. A conflict in an index the search
+    /// skips still raises a unique violation when the row is inserted.
+    /// </remarks>
+    public PgFoundRow? FindConflict(PgHeapTuple row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        NativeValue found = default;
+        return ReadFound(Run(7, row, null, &found), found);
+    }
+
+    /// <summary>
     /// Closes the writer and releases its executor state. The table stays locked until the transaction ends.
     /// </summary>
     public void Dispose()
@@ -275,7 +313,10 @@ public sealed unsafe class PgRelationWriter : IDisposable
         }
 
         PgTimestampTz? commitTime = result._data == 0 ? null : new PgTimestampTz(result._data);
-        return new PgFoundRow(row.ReadTuple(), unchecked((ushort)result._context), commitTime, unchecked((uint)result._length));
+        return new PgFoundRow(row.ReadTuple(), unchecked((ushort)result._context), commitTime, unchecked((uint)result._length))
+        {
+            IndexOid = unchecked((uint)result._pointer),
+        };
     }
 
     private NativeMemoryResult Run(int operation, PgReplicatedRow first, PgReplicatedRow? second, NativeValue* output)

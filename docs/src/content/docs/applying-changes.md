@@ -106,6 +106,28 @@ if (local is { CommitTime: { } localTime } && localTime > remoteCommitTime)
 them, so the origin is zero and the time is null. These are the values the
 built-in subscriber uses to detect conflicts.
 
+Before an insert, `FindConflict` looks for any row the new one would collide
+with, as pglogical's apply does. It searches the replica identity index, then
+each other valid unique index without expressions or a predicate, and returns
+the first row it finds and locks. `IndexOid` names the index it matched:
+
+```csharp
+if (writer.FindConflict(row) is { } existing)
+{
+    // Resolve the conflict, for example by updating the existing row.
+}
+else
+{
+    writer.Insert(row);
+}
+```
+
+Like a unique check, the search waits for a transaction that is still writing
+a matching row. A NULL matches only in an index declared `NULLS NOT DISTINCT`,
+and a column a replicated row does not send counts as NULL. An insert that
+conflicts in an index the search skips still fails with `23505`. For `Find`,
+`IndexOid` is `KeyIndexOid`, or zero when the table has no key.
+
 ## Tracking progress with origins
 
 A replication origin stores how far one source has been applied:

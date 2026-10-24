@@ -10,7 +10,7 @@ internal static class NativeRelationWriterBridge
     /// Implements the guarded relation writer operations behind <c>PgRelationWriter</c>.
     /// </summary>
     /// <remarks>
-    /// Operations: 1 opens, 2 inserts, 3 updates, 4 deletes, 5 finds and 6 closes. A writer keeps one executor state for
+    /// Operations: 1 opens, 2 inserts, 3 updates, 4 deletes, 5 finds, 6 closes and 7 finds a conflicting row. A writer keeps one executor state for
     /// its table, as <c>create_edata_for_relation</c> builds it in <c>worker.c</c>, in a context under the transaction,
     /// so it cannot outlive the transaction; a transaction that commits with a writer still open fails, because its
     /// AFTER triggers have not run. Rows arrive as self-describing tuples and are checked against the table.
@@ -20,10 +20,13 @@ internal static class NativeRelationWriterBridge
         /* Writers convert rows through the tuple bridge, which only extensions with backend functions include. */
         #ifdef ANKUS_TUPLE_BRIDGE
         #include "access/commit_ts.h"
+        #include "access/genam.h"
+        #include "access/stratnum.h"
         #include "access/table.h"
         #include "access/tableam.h"
         #include "access/xact.h"
         #include "catalog/catversion.h"
+        #include "catalog/pg_am_d.h"
         #include "commands/trigger.h"
         #include "executor/executor.h"
         #include "mb/pg_wchar.h"
@@ -32,11 +35,13 @@ internal static class NativeRelationWriterBridge
         #include "parser/parse_relation.h"
         #include "replication/origin.h"
         #include "rewrite/rewriteHandler.h"
+        #include "storage/lmgr.h"
         #include "utils/acl.h"
         #include "utils/lsyscache.h"
         #include "utils/rel.h"
         #include "utils/relcache.h"
         #include "utils/rls.h"
+        #include "utils/snapmgr.h"
         #include "utils/typcache.h"
 
         typedef struct AnkusRelationWriter
@@ -384,6 +389,124 @@ internal static class NativeRelationWriterBridge
             return RelationFindReplTupleSeq(writer->relation, LockTupleExclusive, writer->search, writer->local);
         }
 
+        /* Finds and locks a row with the search slot's values in one unique btree index, waiting for a transaction
+         * that is writing the row, as a unique check would. This is pglogical's find_index_tuple, with PostgreSQL's own
+         * handling of a row updated or deleted before it is locked. RelationFindReplTupleByIndex searches the same way,
+         * but from PostgreSQL 16 it also requires every column to match unless the index is the replica identity or
+         * primary key, so it cannot find a row that conflicts only on another unique key. A NULL search value matches
+         * only in an index whose NULLs are not distinct; otherwise the index is skipped. */
+        static bool
+        ankus_relation_writer_find_by_index(AnkusRelationWriter *writer, Relation index)
+        {
+            ScanKeyData keys[INDEX_MAX_KEYS];
+            int count = IndexRelationGetNumberOfKeyAttributes(index);
+            SnapshotData snapshot;
+            IndexScanDesc scan;
+            bool found;
+            for (int key = 0; key < count; key++)
+            {
+                AttrNumber column = index->rd_index->indkey.values[key];
+                Oid type = index->rd_opcintype[key];
+                Oid operator = get_opfamily_member(index->rd_opfamily[key], type, type, BTEqualStrategyNumber);
+                if (!OidIsValid(operator))
+                    elog(ERROR, "missing operator %d(%u,%u) in opfamily %u", BTEqualStrategyNumber, type, type,
+                        index->rd_opfamily[key]);
+                ScanKeyInit(&keys[key], key + 1, BTEqualStrategyNumber, get_opcode(operator), writer->search->tts_values[column - 1]);
+                keys[key].sk_collation = index->rd_indcollation[key];
+                if (writer->search->tts_isnull[column - 1])
+                {
+        #if PG_VERSION_NUM >= 150000
+                    if (!index->rd_index->indnullsnotdistinct)
+                        return false;
+                    keys[key].sk_flags |= SK_ISNULL | SK_SEARCHNULL;
+        #else
+                    return false;
+        #endif
+                }
+            }
+
+            InitDirtySnapshot(snapshot);
+        #if PG_VERSION_NUM >= 190000
+            scan = index_beginscan(writer->relation, index, &snapshot, NULL, count, 0, SO_NONE);
+        #elif PG_VERSION_NUM >= 180000
+            scan = index_beginscan(writer->relation, index, &snapshot, NULL, count, 0);
+        #else
+            scan = index_beginscan(writer->relation, index, &snapshot, count, 0);
+        #endif
+        retry:
+            found = false;
+            index_rescan(scan, keys, count, NULL, 0);
+            if (index_getnext_slot(scan, ForwardScanDirection, writer->local))
+            {
+                TransactionId writing;
+                ExecMaterializeSlot(writer->local);
+                writing = TransactionIdIsValid(snapshot.xmin) ? snapshot.xmin : snapshot.xmax;
+                if (TransactionIdIsValid(writing))
+                {
+                    XactLockTableWait(writing, NULL, NULL, XLTW_None);
+                    goto retry;
+                }
+
+                found = true;
+            }
+
+            if (found)
+            {
+                TM_FailureData failure;
+                TM_Result status;
+                PushActiveSnapshot(GetLatestSnapshot());
+                status = table_tuple_lock(writer->relation, &writer->local->tts_tid, GetActiveSnapshot(), writer->local,
+                    GetCurrentCommandId(false), LockTupleExclusive, LockWaitBlock, 0, &failure);
+                PopActiveSnapshot();
+                switch (status)
+                {
+                    case TM_Ok:
+                        break;
+                    case TM_Updated:
+                        ereport(LOG, (errcode(ERRCODE_T_R_SERIALIZATION_FAILURE), errmsg("concurrent update, retrying")));
+                        goto retry;
+                    case TM_Deleted:
+                        ereport(LOG, (errcode(ERRCODE_T_R_SERIALIZATION_FAILURE), errmsg("concurrent delete, retrying")));
+                        goto retry;
+                    case TM_Invisible:
+                        elog(ERROR, "attempted to lock invisible tuple");
+                        break;
+                    default:
+                        elog(ERROR, "unexpected table_tuple_lock status: %u", status);
+                        break;
+                }
+            }
+
+            index_endscan(scan);
+            return found;
+        }
+
+        /* Finds and locks a row that would conflict with inserting the search slot: by the replica identity index
+         * first, then by each other valid unique btree index without expressions or a predicate, as pglogical's
+         * pglogical_tuple_find_conflict does. Returns the matching index, or InvalidOid. */
+        static Oid
+        ankus_relation_writer_find_conflict(AnkusRelationWriter *writer)
+        {
+            Oid identity = RelationGetReplicaIndex(writer->relation);
+            ankus_relation_writer_check(writer, ACL_SELECT);
+            for (int pass = 0; pass < 2; pass++)
+            {
+                for (int position = 0; position < writer->info->ri_NumIndices; position++)
+                {
+                    Relation index = writer->info->ri_IndexRelationDescs[position];
+                    IndexInfo *info = writer->info->ri_IndexRelationInfo[position];
+                    if ((RelationGetRelid(index) == identity) != (pass == 0) || !info->ii_Unique ||
+                        info->ii_Expressions != NIL || info->ii_Predicate != NIL || !index->rd_index->indisvalid ||
+                        index->rd_rel->relam != BTREE_AM_OID)
+                        continue;
+                    if (ankus_relation_writer_find_by_index(writer, index))
+                        return RelationGetRelid(index);
+                }
+            }
+
+            return InvalidOid;
+        }
+
         static void
         ankus_relation_writer_insert(AnkusRelationWriter *writer, AnkusMemoryRequest *request)
         {
@@ -452,7 +575,8 @@ internal static class NativeRelationWriterBridge
         /* Returns the locked row, with the origin and time of the transaction that wrote it when PostgreSQL tracks
          * commit timestamps. */
         static void
-        ankus_relation_writer_find_row(AnkusRelationWriter *writer, AnkusMemoryRequest *request, AnkusMemoryResult *result)
+        ankus_relation_writer_find_row(AnkusRelationWriter *writer, AnkusMemoryRequest *request, AnkusMemoryResult *result,
+            bool conflict)
         {
             TupleDesc descriptor = RelationGetDescr(writer->relation);
             AnkusInputBuffer owned = {0};
@@ -465,9 +589,21 @@ internal static class NativeRelationWriterBridge
         #else
             RepOriginId origin = 0;
         #endif
+            Oid index;
             ankus_relation_writer_fill_any(writer, request, request->data, writer->search, NULL, false);
-            if (!ankus_relation_writer_lookup(writer))
-                return;
+            if (conflict)
+            {
+                index = ankus_relation_writer_find_conflict(writer);
+                if (!OidIsValid(index))
+                    return;
+            }
+            else
+            {
+                if (!ankus_relation_writer_lookup(writer))
+                    return;
+                index = writer->key;
+            }
+
             slot_getallattrs(writer->local);
             ankus_tuple_transport_shaped(descriptor, descriptor->tdtypeid,
                 ankus_tuple_shape_find(descriptor, descriptor->tdtypeid, descriptor->tdtypmod),
@@ -479,6 +615,7 @@ internal static class NativeRelationWriterBridge
             result->context = (intptr_t) origin;
             result->data = (intptr_t) timestamp;
             result->length = (uintptr_t) xmin;
+            result->pointer = (intptr_t) index;
         }
 
         static void
@@ -539,7 +676,8 @@ internal static class NativeRelationWriterBridge
                     result->value = ankus_relation_writer_change(writer, request, request->flags == 3) ? 1 : 0;
                     break;
                 case 5:
-                    ankus_relation_writer_find_row(writer, request, result);
+                case 7:
+                    ankus_relation_writer_find_row(writer, request, result, request->flags == 7);
                     break;
                 default:
                     ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("unknown relation writer operation")));

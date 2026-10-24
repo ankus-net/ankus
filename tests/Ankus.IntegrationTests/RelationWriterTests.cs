@@ -244,6 +244,62 @@ public sealed class RelationWriterTests(TestContext context)
     /// <summary>
     /// Creates a table with the given columns, runs the test, and drops the table.
     /// </summary>
+    /// <summary>
+    /// <c>FindConflict</c> finds the row an insert would collide with by the replica identity, then by another unique
+    /// index, and names the index. It skips expression and partial indexes, a NULL never conflicts in an ordinary
+    /// unique index, and an unsent column counts as NULL.
+    /// </summary>
+    /// <param name="replicated">Whether to search with a row in logical replication's form.</param>
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task ConflictsAreFoundThroughUniqueIndexes(bool replicated)
+        => await WithTableAsync("id integer PRIMARY KEY, code text UNIQUE, tag text", async (connection, table, token) =>
+        {
+            string name = table["tests.".Length..];
+            await ExecuteAsync(connection, $"""
+                CREATE UNIQUE INDEX {name}_lower ON {table} (lower(code));
+                CREATE UNIQUE INDEX {name}_tag ON {table} (tag) WHERE tag <> '';
+                INSERT INTO {table} VALUES (1, 'a', 'x'), (2, NULL, NULL);
+                """, token);
+            async Task<string> FindAsync(int id, string? code, string? tag) => await ScalarAsync<string>(connection,
+                $"SELECT datatype.writer_find_conflict('{table}'::regclass::oid, {replicated}, {id}, " +
+                $"{(code is null ? "NULL" : $"'{code}'")}, {(tag is null ? "NULL" : $"'{tag}'")})", token);
+
+            Assert.AreEqual($"1:{name}_pkey", await FindAsync(1, "z", null));
+            Assert.AreEqual($"1:{name}_code_key", await FindAsync(3, "a", null));
+            Assert.AreEqual("none", await FindAsync(3, "b", null));
+            Assert.AreEqual("none", await FindAsync(3, null, null));
+            Assert.AreEqual("none", await FindAsync(3, "A", null));
+            Assert.AreEqual("none", await FindAsync(3, "c", "x"));
+            string[] skipped = ["(3, 'A', NULL)", "(3, 'c', 'x')"];
+            foreach (string values in skipped)
+            {
+                PostgresException duplicate = await Assert.ThrowsExactlyAsync<PostgresException>(() =>
+                    ExecuteAsync(connection, $"INSERT INTO {table} VALUES {values}", token));
+                Assert.AreEqual(PostgresErrorCodes.UniqueViolation, duplicate.SqlState);
+            }
+        });
+
+    /// <summary>
+    /// In a unique index whose NULLs are not distinct, available from PostgreSQL 15, a NULL conflicts with a NULL.
+    /// </summary>
+    [TestMethod]
+    public async Task NullsConflictWhereTheIndexTreatsThemAsEqual()
+    {
+        if (PostgresFixture.Cluster.Installation.Version.Major < 15)
+        {
+            Assert.Inconclusive("UNIQUE NULLS NOT DISTINCT needs PostgreSQL 15 or later.");
+        }
+
+        await WithTableAsync("id integer PRIMARY KEY, code text UNIQUE NULLS NOT DISTINCT, tag text", async (connection, table, token) =>
+        {
+            await ExecuteAsync(connection, $"INSERT INTO {table} VALUES (1, NULL, NULL)", token);
+            Assert.AreEqual($"1:{table["tests.".Length..]}_code_key", await ScalarAsync<string>(connection,
+                $"SELECT datatype.writer_find_conflict('{table}'::regclass::oid, false, 2, NULL, NULL)", token));
+        });
+    }
+
     private async Task WithTableAsync(string columns, Func<NpgsqlConnection, string, CancellationToken, Task> test)
     {
         CancellationToken token = context.CancellationToken;

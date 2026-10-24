@@ -243,6 +243,54 @@ public static class RelationWriterFunctions
     /// <summary>
     /// Builds a row of <c>(id, name)</c> for a writer's table.
     /// </summary>
+    /// <summary>
+    /// Looks for a row that inserting <c>(id, code, tag)</c> would conflict with, in a table whose other columns stay
+    /// NULL or unsent, and names the index it was found through.
+    /// </summary>
+    /// <param name="table">The table's OID.</param>
+    /// <param name="replicated">Whether to search with a row in logical replication's form.</param>
+    /// <param name="id">The new row's <c>id</c>.</param>
+    /// <param name="code">The new row's <c>code</c>, or null.</param>
+    /// <param name="tag">The new row's <c>tag</c>, or null.</param>
+    /// <returns><c>none</c>, or the found row's <c>id</c> and the index's name.</returns>
+    [PgFunction]
+    public static string WriterFindConflict(uint table, bool replicated, int id, string? code, string? tag)
+    {
+        using PgRelationWriter writer = PgRelationWriter.Open(table);
+        PgFoundRow? found;
+        if (replicated)
+        {
+            PgReplicatedRow row = writer.CreateReplicatedRow();
+            row.SetText(writer.Descriptor.GetOrdinal("id"), id.ToString(CultureInfo.InvariantCulture));
+            SetTextOrNull(row, writer.Descriptor.GetOrdinal("code"), code);
+            SetTextOrNull(row, writer.Descriptor.GetOrdinal("tag"), tag);
+            found = writer.FindConflict(row);
+        }
+        else
+        {
+            PgHeapTuple row = writer.CreateRow();
+            row.Set("id", id);
+            row.Set("code", code);
+            row.Set("tag", tag);
+            found = writer.FindConflict(row);
+        }
+
+        return found is null ? "none" : found.Row.Get<int>("id").ToString(CultureInfo.InvariantCulture) + ":" +
+            Spi.ExecuteScalar<string>("SELECT relname::text FROM pg_class WHERE oid = $1", SpiParameter.Create(found.IndexOid));
+
+        static void SetTextOrNull(PgReplicatedRow row, int ordinal, string? value)
+        {
+            if (value is null)
+            {
+                row.SetNull(ordinal);
+            }
+            else
+            {
+                row.SetText(ordinal, value);
+            }
+        }
+    }
+
     private static PgHeapTuple Row(PgRelationWriter writer, int id, string? name)
     {
         PgHeapTuple row = writer.CreateRow();
