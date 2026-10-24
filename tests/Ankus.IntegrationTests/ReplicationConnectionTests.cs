@@ -76,6 +76,21 @@ public sealed class ReplicationConnectionTests(TestContext context)
     }
 
     /// <summary>
+    /// An ordinary connection to a host name tries each of its addresses, as libpq does, so it reaches a server that
+    /// listens only on 127.0.0.1 through <c>localhost</c> where that name resolves to ::1 first, as on Windows.
+    /// </summary>
+    [TestMethod]
+    public async Task OrdinaryConnectionsTryEachAddressOfAHostName()
+    {
+        CancellationToken token = context.CancellationToken;
+        await using NpgsqlConnection connection = await PostgresFixture.Cluster.OpenConnectionAsync(token);
+        var builder = new NpgsqlConnectionStringBuilder(connection.ConnectionString) { Host = "localhost" };
+        await using var named = new NpgsqlConnection(builder.ConnectionString);
+        Assert.AreEqual("1", await ScalarAsync<string>(connection, "SELECT datatype.ordinary_query(@connection, 'SELECT 1', 1)",
+            token, ConnectionString(named)));
+    }
+
+    /// <summary>
     /// A command that fails on the server throws its SQLSTATE and message without failing this backend, and the
     /// connection keeps working. PostgreSQL 13 does not pass the SQLSTATE on.
     /// </summary>

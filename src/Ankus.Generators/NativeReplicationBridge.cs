@@ -156,16 +156,24 @@ internal static class NativeReplicationBridge
                 int state = 2;
                 while (state == 1 || state == 2)
                 {
-                    int events = WaitLatchOrSocket(MyLatch, WL_EXIT_ON_PM_DEATH | WL_LATCH_SET |
-                        (state == 1 ? WL_SOCKET_READABLE : WL_SOCKET_WRITEABLE), connection_socket(connection->streamConn), 0,
-                        WAIT_EVENT_LIBPQWALRECEIVER_CONNECT);
+                    int io_flag = state == 1 ? WL_SOCKET_READABLE : WL_SOCKET_WRITEABLE;
+        #ifdef WIN32
+                    /* As libpqwalreceiver does, wait for the connect itself while it is CONNECTION_STARTED, 2: Windows
+                     * reports a refused connect as writable, so libpq would fail on that socket instead of trying the
+                     * host's next address. */
+                    if (state == 2 && status(connection->streamConn) == 2)
+                        io_flag = WL_SOCKET_CONNECTED;
+        #endif
+                    int events = WaitLatchOrSocket(MyLatch, WL_EXIT_ON_PM_DEATH | WL_LATCH_SET | io_flag,
+                        connection_socket(connection->streamConn), 0, WAIT_EVENT_LIBPQWALRECEIVER_CONNECT);
                     if ((events & WL_LATCH_SET) != 0)
                     {
                         ResetLatch(MyLatch);
                         CHECK_FOR_INTERRUPTS();
                     }
 
-                    state = connect_poll(connection->streamConn);
+                    if ((events & io_flag) != 0)
+                        state = connect_poll(connection->streamConn);
                 }
             }
             PG_CATCH();

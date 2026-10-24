@@ -1103,6 +1103,14 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   such rows can be found, written back unchanged and deleted, and a C# row
   trigger receives them. An SPI query that returns one as a column still fails
   with `0A000`.
+- On Windows with PostgreSQL 13–16, an ordinary connection to a host name that
+  resolves to an address the server does not listen on failed instead of trying
+  the next address (#95). Its connect loop waited for the socket to become
+  writable, which Windows reports for a refused connect, so libpq failed on
+  that socket. As libpqwalreceiver does, the loop now waits for the connect to
+  complete on Windows while libpq reports `CONNECTION_STARTED`, and advances
+  libpq only when the socket is ready. A test connects through `localhost` to a
+  server that listens only on 127.0.0.1.
 - ANKUS044 rejected the SPI guide's own `Spi.ParameterReference` example
   (#93). In a loop, the analyzer summarizes a command with quoted fragments
   and accepts a join only at a token boundary, and with an empty first
