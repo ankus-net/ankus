@@ -182,6 +182,58 @@ public sealed partial class ToolCommandTests
     }
 
     /// <summary>
+    /// A suite written for pg_regress keeps its own pg_hba.conf and notices, and a backend reaches the server by database
+    /// name alone, as it does in pg_regress's temporary instance.
+    /// </summary>
+    [RetryPortCollisionTestMethod]
+    public async Task RegressRunsSuitesWrittenForPgRegress()
+    {
+        CancellationToken token = context.CancellationToken;
+        await using PostgresTestInstallation owner = await PostgresTestInstallation.StageAsync(s_installation, CreateDirectory(), token);
+        string home = CreateDirectory();
+        string project = PrepareRegressionProject();
+        string suite = Path.Join(Path.GetDirectoryName(project)!, "pg_regress");
+        const string Database = "regress_connection";
+        string hba = Path.Join(CreateDirectory(), "regress-pg_hba.conf");
+        await File.WriteAllTextAsync(hba, "host all blocked 127.0.0.1/32 reject\nhost all all 127.0.0.1/32 trust\n", token);
+        await WriteRegressionCaseAsync(suite, "setup", "CREATE EXTENSION ankus_tool_probe; CREATE ROLE blocked LOGIN;", null, token);
+        await WriteRegressionCaseAsync(suite, "connection",
+            "DO $$ BEGIN RAISE NOTICE 'visible'; END $$;\n" +
+            "CREATE PUBLICATION self_publication;\n" +
+            $"CREATE SUBSCRIPTION self_subscription CONNECTION 'dbname={Database}' PUBLICATION self_publication " +
+            "WITH (create_slot = false, enabled = false, slot_name = NONE);\n" +
+            "SELECT subname FROM pg_subscription;\nDROP SUBSCRIPTION self_subscription;\nDROP PUBLICATION self_publication;", null, token);
+        var cluster = new PostgresDevelopmentCluster(owner.Installation, home);
+        using PortReservation reservation = PortReservation.Create();
+        int port = reservation.Port;
+        reservation.Dispose();
+        string[] options = [.. RegressionOptions(owner.Installation, home, project, port, Database), "--no-build",
+            "--postgresql-conf", "hba_file=" + hba, "--postgresql-conf", "wal_level=logical"];
+        try
+        {
+            ProcessResult added = await InvokeAsync([.. options, "--postgresql-conf", "client_min_messages=notice", "--add", "connection"], token);
+            Assert.AreEqual(0, added.ExitCode, added.StandardOutput + added.StandardError);
+            string expected = (await File.ReadAllTextAsync(Path.Join(suite, "expected", "connection.out"), token)).ReplaceLineEndings("\n");
+            Assert.AreEqual("\\set ECHO none\nNOTICE:  visible\nself_subscription\n", expected);
+
+            ProcessResult quiet = await InvokeAsync(options, token);
+            Assert.AreEqual(1, quiet.ExitCode, quiet.StandardOutput + quiet.StandardError);
+            Assert.Contains("NOTICE:  visible", await File.ReadAllTextAsync(Path.Join(suite, "regression.diffs"), token));
+
+            await using var blocked = new NpgsqlConnection(new NpgsqlConnectionStringBuilder
+            {
+                Host = "127.0.0.1", Port = port, Username = "blocked", Database = Database, Pooling = false,
+            }.ConnectionString);
+            PostgresException rejected = await Assert.ThrowsExactlyAsync<PostgresException>(() => blocked.OpenAsync(token));
+            Assert.AreEqual(PostgresErrorCodes.InvalidAuthorizationSpecification, rejected.SqlState);
+        }
+        finally
+        {
+            await cluster.StopAsync(CancellationToken.None);
+        }
+    }
+
+    /// <summary>
     /// Native alternate expectations, ordered selections, repeat diffs and automatic promotion retain exact failure and ownership semantics.
     /// </summary>
     [RetryPortCollisionTestMethod]
