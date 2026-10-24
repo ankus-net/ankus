@@ -211,9 +211,19 @@ public sealed class PostgresProvisionerTests(TestContext context)
     private sealed class IndexHandler(string index) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            => request.RequestUri!.AbsoluteUri.EndsWith("/source/", StringComparison.Ordinal)
-                ? Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(index) })
-                : throw new InvalidOperationException("Only the source index may be requested: " + request.RequestUri);
+        {
+            if (!request.RequestUri!.AbsoluteUri.EndsWith("/source/", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Only the source index may be requested: " + request.RequestUri);
+            }
+
+            return Task.FromResult(Respond(new StringContent(index)));
+        }
+
+        /// <summary>
+        /// Creates a successful response that the HTTP client owns and disposes.
+        /// </summary>
+        private static HttpResponseMessage Respond(HttpContent content) => new(HttpStatusCode.OK) { Content = content };
     }
 
     /// <summary>
