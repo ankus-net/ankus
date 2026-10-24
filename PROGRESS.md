@@ -1082,6 +1082,16 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   `RelationFindReplTupleByIndex` cannot do this from PostgreSQL 16 on, because
   for any index other than the replica identity or primary key it also requires
   every column to match. A NULL matches only in a `NULLS NOT DISTINCT` index.
+- `PgRelationWriter` inserted one row per call, so pglogical's batched apply had
+  no equivalent (#77). `InsertBuffered` checks each row as
+  `ExecSimpleRelationInsert` does and holds up to 1,000, then `Flush`, any other
+  writer operation, a full batch or disposal writes them with
+  `table_multi_insert`, adds their index entries and queues their `AFTER ROW`
+  triggers, as COPY's multi-insert buffer does. As with COPY and pglogical, a
+  table with `BEFORE` or `INSTEAD OF` row insert triggers or a volatile default
+  other than `nextval` gets each row at once. Tests check the 1,000-row
+  batches, ordering with a later update, `AFTER` triggers, both fallbacks and a
+  unique violation raised when the batch is written.
 - macOS killed the Generators test host on the MacBook runner (main CI
   39517461878) as the largest process, at 26.7 GB compressed. The generator wrote
   the native source, SQL, graph and exports as single `AssemblyMetadata`

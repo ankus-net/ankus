@@ -10,7 +10,8 @@ internal static class NativeRelationWriterBridge
     /// Implements the guarded relation writer operations behind <c>PgRelationWriter</c>.
     /// </summary>
     /// <remarks>
-    /// Operations: 1 opens, 2 inserts, 3 updates, 4 deletes, 5 finds, 6 closes and 7 finds a conflicting row. A writer keeps one executor state for
+    /// Operations: 1 opens, 2 inserts, 3 updates, 4 deletes, 5 finds, 6 closes, 7 finds a conflicting row, 8 buffers an
+    /// insert and 9 writes the buffered inserts. A writer keeps one executor state for
     /// its table, as <c>create_edata_for_relation</c> builds it in <c>worker.c</c>, in a context under the transaction,
     /// so it cannot outlive the transaction; a transaction that commits with a writer still open fails, because its
     /// AFTER triggers have not run. Rows arrive as self-describing tuples and are checked against the table.
@@ -21,6 +22,7 @@ internal static class NativeRelationWriterBridge
         #ifdef ANKUS_TUPLE_BRIDGE
         #include "access/commit_ts.h"
         #include "access/genam.h"
+        #include "access/heapam.h"
         #include "access/stratnum.h"
         #include "access/table.h"
         #include "access/tableam.h"
@@ -29,6 +31,7 @@ internal static class NativeRelationWriterBridge
         #include "catalog/pg_am_d.h"
         #include "commands/trigger.h"
         #include "executor/executor.h"
+        #include "executor/nodeModifyTable.h"
         #include "mb/pg_wchar.h"
         #include "miscadmin.h"
         #include "optimizer/optimizer.h"
@@ -58,7 +61,15 @@ internal static class NativeRelationWriterBridge
             TupleTableSlot *search;
             TupleTableSlot *local;
             Oid key;
+            /* Inserts wait here until a flush writes them together, as COPY batches them. A batch size of 1 means
+             * every insert is written at once; 0 means it has not been decided. */
+            TupleTableSlot **buffered;
+            int buffered_count;
+            int batch_size;
+            BulkInsertState bulk;
         } AnkusRelationWriter;
+
+        #define ANKUS_RELATION_WRITER_BATCH 1000
 
         static AnkusRelationWriter *ankus_relation_writers = NULL;
         static uint64 ankus_relation_writer_next = 1;
@@ -523,6 +534,112 @@ internal static class NativeRelationWriterBridge
             CommandCounterIncrement();
         }
 
+        /* Batches inserts as COPY and pglogical do, except where each row must be in the table before the next is
+         * prepared: when BEFORE or INSTEAD OF row insert triggers could read the table, or a volatile column default
+         * other than nextval could. */
+        static int
+        ankus_relation_writer_batch_size(AnkusRelationWriter *writer)
+        {
+            TriggerDesc *triggers = writer->info->ri_TrigDesc;
+            TupleDesc descriptor = RelationGetDescr(writer->relation);
+            if (triggers != NULL && (triggers->trig_insert_before_row || triggers->trig_insert_instead_row))
+                return 1;
+            for (int attribute = 0; attribute < descriptor->natts; attribute++)
+            {
+                Form_pg_attribute column = TupleDescAttr(descriptor, attribute);
+                Expr *expression;
+                if (column->attisdropped || column->attgenerated)
+                    continue;
+                expression = (Expr *) build_column_default(writer->relation, attribute + 1);
+                if (expression != NULL && contain_volatile_functions_not_nextval((Node *) expression_planner(expression)))
+                    return 1;
+            }
+
+            return ANKUS_RELATION_WRITER_BATCH;
+        }
+
+        /* Writes the buffered rows with one multi-insert, then adds each row's index entries and queues its AFTER
+         * ROW triggers, which fire when the batch ends, as COPY's CopyMultiInsertBufferFlush does. */
+        static void
+        ankus_relation_writer_flush(AnkusRelationWriter *writer)
+        {
+            int count = writer->buffered_count;
+            if (count == 0)
+                return;
+            /* A failure aborts the transaction, so these rows are never written twice. */
+            writer->buffered_count = 0;
+            if (writer->bulk == NULL)
+            {
+                MemoryContext previous = MemoryContextSwitchTo(writer->context);
+                writer->bulk = GetBulkInsertState();
+                MemoryContextSwitchTo(previous);
+            }
+
+            AfterTriggerBeginQuery();
+            table_multi_insert(writer->relation, writer->buffered, count, GetCurrentCommandId(true), 0, writer->bulk);
+            for (int position = 0; position < count; position++)
+            {
+                TupleTableSlot *slot = writer->buffered[position];
+                List *recheck = NIL;
+                if (writer->info->ri_NumIndices > 0)
+        #if PG_VERSION_NUM >= 190000
+                    recheck = ExecInsertIndexTuples(writer->info, writer->estate, 0, slot, NIL, NULL);
+        #elif PG_VERSION_NUM >= 160000
+                    recheck = ExecInsertIndexTuples(writer->info, slot, writer->estate, false, false, NULL, NIL, false);
+        #elif PG_VERSION_NUM >= 140000
+                    recheck = ExecInsertIndexTuples(writer->info, slot, writer->estate, false, false, NULL, NIL);
+        #else
+                    recheck = ExecInsertIndexTuples(slot, writer->estate, false, NULL, NIL);
+        #endif
+                ExecARInsertTriggers(writer->estate, writer->info, slot, recheck, NULL);
+                list_free(recheck);
+                ExecClearTuple(slot);
+            }
+
+            AfterTriggerEndQuery(writer->estate);
+            CommandCounterIncrement();
+        }
+
+        /* Checks a row as ExecSimpleRelationInsert does before storing it, then copies it into the batch. */
+        static void
+        ankus_relation_writer_buffer(AnkusRelationWriter *writer, AnkusMemoryRequest *request)
+        {
+            TupleConstr *constraints = RelationGetDescr(writer->relation)->constr;
+            if (writer->batch_size == 0)
+                writer->batch_size = ankus_relation_writer_batch_size(writer);
+            if (writer->batch_size == 1)
+            {
+                ankus_relation_writer_insert(writer, request);
+                return;
+            }
+
+            ankus_relation_writer_fill_any(writer, request, request->data, writer->row, NULL, true);
+            ankus_relation_writer_check(writer, ACL_INSERT);
+            CheckCmdReplicaIdentity(writer->relation, CMD_INSERT);
+            if (constraints != NULL && constraints->has_generated_stored)
+        #if PG_VERSION_NUM >= 140000
+                ExecComputeStoredGenerated(writer->info, writer->estate, writer->row, CMD_INSERT);
+        #else
+                ExecComputeStoredGenerated(writer->estate, writer->row, CMD_INSERT);
+        #endif
+            if (constraints != NULL)
+                ExecConstraints(writer->info, writer->row, writer->estate);
+            if (writer->relation->rd_rel->relispartition)
+                (void) ExecPartitionCheck(writer->info, writer->row, writer->estate, true);
+            if (writer->buffered == NULL)
+                writer->buffered = MemoryContextAllocZero(writer->context, sizeof(TupleTableSlot *) * ANKUS_RELATION_WRITER_BATCH);
+            if (writer->buffered[writer->buffered_count] == NULL)
+            {
+                MemoryContext previous = MemoryContextSwitchTo(writer->context);
+                writer->buffered[writer->buffered_count] = table_slot_create(writer->relation, &writer->estate->es_tupleTable);
+                MemoryContextSwitchTo(previous);
+            }
+
+            ExecCopySlot(writer->buffered[writer->buffered_count++], writer->row);
+            if (writer->buffered_count == writer->batch_size)
+                ankus_relation_writer_flush(writer);
+        }
+
         static bool
         ankus_relation_writer_change(AnkusRelationWriter *writer, AnkusMemoryRequest *request, bool update)
         {
@@ -624,6 +741,8 @@ internal static class NativeRelationWriterBridge
             AnkusRelationWriter *writer = ankus_relation_writer_find(id);
             EState *estate = writer->estate;
             ankus_relation_writer_unlink(writer);
+            if (writer->bulk != NULL)
+                FreeBulkInsertState(writer->bulk);
             ExecCloseIndices(writer->info);
         #if PG_VERSION_NUM >= 190000
             ExecCloseTrigTargetRelations(estate);
@@ -654,18 +773,22 @@ internal static class NativeRelationWriterBridge
                 return;
             }
 
-            if (request->flags == 6)
-            {
-                ankus_relation_writer_close(request->context);
-                return;
-            }
-
             /* Like the apply worker's per-message context, each change's memory lasts until the next one, so a long
              * transaction does not grow with its rows; a found row is copied out before the next call. */
             writer = ankus_relation_writer_find(request->context);
             MemoryContextReset(writer->scratch);
             ResetPerTupleExprContext(writer->estate);
             previous = MemoryContextSwitchTo(writer->scratch);
+            /* Buffered inserts reach the table before any other operation, so changes keep their order. */
+            if (request->flags != 8)
+                ankus_relation_writer_flush(writer);
+            if (request->flags == 6)
+            {
+                MemoryContextSwitchTo(previous);
+                ankus_relation_writer_close(request->context);
+                return;
+            }
+
             switch (request->flags)
             {
                 case 2:
@@ -678,6 +801,11 @@ internal static class NativeRelationWriterBridge
                 case 5:
                 case 7:
                     ankus_relation_writer_find_row(writer, request, result, request->flags == 7);
+                    break;
+                case 8:
+                    ankus_relation_writer_buffer(writer, request);
+                    break;
+                case 9:
                     break;
                 default:
                     ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE), errmsg("unknown relation writer operation")));

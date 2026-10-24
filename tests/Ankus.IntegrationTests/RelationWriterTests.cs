@@ -300,6 +300,60 @@ public sealed class RelationWriterTests(TestContext context)
         });
     }
 
+    /// <summary>
+    /// Buffered inserts reach the table a thousand at a time, on <c>Flush</c> and before another operation, with their
+    /// AFTER triggers, and in the order the writer received them.
+    /// </summary>
+    [TestMethod]
+    public async Task BufferedInsertsAreWrittenInBatches()
+        => await WithTableAsync("id integer PRIMARY KEY, name text", async (connection, table, token) =>
+        {
+            string log = table + "_log";
+            await ExecuteAsync(connection, $"""
+                CREATE TABLE {log}(id integer);
+                CREATE FUNCTION {log}_after() RETURNS trigger LANGUAGE plpgsql AS
+                    $$BEGIN INSERT INTO {log} VALUES (NEW.id); RETURN NULL; END$$;
+                CREATE TRIGGER after_row AFTER INSERT ON {table} FOR EACH ROW EXECUTE FUNCTION {log}_after();
+                """, token);
+            Assert.AreEqual("2000|2500|True|2501", await ScalarAsync<string>(connection,
+                $"SELECT datatype.writer_insert_buffered('{table}'::regclass::oid, 2500)", token));
+            Assert.AreEqual("2501|1|2501|updated", await ScalarAsync<string>(connection,
+                $"SELECT count(*) || '|' || min(id) || '|' || max(id) || '|' || max(name) FILTER (WHERE id = 2501) FROM {table}", token));
+            Assert.AreEqual(2501L, await ScalarAsync<long>(connection, $"SELECT count(DISTINCT id) FROM {log}", token));
+            await ExecuteAsync(connection, $"DROP TABLE {log}; DROP FUNCTION {log}_after() CASCADE;", token);
+        });
+
+    /// <summary>
+    /// As with COPY, a table with a BEFORE row trigger or a volatile default receives each buffered row at once.
+    /// </summary>
+    /// <param name="setup">SQL that gives the table a reason to write each row at once, with <c>{0}</c> for its name.</param>
+    [TestMethod]
+    [DataRow("CREATE FUNCTION {0}_before() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN NEW; END$$; " +
+        "CREATE TRIGGER before_row BEFORE INSERT ON {0} FOR EACH ROW EXECUTE FUNCTION {0}_before();", DisplayName = "before_trigger")]
+    [DataRow("ALTER TABLE {0} ADD COLUMN stamp timestamptz DEFAULT clock_timestamp();", DisplayName = "volatile_default")]
+    public async Task SomeTablesReceiveBufferedRowsAtOnce(string setup)
+        => await WithTableAsync("id integer PRIMARY KEY, name text", async (connection, table, token) =>
+        {
+            await ExecuteAsync(connection, string.Format(CultureInfo.InvariantCulture, setup, table), token);
+            Assert.AreEqual("1500|1500|True|1501", await ScalarAsync<string>(connection,
+                $"SELECT datatype.writer_insert_buffered('{table}'::regclass::oid, 1500)", token));
+            await ExecuteAsync(connection, $"DROP FUNCTION IF EXISTS {table}_before() CASCADE", token);
+        });
+
+    /// <summary>
+    /// A unique violation among buffered rows is raised when the batch is written, here as the writer is disposed,
+    /// and leaves the table unchanged.
+    /// </summary>
+    [TestMethod]
+    public async Task BufferedUniqueViolationsAreRaisedWhenWritten()
+        => await WithTableAsync("id integer PRIMARY KEY, name text", async (connection, table, token) =>
+        {
+            PostgresException duplicate = await Assert.ThrowsExactlyAsync<PostgresException>(() =>
+                ExecuteAsync(connection, $"SELECT datatype.writer_buffer_duplicate('{table}'::regclass::oid)", token));
+            Assert.AreEqual(PostgresErrorCodes.UniqueViolation, duplicate.SqlState);
+            Assert.AreEqual(0L, await ScalarAsync<long>(connection, $"SELECT count(*) FROM {table}", token));
+        });
+
     private async Task WithTableAsync(string columns, Func<NpgsqlConnection, string, CancellationToken, Task> test)
     {
         CancellationToken token = context.CancellationToken;

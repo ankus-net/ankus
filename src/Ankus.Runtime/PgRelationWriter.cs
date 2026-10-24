@@ -152,6 +152,48 @@ public sealed unsafe class PgRelationWriter : IDisposable
     }
 
     /// <summary>
+    /// Adds a row to the writer's batch of inserts, which it writes together through PostgreSQL's multi-insert, as
+    /// COPY and pglogical's apply do.
+    /// </summary>
+    /// <param name="row">The row to insert.</param>
+    /// <remarks>
+    /// The writer holds up to 1,000 rows. It writes them, with their index entries and <c>AFTER ROW</c> triggers, when
+    /// the batch is full, on <see cref="Flush"/>, before any other operation of this writer, and when it is disposed.
+    /// Until then other code, including SQL, does not see them. <c>NOT NULL</c> and check constraints are checked as
+    /// each row is added; unique and foreign key violations are raised when the batch is written. As with COPY, a
+    /// table with <c>BEFORE</c> or <c>INSTEAD OF</c> row insert triggers, or a volatile column default other than
+    /// <c>nextval</c>, receives each row at once.
+    /// </remarks>
+    public void InsertBuffered(PgHeapTuple row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        _ = Run(8, row, null, null);
+    }
+
+    /// <summary>
+    /// Adds a row whose values are in logical replication's form to the writer's batch of inserts; columns not sent
+    /// take their defaults.
+    /// </summary>
+    /// <param name="row">The row to insert.</param>
+    /// <remarks>
+    /// The batch behaves as it does for <see cref="InsertBuffered(PgHeapTuple)"/>.
+    /// </remarks>
+    public void InsertBuffered(PgReplicatedRow row)
+    {
+        ArgumentNullException.ThrowIfNull(row);
+        _ = Run(8, row, null, null);
+    }
+
+    /// <summary>
+    /// Writes the rows that <see cref="InsertBuffered(PgHeapTuple)"/> holds, so SQL and other code see them.
+    /// </summary>
+    public void Flush()
+    {
+        NativeMemoryRequest request = new() { _operation = NativeMemoryOperation.RelationWriter, _flags = 9, _context = Id };
+        NativeMemoryContext.Invoke(ref request, out _);
+    }
+
+    /// <summary>
     /// Replaces the row that matches <paramref name="key"/> with <paramref name="row"/>.
     /// </summary>
     /// <param name="key">A row whose key columns identify the row to change.</param>
@@ -271,7 +313,8 @@ public sealed unsafe class PgRelationWriter : IDisposable
     }
 
     /// <summary>
-    /// Closes the writer and releases its executor state. The table stays locked until the transaction ends.
+    /// Writes any buffered inserts, then closes the writer and releases its executor state. The table stays locked
+    /// until the transaction ends.
     /// </summary>
     public void Dispose()
     {

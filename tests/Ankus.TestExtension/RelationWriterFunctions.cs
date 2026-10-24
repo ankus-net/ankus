@@ -291,6 +291,48 @@ public static class RelationWriterFunctions
         }
     }
 
+    /// <summary>
+    /// Buffers <paramref name="count"/> rows into a table of <c>(id integer, name text)</c>, then flushes, buffers one
+    /// more row and updates it, counting the rows SQL sees at each step.
+    /// </summary>
+    /// <param name="table">The table's OID.</param>
+    /// <param name="count">The number of rows to buffer before the explicit flush.</param>
+    /// <returns>The counts before and after the flush, the update's outcome and the final count.</returns>
+    [PgFunction]
+    public static string WriterInsertBuffered(uint table, int count)
+    {
+        (string schema, string name) = Spi.ExecuteScalars<string, string>(
+            "SELECT n.nspname::text, c.relname::text FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.oid = $1",
+            SpiParameter.Create(table));
+        string qualified = Spi.QuoteQualifiedIdentifier(schema, name);
+        using PgRelationWriter writer = PgRelationWriter.Open(table);
+        for (int id = 1; id <= count; id++)
+        {
+            writer.InsertBuffered(Row(writer, id, "row " + id.ToString(CultureInfo.InvariantCulture)));
+        }
+
+        long before = Count();
+        writer.Flush();
+        long flushed = Count();
+        writer.InsertBuffered(Row(writer, count + 1, "last"));
+        bool updated = writer.Update(Row(writer, count + 1, null), Row(writer, count + 1, "updated"));
+        return string.Join('|', before, flushed, updated, Count());
+
+        long Count() => Spi.ExecuteScalar<long>($"SELECT count(*) FROM {qualified}");
+    }
+
+    /// <summary>
+    /// Buffers two rows with the same key, so the unique violation is raised when the writer flushes at disposal.
+    /// </summary>
+    /// <param name="table">The table's OID.</param>
+    [PgFunction]
+    public static void WriterBufferDuplicate(uint table)
+    {
+        using PgRelationWriter writer = PgRelationWriter.Open(table);
+        writer.InsertBuffered(Row(writer, 1, "one"));
+        writer.InsertBuffered(Row(writer, 1, "again"));
+    }
+
     private static PgHeapTuple Row(PgRelationWriter writer, int id, string? name)
     {
         PgHeapTuple row = writer.CreateRow();
