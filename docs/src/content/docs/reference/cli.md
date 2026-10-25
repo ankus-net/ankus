@@ -34,7 +34,7 @@ Invalid Ankus declarations remain errors regardless of that setting.
 Alternatively, install `Ankus.Templates` from your configured feed:
 
 ```console
-dotnet new install Ankus.Templates@0.2.7
+dotnet new install Ankus.Templates@0.2.8
 dotnet new ankus -n Acme.Search
 cd Acme.Search
 dotnet tool restore
