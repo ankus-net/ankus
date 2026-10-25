@@ -227,6 +227,46 @@ public sealed class RelationWriterTests(TestContext context)
         });
 
     /// <summary>
+    /// Opening a writer starts no subtransaction, whether it receives the table's descriptor or reuses the one an
+    /// earlier writer received, since each subtransaction's end walks state that grows with the backend's relations
+    /// (#111). Nor do inserts, updates, deletes and lookups, by key or with replicated rows set from text and binary
+    /// values. PostgreSQL reports each subtransaction start at DEBUG5.
+    /// </summary>
+    [TestMethod]
+    public async Task OpeningWritersStartsNoSubtransaction()
+        => await WithTableAsync("id integer PRIMARY KEY, name text", async (connection, table, token) =>
+        {
+            await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
+            await ExecuteAsync(connection, $"""
+                CREATE TABLE {table}_other(id integer PRIMARY KEY, name text);
+                CREATE TABLE {table}_keyed(id integer PRIMARY KEY, name text);
+                CREATE TABLE {table}_replicated({ReplicatedColumns});
+                """, token);
+            await ExecuteAsync(connection, $"SELECT datatype.writer_insert('{table}'::regclass::oid, 1, 'warm')", token);
+            await ExecuteAsync(connection, "SET LOCAL client_min_messages = debug5", token);
+            var notices = new List<PostgresNotice>();
+            connection.Notice += (_, args) => notices.Add(args.Notice);
+            await ExecuteAsync(connection, $"""
+                SELECT datatype.writer_insert('{table}'::regclass::oid, 2, 'reused');
+                SELECT datatype.writer_insert('{table}_other'::regclass::oid, 1, 'received');
+                ALTER TABLE {table} ADD COLUMN note text;
+                SELECT datatype.writer_insert('{table}'::regclass::oid, 3, 'changed');
+                SELECT datatype.writer_apply('{table}_keyed'::regclass::oid);
+                SELECT datatype.writer_apply_replicated('{table}_replicated'::regclass::oid);
+                """, token);
+            Assert.AreEqual(0, notices.Count(static notice => notice.MessageText.StartsWith("StartSubTransaction", StringComparison.Ordinal)));
+            await ExecuteAsync(connection, "SET LOCAL client_min_messages = notice", token);
+            Assert.AreEqual("1:warm;2:reused;3:changed", await ScalarAsync<string>(connection,
+                $"SELECT string_agg(id || ':' || name, ';' ORDER BY id) FROM {table}", token));
+            Assert.AreEqual(1L, await ScalarAsync<long>(connection, $"SELECT count(*) FROM {table}_other", token));
+            Assert.AreEqual("1:one;2:zwei", await ScalarAsync<string>(connection,
+                $"SELECT string_agg(id || ':' || name, ';' ORDER BY id) FROM {table}_keyed", token));
+            Assert.AreEqual("1:uno", await ScalarAsync<string>(connection,
+                $"SELECT string_agg(id || ':' || name, ';' ORDER BY id) FROM {table}_replicated", token));
+            await transaction.RollbackAsync(token);
+        });
+
+    /// <summary>
     /// Finding a row reports the transaction that wrote it; without commit timestamps the time is unknown and the
     /// origin is zero.
     /// </summary>

@@ -23,6 +23,7 @@ public sealed unsafe class PgRelationWriter : IDisposable
 {
     private const int DescriptorCacheLimit = 1024;
 
+    // Keyed by table OID; the native open sends a new descriptor whenever the type cache's identifier differs.
     private static readonly Dictionary<uint, (nuint Identifier, PgTupleDescriptor Descriptor)> s_descriptors = [];
 
     private readonly int _thread = Environment.CurrentManagedThreadId;
@@ -66,17 +67,26 @@ public sealed unsafe class PgRelationWriter : IDisposable
     /// table.</exception>
     public static PgRelationWriter Open(uint relationOid)
     {
+        (nuint Identifier, PgTupleDescriptor Descriptor) cached;
+        lock (s_descriptors)
+        {
+            _ = s_descriptors.TryGetValue(relationOid, out cached);
+        }
+
+        NativeValue transported = default;
         NativeMemoryRequest request = new()
         {
             _operation = NativeMemoryOperation.RelationWriter,
             _flags = 1,
             _value = (nint)relationOid,
+            _data = unchecked((nint)cached.Identifier),
+            _pointer = (nint)(&transported),
         };
         NativeMemoryContext.Invoke(ref request, out NativeMemoryResult result);
         PgTupleDescriptor descriptor;
         try
         {
-            descriptor = GetDescriptor(checked((uint)result._value), result._length);
+            descriptor = result._pointer == 0 ? cached.Descriptor : Remember(relationOid, result._length, transported.ReadTuple().Descriptor);
         }
         catch
         {
@@ -88,20 +98,12 @@ public sealed unsafe class PgRelationWriter : IDisposable
     }
 
     /// <summary>
-    /// Gets the table's descriptor, reusing the copy from an earlier writer while PostgreSQL's type cache still holds the
-    /// same row descriptor. The cache numbers each descriptor it loads, and a change to the table loads a new one.
+    /// Keeps the descriptor a writer received, which later writers for the table reuse while PostgreSQL's type cache
+    /// still holds the same row descriptor. The cache numbers each descriptor it loads, and a change to the table loads
+    /// a new one.
     /// </summary>
-    private static PgTupleDescriptor GetDescriptor(uint typeOid, nuint identifier)
+    private static PgTupleDescriptor Remember(uint relationOid, nuint identifier, PgTupleDescriptor descriptor)
     {
-        lock (s_descriptors)
-        {
-            if (s_descriptors.TryGetValue(typeOid, out (nuint Identifier, PgTupleDescriptor Descriptor) cached) && cached.Identifier == identifier)
-            {
-                return cached.Descriptor;
-            }
-        }
-
-        PgTupleDescriptor descriptor = PgTupleDescriptor.Load(typeOid);
         lock (s_descriptors)
         {
             // Dropped tables leave entries behind, so a backend that writes many tables starts over occasionally.
@@ -110,7 +112,7 @@ public sealed unsafe class PgRelationWriter : IDisposable
                 s_descriptors.Clear();
             }
 
-            s_descriptors[typeOid] = (identifier, descriptor);
+            s_descriptors[relationOid] = (identifier, descriptor);
         }
 
         return descriptor;
