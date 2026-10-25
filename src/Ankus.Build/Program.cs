@@ -107,6 +107,12 @@ try
         return 0;
     }
 
+    if (args.Length > 0 && args[0] == "binding-raise-worker")
+    {
+        await NativeBindingRaiseAnalysis.RunWorkerAsync(args[1..]);
+        return 0;
+    }
+
     if (args.Length > 0 && args[0] == "binding-record-checks")
     {
         await NativeBindingRecordCheckCommand.RunAsync(args[1..]);

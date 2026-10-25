@@ -85,7 +85,8 @@ internal static class NativeBindingHeaderCommand
     /// Inspects declarations and constants using the selected header command's exact frontend arguments.
     /// </summary>
     internal static async Task InspectAsync(PostgresInstallation installation, string[] arguments, string source, string observations,
-        string output, CancellationToken cancellationToken, bool dumpAst = true, string? serializedAst = null, bool inspectBodies = false)
+        string output, CancellationToken cancellationToken, bool dumpAst = true, string? serializedAst = null, bool inspectBodies = false,
+        IReadOnlyList<string>? systemIncludes = null)
     {
         if (dumpAst && serializedAst is not null)
         {
@@ -94,6 +95,23 @@ internal static class NativeBindingHeaderCommand
 
         string compiler = await ClangSelection.ResolveAsync(arguments.Length >= 5 ? arguments[4] : null, cancellationToken);
         List<string> options = await CreateArgumentsAsync(installation, arguments, cancellationToken);
+        if (systemIncludes is not null)
+        {
+            // Headers found here are treated as PostgreSQL's own are, as system headers.
+            if (OperatingSystem.IsWindows())
+            {
+                AddWindowsIncludes(options, compiler, systemIncludes);
+            }
+            else
+            {
+                foreach (string directory in systemIncludes)
+                {
+                    options.Add("-isystem");
+                    options.Add(directory);
+                }
+            }
+        }
+
         options.Add(OperatingSystem.IsWindows() ? "/Zs" : "-fsyntax-only");
         if (dumpAst)
         {

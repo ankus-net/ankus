@@ -177,7 +177,13 @@ native bodies only for methods referenced by the extension.
 Each call runs beneath the native error guard, as C code inside `PG_TRY` would.
 The extension's native binding is checked on its first call and accepted again
 for later calls while the backend has no unrecovered error, so a call costs the
-guard and a few managed checks more than the C function.
+guard and a few managed checks more than the C function. A helper whose body
+the selected headers show cannot raise an error runs without the guard, as a C
+caller would run it: an inline function or macro such as `TupleDescAttr`,
+`GETSTRUCT` or `MAXALIGN` qualifies when everything it calls is another such
+helper, a memory or string comparison function, or a compiler builtin, and it
+neither calls through a function pointer nor divides integers by a variable.
+`pq_sendint32` keeps the guard, because it can enlarge its buffer.
 
 Raw calls, raw global accesses and native function-pointer invocations require
 an explicit unsafe context. Pointer signatures enforce this through the C#

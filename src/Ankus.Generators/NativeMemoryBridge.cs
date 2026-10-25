@@ -2021,12 +2021,78 @@ internal static class NativeMemoryBridge
             return status;
         }
 
-        /* Runs a generated raw call as ankus_memory_invoke runs ANKUS_MEMORY_NATIVE_CALL, with the same admission
-         * checks, managed error contexts and guard but no request envelope. Every failure writes the whole error, so a
-         * call that succeeds never clears its 2 KB buffer. */
+        /* Runs one generated raw call body under PG_TRY, as ankus_memory_execute_guarded runs
+         * ANKUS_MEMORY_NATIVE_CALL, but calls the body directly. Only a failure needs the recovery context, so the walk
+         * that finds it waits for one. */
+        static int
+        ankus_memory_call_guarded(AnkusNativeCallBody body, const AnkusNativeCallFrame *frame, intptr_t *value, AnkusError *error)
+        {
+            MemoryContext caller = CurrentMemoryContext;
+            uint32 interrupt_holdoff = InterruptHoldoffCount;
+            uint32 shared_held_before = ankus_shared_held_count;
+            uint32 cancel_holdoff = QueryCancelHoldoffCount;
+            volatile int status = 0;
+            volatile intptr_t outcome = 0;
+            AnkusPendingError *volatile pending = ankus_pending_error_save();
+            PG_TRY();
+            {
+                if (body == NULL || frame == NULL)
+                {
+                    ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+                        errmsg("the generated native call body or frame is missing")));
+                }
+
+                outcome = body(frame->arguments, frame->count, frame->result, frame->result_size);
+            }
+            PG_CATCH();
+            {
+                /* Volatile because the inner guard below can longjmp back into this block. */
+                volatile MemoryContext recovery = ankus_memory_contains(ErrorContext, caller) ? ErrorContext : caller;
+                MemoryContext diagnostic = NULL;
+                MemoryContextSwitchTo(caller);
+                ANKUS_PG_TRY_INNER();
+                {
+                    diagnostic = AllocSetContextCreate(TopMemoryContext, "Ankus memory diagnostics", ALLOCSET_SMALL_SIZES);
+                    MemoryContextSwitchTo(diagnostic);
+                    ErrorData *data = ankus_copy_error_data();
+                    FlushErrorState();
+                    /* ankus_memory_call leaves the error untouched until something fails. */
+                    ankus_error_clear(error);
+                    ankus_capture_error(data, error);
+                    ankus_recovery_record(error, false);
+                    ankus_free_error_data(data);
+                    MemoryContextSwitchTo(recovery);
+                    MemoryContextDelete(diagnostic);
+                    status = 1;
+                }
+                ANKUS_PG_CATCH_INNER();
+                {
+                    MemoryContextSwitchTo(recovery);
+                    FlushErrorState();
+                    ereport(FATAL, (errmsg("Unable to recover PostgreSQL state after a guarded memory failure")));
+                }
+                ANKUS_PG_END_TRY_INNER();
+            }
+            PG_END_TRY();
+            if (status != 0)
+            {
+                ankus_pending_error_restore(pending);
+                InterruptHoldoffCount = ankus_shared_restore_interrupts(interrupt_holdoff, shared_held_before);
+                QueryCancelHoldoffCount = cancel_holdoff;
+            }
+            else
+                ankus_pending_error_release(pending);
+
+            *value = outcome;
+            return status;
+        }
+
+        /* Runs a generated raw call with the admission checks and managed error contexts of ankus_memory_invoke but no
+         * request envelope. Every failure writes the whole error, so a call that succeeds never clears its 2 KB buffer. */
         static int
         ankus_memory_call(AnkusMemoryApi *api, intptr_t body, intptr_t frame, intptr_t *value, AnkusError *error)
         {
+            (void) api;
             if (ankus_memory_error_cleanup)
             {
                 ankus_error_clear(error);
@@ -2039,14 +2105,10 @@ internal static class NativeMemoryBridge
             if (ankus_recovery_failed(error))
                 return 1;
 
-            AnkusMemoryRequest request = { .operation = ANKUS_MEMORY_NATIVE_CALL, .pointer = body, .data = frame };
-            AnkusMemoryResult result = {0};
-            volatile bool recovered = false;
             ErrorContextCallback managed_context;
             bool context_entered = ankus_error_context_enter(&managed_context);
-            int status = ankus_memory_execute_guarded(api, &request, &result, error, &recovered);
+            int status = ankus_memory_call_guarded((AnkusNativeCallBody) body, (const AnkusNativeCallFrame *) frame, value, error);
             ankus_error_context_exit(&managed_context, context_entered);
-            *value = result.value;
             return status;
         }
 

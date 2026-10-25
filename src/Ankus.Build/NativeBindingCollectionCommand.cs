@@ -56,7 +56,8 @@ internal static class NativeBindingCollectionCommand
             NativeBindingNodeRoots roots = NativeBindingNodeRecords.CreateRoots(selected, includes, NativeBindingHeaderHelpers.RequiredTypes);
             headers = NativeBindingHeaderTarget.GenerateSource(roots.Source, major);
             NativeHeaderRequest[] requests = [.. roots.Requests, .. availability.Available];
-            await File.WriteAllTextAsync(file, NativeBindingHeaderParser.GenerateSource(headers, requests), cancellationToken);
+            string parsed = NativeBindingHeaderParser.GenerateSource(headers, requests);
+            await File.WriteAllTextAsync(file, parsed, cancellationToken);
             await NativeBindingHeaderCommand.InspectAsync(installation, frontend, file, observations, directory, cancellationToken);
             NativeHeaderTarget target;
             IReadOnlyDictionary<string, NativeHeaderSymbol> symbols;
@@ -74,6 +75,7 @@ internal static class NativeBindingCollectionCommand
 
             string library = arguments.Length == 9 && arguments[8].Length != 0 ? Path.GetFullPath(arguments[8])
                 : await NativeBindingRecordCommand.FindLibraryAsync(NativeBindingRecordCommand.FindCompiler(compiler), target.ClangMajor, cancellationToken);
+            symbols = await NativeBindingRaiseAnalysis.ApplyAsync(symbols, installation, frontend, parsed, major, library, directory, cancellationToken);
             string ast = Path.Join(directory, "native-node-types.ast");
             await NativeBindingHeaderCommand.InspectAsync(installation, frontend, file, Path.Join(directory, "native-node-compile.txt"),
                 directory, cancellationToken, dumpAst: false, serializedAst: ast);

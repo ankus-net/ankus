@@ -8,6 +8,11 @@ namespace Ankus.Build;
 internal static class NativeBindingHeaderHelpers
 {
     /// <summary>
+    /// Begins the name of each wrapper Ankus defines for a function-like macro.
+    /// </summary>
+    internal const string WrapperPrefix = "ankus_header_";
+
+    /// <summary>
     /// Gets native storage used by helpers whose public prototypes expose only an untyped page address.
     /// </summary>
     internal static IReadOnlyList<string> RequiredTypes { get; } = Array.AsReadOnly<string>(["PageHeaderData"]);
@@ -162,8 +167,17 @@ internal static class NativeBindingHeaderHelpers
     /// <param name="symbols">The native functions being compiled or verified.</param>
     /// <returns>Preprocessor selections placed before the selected headers.</returns>
     internal static string Definitions(int major, IEnumerable<NativeHeaderSymbol> symbols)
+        => WrapperDefinitions(major, symbols.Where(static symbol => symbol.IsFunction).Select(static symbol => symbol.NativeName));
+
+    /// <summary>
+    /// Selects the macro wrapper definitions for the named native functions.
+    /// </summary>
+    /// <param name="major">The selected PostgreSQL major.</param>
+    /// <param name="functions">The native names of the selected functions.</param>
+    /// <returns>Definitions that make each selected wrapper's body part of the translation unit.</returns>
+    internal static string WrapperDefinitions(int major, IEnumerable<string> functions)
     {
-        HashSet<string> selected = [.. symbols.Where(static symbol => symbol.IsFunction).Select(static symbol => symbol.NativeName)];
+        HashSet<string> selected = [.. functions];
         var source = new StringBuilder();
         foreach (NativeBindingHeaderHelper helper in Read(major).Where(helper => helper.Source is not null && selected.Contains(helper.NativeName)))
         {
@@ -177,7 +191,7 @@ internal static class NativeBindingHeaderHelpers
 
     private static NativeBindingHeaderHelper Macro(string name, string result, string parameters, string body)
     {
-        string native = "ankus_header_" + name;
+        string native = WrapperPrefix + name;
         return new(name, native, $"extern {result} {native}({parameters});\n" +
             $"#if defined(ANKUS_DEFINE_HEADER_{name})\n" +
             "#if !defined(_WIN32)\n__attribute__((visibility(\"hidden\")))\n#endif\n" +

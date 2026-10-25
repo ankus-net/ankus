@@ -177,8 +177,9 @@ internal static class NativeErrorBridge
              * ERROR inside a critical section, with ExitOnAnyError or during process exit
              * would escalate, and none may be raised while ErrorContext itself is being reset,
              * so those callers are left unprotected. */
-            if (ankus_memory_error_cleanup || MemoryContextIsEmpty(ErrorContext) || CritSectionCount > 0 ||
-                ExitOnAnyError || proc_exit_inprogress)
+            /* A reset context with no children holds nothing, which every raw call finds without a function call. */
+            if (ankus_memory_error_cleanup || (ErrorContext->isReset && ErrorContext->firstchild == NULL) ||
+                MemoryContextIsEmpty(ErrorContext) || CritSectionCount > 0 || ExitOnAnyError || proc_exit_inprogress)
                 return NULL;
 
             MemoryContext caller = CurrentMemoryContext;

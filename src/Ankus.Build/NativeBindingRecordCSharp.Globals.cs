@@ -69,7 +69,7 @@ internal static partial class NativeBindingRecordCSharp
                 Line($"    public static unsafe {addressType} @{address}()\n    {{");
                 Line("        nint address = 0;");
                 Line($"        global::Ankus.CompilerServices.NativeRawCall.Invoke(\"__ANKUS_RECORD_IDENTITY__\"u8, {Number(graph.Target.PostgresVersion / 10000)}, " +
-                    $"&@{addressAccessor}, [], unchecked((nint)(&address)), (nuint)sizeof(nint));");
+                    $"{AcceptedReference}, &@{addressAccessor}, [], unchecked((nint)(&address)), (nuint)sizeof(nint));");
                 Line($"        return unchecked(({addressType})address);\n    }}\n");
                 GlobalImport(global.Name, NativeBindingGlobalOperation.Address, addressAccessor);
             }
@@ -116,7 +116,7 @@ internal static partial class NativeBindingRecordCSharp
         private void InPlace(NativeBindingGlobalContract global, Value value, string cache, string accessor, string read, string? write)
         {
             string target = $"(void*)global::Ankus.CompilerServices.NativeRawCall.GlobalAddress(\"__ANKUS_RECORD_IDENTITY__\"u8, " +
-                $"{Number(graph.Target.PostgresVersion / 10000)}, ref @{cache}, &@{accessor})";
+                $"{Number(graph.Target.PostgresVersion / 10000)}, {AcceptedReference}, ref @{cache}, &@{accessor})";
             Summary("Caches the address of " + global.Symbol.NativeName + " after its first checked access.", "    ");
             Line($"    private static nint @{cache};\n");
             Summary("Reads " + global.Symbol.NativeName + " in place once its binding and the native guard admit the access.", "    ");

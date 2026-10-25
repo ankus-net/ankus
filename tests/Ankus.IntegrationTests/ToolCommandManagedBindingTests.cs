@@ -235,6 +235,28 @@ public sealed partial class ToolCommandTests
                 }
 
                 [PgFunction]
+                public static unsafe string NativeGuardedInline()
+                {
+                    nint buffer = (nint)NativeMethods.makeStringInfo();
+                    ((StringInfoData*)buffer)->len = 0x3FFFFFFE;
+                    try
+                    {
+                        PgTransaction.RunInSubtransaction(() =>
+                        {
+                            unsafe
+                            {
+                                NativeMethods.pq_sendint32((StringInfoData*)buffer, 7);
+                            }
+                        });
+                        return "sent";
+                    }
+                    catch (PgException error)
+                    {
+                        return error.SqlState + "|" + Spi.ExecuteScalar<int>("SELECT 6 * 7");
+                    }
+                }
+
+                [PgFunction]
                 public static unsafe bool NativeLinkedProvider()
                 {
                     OutputPluginCallbacks callbacks = new() { startup_cb = new((void*)17), shutdown_cb = new((void*)23) };
@@ -590,6 +612,19 @@ public sealed partial class ToolCommandTests
 
         File.Delete(unsafeProbe);
         string published = Path.Join(root, "published");
+        // The headers show which helpers cannot raise an error, and only those run without the guard (#115).
+        string companion = await File.ReadAllTextAsync(Directory.GetFiles(Path.Join(consumer, "obj"), "native-binding.g.cs",
+            SearchOption.AllDirectories).First(), token);
+        foreach (string helper in new[] { "GETSTRUCT", "MemoryContextSwitchTo", "BufferIsLocal", "TupleDescAttr" })
+        {
+            Assert.AreEqual("InvokeDirect", RawCallEntry(companion, helper), helper);
+        }
+
+        foreach (string function in new[] { "pq_sendint32", "type_is_array", "PageInit" })
+        {
+            Assert.AreEqual("Invoke", RawCallEntry(companion, function), function);
+        }
+
         (await RunDotnetAsync(["publish", consumerProject, .. options, "-o", published], token))
             .EnsureSuccess("dotnet", ["publish"]);
 
@@ -670,6 +705,10 @@ public sealed partial class ToolCommandTests
             Assert.AreEqual($"{timeout}|1|{timeout}|{status}", await command.ExecuteScalarAsync(token));
             command.CommandText = "SELECT native_linked_provider()";
             Assert.IsTrue(Assert.IsInstanceOfType<bool>(await command.ExecuteScalarAsync(token)));
+            // An inline helper that can enlarge its buffer keeps the guard, so PostgreSQL's ERROR arrives as an exception
+            // and the backend stays usable (#115).
+            command.CommandText = "SELECT native_guarded_inline()";
+            Assert.AreEqual("54000|42", await command.ExecuteScalarAsync(token));
             command.CommandText = "SELECT native_node_call(-2147483648)";
             Assert.AreEqual(int.MinValue, await command.ExecuteScalarAsync(token));
             command.CommandText = "SELECT native_node_call(2147483647)";
@@ -969,5 +1008,20 @@ public sealed partial class ToolCommandTests
         Directory.CreateDirectory(physical);
         string linked = Path.Join(intermediate, "ankus-bindings");
         Directory.CreateSymbolicLink(linked, physical);
+    }
+
+    /// <summary>
+    /// Names the raw call entry that a generated method's body calls.
+    /// </summary>
+    /// <param name="companion">The generated binding source.</param>
+    /// <param name="method">The generated method's name.</param>
+    /// <returns>The <c>NativeRawCall</c> method the body calls.</returns>
+    private static string RawCallEntry(string companion, string method)
+    {
+        const string Prefix = "global::Ankus.CompilerServices.NativeRawCall.";
+        int declaration = companion.IndexOf(" @" + method + "(", StringComparison.Ordinal);
+        Assert.IsGreaterThanOrEqualTo(0, declaration, method);
+        int call = companion.IndexOf(Prefix, declaration, StringComparison.Ordinal) + Prefix.Length;
+        return companion[call..companion.IndexOf('(', call)];
     }
 }

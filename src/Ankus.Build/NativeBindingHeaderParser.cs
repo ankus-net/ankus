@@ -506,9 +506,10 @@ internal sealed record NativeHeaderRequest(string Name, string NativeName, bool 
 /// <param name="StorageClass">The compiler's declared storage class, or an empty string when absent.</param>
 /// <param name="Attributes">The declaration's compiler attribute kinds.</param>
 /// <param name="Linkage">How the extension reaches a global defined in the server executable.</param>
+/// <param name="CannotRaise">Whether the headers prove that calling the function cannot raise a PostgreSQL error.</param>
 internal sealed record NativeHeaderSymbol(string NativeName, string LinkageName, bool IsFunction, NativeHeaderType Type,
     IReadOnlyList<string> ParameterNames, bool DoesNotReturn, bool IsThreadLocal, string StorageClass, IReadOnlyList<string> Attributes,
-    NativeHeaderLinkage Linkage = NativeHeaderLinkage.Direct);
+    NativeHeaderLinkage Linkage = NativeHeaderLinkage.Direct, bool CannotRaise = false);
 
 /// <summary>
 /// Describes how an extension refers to a global that the server executable defines.
