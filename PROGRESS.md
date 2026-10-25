@@ -18,7 +18,8 @@ extensions, backend recovery, complete suites and release/package validation.
 Ankus is released on nuget.org: 0.1.0 on 2026-10-15, servicing releases
 through 0.1.7, 0.2.0 on 2026-10-17, 0.2.1 and 0.2.2 on 2026-10-18, 0.2.3 on
 2026-10-19, 0.2.4 on 2026-10-20, 0.2.5 on 2026-10-22, 0.2.6 on 2026-10-22,
-and 0.2.7 and 0.2.8 on 2026-10-24 (see remaining-work item 8).
+0.2.7 and 0.2.8 on 2026-10-24, and 0.2.9 on 2026-10-25 (see remaining-work
+item 8).
 
 The upstream inventory is pinned to pgrx **0.19.3**, commit
 `fc91c63ebad11784647b50ee7e265c1fd9c9924f`. The refresh covers every release
@@ -907,6 +908,17 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   were pushed and listed on nuget.org. On the MacBook, with `/usr/bin/clang`
   first on `PATH`, `Ankus.Tool` 0.2.2 from nuget.org created a solution whose
   7 tests passed.
+- 0.2.9 is released (release run 40176641713 on 3c566f17, after CI
+  40175173282, CodeQL, Docs and the secret scan passed on that commit). All
+  seven packages were pushed and listed on nuget.org, and the unchanged
+  runtime packages were skipped as already published. On Linux x64, a solution
+  from `Ankus.Tool` 0.2.9 on nuget.org compiled the three examples from #109
+  as written and 11 other separator forms, rejected a reversed separator with
+  ANKUS044, and passed its 13 tests against PostgreSQL 18, including one that
+  counts no subtransaction across relation writer opens that receive a new or
+  changed table's descriptor. The same solution from 0.2.8 reported ANKUS044
+  for both of the issue's rejected examples and every other form, and its
+  subtransaction test counted eight.
 - 0.2.8 is released (release run 40156053583 on 17d67916, after CI
   40154571138, CodeQL, Docs and the secret scan passed on that commit). All
   seven packages were pushed and listed on nuget.org, and the unchanged
