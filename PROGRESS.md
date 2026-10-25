@@ -1111,6 +1111,26 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   such rows can be found, written back unchanged and deleted, and a C# row
   trigger receives them. An SPI query that returns one as a column still fails
   with `0A000`.
+- ANKUS044 still rejected the SPI guide's separator, `i > 0 ? ", " : ""`, in a
+  loop that appends quoted identifiers or `name = $n` items, such as a column
+  list or an `UPDATE ... SET` list (#109). The fix for #93 accepted the
+  guide's own loop only because one parameter reference may follow another,
+  while the analysis still let the empty separator run on any pass. The flow
+  analysis now keeps the paths on which a counter still has the constant it
+  was last set to apart from the paths after it was incremented, and a test
+  such as `i > 0`, `i != 0`, `i == 0` or `i >= 1` keeps only the side it can
+  take; a `bool` flag set only to constants works the same way, and splits
+  nest for inner loops. Paths that reach a split without its counter join both
+  sides, and a condition such as `i++ < n` advances the counter before either
+  branch. Tests accept the issue's three examples as written and 16 more
+  forms, including `for` loops from 0 and 1, `while`, `+= 1`, `long` counters,
+  string concatenation, `if` and `?:` separators, three flag forms and nested
+  `OR`/`AND` lists, and still reject the empty branch on later passes, a first
+  pass that would turn a literal into an escape string, a test against the
+  wrong value, a counter written by a runtime value, a decrement, a callback
+  or a reference, a counter or flag that never changes, an unquoted item, and
+  an unquoted item reached after the counter advanced in a `while (i++ < n)`
+  condition.
 - Disposing a `PgRelationWriter` took time proportional to the writers still
   open (#104). Open writers were a singly linked list that every operation
   walked to find its writer, that close walked twice more, and that the context

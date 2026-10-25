@@ -104,6 +104,60 @@ public sealed partial class SpiInterpolationAnalyzerTests
         => Assert.IsEmpty(await Analyze(body, FlowHelpers, "bool flag = number != 0;"));
 
     /// <summary>
+    /// A separator that a test on a counter or flag leaves out only on a loop's first pass keeps every later item
+    /// apart from the one before it, for identifiers, literals, parameter references and <c>name = $n</c> items (#109).
+    /// </summary>
+    /// <param name="body">The command construction.</param>
+    [TestMethod]
+    [DataRow("var sql = new System.Text.StringBuilder(\"INSERT INTO \").Append(Spi.QuoteQualifiedIdentifier(value, value)).Append(\" (\"); for (int i = 0; i < names.Length; i++) { sql.Append(i > 0 ? \", \" : \"\").Append(Spi.QuoteIdentifier(names[i])); } sql.Append(\") VALUES (\"); for (int i = 0; i < names.Length; i++) { sql.Append(i > 0 ? \", \" : \"\").Append(Spi.ParameterReference(i + 1)); } sql.Append(')'); Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"UPDATE \").Append(Spi.QuoteQualifiedIdentifier(value, value)).Append(\" SET \"); for (int i = 0; i < names.Length; i++) { sql.Append(i > 0 ? \", \" : \"\").Append(Spi.QuoteIdentifier(names[i])).Append(\" = \").Append(Spi.ParameterReference(i + 1)); } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); for (int i = 0; i < names.Length; i++) { sql.Append(i != 0 ? \", \" : \"\").Append(Spi.QuoteIdentifier(names[i])); } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); for (int i = 0; i < names.Length; i++) { sql.Append(i == 0 ? \"\" : \", \").Append(Spi.QuoteIdentifier(names[i])); } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); for (int i = 0; i < names.Length; i++) { sql.Append(0 < i ? \", \" : \"\").Append(Spi.QuoteIdentifier(names[i])); } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); for (int i = 0; i < names.Length; i++) { sql.Append(i >= 1 ? \", \" : \"\").Append(Spi.QuoteIdentifier(names[i])); } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); for (long i = 0; i < names.Length; i++) { sql.Append(i > 0 ? \", \" : \"\").Append(Spi.QuoteIdentifier(names[i])); } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); for (int i = 1; i <= names.Length; i++) { sql.Append(i > 1 ? \", \" : \"\").Append(Spi.QuoteIdentifier(names[i - 1])); } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); for (int i = 0; i < names.Length; i += 1) { if (i > 0) { sql.Append(\", \"); } sql.Append(Spi.QuoteIdentifier(names[i])); } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); int i = 0; while (i < names.Length) { sql.Append(i > 0 ? \", \" : \"\").Append(Spi.QuoteIdentifier(names[i])); i++; } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT * FROM t WHERE \"); for (int i = 0; i < names.Length; i++) { sql.Append(i > 0 ? \" AND \" : \"\").Append(Spi.QuoteIdentifier(names[i])).Append(\" = \").Append(Spi.QuoteLiteral(names[i])); } Spi.Execute(sql.ToString());")]
+    [DataRow("string sql = \"SELECT \"; for (int i = 0; i < names.Length; i++) { sql += (i > 0 ? \", \" : \"\") + Spi.QuoteIdentifier(names[i]); } Spi.Execute(sql + \" FROM t\");")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); bool first = true; foreach (string name in names) { if (!first) { sql.Append(\", \"); } first = false; sql.Append(Spi.QuoteIdentifier(name)); } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); bool first = true; foreach (string name in names) { sql.Append(first ? \"\" : \", \").Append(Spi.QuoteIdentifier(name)); first = false; } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); bool more = false; foreach (string name in names) { if (more) { sql.Append(\", \"); } sql.Append(Spi.QuoteIdentifier(name)); more = true; } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT 1 FROM t WHERE \"); for (int i = 0; i < number; i++) { sql.Append(i > 0 ? \" OR \" : \"\"); for (int j = 0; j < names.Length; j++) { sql.Append(j > 0 ? \" AND \" : \"\").Append(Spi.QuoteIdentifier(names[j])).Append(\" = \").Append(Spi.ParameterReference(i * names.Length + j + 1)); } } Spi.Execute(sql.ToString());")]
+    [DataRow("System.Text.StringBuilder command = new(); command.Append(\"INSERT INTO \").Append(Spi.QuoteQualifiedIdentifier(value, value)).Append(\" VALUES (\"); for (int i = 0; i < values.Length; i++) { command.Append(i > 0 ? \", \" : \"\").Append(Spi.ParameterReference(i + 1)); } command.Append(')'); Spi.Execute(command.ToString(), values);")]
+    [DataRow("System.Text.StringBuilder command = new(); command.Append(\"INSERT INTO \").Append(Spi.QuoteQualifiedIdentifier(value, value)).Append(\" (\"); for (int i = 0; i < list.Count; i++) { command.Append(i > 0 ? \", \" : \"\").Append(Spi.QuoteIdentifier(list[i])); } command.Append(\") VALUES (\"); for (int i = 0; i < values.Length; i++) { command.Append(i > 0 ? \", \" : \"\").Append(Spi.ParameterReference(i + 1)); } command.Append(')'); Spi.Execute(command.ToString(), values);")]
+    [DataRow("System.Text.StringBuilder command = new(); command.Append(\"UPDATE \").Append(Spi.QuoteQualifiedIdentifier(value, value)).Append(\" SET \"); for (int i = 0; i < list.Count; i++) { command.Append(i > 0 ? \", \" : \"\").Append(Spi.QuoteIdentifier(list[i])).Append(\" = \").Append(Spi.ParameterReference(i + 1)); } Spi.Execute(command.ToString(), values);")]
+    public async Task FirstPassSeparatorsKeepListItemsApart(string body)
+        => Assert.IsEmpty(await Analyze(body, FlowHelpers, "bool flag = number != 0; string[] names = [value, value]; " +
+            "System.Collections.Generic.List<string> list = [value, value]; SpiParameter[] values = [SpiParameter.Create(1), SpiParameter.Create(2)];"));
+
+    /// <summary>
+    /// Still rejects a list whose empty separator can follow an earlier item: the empty branch on later passes, text
+    /// before the loop that the first item would join, a test against the wrong value, a counter that something
+    /// other than a constant or an increment writes, and an unquoted item.
+    /// </summary>
+    /// <param name="body">The command construction.</param>
+    [TestMethod]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); for (int i = 0; i < names.Length; i++) { sql.Append(i > 0 ? \"\" : \", \").Append(Spi.QuoteIdentifier(names[i])); } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT E\"); for (int i = 0; i < names.Length; i++) { sql.Append(i > 0 ? \", \" : \"\").Append(Spi.QuoteLiteral(names[i])); } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); for (int i = 0; i < names.Length; i++) { sql.Append(i > 1 ? \", \" : \"\").Append(Spi.QuoteIdentifier(names[i])); } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); for (int i = 0; i < names.Length; i++) { sql.Append(i > 0 ? \", \" : \"\").Append(Spi.QuoteIdentifier(names[i])); if (flag) { i = number; } } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); for (int i = 0; i < names.Length; i++) { sql.Append(i > 0 ? \", \" : \"\").Append(Spi.QuoteIdentifier(names[i])); if (flag) { i--; } } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); int i = 0; System.Action reset = () => i = 0; for (; i < names.Length; i++) { reset(); sql.Append(i > 0 ? \", \" : \"\").Append(Spi.QuoteIdentifier(names[i])); } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); int i = 0; ref int alias = ref i; for (; i < names.Length; i++) { alias = 0; sql.Append(i > 0 ? \", \" : \"\").Append(Spi.QuoteIdentifier(names[i])); } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); int count = 0; for (int i = 0; i < names.Length; i++) { sql.Append(count > 0 ? \", \" : \"\").Append(Spi.QuoteIdentifier(names[i])); } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); bool first = true; foreach (string name in names) { sql.Append(first ? \"\" : \", \").Append(Spi.QuoteIdentifier(name)); } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); bool first = true; foreach (string name in names) { sql.Append(first ? \"\" : \", \").Append(Spi.QuoteIdentifier(name)); first = number > 0; } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); for (int i = 0; i < names.Length; i++) { sql.Append(i > 0 ? \", \" : \"\").Append(names[i]); } Spi.Execute(sql.ToString());")]
+    [DataRow("var sql = new System.Text.StringBuilder(\"SELECT \"); int i = 0; while (i++ < names.Length) { if (i > 0) { sql.Append(value); } sql.Append(\", \"); } Spi.Execute(sql.ToString());")]
+    public async Task FirstPassSeparatorsNeedAProvenFirstPass(string body)
+    {
+        Diagnostic error = Assert.ContainsSingle(await Analyze(body, FlowHelpers, "bool flag = number != 0; string[] names = [value, value];"));
+        Assert.AreEqual("ANKUS044", error.Id);
+    }
+
+    /// <summary>
     /// A parameter number formatted from a runtime integer is a runtime value; only the reference helper writes one.
     /// </summary>
     [TestMethod]
