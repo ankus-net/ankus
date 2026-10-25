@@ -13,12 +13,12 @@ public sealed partial class SpiInterpolationAnalyzer
     /// <summary>
     /// Follows the command values and builder objects that actually reach a use; overwritten writes are ignored.
     /// </summary>
-    private sealed class SqlFlowAnalysis(INamedTypeSymbol spi, INamedTypeSymbol session, INamedTypeSymbol? enumerable,
+    private sealed partial class SqlFlowAnalysis(INamedTypeSymbol spi, INamedTypeSymbol session, INamedTypeSymbol? enumerable,
         IAssemblySymbol core, CancellationToken cancellationToken)
     {
         private const int MaxAnalysisSteps = 10_000;
         private readonly Dictionary<(SyntaxTree Tree, TextSpan Span), bool> _results = [];
-        private readonly Dictionary<ControlFlowGraph, FlowState?[]> _observed = [];
+        private readonly Dictionary<ControlFlowGraph, PathState?[]> _observed = [];
         private readonly Dictionary<int, ControlFlowGraph> _functions = [];
         private readonly Dictionary<int, IMethodSymbol> _functionSymbols = [];
         private readonly Dictionary<IMethodSymbol, ControlFlowGraph> _localFunctions = new(SymbolEqualityComparer.Default);
@@ -45,6 +45,7 @@ public sealed partial class SpiInterpolationAnalyzer
         internal Dictionary<(SyntaxTree Tree, TextSpan Span), bool> Analyze(ControlFlowGraph graph, IOperation root, ISymbol owner)
         {
             FindExposedStorage(root);
+            FindCounters(root);
             FlowState initial = new();
             if (owner is IMethodSymbol method)
             {
@@ -63,7 +64,7 @@ public sealed partial class SpiInterpolationAnalyzer
             }
 
             _report = true;
-            foreach (KeyValuePair<ControlFlowGraph, FlowState?[]> observed in _observed.ToArray())
+            foreach (KeyValuePair<ControlFlowGraph, PathState?[]> observed in _observed.ToArray())
             {
                 _graph = observed.Key;
                 foreach (BasicBlock block in observed.Key.Blocks)
@@ -435,9 +436,9 @@ public sealed partial class SpiInterpolationAnalyzer
                 _localFunctions[function] = graph.GetLocalFunctionControlFlowGraph(function, cancellationToken);
             }
 
-            FlowState?[] incoming = new FlowState?[graph.Blocks.Length];
+            PathState?[] incoming = new PathState?[graph.Blocks.Length];
             Queue<int> work = new();
-            incoming[first] = initial.Clone();
+            incoming[first] = PathState.Of(initial.Clone());
             work.Enqueue(first);
             FlowState? output = null;
             while (work.Count != 0)
@@ -452,46 +453,62 @@ public sealed partial class SpiInterpolationAnalyzer
 
                 int ordinal = work.Dequeue();
                 BasicBlock block = graph.Blocks[ordinal];
-                FlowState state = incoming[ordinal]!.Clone();
+                PathState paths = incoming[ordinal]!.Clone();
                 foreach (IOperation operation in block.Operations)
                 {
-                    if (CanThrow(operation))
+                    foreach (FlowState state in paths.Leaves())
                     {
-                        SeedHandlers(block.EnclosingRegion, state);
+                        if (CanThrow(operation))
+                        {
+                            SeedHandlers(block.EnclosingRegion, state);
+                        }
+
+                        _ = Evaluate(operation, state);
+                        if (CanThrow(operation))
+                        {
+                            SeedHandlers(block.EnclosingRegion, state);
+                        }
                     }
 
-                    _ = Evaluate(operation, state);
-                    if (CanThrow(operation))
-                    {
-                        SeedHandlers(block.EnclosingRegion, state);
-                    }
+                    paths = Advance(paths, operation);
                 }
 
                 if (block.BranchValue is { } branchValue)
                 {
-                    if (CanThrow(branchValue) || block.FallThroughSuccessor?.Semantics is ControlFlowBranchSemantics.Throw or ControlFlowBranchSemantics.Rethrow)
+                    foreach (FlowState state in paths.Leaves())
                     {
-                        SeedHandlers(block.EnclosingRegion, state);
+                        if (CanThrow(branchValue) || block.FallThroughSuccessor?.Semantics is ControlFlowBranchSemantics.Throw or ControlFlowBranchSemantics.Rethrow)
+                        {
+                            SeedHandlers(block.EnclosingRegion, state);
+                        }
+
+                        Value branchResult = Evaluate(branchValue, state);
+                        if (block.FallThroughSuccessor?.Semantics == ControlFlowBranchSemantics.Return)
+                        {
+                            state.Returned = branchResult;
+                        }
                     }
 
-                    Value branchResult = Evaluate(branchValue, state);
-                    if (block.FallThroughSuccessor?.Semantics == ControlFlowBranchSemantics.Return)
-                    {
-                        state.Returned = branchResult;
-                    }
+                    // A condition such as i++ < n advances the counter before either successor runs.
+                    paths = Advance(paths, branchValue);
                 }
 
                 if (block.Kind == BasicBlockKind.Exit)
                 {
-                    output = output is null ? state : FlowState.Merge(output, state);
+                    FlowState exit = paths.Collapse();
+                    output = output is null ? exit : FlowState.Merge(output, exit);
                 }
 
                 foreach (ControlFlowBranch branch in Successors(block))
                 {
-                    FlowState propagated = state.Clone();
+                    if (Refine(paths, block, branch)?.Clone() is not { } propagated)
+                    {
+                        continue;
+                    }
+
                     foreach (ControlFlowRegion finalizer in branch.FinallyRegions)
                     {
-                        propagated = Solve(graph, finalizer.FirstBlockOrdinal, finalizer.LastBlockOrdinal, propagated);
+                        propagated = PathState.Of(Solve(graph, finalizer.FirstBlockOrdinal, finalizer.LastBlockOrdinal, propagated.Collapse()));
                     }
 
                     if (branch.Destination is { IsReachable: true } destination && destination.Ordinal >= first && destination.Ordinal <= last)
@@ -500,14 +517,15 @@ public sealed partial class SpiInterpolationAnalyzer
                     }
                     else if (branch.Semantics == ControlFlowBranchSemantics.StructuredExceptionHandling)
                     {
-                        output = output is null ? propagated : FlowState.Merge(output, propagated);
+                        FlowState handled = propagated.Collapse();
+                        output = output is null ? handled : FlowState.Merge(output, handled);
                     }
                 }
             }
 
-            if (!_observed.TryGetValue(graph, out FlowState?[]? seen))
+            if (!_observed.TryGetValue(graph, out PathState?[]? seen))
             {
-                seen = new FlowState?[graph.Blocks.Length];
+                seen = new PathState?[graph.Blocks.Length];
                 _observed.Add(graph, seen);
             }
 
@@ -515,22 +533,22 @@ public sealed partial class SpiInterpolationAnalyzer
             {
                 if (incoming[index] is { } current)
                 {
-                    seen[index] = seen[index] is { } old ? FlowState.Merge(old, current) : current;
+                    seen[index] = PathState.Merge(seen[index], current);
                 }
             }
 
             _graph = previousGraph;
             return output ?? initial.Clone();
 
-            void Seed(int ordinal, FlowState state, bool backEdge = false)
+            void Seed(int ordinal, PathState state, bool backEdge = false)
             {
-                FlowState propagated = state.Clone();
+                PathState propagated = state.Clone();
                 if (backEdge && incoming[ordinal] is { } prior)
                 {
-                    propagated.Widen(prior);
+                    propagated = PathState.Widen(propagated, prior);
                 }
 
-                FlowState merged = incoming[ordinal] is { } previous ? FlowState.Merge(previous, propagated) : propagated;
+                PathState merged = PathState.Merge(incoming[ordinal], propagated)!;
                 if (incoming[ordinal] is null || !merged.Equivalent(incoming[ordinal]!))
                 {
                     incoming[ordinal] = merged;
@@ -547,7 +565,7 @@ public sealed partial class SpiInterpolationAnalyzer
                         foreach (ControlFlowRegion handler in parent.NestedRegions.Where(handler => handler.Kind is ControlFlowRegionKind.Catch or ControlFlowRegionKind.FilterAndHandler &&
                                 handler.FirstBlockOrdinal >= first && handler.LastBlockOrdinal <= last))
                         {
-                            Seed(handler.FirstBlockOrdinal, state);
+                            Seed(handler.FirstBlockOrdinal, PathState.Of(state));
                         }
                     }
                 }
@@ -594,19 +612,27 @@ public sealed partial class SpiInterpolationAnalyzer
                 IInterpolatedStringOperation or IThrowOperation or IDynamicInvocationOperation ||
                 operation.ChildOperations.Any(static child => CanThrow(child));
 
-        private void EvaluateBlock(BasicBlock block, FlowState state)
+        private void EvaluateBlock(BasicBlock block, PathState paths)
         {
             foreach (IOperation operation in block.Operations)
             {
-                _ = Evaluate(operation, state);
+                foreach (FlowState state in paths.Leaves())
+                {
+                    _ = Evaluate(operation, state);
+                }
+
+                paths = Advance(paths, operation);
             }
 
             if (block.BranchValue is { } condition)
             {
-                Value value = Evaluate(condition, state);
-                if (block.FallThroughSuccessor?.Semantics == ControlFlowBranchSemantics.Return)
+                foreach (FlowState state in paths.Leaves())
                 {
-                    state.Returned = value;
+                    Value value = Evaluate(condition, state);
+                    if (block.FallThroughSuccessor?.Semantics == ControlFlowBranchSemantics.Return)
+                    {
+                        state.Returned = value;
+                    }
                 }
             }
         }

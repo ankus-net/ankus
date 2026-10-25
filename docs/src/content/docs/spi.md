@@ -116,6 +116,12 @@ command.Append(')');
 Spi.Execute(command.ToString(), values);
 ```
 
+The check knows that `i > 0` is false only on the loop's first pass, because `i`
+is only set to constants and incremented, so the empty separator never joins two
+items. The same holds for `i != 0`, `i == 0 ? "" : ", "`, an `if` around the
+separator, or a `bool` flag that is only set to constants, and for lists of
+quoted identifiers, quoted literals, parameter references or `name = $n` pairs.
+
 Lambdas and local functions are checked even when the method does not invoke them.
 A callback passed to LINQ, stored for later or otherwise not invoked locally is
 checked with the values assigned after its creation, and its parameters are
