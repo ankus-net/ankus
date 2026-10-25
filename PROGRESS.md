@@ -1130,7 +1130,12 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   and native callbacks use, which needs no transaction, and every extension
   that has the exit bridge also has that logger. The shared-array test's exit
   callback logs each slot release, and the test finds both the normal exit's
-  and the terminated backend's lines in the server log.
+  and the terminated backend's lines in the server log. PostgreSQL versions run
+  40140839885 at ce0d0b93 lost the PostgreSQL 16 case once: the dispatcher
+  reports the first failure after every callback has run, so the failing
+  callback's warning followed the release the test waited for, and the test read
+  the log before the warning arrived, 3 ms after the release's own line. The
+  test now waits for the warning.
 - On Windows with PostgreSQL 13–16, an ordinary connection to a host name that
   resolves to an address the server does not listen on failed instead of trying
   the next address (#95). Its connect loop waited for the socket to become

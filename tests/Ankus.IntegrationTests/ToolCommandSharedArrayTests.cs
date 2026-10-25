@@ -52,8 +52,16 @@ public sealed partial class ToolCommandTests
             await PackageGucScalarAsync(first, $"SELECT pg_terminate_backend({terminated.ProcessID})");
             await WaitForSlotAsync(first, "0|1", token);
             Assert.AreEqual($"2|7|{workers - 2}|{workers - 1}", await PackageGucScalarAsync(first, "SELECT describe_slots()"));
+
+            // Every callback runs before the first failure is reported, so the warning follows the release the slot shows.
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+            timeout.CancelAfter(TimeSpan.FromSeconds(30));
+            while (!cluster.ReadServerLog().Contains("exit callback failed", StringComparison.Ordinal))
+            {
+                await Task.Delay(10, timeout.Token);
+            }
+
             string log = cluster.ReadServerLog();
-            Assert.Contains("exit callback failed", log);
             Assert.Contains("LOG:  released slot 2 at exit code 0", log);
             Assert.Contains("LOG:  released slot 2 at exit code 1", log);
         }
