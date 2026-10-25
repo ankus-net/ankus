@@ -72,7 +72,7 @@ internal static class NativeBindingWindowsImports
         {
             linked.Add(name, symbol.IsFunction || symbol.StorageClass != "extern" ? symbol : symbol with
             {
-                Linkage = symbol.IsThreadLocal || !imports.Contains(ImportName(symbol.LinkageName, target)) ? NativeHeaderLinkage.Unavailable
+                Linkage = symbol.IsThreadLocal || !imports.Contains(ImportName(symbol.NativeName, target)) ? NativeHeaderLinkage.Unavailable
                     : symbol.Attributes.Contains("DLLImportAttr") ? NativeHeaderLinkage.Direct
                     : NativeHeaderLinkage.ImportSlot,
             });
@@ -138,6 +138,10 @@ internal static class NativeBindingWindowsImports
 
     private static bool IsWindows(NativeHeaderTarget target) => target.RuntimeIdentifier.StartsWith("win-", StringComparison.Ordinal);
 
+    /// <summary>
+    /// Spells a variable's import slot as the import library names it: the C name with 32-bit Windows's underscore,
+    /// after <c>__imp_</c>. Clang's mangled name already carries the host's decoration, such as macOS's underscore.
+    /// </summary>
     private static string ImportName(string name, NativeHeaderTarget target)
         => (target.RuntimeIdentifier == "win-x86" ? "__imp__" : "__imp_") + name;
 
