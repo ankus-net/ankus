@@ -1130,7 +1130,7 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   wrong value, a counter written by a runtime value, a decrement, a callback
   or a reference, a counter or flag that never changes, an unquoted item, and
   an unquoted item reached after the counter advanced in a `while (i++ < n)`
-  condition.
+  condition. The main runs listed for #111 cover this change.
 - `PgRelationWriter.Open` started a subtransaction whenever it loaded the
   table's row descriptor, which a backend writing many tables did on almost
   every call, and each subtransaction's end walks state that grows with the
@@ -1143,7 +1143,10 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   table's and receive a changed table's, and across inserts, updates, deletes
   and lookups by key and with replicated rows, and finds none; against the
   previous code it finds eight, two lines for each of the four opens that
-  loaded a descriptor.
+  loaded a descriptor. On main at 0ec639ca (#112), CI 40166499847 passed on
+  Linux x64, macOS ARM64 and Windows x64, CodeQL left no open alert,
+  PostgreSQL versions 40167866758 passed every other Linux major, and
+  platform versions 40167868519 passed every other Windows and macOS major.
 - Disposing a `PgRelationWriter` took time proportional to the writers still
   open (#104). Open writers were a singly linked list that every operation
   walked to find its writer, that close walked twice more, and that the context
