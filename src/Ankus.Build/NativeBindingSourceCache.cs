@@ -64,10 +64,15 @@ internal static class NativeBindingSourceCache
                 NativeBindingHeaderHelpers.RequiredTypes);
             string headers = NativeBindingHeaderTarget.GenerateSource(roots.Source, major);
             NativeBindingPreprocessed observation = await NativeBindingPreprocessor.ObserveAsync(compiler, options, headers, directory, cancellationToken);
+            // Which Windows globals an extension can reach comes from the import library, which the headers do not describe.
+            string imports = OperatingSystem.IsWindows()
+                ? await NativeBindingCache.HashAsync(NativeBindingWindowsImports.LibraryPath(installation), cancellationToken)
+                : "";
             string key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
             {
                 Catalogs = catalogHash,
                 Observation = observation,
+                Imports = imports,
                 NativeCompiler = arguments.Length >= 4 ? arguments[3] : "",
                 Tools = nativeTools,
                 Generator = helper.Hash,

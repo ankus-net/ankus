@@ -313,6 +313,17 @@ Headers do not guarantee exported storage: publishing includes only operations
 used by the extension, and their globals must be provided by the server or a
 linked native library.
 
+On Windows, an extension reaches a server variable through the import slot that
+`postgres.exe` exports for it, which is what a `PGDLLIMPORT` declaration compiles
+to in C. Ankus reads the installation's `postgres.lib` to find these slots, so it
+also reaches the variables that PostgreSQL 13 and 14 export without
+`PGDLLIMPORT`, such as `CheckPointTimeout`. A variable that `postgres.exe` does
+not export, such as `wal_receiver_status_interval` before PostgreSQL 15, keeps
+its members, but they are marked `[UnsupportedOSPlatform("windows")]` and throw
+`PlatformNotSupportedException`. The platform compatibility analyzer (CA1416)
+reports each use that an `OperatingSystem.IsWindows()` check does not guard. On
+Windows, read such a setting with `NativeMethods.GetConfigOption` or SQL instead.
+
 ### Native function pointers
 
 Function-pointer fields, globals, parameters and results use generated readonly

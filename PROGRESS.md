@@ -1159,6 +1159,29 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   Linux x64, macOS ARM64 and Windows x64, CodeQL left no open alert,
   PostgreSQL versions 40167866758 passed every other Linux major, and
   platform versions 40167868519 passed every other Windows and macOS major.
+- On Windows, `NativeGlobals` failed to link a variable that the headers
+  declare without `PGDLLIMPORT` (#116), as PostgreSQL 13 and 14 declare
+  `wal_receiver_status_interval` and `CheckPointTimeout`, because an import
+  library gives a variable exported as data only its `__imp_` slot. The build
+  now reads the installation's `postgres.lib` and reaches an exported variable
+  through that slot, as a `PGDLLIMPORT` declaration does; PostgreSQL 13's
+  `postgres.exe` exports 241 variables that its headers leave unmarked. A
+  variable that `postgres.exe` does not export, such as
+  `wal_receiver_status_interval` before PostgreSQL 15 or `MyClientSocket` in
+  PostgreSQL 17, keeps its members, marked `[UnsupportedOSPlatform("windows")]`
+  with the reason, so CA1416 reports an unguarded use, and they throw
+  `PlatformNotSupportedException`. Build tests read an import library's symbol
+  table and reject malformed ones, classify marked, unmarked, missing,
+  thread-local and defined variables for 64-bit and 32-bit Windows, and run
+  generated accesses through stand-in import slots on Linux and macOS with
+  nothing defining the bare names, which fails when a body uses the bare name.
+  The binding integration test reads and writes `CheckPointTimeout` against
+  `pg_settings` and, on Windows with PostgreSQL 13 and 14, requires CA1416 for an
+  unguarded read of `wal_receiver_status_interval`. On Windows with PostgreSQL
+  13, a solution built from the packed packages read, wrote and took the address
+  of `CheckPointTimeout`, got the warning and the exception for
+  `wal_receiver_status_interval`, and passed its 9 tests, where the same source
+  on 0.2.9 failed to link `CheckPointTimeout`.
 - Disposing a `PgRelationWriter` took time proportional to the writers still
   open (#104). Open writers were a singly linked list that every operation
   walked to find its writer, that close walked twice more, and that the context

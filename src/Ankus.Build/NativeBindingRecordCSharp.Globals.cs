@@ -17,6 +17,12 @@ internal static partial class NativeBindingRecordCSharp
                 string member = global.Name == "NativeGlobals" ? Unique(members, "Native_" + global.Name) : global.Name;
                 string hide = member == "Finalize" ? "" : Hide(member);
                 string address = Unique(members, "DangerousAddressOf_" + global.Name);
+                if (global.Symbol.Linkage == NativeHeaderLinkage.Unavailable)
+                {
+                    Unavailable(global, member, hide, address);
+                    continue;
+                }
+
                 string addressAccessor = Unique(members, "GetNativeAddress_" + global.Name);
                 if (global.IsComplete)
                 {
@@ -69,6 +75,38 @@ internal static partial class NativeBindingRecordCSharp
             }
 
             Line("}\n");
+        }
+
+        /// <summary>
+        /// Keeps the members of a global that the server does not export, marked unsupported on Windows, so code that
+        /// guards its use with <see cref="System.OperatingSystem.IsWindows"/> compiles for every target.
+        /// </summary>
+        private void Unavailable(NativeBindingGlobalContract global, string member, string hide, string address)
+        {
+            string name = global.Symbol.NativeName;
+            string reason = $"PostgreSQL {Number(graph.Target.PostgresVersion / 10000)} does not export {name} from postgres.exe, " +
+                "so an extension cannot reach it on Windows. Read a configuration setting with GetConfigOption instead.";
+            string platform = $"    [global::System.Runtime.Versioning.UnsupportedOSPlatform(\"windows\", \"{reason}\")]";
+            string failure = $"throw new global::System.PlatformNotSupportedException(\"{reason}\")";
+            if (global.IsComplete)
+            {
+                Value value = CallValue(new NativeBindingCallValue(global.Symbol.Type, global.StorageType));
+                Summary("Reads" + (global.CanWrite ? " or writes" : "") + " the current native value of " + name + ".", "    ");
+                Line($"    /// <remarks>{reason}</remarks>");
+                Line(platform);
+                Line("    [global::Ankus.CompilerServices.NativeUnsafeAccess]");
+                string pointerModifier = value.Pointer ? "unsafe " : "";
+                Line(global.CanWrite
+                    ? $"    public {hide}static {pointerModifier}{value.Code} @{member}\n    {{\n        get => {failure};\n        set => {failure};\n    }}\n"
+                    : $"    public {hide}static {pointerModifier}{value.Code} @{member} => {failure};\n");
+            }
+
+            Summary("Obtains the original native address of " + name + ".", "    ");
+            Line("    /// <returns>Never returns, because the server does not export the variable.</returns>");
+            Line($"    /// <remarks>{reason}</remarks>");
+            Line(platform);
+            Line("    [global::Ankus.CompilerServices.NativeUnsafeAccess]");
+            Line($"    public static unsafe {PointerTarget(global.StorageType)}* @{address}() => {failure};\n");
         }
 
         /// <summary>

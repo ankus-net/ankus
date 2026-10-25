@@ -79,7 +79,8 @@ internal static class NativeBindingCollectionCommand
                 directory, cancellationToken, dumpAst: false, serializedAst: ast);
             var request = new NativeRecordRequest(ast, library, target, requests.ToDictionary(static value => value.Name, StringComparer.Ordinal));
             NativeRecordGraph graph = await NativeBindingRecordWorker.InspectAsync(request, directory, cancellationToken);
-            var records = new NativeHeaderRecords(new(target, symbols), graph);
+            NativeHeaderCatalog linked = await NativeBindingWindowsImports.ApplyAsync(new(target, symbols), installation, cancellationToken);
+            var records = new NativeHeaderRecords(linked, graph);
             await VerifyAsync(records, roots.Source, installation, arguments, directory, cancellationToken);
             Console.WriteLine($"PG{major}: verified {graph.Declarations.Count} shared native declarations, {availability.Available.Count} available inventory entries and {availability.Absent.Count} absent entries.");
             return new(records, availability);

@@ -218,6 +218,23 @@ public sealed partial class ToolCommandTests
                 }
 
                 [PgFunction]
+                public static unsafe string NativeGlobalLinkage()
+                {
+                    int timeout = NativeGlobals.CheckPointTimeout;
+                    int* address = NativeGlobals.DangerousAddressOf_CheckPointTimeout();
+                    NativeGlobals.CheckPointTimeout = timeout + 1;
+                    int changed = *address;
+                    NativeGlobals.CheckPointTimeout = timeout;
+            #if ANKUS_PG13 || ANKUS_PG14
+                    string status = System.OperatingSystem.IsWindows() ? "unexported"
+                        : NativeGlobals.wal_receiver_status_interval.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            #else
+                    string status = NativeGlobals.wal_receiver_status_interval.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            #endif
+                    return $"{timeout}|{changed - timeout}|{NativeGlobals.CheckPointTimeout}|{status}";
+                }
+
+                [PgFunction]
                 public static unsafe bool NativeLinkedProvider()
                 {
                     OutputPluginCallbacks callbacks = new() { startup_cb = new((void*)17), shutdown_cb = new((void*)23) };
@@ -540,6 +557,14 @@ public sealed partial class ToolCommandTests
                 public static void Write() => NativeGlobals.extra_float_digits = 1;
                 public static ulong Call() => NativeMethods.TYPEALIGN(8, 13);
                 public static void Invoke(NativeGlobals_shmem_startup_hookCallback callback) => callback.Invoke();
+
+                public static int Unexported()
+                {
+                    unsafe
+                    {
+                        return NativeGlobals.wal_receiver_status_interval;
+                    }
+                }
             }
             """, token);
         ProcessResult rejected = await RunDotnetAsync(["build", consumerProject, .. options], token);
@@ -549,6 +574,18 @@ public sealed partial class ToolCommandTests
         foreach (string operation in operations)
         {
             Assert.Contains("error ANKUS129: Use an unsafe block for '" + operation + "'", diagnostics);
+        }
+
+        // PostgreSQL 13 and 14 leave this variable out of postgres.exe's exports, so on Windows the platform analyzer
+        // reports an unguarded read instead of the linker failing on it (#116).
+        if (OperatingSystem.IsWindows() && s_installation.Version.Major < 15)
+        {
+            Assert.Contains("error CA1416: This call site is reachable on all platforms. 'NativeGlobals.wal_receiver_status_interval' " +
+                $"is unsupported on: 'windows' (PostgreSQL {s_installation.Version.Major} does not export wal_receiver_status_interval from postgres.exe", diagnostics);
+        }
+        else
+        {
+            Assert.DoesNotContain("CA1416", diagnostics);
         }
 
         File.Delete(unsafeProbe);
@@ -624,6 +661,13 @@ public sealed partial class ToolCommandTests
             Assert.AreEqual("2|-3|-3|-3|2|True|True", await command.ExecuteScalarAsync(token));
             command.CommandText = "SELECT current_setting('extra_float_digits')::integer";
             Assert.AreEqual(2, await command.ExecuteScalarAsync(token));
+            command.CommandText = "SELECT setting FROM pg_settings WHERE name = 'checkpoint_timeout'";
+            string timeout = Assert.IsInstanceOfType<string>(await command.ExecuteScalarAsync(token));
+            command.CommandText = "SELECT setting FROM pg_settings WHERE name = 'wal_receiver_status_interval'";
+            string status = OperatingSystem.IsWindows() && s_installation.Version.Major < 15 ? "unexported"
+                : Assert.IsInstanceOfType<string>(await command.ExecuteScalarAsync(token));
+            command.CommandText = "SELECT native_global_linkage()";
+            Assert.AreEqual($"{timeout}|1|{timeout}|{status}", await command.ExecuteScalarAsync(token));
             command.CommandText = "SELECT native_linked_provider()";
             Assert.IsTrue(Assert.IsInstanceOfType<bool>(await command.ExecuteScalarAsync(token)));
             command.CommandText = "SELECT native_node_call(-2147483648)";
