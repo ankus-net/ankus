@@ -1131,6 +1131,19 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   or a reference, a counter or flag that never changes, an unquoted item, and
   an unquoted item reached after the counter advanced in a `while (i++ < n)`
   condition.
+- `PgRelationWriter.Open` started a subtransaction whenever it loaded the
+  table's row descriptor, which a backend writing many tables did on almost
+  every call, and each subtransaction's end walks state that grows with the
+  backend's relations (#111). In pglogical's `huge_tx_100k_tables` test this
+  held an apply worker to about 1,000 rows a second. The writer's own open now
+  returns the descriptor, without a subtransaction, whenever the type cache's
+  identifier differs from the copy the backend already has; as with every writer
+  operation, an error there fails the call. A test counts PostgreSQL's DEBUG5
+  subtransaction reports across opens that reuse a descriptor, receive a new
+  table's and receive a changed table's, and across inserts, updates, deletes
+  and lookups by key and with replicated rows, and finds none; against the
+  previous code it finds eight, two lines for each of the four opens that
+  loaded a descriptor.
 - Disposing a `PgRelationWriter` took time proportional to the writers still
   open (#104). Open writers were a singly linked list that every operation
   walked to find its writer, that close walked twice more, and that the context

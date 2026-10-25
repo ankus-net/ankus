@@ -231,6 +231,27 @@ internal static class NativeRelationWriterBridge
 
             /* The type cache numbers each row descriptor it loads, so the caller reuses its copy until the table changes. */
             result->length = (uintptr_t) lookup_type_cache(relation->rd_rel->reltype, TYPECACHE_TUPDESC)->tupDesc_identifier;
+
+            /* A caller without that copy gets the descriptor here. Loading it separately would take a recovery
+             * subtransaction, whose end walks state that grows with the backend's relations; like every writer
+             * operation, an error here fails the call. */
+            if ((uint64) request->data != (uint64) result->length)
+            {
+                TupleDesc descriptor = lookup_rowtype_tupdesc(relation->rd_rel->reltype, -1);
+                AnkusInputBuffer owned = {0};
+                MemoryContext caller = MemoryContextSwitchTo(writer->scratch);
+                PG_TRY();
+                {
+                    ankus_tuple_transport(descriptor, relation->rd_rel->reltype, NULL, NULL, (AnkusValue *) request->pointer, &owned);
+                }
+                PG_FINALLY();
+                {
+                    ReleaseTupleDesc(descriptor);
+                }
+                PG_END_TRY();
+                MemoryContextSwitchTo(caller);
+                result->pointer = 1;
+            }
         }
 
         /*
