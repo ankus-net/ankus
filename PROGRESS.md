@@ -1117,7 +1117,11 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   it now takes 1.0 s and 0.8 s, 28 ms and 30 ms of it disposing. Tests open 500
   writers for one table, write through each and dispose them in either order,
   and open a writer in a subtransaction that rolls back, after which the
-  transaction still commits.
+  transaction still commits. On main at 915d1003 (#106), CI 40148525554 passed
+  on Linux x64, macOS ARM64 and Windows x64, CodeQL left no open alert, and
+  PostgreSQL versions 40148541481 passed every other Linux major; platform
+  versions 40140841680 passed every other Windows and macOS major at ce0d0b93
+  (#105), before #106 changed only a test.
 - `ankus init --release` built PostgreSQL with assertions and memory
   randomization in the development build's directory (#99), because
   `PostgresProvisioner.InstallAsync` copied the caller's options without
@@ -1265,6 +1269,14 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   Windows/PostgreSQL 17.11 the same way: a new backend logged the same FATAL
   during an immediate checkpoint that started 57 ms earlier and completed 6 ms
   later. Its rerun passed.
+- Platform versions run 40102478124 on main at 4ae4a132 lost one
+  Windows/PostgreSQL 13 case,
+  `NumericTests.TemporalExtractionPreservesNumericPrecision` for the largest
+  interval (2147483647 months, 2147483647 days and the largest microsecond
+  count), with `22008: interval out of range` from a statement that reads the
+  interval through `extract`, the test's extraction function and
+  `interval_send`. The same case passed on Windows/PostgreSQL 13 at 06bff4fa
+  that morning, and the rerun of the failed job passed. The cause is unknown.
 - The same matrix found two test races. On Windows, a test that ends its
   backend with FATAL can see a connection reset instead of the report, so all
   three such GUC tests now accept a reset there and read the report from the
