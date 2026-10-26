@@ -18,8 +18,8 @@ extensions, backend recovery, complete suites and release/package validation.
 Ankus is released on nuget.org: 0.1.0 on 2026-10-15, servicing releases
 through 0.1.7, 0.2.0 on 2026-10-17, 0.2.1 and 0.2.2 on 2026-10-18, 0.2.3 on
 2026-10-19, 0.2.4 on 2026-10-20, 0.2.5 on 2026-10-22, 0.2.6 on 2026-10-22,
-0.2.7 and 0.2.8 on 2026-10-24, 0.2.9 on 2026-10-25, and 0.2.10 on 2026-10-26
-(see remaining-work item 8).
+0.2.7 and 0.2.8 on 2026-10-24, 0.2.9 on 2026-10-25, and 0.2.10 and 0.2.11 on
+2026-10-26 (see remaining-work item 8).
 
 The upstream inventory is pinned to pgrx **0.19.3**, commit
 `fc91c63ebad11784647b50ee7e265c1fd9c9924f`. The refresh covers every release
@@ -908,6 +908,12 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   were pushed and listed on nuget.org. On the MacBook, with `/usr/bin/clang`
   first on `PATH`, `Ankus.Tool` 0.2.2 from nuget.org created a solution whose
   7 tests passed.
+- 0.2.11 is released (release run 40393546066 on a7eb1fe9, after CI
+  40386643224, CodeQL, Docs and the secret scan passed on that commit). All
+  seven packages were pushed and listed on nuget.org about 17 minutes after
+  publishing. On Linux x64 with PostgreSQL 17, worf's 26 tests passed with
+  `Ankus.Tool`, `Ankus.Sdk` and `Ankus.Testing` 0.2.11 from nuget.org and made
+  2 publishes in 2 min 37 s, where 0.2.10 made 13.
 - 0.2.10 is released (release run 40274256110 on 195075ff, after CI
   40264229777, CodeQL, Docs and the secret scan passed on that commit and
   PostgreSQL versions 40264236999 and platform versions 40264238925 passed
@@ -1267,7 +1273,12 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   publishes for the first two fixtures. On Linux x64 with PostgreSQL 17,
   worf's two multi-node test classes, with five servers between them, made
   five publishes in 66 s on 0.2.10 and make one in 29 s with packages built
-  from this change.
+  from this change. Its whole suite of 26 tests made 13 publishes in 3 min 52 s
+  on 0.2.10 and makes 2 in 2 min 46 s. On main at a7eb1fe9 (#123), CI
+  40386643224 passed on Linux x64, macOS ARM64 and Windows x64, and CodeQL left
+  no open alert. Its first macOS ARM64 attempt ended with exit code 7 after the
+  generator tests' host had passed all 5,082 tests, as in remaining-work item
+  1, with no crash report on the runner; the rerun passed.
 - Disposing a `PgRelationWriter` took time proportional to the writers still
   open (#104). Open writers were a singly linked list that every operation
   walked to find its writer, that close walked twice more, and that the context
