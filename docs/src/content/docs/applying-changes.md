@@ -107,7 +107,9 @@ for the next change, so an apply loop can reuse one row per table.
 Writers for a table share one `Descriptor` instance until the table's
 definition changes. An apply loop can keep its column positions and rows
 across transactions while `ReferenceEquals(saved, writer.Descriptor)`, and
-rebuild them when the table changes. The
+rebuild them when the table changes. A new instance can also arrive when
+only the table's indexes or statistics change, since PostgreSQL then refreshes
+its cached definition too, so it may have the same columns. The
 [subscriber sample](https://github.com/ankus-net/ankus/tree/main/samples/Ankus.Examples.Subscriber)
 does this.
 

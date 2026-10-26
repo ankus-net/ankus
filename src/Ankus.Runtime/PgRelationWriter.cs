@@ -23,7 +23,7 @@ public sealed unsafe class PgRelationWriter : IDisposable
 {
     private const int DescriptorCacheLimit = 1024;
 
-    // Keyed by table OID; the native open sends a new descriptor whenever the type cache's identifier differs.
+    // Keyed by table OID; the native open sends a new descriptor whenever the table's stamp differs.
     private static readonly Dictionary<uint, (nuint Identifier, PgTupleDescriptor Descriptor)> s_descriptors = [];
 
     private readonly int _thread = Environment.CurrentManagedThreadId;
@@ -98,9 +98,9 @@ public sealed unsafe class PgRelationWriter : IDisposable
     }
 
     /// <summary>
-    /// Keeps the descriptor a writer received, which later writers for the table reuse while PostgreSQL's type cache
-    /// still holds the same row descriptor. The cache numbers each descriptor it loads, and a change to the table loads
-    /// a new one.
+    /// Keeps the descriptor a writer received, which later writers for the table reuse while the table keeps the same
+    /// stamp. The backend gives a table a new stamp after any relcache invalidation of it, such as a change to its
+    /// columns.
     /// </summary>
     private static PgTupleDescriptor Remember(uint relationOid, nuint identifier, PgTupleDescriptor descriptor)
     {

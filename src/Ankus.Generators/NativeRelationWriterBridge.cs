@@ -45,8 +45,8 @@ internal static class NativeRelationWriterBridge
         #include "utils/rel.h"
         #include "utils/relcache.h"
         #include "utils/rls.h"
+        #include "utils/inval.h"
         #include "utils/snapmgr.h"
-        #include "utils/typcache.h"
 
         typedef struct AnkusRelationWriter
         {
@@ -97,6 +97,69 @@ internal static class NativeRelationWriterBridge
         static ankus_writer_ids_hash *ankus_relation_writers = NULL;
         static uint64 ankus_relation_writer_next = 1;
         static bool ankus_relation_writer_callback = false;
+
+        /* A stamp names the row descriptor a table had when a writer last sent it, and a relcache invalidation of
+         * the table removes it, so the next writer sends the descriptor again, as the apply worker's relation map
+         * forgets an invalidated table. The type cache could number descriptors the same way, but each table would
+         * keep an entry there, and before PostgreSQL 18 every relcache invalidation walks all of them (#119). */
+        typedef struct AnkusRelationStamp
+        {
+            Oid relid;
+            uint64 stamp;
+            char status;
+        } AnkusRelationStamp;
+
+        #define SH_PREFIX ankus_relation_stamps
+        #define SH_ELEMENT_TYPE AnkusRelationStamp
+        #define SH_KEY_TYPE Oid
+        #define SH_KEY relid
+        #define SH_HASH_KEY(table, key) murmurhash32((uint32) (key))
+        #define SH_EQUAL(table, a, b) ((a) == (b))
+        #define SH_SCOPE static inline
+        #define SH_DECLARE
+        #define SH_DEFINE
+        #include "lib/simplehash.h"
+
+        /* A dropped table's invalidation removes its stamp; the limit bounds tables that are never invalidated. */
+        #define ANKUS_RELATION_STAMPS 65536
+
+        static ankus_relation_stamps_hash *ankus_relation_stamps = NULL;
+        static uint64 ankus_relation_stamp_next = 1;
+        static bool ankus_relation_stamp_callback = false;
+
+        static void
+        ankus_relation_stamp_invalidate(Datum argument, Oid relid)
+        {
+            (void) argument;
+            if (ankus_relation_stamps == NULL)
+                return;
+            if (OidIsValid(relid))
+                (void) ankus_relation_stamps_delete(ankus_relation_stamps, relid);
+            else
+                ankus_relation_stamps_reset(ankus_relation_stamps);
+        }
+
+        static uint64
+        ankus_relation_stamp(Oid relid)
+        {
+            AnkusRelationStamp *entry;
+            bool found;
+            /* Registered before the first stamp exists, so no stamp can outlive a change it missed. */
+            if (!ankus_relation_stamp_callback)
+            {
+                CacheRegisterRelcacheCallback(ankus_relation_stamp_invalidate, (Datum) 0);
+                ankus_relation_stamp_callback = true;
+            }
+
+            if (ankus_relation_stamps == NULL)
+                ankus_relation_stamps = ankus_relation_stamps_create(TopMemoryContext, 256, NULL);
+            else if (ankus_relation_stamps->members >= ANKUS_RELATION_STAMPS)
+                ankus_relation_stamps_reset(ankus_relation_stamps);
+            entry = ankus_relation_stamps_insert(ankus_relation_stamps, relid, &found);
+            if (!found)
+                entry->stamp = ankus_relation_stamp_next++;
+            return entry->stamp;
+        }
 
         static void
         ankus_relation_writer_unlink(AnkusRelationWriter *writer)
@@ -229,26 +292,19 @@ internal static class NativeRelationWriterBridge
             result->value = (intptr_t) relation->rd_rel->reltype;
             result->data = (intptr_t) writer->key;
 
-            /* The type cache numbers each row descriptor it loads, so the caller reuses its copy until the table changes. */
-            result->length = (uintptr_t) lookup_type_cache(relation->rd_rel->reltype, TYPECACHE_TUPDESC)->tupDesc_identifier;
+            /* The open lock has processed the table's invalidations, so the stamp is current, and the caller reuses
+             * its copy of the descriptor while the stamp is the same. */
+            result->length = (uintptr_t) ankus_relation_stamp(relid);
 
-            /* A caller without that copy gets the descriptor here. Loading it separately would take a recovery
-             * subtransaction, whose end walks state that grows with the backend's relations; like every writer
-             * operation, an error here fails the call. */
+            /* A caller without that copy gets the relation's descriptor here. Loading it separately would take a
+             * recovery subtransaction, whose end walks state that grows with the backend's relations; like every
+             * writer operation, an error here fails the call. */
             if ((uint64) request->data != (uint64) result->length)
             {
-                TupleDesc descriptor = lookup_rowtype_tupdesc(relation->rd_rel->reltype, -1);
                 AnkusInputBuffer owned = {0};
                 MemoryContext caller = MemoryContextSwitchTo(writer->scratch);
-                PG_TRY();
-                {
-                    ankus_tuple_transport(descriptor, relation->rd_rel->reltype, NULL, NULL, (AnkusValue *) request->pointer, &owned);
-                }
-                PG_FINALLY();
-                {
-                    ReleaseTupleDesc(descriptor);
-                }
-                PG_END_TRY();
+                ankus_tuple_transport(RelationGetDescr(relation), relation->rd_rel->reltype, NULL, NULL,
+                    (AnkusValue *) request->pointer, &owned);
                 MemoryContextSwitchTo(caller);
                 result->pointer = 1;
             }
