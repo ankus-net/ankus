@@ -18,8 +18,8 @@ extensions, backend recovery, complete suites and release/package validation.
 Ankus is released on nuget.org: 0.1.0 on 2026-10-15, servicing releases
 through 0.1.7, 0.2.0 on 2026-10-17, 0.2.1 and 0.2.2 on 2026-10-18, 0.2.3 on
 2026-10-19, 0.2.4 on 2026-10-20, 0.2.5 on 2026-10-22, 0.2.6 on 2026-10-22,
-0.2.7 and 0.2.8 on 2026-10-24, and 0.2.9 on 2026-10-25 (see remaining-work
-item 8).
+0.2.7 and 0.2.8 on 2026-10-24, 0.2.9 on 2026-10-25, and 0.2.10 on 2026-10-26
+(see remaining-work item 8).
 
 The upstream inventory is pinned to pgrx **0.19.3**, commit
 `fc91c63ebad11784647b50ee7e265c1fd9c9924f`. The refresh covers every release
@@ -908,6 +908,19 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   were pushed and listed on nuget.org. On the MacBook, with `/usr/bin/clang`
   first on `PATH`, `Ankus.Tool` 0.2.2 from nuget.org created a solution whose
   7 tests passed.
+- 0.2.10 is released (release run 40274256110 on 195075ff, after CI
+  40264229777, CodeQL, Docs and the secret scan passed on that commit and
+  PostgreSQL versions 40264236999 and platform versions 40264238925 passed
+  every other major). All seven packages were pushed and listed on nuget.org
+  about 10 minutes after publishing. On Linux x64, a solution from
+  `Ankus.Tool` 0.2.10 on nuget.org passed its 11 tests against PostgreSQL 17,
+  including direct and guarded raw calls, a `pq_sendint32` ERROR that a
+  subtransaction recovers, writers that see a changed table, and writers for
+  300 tables that leave the type cache as it was; from 0.2.9 the same solution
+  grew the type cache by 145,584 bytes. On Windows x64 with PostgreSQL 13, a
+  solution from 0.2.10 on nuget.org read, wrote and took the address of
+  `CheckPointTimeout`, got CA1416 and `PlatformNotSupportedException` for
+  `wal_receiver_status_interval`, and passed its 12 tests.
 - 0.2.9 is released (release run 40176641713 on 3c566f17, after CI
   40175173282, CodeQL, Docs and the secret scan passed on that commit). All
   seven packages were pushed and listed on nuget.org, and the unchanged
@@ -1177,7 +1190,11 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   headers and that `pq_sendint32` still turns PostgreSQL's buffer-limit ERROR
   into a `PgException` that a subtransaction recovers. On Windows with
   PostgreSQL 13, a solution built from the packed packages passed its 8 tests,
-  including direct `TupleDescAttr` and `MAXALIGN` calls and that ERROR.
+  including direct `TupleDescAttr` and `MAXALIGN` calls and that ERROR. On main
+  at 195075ff (#120), which also has #116 and #119, CI 40264229777 passed on
+  Linux x64, macOS ARM64 and Windows x64, CodeQL left no open alert, PostgreSQL
+  versions 40264236999 passed every other Linux major, and platform versions
+  40264238925 passed every other Windows and macOS major.
 - `PgRelationWriter.Open` started a subtransaction whenever it loaded the
   table's row descriptor, which a backend writing many tables did on almost
   every call, and each subtransaction's end walks state that grows with the
@@ -1216,7 +1233,8 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   13, a solution built from the packed packages read, wrote and took the address
   of `CheckPointTimeout`, got the warning and the exception for
   `wal_receiver_status_interval`, and passed its 9 tests, where the same source
-  on 0.2.9 failed to link `CheckPointTimeout`.
+  on 0.2.9 failed to link `CheckPointTimeout`. The main runs listed for #115
+  cover this change.
 - Opening a `PgRelationWriter` loaded the table's row type into the type cache
   to number its descriptor, which left an entry per table for the backend's
   life, and before PostgreSQL 18 every relcache invalidation walks the whole
@@ -1229,7 +1247,12 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   opens writers for 500 tables and requires the type cache's memory to stay the
   same, where the previous code added 242,640 bytes, about 485 per table.
   Another rolls a new column back to a savepoint and requires the next writer to
-  see the original columns.
+  see the original columns. The writer tests passed on Linux x64 with
+  PostgreSQL 13, 14, 17 and 18. On Linux x64, with one row written to each of
+  10,000 tables, dropping them all in the same backend took 15.8 s on
+  PostgreSQL 17 and 15.4 s on 15 with the previous code and takes 1.9 s and
+  2.0 s now; on PostgreSQL 13, measured beside other suites, it went from 27.5
+  to 4.0 s. The main runs listed for #115 cover this change.
 - Disposing a `PgRelationWriter` took time proportional to the writers still
   open (#104). Open writers were a singly linked list that every operation
   walked to find its writer, that close walked twice more, and that the context
