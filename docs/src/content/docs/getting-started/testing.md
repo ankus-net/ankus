@@ -149,6 +149,11 @@ Its publish uses the .NET SDK that the extension project's directory selects
 through `global.json`, as `dotnet publish` there would, even when another SDK
 runs the tests.
 
+Fixtures in one test run that select the same project, configuration,
+installation and build properties publish the extension once. Each copies that
+publication and starts its own cluster, so a test that needs several servers
+pays for one publish. Changes to the extension take effect in the next run.
+
 For ordinary `dotnet test`, set `DataDirectoryBase` to put cluster data beneath
 a chosen directory. The fixture creates and removes its own unique child;
 your parent directory and other contents remain. With `ankus test`, use

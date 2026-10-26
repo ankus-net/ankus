@@ -1253,6 +1253,21 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   PostgreSQL 17 and 15.4 s on 15 with the previous code and takes 1.9 s and
   2.0 s now; on PostgreSQL 13, measured beside other suites, it went from 27.5
   to 4.0 s. The main runs listed for #115 cover this change.
+- `PostgresExtensionTest.StartAsync` published the extension again for every
+  fixture (#122), so a test that starts several servers paid for a publish per
+  server, about 9 s each for worf on Linux. Fixtures in one test run that select
+  the same project, configuration, installation and build properties now copy
+  the first fixture's publication, and each still installs its own copy in its
+  own cluster. A stamp beside the cached publication names the publish that
+  made it, and a fixture publishes again when the stamp is missing or another
+  process wrote it. A test starts two fixtures and requires one publish,
+  different library directories, and that the second still works after the
+  first is disposed; a fixture with another build property publishes again, and
+  so does one after the stamps change. Against the previous code it finds two
+  publishes for the first two fixtures. On Linux x64 with PostgreSQL 17,
+  worf's two multi-node test classes, with five servers between them, made
+  five publishes in 66 s on 0.2.10 and make one in 29 s with packages built
+  from this change.
 - Disposing a `PgRelationWriter` took time proportional to the writers still
   open (#104). Open writers were a singly linked list that every operation
   walked to find its writer, that close walked twice more, and that the context

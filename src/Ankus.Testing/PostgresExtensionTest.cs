@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -22,6 +23,12 @@ public sealed class PostgresExtensionTest : IAsyncDisposable
         ["MSBuildSDKsPath"] = null,
         ["MSBuildExtensionsPath"] = null,
     };
+
+    /// <summary>
+    /// Maps each cached publication directory to the stamp of the publish this process made there. Later fixtures that
+    /// select the same publication copy it, unless the stamp beside it shows that another publish replaced it.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, string> s_publications = new(StringComparer.Ordinal);
 
     private readonly string _publishDirectory;
     private readonly string _dataDirectoryBase;
@@ -75,6 +82,8 @@ public sealed class PostgresExtensionTest : IAsyncDisposable
     /// Custom SQL directories are remapped into owned test storage without changing the authored control file.
     /// Server logs and build logs remain in the project's bin/ankus-test-logs directory for seven days after their last write.
     /// The publication uses the SDK that the extension's directory selects, even when another SDK runs the tests.
+    /// Fixtures in one test run that select the same project, configuration, installation and build properties publish
+    /// once, and each installs its own copy; changes to the extension take effect in the next run.
     /// </remarks>
     public static Task<PostgresExtensionTest> StartAsync(string projectPath,
         PostgresInstallation? installation = null, CancellationToken cancellationToken = default)
@@ -260,17 +269,33 @@ public sealed class PostgresExtensionTest : IAsyncDisposable
             await using (await LockBuildAsync(
                 Path.Join(buildArtifacts, "publish.lock"), cancellationToken).ConfigureAwait(false))
             {
-                if (Directory.Exists(buildOutput))
+                // Fixtures in one test run that select the same publication share it. A publish removes the stamp
+                // first and writes its own after it succeeds, so a stamp this process did not write means the
+                // publication is another process's or incomplete.
+                string stamp = buildOutput + ".stamp";
+                if (!s_publications.TryGetValue(buildOutput, out string? published) || !File.Exists(stamp) ||
+                    !string.Equals(await File.ReadAllTextAsync(stamp, cancellationToken).ConfigureAwait(false), published, StringComparison.Ordinal))
                 {
-                    Directory.Delete(buildOutput, recursive: true);
+                    if (File.Exists(stamp))
+                    {
+                        File.Delete(stamp);
+                    }
+
+                    if (Directory.Exists(buildOutput))
+                    {
+                        Directory.Delete(buildOutput, recursive: true);
+                    }
+
+                    Directory.CreateDirectory(buildOutput);
+                    await ProcessRunner.RunCheckedAsync("dotnet",
+                        ["publish", projectPath, .. PropertyArguments(properties), "--artifacts-path", buildArtifacts,
+                            "-o", buildOutput,
+                            "-bl:" + Path.Join(logs, invocation + ".binlog")],
+                        s_publishEnvironment, cancellationToken, workingDirectory: root).ConfigureAwait(false);
+                    await File.WriteAllTextAsync(stamp, invocation, cancellationToken).ConfigureAwait(false);
+                    s_publications[buildOutput] = invocation;
                 }
 
-                Directory.CreateDirectory(buildOutput);
-                await ProcessRunner.RunCheckedAsync("dotnet",
-                    ["publish", projectPath, .. PropertyArguments(properties), "--artifacts-path", buildArtifacts,
-                        "-o", buildOutput,
-                        "-bl:" + Path.Join(logs, invocation + ".binlog")],
-                    s_publishEnvironment, cancellationToken, workingDirectory: root).ConfigureAwait(false);
                 CopyDirectory(buildOutput, output);
             }
 
