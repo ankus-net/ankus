@@ -285,7 +285,10 @@ under the extension's `obj/ankus-test-build`. This keeps ordinary test-host
 assemblies, symbols and incremental-clean records separate from native publishing.
 Referenced projects receive independent subdirectories through the SDK's standard
 artifacts layout. Repeated fixture publications retain their native build cache
-and schema snapshots there.
+and schema snapshots there. Fixtures in one test host that select the same
+publication copy it instead of publishing again. A stamp beside each cached
+publication names the publish that made it, so a publication that another
+process replaced or left incomplete is published again.
 
 Packaged backend tests share a NuGet directory owned by their test run. Each
 consumer still builds outside the repository and publishes its own native

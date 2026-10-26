@@ -136,6 +136,8 @@ relocatable copy of the selected installation.
 Custom SQL directories are remapped into owned test storage without changing the authored control file.
 Server logs and build logs remain in the project's bin/ankus-test-logs directory for seven days after their last write.
 The publication uses the SDK that the extension's directory selects, even when another SDK runs the tests.
+Fixtures in one test run that select the same project, configuration, installation and build properties publish
+once, and each installs its own copy; changes to the extension take effect in the next run.
 
 <a id="member-96deb75b043968f2"></a>
 
