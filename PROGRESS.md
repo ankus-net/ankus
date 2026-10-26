@@ -1217,6 +1217,19 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   of `CheckPointTimeout`, got the warning and the exception for
   `wal_receiver_status_interval`, and passed its 9 tests, where the same source
   on 0.2.9 failed to link `CheckPointTimeout`.
+- Opening a `PgRelationWriter` loaded the table's row type into the type cache
+  to number its descriptor, which left an entry per table for the backend's
+  life, and before PostgreSQL 18 every relcache invalidation walks the whole
+  type cache (#119). An apply that had written to many tables slowed on every
+  later DDL statement: replaying the drops of 20,000 written tables took 76 s on
+  PostgreSQL 17 and 9.4 s on 18. The writer now sends the relation's own
+  descriptor and recognizes a changed table by a stamp per table that a
+  relcache invalidation callback removes, as the apply worker's relation map
+  forgets an invalidated table; a full cache reset clears every stamp. A test
+  opens writers for 500 tables and requires the type cache's memory to stay the
+  same, where the previous code added 242,640 bytes, about 485 per table.
+  Another rolls a new column back to a savepoint and requires the next writer to
+  see the original columns.
 - Disposing a `PgRelationWriter` took time proportional to the writers still
   open (#104). Open writers were a singly linked list that every operation
   walked to find its writer, that close walked twice more, and that the context

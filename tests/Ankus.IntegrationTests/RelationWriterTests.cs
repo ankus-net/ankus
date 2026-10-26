@@ -317,6 +317,58 @@ public sealed class RelationWriterTests(TestContext context)
         });
 
     /// <summary>
+    /// A writer opened after a change to the table is rolled back to a savepoint gets the columns the table has again.
+    /// </summary>
+    [TestMethod]
+    public async Task WritersSeeRolledBackTableChanges()
+        => await WithTableAsync("id integer PRIMARY KEY, name text", async (connection, table, token) =>
+        {
+            await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
+            string columns = $"SELECT datatype.writer_columns('{table}'::regclass::oid)";
+            Assert.AreEqual("id,name", await ScalarAsync<string>(connection, columns, token));
+            await ExecuteAsync(connection, $"SAVEPOINT altered; ALTER TABLE {table} ADD COLUMN extra integer", token);
+            Assert.AreEqual("id,name,extra", await ScalarAsync<string>(connection, columns, token));
+            await ExecuteAsync(connection, "ROLLBACK TO SAVEPOINT altered", token);
+            Assert.AreEqual("id,name", await ScalarAsync<string>(connection, columns, token));
+            await transaction.RollbackAsync(token);
+        });
+
+    /// <summary>
+    /// Opening writers for many tables adds nothing to PostgreSQL's type cache, because before PostgreSQL 18 every
+    /// relcache invalidation walks all of its entries, so DDL after writing to many tables slowed with each table
+    /// (#119). <c>pg_backend_memory_contexts</c> starts in PostgreSQL 14 and names a hash table's context after the
+    /// table, and a backend that never needed the type cache has none.
+    /// </summary>
+    [TestMethod]
+    public async Task OpeningWritersAddsNoTypeCacheEntries()
+        => await WithTableAsync("id integer PRIMARY KEY, name text", async (connection, table, token) =>
+        {
+            if (await ScalarAsync<int>(connection, "SELECT current_setting('server_version_num')::integer", token) < 140000)
+            {
+                return;
+            }
+
+            await using NpgsqlTransaction transaction = await connection.BeginTransactionAsync(token);
+            await ExecuteAsync(connection, $"""
+                DO $$
+                BEGIN
+                    FOR n IN 1..500 LOOP
+                        EXECUTE format('CREATE TABLE %s_%s(id integer PRIMARY KEY, name text)', '{table}', n);
+                    END LOOP;
+                END
+                $$
+                """, token);
+            const string Cache = "SELECT coalesce(sum(total_bytes), 0)::bigint FROM pg_backend_memory_contexts WHERE name = 'Type information cache'";
+            string tables = $"SELECT count(datatype.writer_columns(oid)) FROM pg_class WHERE relname ~ '^{table["tests.".Length..]}_[0-9]+$'";
+            Assert.AreEqual("id,name", await ScalarAsync<string>(connection, $"SELECT datatype.writer_columns('{table}'::regclass::oid)", token));
+            long before = await ScalarAsync<long>(connection, Cache, token);
+            Assert.AreEqual(500L, await ScalarAsync<long>(connection, tables, token));
+            long growth = await ScalarAsync<long>(connection, Cache, token) - before;
+            Assert.IsLessThan(8192, growth, $"The type cache grew by {growth} bytes over 500 tables.");
+            await transaction.RollbackAsync(token);
+        });
+
+    /// <summary>
     /// Creates a table with the given columns, runs the test, and drops the table.
     /// </summary>
     /// <summary>
