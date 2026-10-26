@@ -10,15 +10,6 @@ namespace Ankus.CompilerServices;
 [EditorBrowsable(EditorBrowsableState.Never)]
 public static unsafe class NativeMemoryContext
 {
-    [ThreadStatic]
-    private static nint s_api;
-
-    [ThreadStatic]
-    private static int s_depth;
-
-    [ThreadStatic]
-    private static NativeBorrowScope? s_borrowScope;
-
     /// <summary>
     /// Enters the native memory capability supplied by a generated callback.
     /// </summary>
@@ -31,9 +22,10 @@ public static unsafe class NativeMemoryContext
     [NativeUnsafeAccess]
     public static nint Enter(nint api)
     {
-        nint previous = s_api;
-        s_api = api;
-        s_depth++;
+        NativeThread thread = NativeThread.Get();
+        nint previous = thread._api;
+        thread._api = api;
+        thread._depth++;
         return previous;
     }
 
@@ -48,25 +40,26 @@ public static unsafe class NativeMemoryContext
     [NativeUnsafeAccess]
     public static void Exit(nint previous)
     {
-        if (s_depth <= 0)
+        NativeThread? thread = NativeThread.Current;
+        if (thread is null || thread._depth <= 0)
         {
             throw new InvalidOperationException("The PostgreSQL memory capability stack is unbalanced.");
         }
 
-        if (s_borrowScope is { } scope && scope.Depth == s_depth)
+        if (thread._borrowScope is { } scope && scope.Depth == thread._depth)
         {
             scope.Expire();
-            s_borrowScope = scope.Parent;
+            thread._borrowScope = scope.Parent;
         }
 
-        s_api = previous;
-        s_depth--;
+        thread._api = previous;
+        thread._depth--;
     }
 
     /// <summary>
     /// Gets how many generated callbacks are active on this thread, each inside a backend call made by the one before.
     /// </summary>
-    internal static int Depth => s_depth;
+    internal static int Depth => NativeThread.Current?._depth ?? 0;
 
     /// <summary>
     /// Gets the current native capability provider identity.
@@ -80,7 +73,7 @@ public static unsafe class NativeMemoryContext
     {
         get
         {
-            nint api = s_api;
+            nint api = RawApi;
             if (api == 0)
             {
                 throw new InvalidOperationException("PostgreSQL memory contexts require an active backend callback.");
@@ -93,7 +86,12 @@ public static unsafe class NativeMemoryContext
     /// <summary>
     /// Gets the active callback's native capability, or null outside a callback.
     /// </summary>
-    internal static NativeMemoryApi* CurrentApi => (NativeMemoryApi*)s_api;
+    internal static NativeMemoryApi* CurrentApi => (NativeMemoryApi*)RawApi;
+
+    /// <summary>
+    /// Gets the active callback's native capability address, or zero outside a callback.
+    /// </summary>
+    private static nint RawApi => NativeThread.Current?._api ?? 0;
 
     /// <summary>
     /// Lazily creates a unique lease for buffers retained until this callback exits.
@@ -103,24 +101,32 @@ public static unsafe class NativeMemoryContext
         get
         {
             nint provider = Provider;
-            if (s_borrowScope is null || s_borrowScope.Depth != s_depth)
+            NativeThread thread = NativeThread.Get();
+            if (thread._borrowScope is null || thread._borrowScope.Depth != thread._depth)
             {
-                s_borrowScope = new NativeBorrowScope(provider, s_depth, s_borrowScope);
+                thread._borrowScope = new NativeBorrowScope(provider, thread._depth, thread._borrowScope);
             }
 
-            return s_borrowScope;
+            return thread._borrowScope;
         }
     }
 
     /// <summary>
     /// Gets whether the current callback runs in a database whose text needs no transcoding; false outside a callback.
     /// </summary>
-    internal static bool IsUtf8Database => s_api != 0 && ((NativeMemoryApi*)s_api)->_directReads >= 2;
+    internal static bool IsUtf8Database
+    {
+        get
+        {
+            NativeMemoryApi* api = CurrentApi;
+            return api != null && api->_directReads >= 2;
+        }
+    }
 
     /// <summary>
     /// Gets whether this thread has a native memory scope, as a background worker has between transactions.
     /// </summary>
-    internal static bool IsActive => s_api != 0;
+    internal static bool IsActive => RawApi != 0;
 
     /// <summary>
     /// Determines whether the native guard of a callback would admit an ordinary operation: no native frame retains a
@@ -137,11 +143,7 @@ public static unsafe class NativeMemoryContext
     /// </summary>
     /// <param name="text">Whether the value is text.</param>
     /// <returns>Whether the value may be read without a native call.</returns>
-    internal static bool CanReadDirectly(bool text)
-    {
-        _ = Provider;
-        return ((NativeMemoryApi*)s_api)->_directReads >= (text ? 2 : 1);
-    }
+    internal static bool CanReadDirectly(bool text) => Api->_directReads >= (text ? 2 : 1);
 
     /// <summary>
     /// Reads callback-scoped interrupt flags without entering PostgreSQL. On Windows, a queued, unblocked signal also
@@ -150,8 +152,7 @@ public static unsafe class NativeMemoryContext
     /// <returns>Whether an interrupt is pending.</returns>
     internal static bool IsInterruptPending()
     {
-        _ = Provider;
-        NativeMemoryApi* api = (NativeMemoryApi*)s_api;
+        NativeMemoryApi* api = Api;
         return (api->_interruptPending != null && Volatile.Read(ref *api->_interruptPending) != 0) ||
             (api->_signalQueue != null && (Volatile.Read(ref *api->_signalQueue) & ~Volatile.Read(ref *api->_signalMask)) != 0);
     }
@@ -162,8 +163,7 @@ public static unsafe class NativeMemoryContext
     internal static void CheckInterrupts()
     {
         NativeBorrowScope.CheckBackendAccess();
-        _ = Provider;
-        NativeMemoryApi* api = (NativeMemoryApi*)s_api;
+        NativeMemoryApi* api = Api;
         if (api->_interruptPending != null && api->_failedFrames != null &&
             Volatile.Read(ref *api->_interruptPending) == 0 && Volatile.Read(ref *api->_failedFrames) == 0 &&
             (api->_signalQueue == null || (Volatile.Read(ref *api->_signalQueue) & ~Volatile.Read(ref *api->_signalMask)) == 0))
@@ -193,8 +193,7 @@ public static unsafe class NativeMemoryContext
             NativeBorrowScope.CheckBackendAccess();
         }
 
-        _ = Provider;
-        NativeMemoryApi* api = (NativeMemoryApi*)s_api;
+        NativeMemoryApi* api = Api;
         NativeCallError error;
         NativeCallError* transport = &error;
         if (api->_call == null)
@@ -204,7 +203,7 @@ public static unsafe class NativeMemoryContext
 
         NativeMemoryRequest localRequest = request;
         NativeMemoryResult localResult = default;
-        int status = api->_invoke(s_api, &localRequest, &localResult, transport);
+        int status = api->_invoke((nint)api, &localRequest, &localResult, transport);
         result = localResult;
         if (status == 0)
         {

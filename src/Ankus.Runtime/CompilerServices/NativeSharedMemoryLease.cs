@@ -21,9 +21,6 @@ internal interface INativeSharedBlock<out TResult>
 /// </summary>
 internal sealed unsafe class NativeSharedMemoryLease(NativeBorrowScope scope, nint storage) : IDisposable
 {
-    [ThreadStatic]
-    private static int s_borrows;
-
     private readonly int _process = Environment.ProcessId;
     private nint _token;
     private nint _readAddress;
@@ -36,7 +33,7 @@ internal sealed unsafe class NativeSharedMemoryLease(NativeBorrowScope scope, ni
     /// </summary>
     internal static void CheckBackendAccess()
     {
-        if (s_borrows != 0)
+        if (ThreadBorrows != 0)
         {
             throw new InvalidOperationException("Finish scoped lightweight-lock access before calling backend APIs.");
         }
@@ -104,7 +101,7 @@ internal sealed unsafe class NativeSharedMemoryLease(NativeBorrowScope scope, ni
         }
 
         int depth = checked(_readDepth + 1);
-        int borrows = checked(s_borrows + 1);
+        int borrows = checked(ThreadBorrows + 1);
         _readDepth = depth;
         SetThreadBorrows(borrows);
         NativeSharedReadScope frame = default;
@@ -122,7 +119,7 @@ internal sealed unsafe class NativeSharedMemoryLease(NativeBorrowScope scope, ni
             finally
             {
                 _readDepth--;
-                SetThreadBorrows(s_borrows - 1);
+                SetThreadBorrows(ThreadBorrows - 1);
                 if (_readDepth == 0)
                 {
                     _readAddress = 0;
@@ -151,7 +148,7 @@ internal sealed unsafe class NativeSharedMemoryLease(NativeBorrowScope scope, ni
         Validate();
         CheckNoBorrowers();
         Admit(length, mutable: true);
-        SetThreadBorrows(checked(s_borrows + 1));
+        SetThreadBorrows(checked(ThreadBorrows + 1));
         _mutating = true;
         NativeSharedReadScope frame = default;
         NativeSharedReadScope.PushMutation(&frame, NativeMemoryContext.Provider, _readAddress, _readLength);
@@ -168,7 +165,7 @@ internal sealed unsafe class NativeSharedMemoryLease(NativeBorrowScope scope, ni
             finally
             {
                 _mutating = false;
-                SetThreadBorrows(s_borrows - 1);
+                SetThreadBorrows(ThreadBorrows - 1);
                 _readAddress = 0;
                 _readLength = 0;
             }
@@ -179,7 +176,12 @@ internal sealed unsafe class NativeSharedMemoryLease(NativeBorrowScope scope, ni
     /// Records how many shared-memory borrows this thread holds. Every lease on the thread shares the count, so it changes
     /// only here.
     /// </summary>
-    private static void SetThreadBorrows(int count) => s_borrows = count;
+    private static void SetThreadBorrows(int count) => NativeThread.Get()._sharedBorrows = count;
+
+    /// <summary>
+    /// Gets how many scoped accesses this thread has in progress.
+    /// </summary>
+    private static int ThreadBorrows => NativeThread.Current?._sharedBorrows ?? 0;
 
     /// <summary>
     /// Validates a nonthrowing native address reply before exposing original storage.

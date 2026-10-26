@@ -147,6 +147,63 @@ internal sealed unsafe class NativeClang(string path) : SafeHandle(NativeLibrary
     internal string Spelling(NativeClangType value) => Text(((delegate* unmanaged[Cdecl]<NativeClangType, NativeClangString>)Export("clang_getTypeSpelling"))(value));
 
     /// <summary>
+    /// Finds the declaration an expression names, such as the function a call names directly.
+    /// </summary>
+    internal NativeClangCursor Referenced(NativeClangCursor value) => ((delegate* unmanaged[Cdecl]<NativeClangCursor, NativeClangCursor>)Export("clang_getCursorReferenced"))(value);
+
+    /// <summary>
+    /// Determines whether a declaration is a definition, such as a function with its body.
+    /// </summary>
+    internal bool IsDefinition(NativeClangCursor value) => ((delegate* unmanaged[Cdecl]<NativeClangCursor, uint>)Export("clang_isCursorDefinition"))(value) != 0;
+
+    /// <summary>
+    /// Determines whether a function is declared inline.
+    /// </summary>
+    internal bool IsInlined(NativeClangCursor value) => ((delegate* unmanaged[Cdecl]<NativeClangCursor, uint>)Export("clang_Cursor_isFunctionInlined"))(value) != 0;
+
+    /// <summary>
+    /// Reads a binary or compound assignment operator's kind, as clang-c's <c>CXBinaryOperatorKind</c> numbers it.
+    /// </summary>
+    internal int BinaryOperator(NativeClangCursor value) => ((delegate* unmanaged[Cdecl]<NativeClangCursor, int>)Export("clang_getCursorBinaryOperatorKind"))(value);
+
+    /// <summary>
+    /// Evaluates an expression the compiler can fold to an integer constant.
+    /// </summary>
+    /// <param name="value">The expression.</param>
+    /// <param name="result">The constant, with an unsigned value's bits kept.</param>
+    /// <param name="unsigned">Whether the constant is unsigned.</param>
+    /// <returns>Whether the expression is an integer constant.</returns>
+    internal bool TryEvaluateInteger(NativeClangCursor value, out long result, out bool unsigned)
+    {
+        result = 0;
+        unsigned = false;
+        _ = Export("clang_EvalResult_dispose");
+        nint evaluation = ((delegate* unmanaged[Cdecl]<NativeClangCursor, nint>)Export("clang_Cursor_Evaluate"))(value);
+        if (evaluation == 0)
+        {
+            return false;
+        }
+
+        try
+        {
+            // CXEval_Int.
+            if (((delegate* unmanaged[Cdecl]<nint, int>)Export("clang_EvalResult_getKind"))(evaluation) != 1)
+            {
+                return false;
+            }
+
+            unsigned = ((delegate* unmanaged[Cdecl]<nint, uint>)Export("clang_EvalResult_isUnsignedInt"))(evaluation) != 0;
+            result = unsigned ? unchecked((long)((delegate* unmanaged[Cdecl]<nint, ulong>)Export("clang_EvalResult_getAsUnsigned"))(evaluation))
+                : ((delegate* unmanaged[Cdecl]<nint, long>)Export("clang_EvalResult_getAsLongLong"))(evaluation);
+            return true;
+        }
+        finally
+        {
+            ((delegate* unmanaged[Cdecl]<nint, void>)Export("clang_EvalResult_dispose"))(evaluation);
+        }
+    }
+
+    /// <summary>
     /// Prints a declaration with source-location-dependent anonymous names disabled.
     /// </summary>
     internal string Print(NativeClangCursor value) => PrintCore(value, null);

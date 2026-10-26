@@ -95,13 +95,13 @@ internal static partial class NativeBindingRecordCSharp
             => Method(call.Symbol.NativeName,
                 [.. call.Parameters.Select((parameter, index) =>
                     (index < call.Symbol.ParameterNames.Count ? call.Symbol.ParameterNames[index] : "", parameter.StorageType))],
-                call.Result?.StorageType, method, accessor, visibility);
+                call.Result?.StorageType, method, accessor, visibility, direct: call.Symbol.CannotRaise);
 
         /// <summary>
         /// Shares managed frame transport independently of the native target's declaration or lookup mechanism.
         /// </summary>
         private void Method(string nativeName, (string Name, int Type)[] nativeParameters, int? nativeResult,
-            string method, string accessor, string visibility = "public", bool indirect = false)
+            string method, string accessor, string visibility = "public", bool indirect = false, bool direct = false)
         {
             NativeBindingCallFrame frame = NativeBindingCallFrameLayout.Create(graph,
                 [.. nativeParameters.Select(static parameter => parameter.Type)], nativeResult);
@@ -115,7 +115,12 @@ internal static partial class NativeBindingRecordCSharp
             }
 
             Value? result = nativeResult is int resultType ? CallValue(resultType) : null;
-            Summary("Invokes " + nativeName + " beneath the active PostgreSQL error guard.", "    ");
+            bool heap = frame.AllocationSize > 4096;
+            bool separate = indirect || heap;
+            // A body the headers show cannot raise an error runs as a C caller would run it, without the guard.
+            direct &= !separate;
+            Summary("Invokes " + nativeName + (direct ? ", which cannot raise a PostgreSQL error, without the error guard."
+                : " beneath the active PostgreSQL error guard."), "    ");
             foreach ((string name, _) in parameters.Skip(indirect ? 1 : 0))
             {
                 Line($"    /// <param name=\"{name}\">The exact native value; referenced addresses must remain valid for the complete call.</param>");
@@ -136,17 +141,16 @@ internal static partial class NativeBindingRecordCSharp
             // A call with a stack frame validates its binding in the call that runs it, which looks the body up only once
             // the binding is accepted. An indirect call first rejects a null target, and a heap frame is allocated only
             // after validation, so both validate first.
-            bool heap = frame.AllocationSize > 4096;
-            bool separate = indirect || heap;
+            string entry = direct ? "InvokeDirect" : "Invoke";
             string major = Number(graph.Target.PostgresVersion / 10000);
-            string body = separate ? $"@{accessor}()" : $"\"__ANKUS_RECORD_IDENTITY__\"u8, {major}, &@{accessor}";
+            string body = separate ? $"@{accessor}()" : $"\"__ANKUS_RECORD_IDENTITY__\"u8, {major}, {AcceptedReference}, &@{accessor}";
             string unsafeModifier = frame.AllocationSize == 0 && separate ? "" : "unsafe ";
             string hide = parameters.Count == 0 && method != "Equals" ? Hide(method) : "";
             string staticModifier = indirect ? "" : "static ";
             Line($"    {visibility} {hide}{staticModifier}{unsafeModifier}{result?.Code ?? "void"} @{method}({signature})\n    {{");
             if (separate)
             {
-                Line($"        global::Ankus.CompilerServices.NativeRawCall.ValidateBinding(\"__ANKUS_RECORD_IDENTITY__\"u8, {major});");
+                Line($"        global::Ankus.CompilerServices.NativeRawCall.ValidateBinding(\"__ANKUS_RECORD_IDENTITY__\"u8, {major}, {AcceptedReference});");
             }
 
             if (indirect)
@@ -156,7 +160,7 @@ internal static partial class NativeBindingRecordCSharp
 
             if (frame.AllocationSize == 0)
             {
-                Line($"        global::Ankus.CompilerServices.NativeRawCall.Invoke({body}, [], 0, 0);\n    }}\n");
+                Line($"        global::Ankus.CompilerServices.NativeRawCall.{entry}({body}, [], 0, 0);\n    }}\n");
                 return;
             }
 
@@ -187,7 +191,7 @@ internal static partial class NativeBindingRecordCSharp
             }
 
             string resultAddress = result is null ? "0" : "unchecked((nint)checked(storage + " + NativeSize(frame.Result) + "))";
-            Line($"{indent}global::Ankus.CompilerServices.NativeRawCall.Invoke({body}, {(parameters.Count == 0 ? "[]" : "arguments")}, {resultAddress}, {NativeSize(result?.Size ?? 0)});");
+            Line($"{indent}global::Ankus.CompilerServices.NativeRawCall.{entry}({body}, {(parameters.Count == 0 ? "[]" : "arguments")}, {resultAddress}, {NativeSize(result?.Size ?? 0)});");
             if (result is not null)
             {
                 string read = $"global::System.Runtime.CompilerServices.Unsafe.ReadUnaligned<{result.Storage}>((void*)checked(storage + {NativeSize(frame.Result)}))";

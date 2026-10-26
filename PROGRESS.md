@@ -1143,6 +1143,41 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   or a reference, a counter or flag that never changes, an unquoted item, and
   an unquoted item reached after the counter advanced in a `while (i++ < n)`
   condition. The main runs listed for #111 cover this change.
+- A raw `NativeMethods` call still cost about 46 ns and a `NativeGlobals` read
+  about 19 ns where the C operation takes a few (#115), so a logical decoding
+  output plugin that makes several calls per row spent most of its time getting
+  into and out of PostgreSQL. Each call read four thread-static fields of
+  different classes, compared its binding's 64-byte identity, and in native code
+  built a request envelope and walked the memory-context tree before `PG_TRY`.
+  The callback's capability, the innermost failed scope and the held lock leases
+  now share one per-thread object, each generated binding caches the provider
+  that accepted it, and the native entry calls the body directly under `PG_TRY`,
+  finding the recovery context only after an error. A call the cache does not
+  vouch for runs the previous checks in their order. An inline helper or macro
+  wrapper whose body the selected headers show cannot raise an error runs
+  without the guard or a GC transition, as a C caller would run it: everything
+  it calls must be another such helper, a memory or string function, a builtin
+  or `ExceptionalCondition`, and it must not call through a function pointer,
+  use inline assembly or divide integers by anything but a constant other than
+  zero and minus one. A libclang worker reads the bodies from a serialized AST,
+  as a JSON dump of them passes 400 MB with the Windows SDK headers, and the
+  bodies are read as system headers, as PostgreSQL's own are; if Clang cannot
+  compile them every call keeps its guard. PostgreSQL 18 on Linux has 500 such
+  helpers, including `TupleDescAttr`, `GETSTRUCT`, the datum conversions and the
+  list and varlena accessors, and PostgreSQL 13 on Windows has 382, while
+  `pq_sendint32` keeps the guard because it can enlarge its buffer and
+  `XLogFromFileName` because it calls `sscanf`. On Linux x64 with PostgreSQL 18,
+  `GetCurrentTransactionNestLevel` went from 46 to 25 ns, `pq_sendint32` from
+  46 to 27 ns, `TupleDescAttr` from 46 to 10 ns and a `MyProcPid` read from 19
+  to 8 ns, each including about 2.5 ns of benchmark loop. Build tests check
+  which helpers qualify, covering literal, `sizeof` and variable divisors,
+  floating division, builtins, assertions, outside calls, recursion, function
+  pointers and assembly, and that a qualifying call skips a guard that refuses
+  the others. The binding integration test checks the generated entries for real
+  headers and that `pq_sendint32` still turns PostgreSQL's buffer-limit ERROR
+  into a `PgException` that a subtransaction recovers. On Windows with
+  PostgreSQL 13, a solution built from the packed packages passed its 8 tests,
+  including direct `TupleDescAttr` and `MAXALIGN` calls and that ERROR.
 - `PgRelationWriter.Open` started a subtransaction whenever it loaded the
   table's row descriptor, which a backend writing many tables did on almost
   every call, and each subtransaction's end walks state that grows with the
@@ -1159,6 +1194,29 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   Linux x64, macOS ARM64 and Windows x64, CodeQL left no open alert,
   PostgreSQL versions 40167866758 passed every other Linux major, and
   platform versions 40167868519 passed every other Windows and macOS major.
+- On Windows, `NativeGlobals` failed to link a variable that the headers
+  declare without `PGDLLIMPORT` (#116), as PostgreSQL 13 and 14 declare
+  `wal_receiver_status_interval` and `CheckPointTimeout`, because an import
+  library gives a variable exported as data only its `__imp_` slot. The build
+  now reads the installation's `postgres.lib` and reaches an exported variable
+  through that slot, as a `PGDLLIMPORT` declaration does; PostgreSQL 13's
+  `postgres.exe` exports 241 variables that its headers leave unmarked. A
+  variable that `postgres.exe` does not export, such as
+  `wal_receiver_status_interval` before PostgreSQL 15 or `MyClientSocket` in
+  PostgreSQL 17, keeps its members, marked `[UnsupportedOSPlatform("windows")]`
+  with the reason, so CA1416 reports an unguarded use, and they throw
+  `PlatformNotSupportedException`. Build tests read an import library's symbol
+  table and reject malformed ones, classify marked, unmarked, missing,
+  thread-local and defined variables for 64-bit and 32-bit Windows, and run
+  generated accesses through stand-in import slots on Linux and macOS with
+  nothing defining the bare names, which fails when a body uses the bare name.
+  The binding integration test reads and writes `CheckPointTimeout` against
+  `pg_settings` and, on Windows with PostgreSQL 13 and 14, requires CA1416 for an
+  unguarded read of `wal_receiver_status_interval`. On Windows with PostgreSQL
+  13, a solution built from the packed packages read, wrote and took the address
+  of `CheckPointTimeout`, got the warning and the exception for
+  `wal_receiver_status_interval`, and passed its 9 tests, where the same source
+  on 0.2.9 failed to link `CheckPointTimeout`.
 - Disposing a `PgRelationWriter` took time proportional to the writers still
   open (#104). Open writers were a singly linked list that every operation
   walked to find its writer, that close walked twice more, and that the context

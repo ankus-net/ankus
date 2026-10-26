@@ -230,7 +230,7 @@ public sealed partial class NativeBindingNativeTests
     /// Compiles actual C bodies, substitutes only counting allocation and pure lookup collaborators, and executes emitted C#.
     /// </summary>
     private async Task<long[]> ExecuteManagedCallsAsync(string headers, string[] names, string harness, bool nativeCompiler = true,
-        string[]? globalNames = null, bool checkOverflow = false)
+        string[]? globalNames = null, bool checkOverflow = false, Func<NativeHeaderRecords, NativeHeaderRecords>? link = null)
     {
         string directory = Path.Join(Path.GetTempPath(), $"ankus-managed-native-call-{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
@@ -239,10 +239,12 @@ public sealed partial class NativeBindingNativeTests
             NativeHeaderRequest[] requests = [.. names.Select(static name => new NativeHeaderRequest(name, name, true)),
                 .. (globalNames ?? []).Select(static name => new NativeHeaderRequest(name, name, false))];
             NativeHeaderRecords records = await CollectCallRecordsAsync(headers, requests, directory);
+            records = link?.Invoke(records) ?? records;
             NativeBindingSource binding = NativeBindingRecordCSharp.Generate(records, names, globalNames);
             var native = new StringBuilder(NativeBindingCallSource.Generate(records, "#define PG_VERSION_NUM 180006\n" + headers, names));
             var globalAccesses = new List<NativeBindingGlobalAccess>();
-            foreach (NativeBindingGlobalContract global in NativeBindingGlobalModel.Select(records, globalNames ?? []))
+            foreach (NativeBindingGlobalContract global in NativeBindingGlobalModel.Select(records, globalNames ?? [])
+                .Where(static global => global.Symbol.Linkage != NativeHeaderLinkage.Unavailable))
             {
                 globalAccesses.Add(new(global.Name, NativeBindingGlobalOperation.Address));
                 if (global.IsComplete)

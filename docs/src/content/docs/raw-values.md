@@ -177,7 +177,13 @@ native bodies only for methods referenced by the extension.
 Each call runs beneath the native error guard, as C code inside `PG_TRY` would.
 The extension's native binding is checked on its first call and accepted again
 for later calls while the backend has no unrecovered error, so a call costs the
-guard and a few managed checks more than the C function.
+guard and a few managed checks more than the C function. A helper whose body
+the selected headers show cannot raise an error runs without the guard, as a C
+caller would run it: an inline function or macro such as `TupleDescAttr`,
+`GETSTRUCT` or `MAXALIGN` qualifies when everything it calls is another such
+helper, a memory or string comparison function, or a compiler builtin, and it
+neither calls through a function pointer nor divides integers by a variable.
+`pq_sendint32` keeps the guard, because it can enlarge its buffer.
 
 Raw calls, raw global accesses and native function-pointer invocations require
 an explicit unsafe context. Pointer signatures enforce this through the C#
@@ -312,6 +318,17 @@ violate backend invariants or bypass normal configuration assignment hooks.
 Headers do not guarantee exported storage: publishing includes only operations
 used by the extension, and their globals must be provided by the server or a
 linked native library.
+
+On Windows, an extension reaches a server variable through the import slot that
+`postgres.exe` exports for it, which is what a `PGDLLIMPORT` declaration compiles
+to in C. Ankus reads the installation's `postgres.lib` to find these slots, so it
+also reaches the variables that PostgreSQL 13 and 14 export without
+`PGDLLIMPORT`, such as `CheckPointTimeout`. A variable that `postgres.exe` does
+not export, such as `wal_receiver_status_interval` before PostgreSQL 15, keeps
+its members, but they are marked `[UnsupportedOSPlatform("windows")]` and throw
+`PlatformNotSupportedException`. The platform compatibility analyzer (CA1416)
+reports each use that an `OperatingSystem.IsWindows()` check does not guard. On
+Windows, read such a setting with `NativeMethods.GetConfigOption` or SQL instead.
 
 ### Native function pointers
 

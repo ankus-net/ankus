@@ -218,6 +218,45 @@ public sealed partial class ToolCommandTests
                 }
 
                 [PgFunction]
+                public static unsafe string NativeGlobalLinkage()
+                {
+                    int timeout = NativeGlobals.CheckPointTimeout;
+                    int* address = NativeGlobals.DangerousAddressOf_CheckPointTimeout();
+                    NativeGlobals.CheckPointTimeout = timeout + 1;
+                    int changed = *address;
+                    NativeGlobals.CheckPointTimeout = timeout;
+            #if ANKUS_PG13 || ANKUS_PG14
+                    string status = System.OperatingSystem.IsWindows() ? "unexported"
+                        : NativeGlobals.wal_receiver_status_interval.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            #else
+                    string status = NativeGlobals.wal_receiver_status_interval.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            #endif
+                    return $"{timeout}|{changed - timeout}|{NativeGlobals.CheckPointTimeout}|{status}";
+                }
+
+                [PgFunction]
+                public static unsafe string NativeGuardedInline()
+                {
+                    nint buffer = (nint)NativeMethods.makeStringInfo();
+                    ((StringInfoData*)buffer)->len = 0x3FFFFFFE;
+                    try
+                    {
+                        PgTransaction.RunInSubtransaction(() =>
+                        {
+                            unsafe
+                            {
+                                NativeMethods.pq_sendint32((StringInfoData*)buffer, 7);
+                            }
+                        });
+                        return "sent";
+                    }
+                    catch (PgException error)
+                    {
+                        return error.SqlState + "|" + Spi.ExecuteScalar<int>("SELECT 6 * 7");
+                    }
+                }
+
+                [PgFunction]
                 public static unsafe bool NativeLinkedProvider()
                 {
                     OutputPluginCallbacks callbacks = new() { startup_cb = new((void*)17), shutdown_cb = new((void*)23) };
@@ -540,6 +579,14 @@ public sealed partial class ToolCommandTests
                 public static void Write() => NativeGlobals.extra_float_digits = 1;
                 public static ulong Call() => NativeMethods.TYPEALIGN(8, 13);
                 public static void Invoke(NativeGlobals_shmem_startup_hookCallback callback) => callback.Invoke();
+
+                public static int Unexported()
+                {
+                    unsafe
+                    {
+                        return NativeGlobals.wal_receiver_status_interval;
+                    }
+                }
             }
             """, token);
         ProcessResult rejected = await RunDotnetAsync(["build", consumerProject, .. options], token);
@@ -551,8 +598,33 @@ public sealed partial class ToolCommandTests
             Assert.Contains("error ANKUS129: Use an unsafe block for '" + operation + "'", diagnostics);
         }
 
+        // PostgreSQL 13 and 14 leave this variable out of postgres.exe's exports, so on Windows the platform analyzer
+        // reports an unguarded read instead of the linker failing on it (#116).
+        if (OperatingSystem.IsWindows() && s_installation.Version.Major < 15)
+        {
+            Assert.Contains("error CA1416: This call site is reachable on all platforms. 'NativeGlobals.wal_receiver_status_interval' " +
+                $"is unsupported on: 'windows' (PostgreSQL {s_installation.Version.Major} does not export wal_receiver_status_interval from postgres.exe", diagnostics);
+        }
+        else
+        {
+            Assert.DoesNotContain("CA1416", diagnostics);
+        }
+
         File.Delete(unsafeProbe);
         string published = Path.Join(root, "published");
+        // The headers show which helpers cannot raise an error, and only those run without the guard (#115).
+        string companion = await File.ReadAllTextAsync(Directory.GetFiles(Path.Join(consumer, "obj"), "native-binding.g.cs",
+            SearchOption.AllDirectories).First(), token);
+        foreach (string helper in new[] { "GETSTRUCT", "MemoryContextSwitchTo", "BufferIsLocal", "TupleDescAttr" })
+        {
+            Assert.AreEqual("InvokeDirect", RawCallEntry(companion, helper), helper);
+        }
+
+        foreach (string function in new[] { "pq_sendint32", "type_is_array", "PageInit" })
+        {
+            Assert.AreEqual("Invoke", RawCallEntry(companion, function), function);
+        }
+
         (await RunDotnetAsync(["publish", consumerProject, .. options, "-o", published], token))
             .EnsureSuccess("dotnet", ["publish"]);
 
@@ -624,8 +696,19 @@ public sealed partial class ToolCommandTests
             Assert.AreEqual("2|-3|-3|-3|2|True|True", await command.ExecuteScalarAsync(token));
             command.CommandText = "SELECT current_setting('extra_float_digits')::integer";
             Assert.AreEqual(2, await command.ExecuteScalarAsync(token));
+            command.CommandText = "SELECT setting FROM pg_settings WHERE name = 'checkpoint_timeout'";
+            string timeout = Assert.IsInstanceOfType<string>(await command.ExecuteScalarAsync(token));
+            command.CommandText = "SELECT setting FROM pg_settings WHERE name = 'wal_receiver_status_interval'";
+            string status = OperatingSystem.IsWindows() && s_installation.Version.Major < 15 ? "unexported"
+                : Assert.IsInstanceOfType<string>(await command.ExecuteScalarAsync(token));
+            command.CommandText = "SELECT native_global_linkage()";
+            Assert.AreEqual($"{timeout}|1|{timeout}|{status}", await command.ExecuteScalarAsync(token));
             command.CommandText = "SELECT native_linked_provider()";
             Assert.IsTrue(Assert.IsInstanceOfType<bool>(await command.ExecuteScalarAsync(token)));
+            // An inline helper that can enlarge its buffer keeps the guard, so PostgreSQL's ERROR arrives as an exception
+            // and the backend stays usable (#115).
+            command.CommandText = "SELECT native_guarded_inline()";
+            Assert.AreEqual("54000|42", await command.ExecuteScalarAsync(token));
             command.CommandText = "SELECT native_node_call(-2147483648)";
             Assert.AreEqual(int.MinValue, await command.ExecuteScalarAsync(token));
             command.CommandText = "SELECT native_node_call(2147483647)";
@@ -925,5 +1008,20 @@ public sealed partial class ToolCommandTests
         Directory.CreateDirectory(physical);
         string linked = Path.Join(intermediate, "ankus-bindings");
         Directory.CreateSymbolicLink(linked, physical);
+    }
+
+    /// <summary>
+    /// Names the raw call entry that a generated method's body calls.
+    /// </summary>
+    /// <param name="companion">The generated binding source.</param>
+    /// <param name="method">The generated method's name.</param>
+    /// <returns>The <c>NativeRawCall</c> method the body calls.</returns>
+    private static string RawCallEntry(string companion, string method)
+    {
+        const string Prefix = "global::Ankus.CompilerServices.NativeRawCall.";
+        int declaration = companion.IndexOf(" @" + method + "(", StringComparison.Ordinal);
+        Assert.IsGreaterThanOrEqualTo(0, declaration, method);
+        int call = companion.IndexOf(Prefix, declaration, StringComparison.Ordinal) + Prefix.Length;
+        return companion[call..companion.IndexOf('(', call)];
     }
 }

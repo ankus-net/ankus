@@ -12,9 +12,6 @@ internal sealed unsafe class NativeSpinLockLease(nint address, nint data, nint f
     /// </summary>
     internal const long Format = 0x414E4B5350494E00;
 
-    [ThreadStatic]
-    private static NativeSpinLockLease? s_active;
-
     private readonly NativeBorrowScope _scope = NativeMemoryContext.BorrowScope;
     private readonly int _process = Environment.ProcessId;
     private readonly nint _address = address;
@@ -52,7 +49,7 @@ internal sealed unsafe class NativeSpinLockLease(nint address, nint data, nint f
     /// </summary>
     internal static void CheckBackendAccess()
     {
-        if (s_active is not null)
+        if (NativeThread.Current?._spinLease is not null)
         {
             throw new InvalidOperationException("Release PostgreSQL spinlock guards before calling backend APIs.");
         }
@@ -63,7 +60,7 @@ internal sealed unsafe class NativeSpinLockLease(nint address, nint data, nint f
     /// </summary>
     internal static void ReleaseFrame(nint frame)
     {
-        NativeSpinLockLease? current = s_active;
+        NativeSpinLockLease? current = NativeThread.Current?._spinLease;
         while (current is not null)
         {
             NativeSpinLockLease? previous = current._previous;
@@ -81,7 +78,7 @@ internal sealed unsafe class NativeSpinLockLease(nint address, nint data, nint f
     /// </summary>
     internal void Acquire()
     {
-        for (NativeSpinLockLease? current = s_active; current is not null; current = current._previous)
+        for (NativeSpinLockLease? current = NativeThread.Current?._spinLease; current is not null; current = current._previous)
         {
             if (current._address == _address)
             {
@@ -234,19 +231,20 @@ internal sealed unsafe class NativeSpinLockLease(nint address, nint data, nint f
     /// </summary>
     private static void Push(NativeSpinLockLease lease)
     {
-        lease._previous = s_active;
-        if (s_active is not null)
+        NativeThread thread = NativeThread.Get();
+        lease._previous = thread._spinLease;
+        if (thread._spinLease is not null)
         {
-            s_active._next = lease;
+            thread._spinLease._next = lease;
         }
 
-        s_active = lease;
+        thread._spinLease = lease;
     }
 
     /// <summary>
     /// Makes <paramref name="lease"/> the newest lease this thread holds, or records that it holds none.
     /// </summary>
-    private static void SetActive(NativeSpinLockLease? lease) => s_active = lease;
+    private static void SetActive(NativeSpinLockLease? lease) => NativeThread.Get()._spinLease = lease;
 
     /// <summary>
     /// Releases trusted scope-owned storage even if its callback is restoring a nested capability.

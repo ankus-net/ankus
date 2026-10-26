@@ -33,6 +33,13 @@ internal static class NativeBindingGlobalSource
         var unique = new HashSet<NativeBindingGlobalAccess>();
         var source = new StringBuilder(NativeBindingHeaderParser.GenerateChecks("",
             selected.ToDictionary(static value => value.Name, static value => value.Symbol, StringComparer.Ordinal)));
+        foreach (NativeBindingGlobalContract global in selected.Where(static value => value.Symbol.Linkage == NativeHeaderLinkage.ImportSlot))
+        {
+            // The import library defines only this address slot for a variable exported as data.
+            source.AppendLine(CultureInfo.InvariantCulture,
+                $"extern __typeof__({global.Symbol.NativeName}) *{NativeBindingWindowsImports.SlotIdentifier(global.Symbol.NativeName, records.Graph.Target)};");
+        }
+
         foreach (NativeBindingGlobalAccess access in accesses.OrderBy(static value => value.Name, StringComparer.Ordinal)
             .ThenBy(static value => value.Operation))
         {
@@ -44,12 +51,14 @@ internal static class NativeBindingGlobalSource
             NativeBindingGlobalContract global = globals[access.Name];
             bool address = access.Operation == NativeBindingGlobalOperation.Address;
             bool write = access.Operation == NativeBindingGlobalOperation.Write;
-            if (!address && !global.IsComplete || write && !global.CanWrite)
+            if (!address && !global.IsComplete || write && !global.CanWrite || global.Symbol.Linkage == NativeHeaderLinkage.Unavailable)
             {
                 throw new FormatException($"Native global {global.Name} does not permit {access.Operation} access.");
             }
 
-            string reference = NativeBindingCompilerShims.Reference(global.Symbol);
+            string reference = global.Symbol.Linkage == NativeHeaderLinkage.ImportSlot
+                ? "(*" + NativeBindingWindowsImports.SlotIdentifier(global.Symbol.NativeName, records.Graph.Target) + ")"
+                : NativeBindingCompilerShims.Reference(global.Symbol);
             if (!address)
             {
                 NativeRecordType storage = records.Graph.Types[global.StorageType];

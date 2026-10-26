@@ -505,5 +505,28 @@ internal sealed record NativeHeaderRequest(string Name, string NativeName, bool 
 /// <param name="IsThreadLocal">Whether the global has thread-local storage.</param>
 /// <param name="StorageClass">The compiler's declared storage class, or an empty string when absent.</param>
 /// <param name="Attributes">The declaration's compiler attribute kinds.</param>
+/// <param name="Linkage">How the extension reaches a global defined in the server executable.</param>
+/// <param name="CannotRaise">Whether the headers prove that calling the function cannot raise a PostgreSQL error.</param>
 internal sealed record NativeHeaderSymbol(string NativeName, string LinkageName, bool IsFunction, NativeHeaderType Type,
-    IReadOnlyList<string> ParameterNames, bool DoesNotReturn, bool IsThreadLocal, string StorageClass, IReadOnlyList<string> Attributes);
+    IReadOnlyList<string> ParameterNames, bool DoesNotReturn, bool IsThreadLocal, string StorageClass, IReadOnlyList<string> Attributes,
+    NativeHeaderLinkage Linkage = NativeHeaderLinkage.Direct, bool CannotRaise = false);
+
+/// <summary>
+/// Describes how an extension refers to a global that the server executable defines.
+/// </summary>
+internal enum NativeHeaderLinkage
+{
+    /// <summary>
+    /// The declaration's own name links. Only a Windows variable without <c>PGDLLIMPORT</c> needs something else.
+    /// </summary>
+    Direct,
+    /// <summary>
+    /// The server exports the variable as data that its declaration does not mark <c>PGDLLIMPORT</c>, so the
+    /// extension reads the import address slot that a <c>dllimport</c> declaration would use.
+    /// </summary>
+    ImportSlot,
+    /// <summary>
+    /// The server does not export the variable, so no extension can reach it.
+    /// </summary>
+    Unavailable,
+}

@@ -9,9 +9,6 @@ namespace Ankus.CompilerServices;
 /// </summary>
 internal static unsafe class NativeSubtransaction
 {
-    [ThreadStatic]
-    private static Invocation? s_current;
-
     /// <summary>
     /// Runs a callback through the native transaction guard and preserves its original exception.
     /// </summary>
@@ -73,7 +70,7 @@ internal static unsafe class NativeSubtransaction
     /// <param name="exception">The owned native diagnostic.</param>
     internal static void RecordFailure(Exception exception)
     {
-        if (s_current is { } current)
+        if (NativeThread.Current?._invocation is { } current)
         {
             current.Failure ??= exception;
         }
@@ -84,7 +81,7 @@ internal static unsafe class NativeSubtransaction
     /// </summary>
     internal static void CheckAccess()
     {
-        if (s_current?.Failure is { } failure)
+        if (NativeThread.Current?._invocation?.Failure is { } failure)
         {
             ExceptionDispatchInfo.Capture(failure).Throw();
         }
@@ -93,7 +90,7 @@ internal static unsafe class NativeSubtransaction
     /// <summary>
     /// Gets whether rollback must reclaim native SPI frames itself; otherwise ordinary session close reclaims them.
     /// </summary>
-    internal static bool HasFailure => s_current?.Failure is not null;
+    internal static bool HasFailure => NativeThread.Current?._invocation?.Failure is not null;
 
     /// <summary>
     /// Returns every managed exception to native code as a status before recovery begins.
@@ -104,11 +101,12 @@ internal static unsafe class NativeSubtransaction
     private static int Dispatch(nint state)
     {
         Invocation? invocation = null;
-        Invocation? previous = s_current;
+        NativeThread thread = NativeThread.Get();
+        Invocation? previous = thread._invocation;
         try
         {
             invocation = (Invocation)GCHandle.FromIntPtr(state).Target!;
-            s_current = invocation;
+            thread._invocation = invocation;
             invocation.Action();
             return invocation.Failure is null ? 0 : 1;
         }
@@ -127,7 +125,7 @@ internal static unsafe class NativeSubtransaction
         }
         finally
         {
-            s_current = previous;
+            thread._invocation = previous;
         }
     }
 
@@ -135,7 +133,7 @@ internal static unsafe class NativeSubtransaction
     /// Retains a synchronous callback and the first failure requiring rollback.
     /// </summary>
     /// <param name="action">The callback with its managed result destination.</param>
-    private sealed class Invocation(Action action)
+    internal sealed class Invocation(Action action)
     {
         /// <summary>
         /// Gets the work to invoke once from the native guard.
