@@ -66,10 +66,9 @@ public sealed class ExtensionManifestTests(TestContext context)
     {
         string source = "using System.Reflection;\n" + string.Concat(metadata.Select(static item =>
             $"[assembly: AssemblyMetadata({JsonSerializer.Serialize(item.Key)}, {JsonSerializer.Serialize(item.Value)})]\n"));
-        string platformAssemblies = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!;
         CSharpCompilation compilation = CSharpCompilation.Create("ManifestPartsProbe",
             [CSharpSyntaxTree.ParseText(source, cancellationToken: context.CancellationToken)],
-            platformAssemblies.Split(Path.PathSeparator).Select(static path => MetadataReference.CreateFromFile(path)),
+            CompilationReferences.Platform,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         string assembly = Path.Join(_root, Guid.NewGuid().ToString("N") + ".dll");
         using (FileStream stream = File.Create(assembly))

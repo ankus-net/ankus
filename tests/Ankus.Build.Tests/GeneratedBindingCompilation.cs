@@ -12,8 +12,6 @@ namespace Ankus.Build.Tests;
 /// </summary>
 internal static class GeneratedBindingCompilation
 {
-    private static readonly ImmutableArray<MetadataReference> s_references = GetReferences();
-
     /// <summary>
     /// Executes a test harness compiled together with the emitted declarations, requiring clean compiler diagnostics.
     /// </summary>
@@ -59,15 +57,7 @@ internal static class GeneratedBindingCompilation
         => CSharpCompilation.Create(binding.AssemblyName,
             [CSharpSyntaxTree.ParseText(binding.Source, cancellationToken: cancellationToken),
                 CSharpSyntaxTree.ParseText(harness, path: "Consumer.cs", cancellationToken: cancellationToken)],
-            s_references, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,
+            CompilationReferences.Platform, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,
                 allowUnsafe: true, nullableContextOptions: NullableContextOptions.Enable,
                 generalDiagnosticOption: ReportDiagnostic.Error));
-
-    private static ImmutableArray<MetadataReference> GetReferences()
-    {
-        string assemblies = (string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")
-            ?? throw new InvalidOperationException("The test runtime did not provide its assembly reference list.");
-        return [.. assemblies.Split(Path.PathSeparator).Append(typeof(IPgNativeType).Assembly.Location)
-            .Distinct(StringComparer.Ordinal).Select(static path => MetadataReference.CreateFromFile(path))];
-    }
 }

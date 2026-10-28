@@ -11,7 +11,7 @@ namespace Ankus.Generators.Tests;
 [TestClass]
 public sealed partial class PgFunctionGeneratorTests(TestContext context)
 {
-    private static readonly ImmutableArray<MetadataReference> s_references = GetReferences();
+    private static readonly ImmutableArray<MetadataReference> s_references = CompilationReferences.Platform;
 
     /// <summary>
     /// Verifies ordinary functions, aliases, escaped identifiers, and zero-argument functions produce compilable dispatchers.
@@ -289,13 +289,5 @@ public sealed partial class PgFunctionGeneratorTests(TestContext context)
         driver.RunGeneratorsAndUpdateCompilation(
             compilation, out Compilation output, out ImmutableArray<Diagnostic> diagnostics, context.CancellationToken);
         return (output, diagnostics);
-    }
-
-    private static ImmutableArray<MetadataReference> GetReferences()
-    {
-        string assemblies = (string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")
-            ?? throw new InvalidOperationException("The test runtime did not provide its assembly reference list.");
-        return [.. assemblies.Split(Path.PathSeparator).Append(typeof(PgFunctionAttribute).Assembly.Location)
-            .Distinct(StringComparer.Ordinal).Select(static path => MetadataReference.CreateFromFile(path))];
     }
 }

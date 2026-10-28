@@ -183,12 +183,9 @@ public sealed partial class SpiInterpolationAnalyzerTests(TestContext context)
     {
         string source = "using Ankus; internal static class Consumer { internal static void Invoke(string value, int number, SpiSession session) { "
             + before + " " + expression + "; } } " + extra;
-        string platform = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!;
-        IEnumerable<MetadataReference> references = platform.Split(Path.PathSeparator).Append(typeof(Spi).Assembly.Location)
-            .Distinct(StringComparer.Ordinal).Select(static path => MetadataReference.CreateFromFile(path));
         CSharpCompilation compilation = CSharpCompilation.Create("SpiAnalyzerConsumer",
             [CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(LanguageVersion.CSharp14), path: "Consumer.cs",
-                cancellationToken: context.CancellationToken)], references,
+                cancellationToken: context.CancellationToken)], CompilationReferences.Platform,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
         Assert.IsEmpty(compilation.GetDiagnostics(context.CancellationToken));
         var analysis = new CompilationWithAnalyzers(compilation, [new SpiInterpolationAnalyzer()],
