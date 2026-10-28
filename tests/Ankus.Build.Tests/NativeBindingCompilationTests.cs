@@ -200,8 +200,8 @@ public sealed class NativeBindingCompilationTests(TestContext context)
             NativeBindingDocumentLayout layout = NativeBindingDocuments.Split(Documented);
             Dictionary<string, string?> documents = pdb.Documents.ToDictionary(handle => pdb.GetString(pdb.GetDocument(handle).Name),
                 handle => EmbeddedText(pdb, handle), StringComparer.Ordinal);
-            Assert.AreEquivalent(layout.Embedded.ToDictionary(static document => "/_/Ankus.Postgres/" + document.Path, static document => (string?)document.Text),
-                documents.Where(static pair => pair.Value is not null).ToDictionary());
+            Assert.AreEquivalent(layout.Embedded.ToDictionary(static document => "/_/Ankus.Postgres/" + document.Path, static document => document.Text),
+                documents.Where(static pair => pair.Value is not null).ToDictionary(static pair => pair.Key, static pair => pair.Value ?? ""));
             Assert.IsNull(documents["/_/Ankus.Postgres/members/Probe.g.cs"]);
 
             MethodDefinitionHandle read = metadata.MethodDefinitions.Single(handle => metadata.GetString(metadata.GetMethodDefinition(handle).Name) == "Read");
