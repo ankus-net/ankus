@@ -70,6 +70,3 @@ Use the runtime identifier for the machine running PostgreSQL and set
 Install `Ankus.Tool` with `dotnet tool install --global Ankus.Tool --version 0.2.11`. Register PostgreSQL with
 `ankus init --pg18 /path/to/pg_config`, then run `ankus publish` and
 `ankus install --from /path/to/publish`.
-
-Ankus is under development. Full pgrx parity and the PostgreSQL/platform validation
-matrix are still in progress.
