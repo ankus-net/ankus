@@ -19,8 +19,8 @@ Ankus is released on nuget.org: 0.1.0 on 2026-10-15, servicing releases
 through 0.1.7, 0.2.0 on 2026-10-17, 0.2.1 and 0.2.2 on 2026-10-18, 0.2.3 on
 2026-10-19, 0.2.4 on 2026-10-20, 0.2.5 on 2026-10-22, 0.2.6 on 2026-10-22,
 0.2.7 and 0.2.8 on 2026-10-24, 0.2.9 on 2026-10-25, 0.2.10 and 0.2.11 on
-2026-10-26, 0.2.12 on 2026-10-27 and 0.2.13 on 2026-10-28 (see remaining-work
-item 8).
+2026-10-26, 0.2.12 on 2026-10-27, and 0.2.13 and 0.2.14 on 2026-10-28 (see
+remaining-work item 8).
 
 The upstream inventory is pinned to pgrx **0.19.3**, commit
 `fc91c63ebad11784647b50ee7e265c1fd9c9924f`. The refresh covers every release
@@ -909,6 +909,18 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   were pushed and listed on nuget.org. On the MacBook, with `/usr/bin/clang`
   first on `PATH`, `Ankus.Tool` 0.2.2 from nuget.org created a solution whose
   7 tests passed.
+- 0.2.14 is released (release run 40783341020 on 4c36659f, after CI
+  40780330612, CodeQL, Docs and the secret scan passed on that commit). It
+  carries #135, which lets Go to Definition open Ankus.Runtime, Ankus.PgConfig
+  and Ankus.Testing declarations at their own location. All seven packages
+  were pushed and listed on nuget.org about 7 minutes after publishing. On
+  Linux x64 with PostgreSQL 18.6 and 0.2.14 from nuget.org, the language server
+  of the C# extension 2.160.4 opened `PgFunctions.Call` and
+  `PgFunctionArgument.Create` from worf at their declarations in the embedded
+  sources, and from `PgFunctions.cs` it opened `PgFunctionArgument` and
+  `PgFunctionCallOptions` at theirs; `NativeMethods.TupleDescAttr` and, from
+  it, `TupleDescData` opened at theirs too. Worf's 30 regression tests and 26
+  tests passed.
 - 0.2.13 is released (release run 40746395534 on ac738315, after CI
   40742559285, CodeQL, Docs and the secret scan passed on that commit, and
   PostgreSQL versions 40694580522, .NET versions 40705954107 and platform
