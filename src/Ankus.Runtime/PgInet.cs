@@ -1,8 +1,10 @@
+using System;
 using System.Buffers.Binary;
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Text.Json.Serialization;
+using Ankus.CompilerServices;
 using Ankus.Serialization;
 
 namespace Ankus;

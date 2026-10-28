@@ -3,6 +3,9 @@
   <PropertyGroup>
     <RootNamespace>Ankus.Testing</RootNamespace>
     <Description>Cross-platform PostgreSQL extension test harness for Ankus.</Description>
+    <!-- An editor compiles a navigated file on its own, so each file declares its usings and the PDB carries the source. -->
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EmbedAllSources>true</EmbedAllSources>
   </PropertyGroup>
 
   <ItemGroup>

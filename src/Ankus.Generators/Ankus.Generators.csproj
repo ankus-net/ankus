@@ -8,6 +8,8 @@
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
     <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);_IncludeAnkusCodeFixesInPackage</TargetsForTfmSpecificContentInPackage>
+    <!-- It compiles a runtime file that declares its own usings, as every file of the runtime does. -->
+    <ImplicitUsings>disable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Ankus.Runtime/CompilerServices/SpiSqlTokenLayout.cs" Link="CompilerServices/SpiSqlTokenLayout.cs" />

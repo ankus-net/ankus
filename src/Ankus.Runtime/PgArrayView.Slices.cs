@@ -1,3 +1,6 @@
+using System;
+using Ankus.CompilerServices;
+
 namespace Ankus;
 
 public sealed partial class PgArrayView

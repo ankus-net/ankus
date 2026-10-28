@@ -4,6 +4,9 @@
     <Description>Native AOT-compatible PostgreSQL extension APIs for .NET.</Description>
     <IsAotCompatible>true</IsAotCompatible>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- An editor compiles a navigated file on its own, so each file declares its usings and the PDB carries the source. -->
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EmbedAllSources>true</EmbedAllSources>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Formats.Cbor" />
