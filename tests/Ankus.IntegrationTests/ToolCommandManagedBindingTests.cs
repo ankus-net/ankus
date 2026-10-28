@@ -625,6 +625,25 @@ public sealed partial class ToolCommandTests
             Assert.AreEqual("Invoke", RawCallEntry(companion, function), function);
         }
 
+        // Go to Definition opens a declaration's own small document from the companion's PDB instead of decompiling a
+        // class of several hundred thousand lines (#130).
+        string companionAssembly = (await File.ReadAllTextAsync(Directory.GetFiles(Path.Join(consumer, "obj"), "native-binding.assembly-path",
+            SearchOption.AllDirectories).First(), token)).Trim();
+        using (var symbols = new CompanionSymbols(companionAssembly))
+        {
+            const string Documents = "/_/Ankus.Postgres/documents/";
+            string method = symbols.MemberDocument("NativeMethods", "TupleDescAttr");
+            Assert.AreEqual(Documents + "NativeMethods.TupleDescAttr.g.cs", method);
+            Assert.Contains(" @TupleDescAttr(", symbols.Documents[method]!);
+            Assert.DoesNotContain(" @pq_sendint32(", symbols.Documents[method]!);
+            Assert.AreEqual(Documents + "NativeGlobals.MyProcPid.g.cs", symbols.MemberDocument("NativeGlobals", "get_MyProcPid"));
+            Assert.AreSequenceEqual<string>([Documents + "NodeTag.g.cs"], symbols.TypeDocuments("NodeTag"));
+            KeyValuePair<string, string?>[] generated = [.. symbols.Documents.Where(static pair => pair.Key.StartsWith(Documents, StringComparison.Ordinal))];
+            Assert.IsGreaterThan(1000, generated.Length);
+            Assert.IsTrue(generated.All(static pair => pair.Value is not null), "Every generated document is embedded.");
+            Assert.IsLessThan(256 * 1024, generated.Max(static pair => pair.Value!.Length));
+        }
+
         (await RunDotnetAsync(["publish", consumerProject, .. options, "-o", published], token))
             .EnsureSuccess("dotnet", ["publish"]);
 

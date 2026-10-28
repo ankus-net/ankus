@@ -9,12 +9,14 @@ internal static partial class NativeBindingRecordCSharp
         /// </summary>
         private void Globals(IReadOnlyList<NativeBindingGlobalContract> selected)
         {
+            Document("NativeGlobals");
             Summary("Accesses selected native PostgreSQL globals through the active callback's error guard.");
             Line("public static partial class NativeGlobals\n{");
             var members = new HashSet<string>(selected.Select(static global => global.Name), StringComparer.Ordinal) { "NativeGlobals" };
             foreach (NativeBindingGlobalContract global in selected)
             {
                 string member = global.Name == "NativeGlobals" ? Unique(members, "Native_" + global.Name) : global.Name;
+                Member("NativeGlobals." + member);
                 string hide = member == "Finalize" ? "" : Hide(member);
                 string address = Unique(members, "DangerousAddressOf_" + global.Name);
                 if (global.Symbol.Linkage == NativeHeaderLinkage.Unavailable)
@@ -74,6 +76,7 @@ internal static partial class NativeBindingRecordCSharp
                 GlobalImport(global.Name, NativeBindingGlobalOperation.Address, addressAccessor);
             }
 
+            Line(NativeBindingDocuments.EndMarker);
             Line("}\n");
         }
 

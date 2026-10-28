@@ -51,11 +51,13 @@ internal static class GeneratedBindingCompilation
         => Create(binding, harness, cancellationToken).GetDiagnostics(cancellationToken);
 
     /// <summary>
-    /// Builds both positive and negative consumers against the same compiler and runtime references.
+    /// Builds both positive and negative consumers against the same compiler and runtime references. The declarations
+    /// compile from the same files as the companion, one per type and one per class of members.
     /// </summary>
     private static CSharpCompilation Create(NativeBindingSource binding, string harness, CancellationToken cancellationToken)
         => CSharpCompilation.Create(binding.AssemblyName,
-            [CSharpSyntaxTree.ParseText(binding.Source, cancellationToken: cancellationToken),
+            [.. NativeBindingDocuments.Split(binding.Source).Compiled.Select(document =>
+                CSharpSyntaxTree.ParseText(document.Text, path: document.Path, cancellationToken: cancellationToken)),
                 CSharpSyntaxTree.ParseText(harness, path: "Consumer.cs", cancellationToken: cancellationToken)],
             CompilationReferences.Platform, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,
                 allowUnsafe: true, nullableContextOptions: NullableContextOptions.Enable,

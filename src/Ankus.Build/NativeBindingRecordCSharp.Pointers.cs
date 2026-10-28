@@ -72,12 +72,14 @@ internal static partial class NativeBindingRecordCSharp
         {
             foreach ((int _, string name) in _opaquePointees)
             {
+                Document(name);
                 Summary("Identifies an incomplete native pointee without declaring its size or allocation contract.");
                 Line($"public readonly struct @{name}\n{{\n}}\n");
             }
 
             foreach ((string pointer, string name) in _pointerValues)
             {
+                Document(name);
                 Summary("Retains a borrowed typed pointer in a generic container without extending its native lifetime.");
                 Line("/// <param name=\"address\">The native address with caller-guaranteed type and lifetime.</param>");
                 Line("[global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Sequential)]");

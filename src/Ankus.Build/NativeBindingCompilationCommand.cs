@@ -158,8 +158,35 @@ internal static class NativeBindingCompilationCommand
                     throw new IOException("The binding runtime reference changed while it was being staged.");
                 }
 
+                // Read the source once and verify those bytes, then lay it out so the PDB embeds one small document per
+                // declaration, which an editor can open on Go to Definition.
+                byte[] generated = await File.ReadAllBytesAsync(explicitFiles[0], token);
+                if (Convert.ToHexString(SHA256.HashData(generated)) != selected[2].Hash)
+                {
+                    throw new IOException("The binding source changed while it was being staged.");
+                }
+
+                NativeBindingDocumentLayout layout = NativeBindingDocuments.Split(
+                    new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true).GetString(generated));
+                foreach (string directory in layout.Files.Select(document => Path.GetDirectoryName(Path.Join(work, document.Path))!)
+                    .Distinct(StringComparer.Ordinal))
+                {
+                    Directory.CreateDirectory(directory);
+                }
+
+                await Parallel.ForEachAsync(layout.Files, token, async (document, written) =>
+                    await File.WriteAllTextAsync(Path.Join(work, document.Path), document.Text, written));
+
                 var project = XDocument.Parse(NativeBindingSourceCommand.CreateProject(work));
                 XElement root = project.Root!;
+                // List the files in source order. The compiler's output depends on it, and a wildcard's order depends
+                // on the file system.
+                root.Descendants("Compile").Single().ReplaceWith(
+                    layout.Compiled.Select(static document => new XElement("Compile", new XAttribute("Include", document.Path))));
+                // The embedded documents are not among the compiler inputs that key the cache: the compiled files hold
+                // all of their text, and this helper, which lays them out, is part of the key.
+                root.Add(new XElement("ItemGroup",
+                    layout.Embedded.Select(static document => new XElement("EmbeddedFiles", new XAttribute("Include", document.Path)))));
                 root.AddFirst(new XElement("PropertyGroup",
                     Property("AnkusBindingTargetFramework", arguments[2]),
                     Property("AnkusBindingAssemblyName", assembly),
@@ -174,11 +201,6 @@ internal static class NativeBindingCompilationCommand
                 root.Add(XElement.Parse(CompilerInputs));
                 root.Add(restore.CreateTarget());
                 await File.WriteAllTextAsync(Path.Join(work, "Ankus.NativeBindings.csproj"), project.ToString(), token);
-                File.Copy(explicitFiles[0], Path.Join(work, "native-binding.g.cs"));
-                if (await NativeBindingCache.HashAsync(Path.Join(work, "native-binding.g.cs"), token) != selected[2].Hash)
-                {
-                    throw new IOException("The binding source changed while it was being staged.");
-                }
 
                 await File.WriteAllTextAsync(Path.Join(work, "global.json"), JsonSerializer.Serialize(new
                 {

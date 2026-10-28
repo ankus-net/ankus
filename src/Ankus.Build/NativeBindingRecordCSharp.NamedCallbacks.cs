@@ -59,6 +59,7 @@ internal static partial class NativeBindingRecordCSharp
             foreach ((string name, NativeBindingIndirectCall call) in _namedCallbacks)
             {
                 string canonical = _functionPointers[call.FunctionType];
+                Document(name);
                 Summary("Borrows a native callback address using its field or global declaration name.");
                 Line("/// <param name=\"address\">A native callback with the exact selected-header signature and a lifetime covering every use.</param>");
                 Line("/// <remarks>This value shares its canonical pointer's representation and does not own or extend the callback lifetime.</remarks>");
