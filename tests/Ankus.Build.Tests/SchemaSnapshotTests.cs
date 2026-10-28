@@ -263,10 +263,9 @@ public sealed class SchemaSnapshotTests(TestContext context)
             [assembly: AssemblyMetadata("Ankus.Relocatable", "{{(relocatable ? "true" : "false")}}")]
             {{graphAttribute}}
             """;
-        string platformAssemblies = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!;
         CSharpCompilation compilation = CSharpCompilation.Create("SchemaMetadataProbe",
             [CSharpSyntaxTree.ParseText(source, cancellationToken: context.CancellationToken)],
-            platformAssemblies.Split(Path.PathSeparator).Select(static path => MetadataReference.CreateFromFile(path)),
+            CompilationReferences.Platform,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
         string assembly = Path.Join(_root, Guid.NewGuid().ToString("N") + ".dll");
         using (FileStream stream = File.Create(assembly))

@@ -74,12 +74,9 @@ public sealed class SpiCommandCompilationTests(TestContext context)
     private CSharpCompilation Compile(string expression)
     {
         string source = "using Ankus; internal static class Consumer { internal static object Invoke(int value) => " + expression + "; }";
-        string platform = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!;
-        IEnumerable<MetadataReference> references = platform.Split(Path.PathSeparator).Append(typeof(Spi).Assembly.Location)
-            .Distinct(StringComparer.Ordinal).Select(static path => MetadataReference.CreateFromFile(path));
         return CSharpCompilation.Create("SpiCommandConsumer",
             [CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(LanguageVersion.CSharp14), cancellationToken: context.CancellationToken)],
-            references, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable,
+            CompilationReferences.Platform, new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable,
                 generalDiagnosticOption: ReportDiagnostic.Error));
     }
 }

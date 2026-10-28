@@ -1279,6 +1279,23 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   no open alert. Its first macOS ARM64 attempt ended with exit code 7 after the
   generator tests' host had passed all 5,082 tests, as in remaining-work item
   1, with no crash report on the runner; the rerun passed.
+- The generator tests' host on macOS ARM64 ended with exit code 7 after
+  passing all 5,082 tests in CI 40608977029 on 80c4c577 (#125), as in two
+  earlier runs. The MacBook's memory-pressure report from that minute shows the
+  host at 32.3 GB on a 24 GB machine, with macOS killing about 300 other
+  processes, and its report from CI 40264229777, which passed, shows 20.9 GB.
+  `SpiInterpolationAnalyzerTests` and `NativeUnsafeAccessAnalyzerTests`
+  created a metadata reference to every platform assembly for each test case,
+  and so did four build tool test classes. Roslyn's
+  `MetadataReference.CreateFromFile` copies the whole file into native memory
+  that is freed only when the reference is finalized, so the 304 parallel SPI
+  analyzer cases held gigabytes the GC could not see. Each test project now
+  shares one reference set, as most generator tests already did. On Linux x64
+  the SPI analyzer tests peaked at 5.94 GB in 11.3 s and now peak at 0.31 GB in
+  2.7 s, and all generator tests peaked at 9.15 GB and now peak at 2.14 GB. On
+  the MacBook, with 12 workers, the generator tests now peak at 2.36 GB and
+  pass in 75 s. The complete suite passed on Linux x64 with PostgreSQL 18:
+  15,202 tests, 55 skipped.
 - Disposing a `PgRelationWriter` took time proportional to the writers still
   open (#104). Open writers were a singly linked list that every operation
   walked to find its writer, that close walked twice more, and that the context
@@ -2718,7 +2735,7 @@ PostgreSQL 19 RC1, Linux ARM64, and Intel macOS on 13–18 and 19 RC1 all pass o
 declaration audit against pgrx 0.19.3 has no open option, and the third code
 review's findings are fixed or kept by documented design.
 
-1. Resolve discovered correctness and CI failures before accepting affected work. The macOS ARM64 test-host crashes are unexplained: on 2026-10-14 the build-tool tests' host died after 698 of 1,346 tests, and its crash report shows `fork()`, called by .NET's `Process.Start`, aborting in libmalloc's xzone allocator (`_malloc_fork_parent`: unlock of an `os_unfair_lock` the thread does not own) while two other threads waited on xzone's fork lock to allocate. macOS 26 uses xzone for every ARM64 process, with no setting to turn it off outside Apple, and Intel Macs never use it. Rerun a job that ends this way and record it. On macOS, an extension's references to `hash_create`, `hash_destroy`, `hash_search` and `hash_stats`, which `NativeMethods` bodies also make, bind to libSystem's functions of the same names: the static linker binds a name that a linked system library exports, and `-undefined dynamic_lookup` covers only names it cannot find. A probe linked with Native AOT's macOS libraries binds those four, and `getpeereid` and `timingsafe_bcmp`, which PostgreSQL defines only where the system lacks them, to libSystem; every other catalog function and global is looked up in the backend.
+1. Resolve discovered correctness and CI failures before accepting affected work. The generator tests' exit code 7 on macOS ARM64 was memory exhaustion from per-test metadata references, now shared. The build-tool tests' host crash is unexplained: on 2026-10-14 it died after 698 of 1,346 tests, and its crash report shows `fork()`, called by .NET's `Process.Start`, aborting in libmalloc's xzone allocator (`_malloc_fork_parent`: unlock of an `os_unfair_lock` the thread does not own) while two other threads waited on xzone's fork lock to allocate. macOS 26 uses xzone for every ARM64 process, with no setting to turn it off outside Apple, and Intel Macs never use it. Rerun a job that ends this way and record it. On macOS, an extension's references to `hash_create`, `hash_destroy`, `hash_search` and `hash_stats`, which `NativeMethods` bodies also make, bind to libSystem's functions of the same names: the static linker binds a name that a linked system library exports, and `-undefined dynamic_lookup` covers only names it cannot find. A probe linked with Native AOT's macOS libraries binds those four, and `getpeereid` and `timingsafe_bcmp`, which PostgreSQL defines only where the system lacks them, to libSystem; every other catalog function and global is looked up in the backend.
 2. Keep the pgrx 0.19.3 [release-delta gates](docs/contributing/evidence/parity-requirements.md#pgrx-0193-release-delta-and-refresh-gates) satisfied: each has implementation and complete-suite evidence on runtime 10.0.13-ankus.1, which must be refreshed on each later serviced runtime.
 3. Keep the [public API mapping](docs/contributing/evidence/pgrx-api-mapping.md) current as APIs change.
 4. Measured hot paths are done: a trimming row trigger costs about the same as PL/pgSQL (0.72 µs against 0.72 µs per row on one host, 0.55 µs against 0.52 µs on another), as the [guard-tier evidence](docs/contributing/evidence/guard-tiers.md#row-triggers) shows. Keep the in-backend baseline, and measure again when boundary code changes, preserving recovery and ownership guarantees.

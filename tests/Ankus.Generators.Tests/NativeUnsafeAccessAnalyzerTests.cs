@@ -133,12 +133,10 @@ public sealed partial class NativeUnsafeAccessAnalyzerTests(TestContext context)
     /// </summary>
     private async Task<ImmutableArray<Diagnostic>> Analyze(string member, string path = "Consumer.cs", string header = "")
     {
-        string platform = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!;
-        IEnumerable<MetadataReference> references = platform.Split(Path.PathSeparator).Append(typeof(PgInterrupts).Assembly.Location)
-            .Distinct(StringComparer.Ordinal).Select(static path => MetadataReference.CreateFromFile(path));
         CSharpCompilation compilation = CSharpCompilation.Create("RawAnalyzerConsumer",
             [CSharpSyntaxTree.ParseText(header + Declarations + "public static class Consumer { " + member + " }",
-                new CSharpParseOptions(LanguageVersion.CSharp14), path: path, cancellationToken: context.CancellationToken)], references,
+                new CSharpParseOptions(LanguageVersion.CSharp14), path: path, cancellationToken: context.CancellationToken)],
+            CompilationReferences.Platform,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, allowUnsafe: true, nullableContextOptions: NullableContextOptions.Enable));
         Assert.IsEmpty(compilation.GetDiagnostics(context.CancellationToken));
         var analysis = new CompilationWithAnalyzers(compilation, [new NativeUnsafeAccessAnalyzer()],
