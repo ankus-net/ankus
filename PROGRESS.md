@@ -1374,7 +1374,9 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   it, `PostgresInstallation`. Ankus.Runtime.dll grows from 820 KB to 1.39 MB.
   Members that another file declares still do not open from inside a document,
   because outside the documents it compiles Roslyn sees only the library's
-  public surface.
+  public surface. The complete suite passed on Linux x64 with PostgreSQL 18:
+  15,221 tests, 55 skipped. On main at ce9f9e86 (#135), CI 40767242311 passed
+  on Linux x64, macOS ARM64 and Windows x64.
 - Disposing a `PgRelationWriter` took time proportional to the writers still
   open (#104). Open writers were a singly linked list that every operation
   walked to find its writer, that close walked twice more, and that the context
