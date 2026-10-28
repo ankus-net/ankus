@@ -152,6 +152,7 @@ internal static partial class NativeBindingRecordCSharp
         private readonly IReadOnlyList<NativeBindingIndirectCall> _indirectCalls = NativeBindingIndirectModel.Describe(graph);
         private readonly Dictionary<int, string> _functionPointers = [];
         private readonly NativeBindingRecordMembers _members = new(graph);
+        private readonly HashSet<string> _documents = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// Passes the generated acceptance cache by reference to a raw call, and declares the cache once one uses it.
@@ -283,6 +284,7 @@ internal static partial class NativeBindingRecordCSharp
 
             foreach (string name in _emptyValues.Values)
             {
+                Document(name);
                 Summary("Represents the unique logical value of a native zero-size object without transporting CLR storage bytes.");
                 Line($"public readonly struct @{name}\n{{\n}}\n");
             }
@@ -291,6 +293,7 @@ internal static partial class NativeBindingRecordCSharp
             {
                 NativeRecordType type = graph.Types[index];
                 int size = Size(type.Size);
+                Document(name);
                 Summary("Retains an exact native representation without a lossy CLR numeric conversion.");
                 Layout(size);
                 Line($"public struct @{name} : global::Ankus.IPgNativeType");
@@ -304,6 +307,7 @@ internal static partial class NativeBindingRecordCSharp
 
             foreach (((string code, int count), string name) in _arrays)
             {
+                Document(name);
                 Summary("Stores contiguous native array elements with their measured stride.");
                 Line($"[global::System.Runtime.CompilerServices.InlineArray({Number(count)})]");
                 Line($"public struct @{name}\n{{\n    private {code} _element0;\n}}\n");
@@ -311,6 +315,7 @@ internal static partial class NativeBindingRecordCSharp
 
             foreach ((int count, string name) in _storage)
             {
+                Document(name);
                 Summary("Retains exact native object bytes.");
                 Line($"[global::System.Runtime.CompilerServices.InlineArray({Number(count)})]");
                 Line($"public struct @{name}\n{{\n    private byte _element0;\n}}\n");
@@ -318,6 +323,7 @@ internal static partial class NativeBindingRecordCSharp
 
             if (_acceptsProvider)
             {
+                Document("NativeBinding.AcceptedProvider");
                 Line("public static partial class NativeBinding\n{");
                 Summary("Caches the native provider that accepted this contract, so later calls skip the check.", "    ");
                 Line($"    internal static nint {AcceptedProvider};\n}}\n");
@@ -349,6 +355,7 @@ internal static partial class NativeBindingRecordCSharp
 
         private void Header()
         {
+            Document("NativeBinding");
             Summary("Identifies the complete measured native declaration contract.");
             Line("public static partial class NativeBinding\n{");
             Summary("Identifies the selected native and managed ABI.", "    ");
@@ -372,6 +379,7 @@ internal static partial class NativeBindingRecordCSharp
         {
             NativeRecordDeclaration declaration = graph.Declarations[index];
             string name = _declarations[index];
+            Document(name);
             if (!declaration.IsComplete || declaration.Size == 0)
             {
                 Summary("Identifies native storage that has no allocatable CLR value representation.");
@@ -698,6 +706,17 @@ internal static partial class NativeBindingRecordCSharp
         private void Summary(string value, string indent = "") => Line(indent + "/// <summary>\n" + indent + "/// " + value + "\n" + indent + "/// </summary>");
 
         private void Line(string value) => _source.AppendLine(value);
+
+        /// <summary>
+        /// Starts the document that holds the next top-level declaration, so editors can open it on its own from the PDB.
+        /// </summary>
+        private void Document(string name) => Line(NativeBindingDocuments.Marker(NativeBindingDocuments.Name(_documents, name)));
+
+        /// <summary>
+        /// Starts the document that holds the next member of the current class. The class stays one declaration, because
+        /// thousands of partial declarations of one class slow the compiler.
+        /// </summary>
+        private void Member(string name) => Line(NativeBindingDocuments.MemberMarker(NativeBindingDocuments.Name(_documents, name)));
 
         private static string Number(long value) => value.ToString(CultureInfo.InvariantCulture);
 

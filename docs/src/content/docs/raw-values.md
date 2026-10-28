@@ -154,6 +154,12 @@ and Clang toolchain for projects that exchange these values. The generated
 contract rejects an incompatible runtime target; cross-compilation requires a probe that can execute
 on the build host. `dotnet clean` removes the generated companion artifacts.
 
+The companion's symbol file embeds each generated declaration as its own small
+source file, so Go to Definition on a binding such as `NativeMethods.TupleDescAttr`,
+`NativeGlobals.MyProcPid` or `NodeTag` opens the generated declaration with its
+documentation. Going to the `NativeMethods` or `NativeGlobals` class itself still
+shows a decompiled view of the whole class.
+
 ### Fixed native functions
 
 `NativeMethods` exposes fixed-prototype functions present in the selected

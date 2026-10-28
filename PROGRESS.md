@@ -1311,6 +1311,24 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   on Linux x64, macOS ARM64 and Windows x64, where the macOS generator tests
   took 1 min 40 s against 3 min 19 s before, and no memory-pressure report
   followed.
+- Go to Definition on a generated binding such as `NativeMethods.TupleDescAttr`
+  opened a 20 MB decompiled file that VS Code would not display (#130). The
+  companion's PDB named one source file, which existed nowhere, so the editor
+  decompiled the whole of `NativeMethods`, about 297,000 lines. The generator now
+  marks a document for each top-level type and for each member of
+  `NativeMethods` and `NativeGlobals`, and the companion compile embeds those
+  documents in the PDB: 13,314 for PostgreSQL 18 on Linux x64, the largest
+  55 KB. Types compile from their own documents. Each class's members stay in
+  one declaration mapped to their documents with `#line`, because a first
+  version that split the classes into 10,000 partial declarations made the
+  compiler take 47 to 51 s where it had taken 35 s. On Linux x64 with
+  PostgreSQL 18, building the Hello sample with a fresh companion took 44.8 and
+  43.8 s before and takes 45.4 and 45.8 s now; with the companion cached, a
+  build without changes takes 5.1 s and one after an edit 6.5 s, as before. The
+  PDB grows from 1.8 MB to 14.8 MB. Target information exported by an earlier
+  version has no markers, and its source still compiles as one file. Going to
+  the `NativeMethods` or `NativeGlobals` class itself still shows the
+  decompiled class.
 - Disposing a `PgRelationWriter` took time proportional to the writers still
   open (#104). Open writers were a singly linked list that every operation
   walked to find its writer, that close walked twice more, and that the context

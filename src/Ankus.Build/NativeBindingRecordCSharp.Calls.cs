@@ -11,6 +11,7 @@ internal static partial class NativeBindingRecordCSharp
         /// </summary>
         private void Methods(IReadOnlyList<NativeBindingCall> selected)
         {
+            Document("NativeMethods");
             Summary("Calls selected native PostgreSQL functions through the active callback's error guard.");
             Line("public static partial class NativeMethods\n{");
             var members = new HashSet<string>(selected.Select(static call => call.Name), StringComparer.Ordinal) { "NativeMethods" };
@@ -20,6 +21,7 @@ internal static partial class NativeBindingRecordCSharp
                 string method = call.Name == "NativeMethods" || call is { Name: "Finalize", Parameters.Count: 0 }
                     ? Unique(members, "Native_" + call.Name) : call.Name;
                 string accessor = Unique(members, "GetNativeBody_" + call.Name);
+                Member("NativeMethods." + method);
                 Method(call, method, accessor);
                 LongOverload(call, method);
                 Summary("Obtains a native body address without entering PostgreSQL.", "    ");
@@ -29,6 +31,7 @@ internal static partial class NativeBindingRecordCSharp
                 Line($"    private static partial nint @{accessor}();\n");
             }
 
+            Line(NativeBindingDocuments.EndMarker);
             Line("}\n");
         }
 
