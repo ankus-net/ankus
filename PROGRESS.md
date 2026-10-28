@@ -18,8 +18,8 @@ extensions, backend recovery, complete suites and release/package validation.
 Ankus is released on nuget.org: 0.1.0 on 2026-10-15, servicing releases
 through 0.1.7, 0.2.0 on 2026-10-17, 0.2.1 and 0.2.2 on 2026-10-18, 0.2.3 on
 2026-10-19, 0.2.4 on 2026-10-20, 0.2.5 on 2026-10-22, 0.2.6 on 2026-10-22,
-0.2.7 and 0.2.8 on 2026-10-24, 0.2.9 on 2026-10-25, and 0.2.10 and 0.2.11 on
-2026-10-26 (see remaining-work item 8).
+0.2.7 and 0.2.8 on 2026-10-24, 0.2.9 on 2026-10-25, 0.2.10 and 0.2.11 on
+2026-10-26, and 0.2.12 on 2026-10-27 (see remaining-work item 8).
 
 The upstream inventory is pinned to pgrx **0.19.3**, commit
 `fc91c63ebad11784647b50ee7e265c1fd9c9924f`. The refresh covers every release
@@ -908,6 +908,18 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   were pushed and listed on nuget.org. On the MacBook, with `/usr/bin/clang`
   first on `PATH`, `Ankus.Tool` 0.2.2 from nuget.org created a solution whose
   7 tests passed.
+- 0.2.12 is released (release run 40628231264 on d16e7188, after CI
+  40626024451, CodeQL, Docs and the secret scan passed on that commit). It
+  moves the tool to System.CommandLine 2.0.14 and drops the package readme's
+  outdated status line. All seven packages were pushed and listed on nuget.org
+  about 6 minutes after publishing. On Linux x64 with PostgreSQL 18, 61
+  `ankus` command forms gave the same exit codes and output on 0.2.11 and on
+  0.2.12, both from a local pack before publishing and from nuget.org after.
+  They cover every command's help, `--pg 18`, `--pg=18` and `--pg:18`,
+  `--home`, repeated `--property`, arguments after `--`, and the errors for
+  unknown and incomplete options; only timings, generated ids and the first
+  build's binding cache lines differed. The solution that `ankus new` created
+  from 0.2.12 on nuget.org passed its 7 tests.
 - 0.2.11 is released (release run 40393546066 on a7eb1fe9, after CI
   40386643224, CodeQL, Docs and the secret scan passed on that commit). All
   seven packages were pushed and listed on nuget.org about 17 minutes after
@@ -1295,7 +1307,10 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   2.7 s, and all generator tests peaked at 9.15 GB and now peak at 2.14 GB. On
   the MacBook, with 12 workers, the generator tests now peak at 2.36 GB and
   pass in 75 s. The complete suite passed on Linux x64 with PostgreSQL 18:
-  15,202 tests, 55 skipped.
+  15,202 tests, 55 skipped. On main at f5b23f3d (#127), CI 40619247918 passed
+  on Linux x64, macOS ARM64 and Windows x64, where the macOS generator tests
+  took 1 min 40 s against 3 min 19 s before, and no memory-pressure report
+  followed.
 - Disposing a `PgRelationWriter` took time proportional to the writers still
   open (#104). Open writers were a singly linked list that every operation
   walked to find its writer, that close walked twice more, and that the context
