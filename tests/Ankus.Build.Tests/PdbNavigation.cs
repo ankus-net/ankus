@@ -180,11 +180,11 @@ internal sealed class PdbNavigation : IDisposable
     private static Dictionary<string, string> ReadOptions(MetadataReader pdb)
     {
         var options = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (CustomDebugInformation information in pdb.GetCustomDebugInformation(EntityHandle.ModuleDefinition)
+        foreach (string[] parts in pdb.GetCustomDebugInformation(EntityHandle.ModuleDefinition)
             .Select(pdb.GetCustomDebugInformation)
-            .Where(information => pdb.GetGuid(information.Kind) == s_compilationOptions))
+            .Where(information => pdb.GetGuid(information.Kind) == s_compilationOptions)
+            .Select(information => Encoding.UTF8.GetString(pdb.GetBlobBytes(information.Value)).Split('\0')))
         {
-            string[] parts = Encoding.UTF8.GetString(pdb.GetBlobBytes(information.Value)).Split('\0');
             for (int index = 0; index + 1 < parts.Length; index += 2)
             {
                 options[parts[index]] = parts[index + 1];
@@ -258,16 +258,10 @@ internal sealed class PdbNavigation : IDisposable
 
     private void AddType(TypeDefinitionHandle handle, HashSet<DocumentHandle> documents, bool containingType)
     {
-        foreach (CustomDebugInformation information in _pdb.GetCustomDebugInformation(handle)
+        documents.UnionWith(_pdb.GetCustomDebugInformation(handle)
             .Select(_pdb.GetCustomDebugInformation)
-            .Where(information => _pdb.GetGuid(information.Kind) == s_typeDefinitionDocuments))
-        {
-            BlobReader rows = _pdb.GetBlobReader(information.Value);
-            while (rows.RemainingBytes > 0)
-            {
-                documents.Add(MetadataTokens.DocumentHandle(rows.ReadCompressedInteger()));
-            }
-        }
+            .Where(information => _pdb.GetGuid(information.Kind) == s_typeDefinitionDocuments)
+            .SelectMany(information => DocumentRows(_pdb.GetBlobReader(information.Value))));
 
         TypeDefinition type = _metadata.GetTypeDefinition(handle);
         foreach (MethodDefinitionHandle method in type.GetMethods())
@@ -286,6 +280,17 @@ internal sealed class PdbNavigation : IDisposable
         }
     }
 
+    private static List<DocumentHandle> DocumentRows(BlobReader rows)
+    {
+        var handles = new List<DocumentHandle>();
+        while (rows.RemainingBytes > 0)
+        {
+            handles.Add(MetadataTokens.DocumentHandle(rows.ReadCompressedInteger()));
+        }
+
+        return handles;
+    }
+
     private SyntaxTree? Document(DocumentHandle handle)
     {
         if (!_documents.TryGetValue(handle, out SyntaxTree? tree))
@@ -300,12 +305,12 @@ internal sealed class PdbNavigation : IDisposable
 
     private string? EmbeddedText(DocumentHandle handle)
     {
-        foreach (CustomDebugInformation information in _pdb.GetCustomDebugInformation(handle)
+        foreach (byte[] blob in _pdb.GetCustomDebugInformation(handle)
             .Select(_pdb.GetCustomDebugInformation)
-            .Where(information => _pdb.GetGuid(information.Kind) == s_embeddedSource))
+            .Where(information => _pdb.GetGuid(information.Kind) == s_embeddedSource)
+            .Select(information => _pdb.GetBlobBytes(information.Value)))
         {
             // The blob starts with the uncompressed size, or zero when the text follows uncompressed.
-            byte[] blob = _pdb.GetBlobBytes(information.Value);
             if (BitConverter.ToInt32(blob, 0) == 0)
             {
                 return Encoding.UTF8.GetString(blob, 4, blob.Length - 4);
