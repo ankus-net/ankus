@@ -1,3 +1,5 @@
+using System;
+
 namespace Ankus;
 
 public readonly partial record struct PgTimeTz

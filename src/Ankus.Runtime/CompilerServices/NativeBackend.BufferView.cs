@@ -1,3 +1,5 @@
+using System;
+
 namespace Ankus.CompilerServices;
 
 public static unsafe partial class NativeBackend

@@ -1349,6 +1349,32 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   version has no markers, and its source still compiles as one file. Going to
   the `NativeMethods` or `NativeGlobals` class itself still shows the
   decompiled class.
+- Go to Definition into Ankus.Runtime, Ankus.PgConfig and Ankus.Testing
+  opened many declarations at the first line of their file, and from inside
+  that file it did nothing for names such as `ReadOnlySpan` (#134). Roslyn
+  opens a declaration by compiling only the documents the PDB names for it
+  against the consumer's references and matching the declaration there. These
+  libraries relied on implicit global usings and a global using of
+  `Ankus.CompilerServices`, which those documents lack. With the Roslyn in C#
+  extension 2.160.4, 255 of 3,595 public declarations in Ankus.Runtime 0.2.13
+  opened at the first line, 39 of 169 in Ankus.PgConfig and 11 of 58 in
+  Ankus.Testing. The three libraries and the generator, which compiles one
+  runtime file, now disable implicit usings and give every file its own using
+  directives. The text interfaces of sixteen types moved from one shared file
+  into a file per type, so no file depends on another type's members, and the
+  libraries embed their sources in the PDB, so editors open them without
+  Source Link. The API pages for `PgTime`, `PgTimeTz`, `PgTimestamp` and
+  `PgTimestampTz` had shown the shared file's summary and now show their own.
+  `PackageSourceNavigationTests` opens every public declaration
+  as Roslyn does and requires its own location; it fails when one file's
+  `using System` moves to a global using. Through the C# extension's language
+  server, Go to Definition on `PgFunctions.Call` in worf opens its declaration
+  from the embedded source, and from there `PgFunctionArgument` and
+  `PgFunctionCallOptions` open theirs, as do `PostgresTestCluster` and, from
+  it, `PostgresInstallation`. Ankus.Runtime.dll grows from 820 KB to 1.39 MB.
+  Members that another file declares still do not open from inside a document,
+  because outside the documents it compiles Roslyn sees only the library's
+  public surface.
 - Disposing a `PgRelationWriter` took time proportional to the writers still
   open (#104). Open writers were a singly linked list that every operation
   walked to find its writer, that close walked twice more, and that the context

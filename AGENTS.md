@@ -74,6 +74,11 @@ before changing an area.
 - Document public and internal declarations with XML comments. Put XML summary
   opening tags, text, and closing tags on separate lines. Follow the analyzers;
   generic types must not expose static members (CA1000).
+- Give every file in a packaged library its own using directives. These projects
+  disable implicit usings and allow no `global using`, because Go to Definition
+  compiles only the navigated declaration's files from the PDB, and a name that
+  a global using supplies leaves the editor at the first line.
+  `PackageSourceNavigationTests` opens every public declaration that way.
 - Write repository automation as .NET file-based C# apps. Do not add Bash,
   PowerShell, or `.env` scripts. Each folder containing file-based apps must have
   a README that briefly lists each app and its purpose.

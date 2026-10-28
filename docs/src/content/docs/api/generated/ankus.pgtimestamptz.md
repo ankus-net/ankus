@@ -9,14 +9,15 @@ Namespace: [Ankus](/api/ankus/)
 
 Assembly: `Ankus.Runtime.dll`
 
-Implements .NET's parsing contract over PostgreSQL's input function.
+Represents a PostgreSQL timestamp with time zone as a UTC instant, including infinities.
+PostgreSQL does not retain the original offset or zone name.
 
 ```csharp
 [JsonConverter(typeof(PgTimestampTzConverter))]
-public readonly struct PgTimestampTz : IParsable<PgTimestampTz>, IComparable<PgTimestampTz>, IEquatable<PgTimestampTz>
+public readonly struct PgTimestampTz : IComparable<PgTimestampTz>, IParsable<PgTimestampTz>, IEquatable<PgTimestampTz>
 ```
 
-Implements: [IParsable&lt;PgTimestampTz&gt;](https://learn.microsoft.com/dotnet/api/system.iparsable-1), [IComparable&lt;PgTimestampTz&gt;](https://learn.microsoft.com/dotnet/api/system.icomparable-1), [IEquatable&lt;PgTimestampTz&gt;](https://learn.microsoft.com/dotnet/api/system.iequatable-1)
+Implements: [IComparable&lt;PgTimestampTz&gt;](https://learn.microsoft.com/dotnet/api/system.icomparable-1), [IParsable&lt;PgTimestampTz&gt;](https://learn.microsoft.com/dotnet/api/system.iparsable-1), [IEquatable&lt;PgTimestampTz&gt;](https://learn.microsoft.com/dotnet/api/system.iequatable-1)
 
 ## Constructors
 

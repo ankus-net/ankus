@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.IO.Compression;
 using System.Reflection;
 using System.Reflection.Metadata;
@@ -7,6 +8,8 @@ using System.Runtime.Loader;
 using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace Ankus.Build.Tests;
 
@@ -217,6 +220,17 @@ public sealed class NativeBindingCompilationTests(TestContext context)
             Assert.AreEqual("/_/Ankus.Postgres/documents/Mode.g.cs",
                 pdb.GetString(pdb.GetDocument(MetadataTokens.DocumentHandle(rows.ReadCompressedInteger())).Name));
             Assert.AreEqual(0, rows.RemainingBytes);
+
+            // Go to Definition opens every other declaration from these documents. The class that holds members is
+            // declared in the members file, which the PDB names without embedding, so the editor decompiles it.
+            MetadataReference companion = MetadataReference.CreateFromFile(artifact);
+            ImmutableArray<MetadataReference> references = [.. CompilationReferences.Platform, companion];
+            var assembly = CSharpCompilation.Create("Consumer", references: references).GetAssemblyOrModuleSymbol(companion) as IAssemblySymbol;
+            Assert.IsNotNull(assembly);
+            using var navigation = new PdbNavigation(artifact);
+            PdbNavigationResult result = navigation.Open(assembly, references);
+            Assert.AreEquivalent(["Probe", "Probe.Read()", "Mode", "Mode.Selected"], result.Declarations);
+            Assert.AreEqual("Probe has a document without embedded source, so the editor decompiles it", Assert.ContainsSingle(result.Failures));
         }
         finally
         {

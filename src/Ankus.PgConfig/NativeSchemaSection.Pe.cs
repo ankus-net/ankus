@@ -1,3 +1,5 @@
+using System;
+
 namespace Ankus.PgConfig;
 
 internal static partial class NativeSchemaSection

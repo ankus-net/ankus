@@ -1,3 +1,5 @@
+using System;
+
 namespace Ankus;
 
 public sealed unsafe partial class PgMemoryContext
