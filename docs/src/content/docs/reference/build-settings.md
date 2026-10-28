@@ -379,12 +379,12 @@ Use `AnkusUpgradeScript` items to select SQL upgrades. See
 [upgrading an extension](/getting-started/publishing/#upgrade-an-existing-extension)
 for file naming, tokens, and native library versioning.
 
-Pin the SDK version in the project (`Ankus.Sdk/0.2.13`) or centrally in `global.json`:
+Pin the SDK version in the project (`Ankus.Sdk/0.2.14`) or centrally in `global.json`:
 
 ```json
 {
   "msbuild-sdks": {
-    "Ankus.Sdk": "0.2.13"
+    "Ankus.Sdk": "0.2.14"
   }
 }
 ```
