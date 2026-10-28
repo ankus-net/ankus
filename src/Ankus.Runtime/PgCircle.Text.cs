@@ -3,9 +3,6 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Ankus;
 
-/// <summary>
-/// Implements .NET's parsing and span formatting contracts over PostgreSQL's text form.
-/// </summary>
 public readonly partial record struct PgCircle : ISpanFormattable, IParsable<PgCircle>
 {
     /// <summary>

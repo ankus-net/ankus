@@ -3,9 +3,6 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Ankus;
 
-/// <summary>
-/// Implements .NET's parsing and span formatting contracts over PostgreSQL's text form.
-/// </summary>
 public sealed partial class PgPolygon : ISpanFormattable, IParsable<PgPolygon>
 {
     /// <summary>

@@ -3,9 +3,6 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Ankus;
 
-/// <summary>
-/// Implements .NET's parsing contract over PostgreSQL's input function.
-/// </summary>
 public readonly partial record struct PgTime : IParsable<PgTime>
 {
     /// <summary>

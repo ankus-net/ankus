@@ -1363,7 +1363,9 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   directives. The text interfaces of sixteen types moved from one shared file
   into a file per type, so no file depends on another type's members, and the
   libraries embed their sources in the PDB, so editors open them without
-  Source Link. `PackageSourceNavigationTests` opens every public declaration
+  Source Link. The API pages for `PgTime`, `PgTimeTz`, `PgTimestamp` and
+  `PgTimestampTz` had shown the shared file's summary and now show their own.
+  `PackageSourceNavigationTests` opens every public declaration
   as Roslyn does and requires its own location; it fails when one file's
   `using System` moves to a global using. Through the C# extension's language
   server, Go to Definition on `PgFunctions.Call` in worf opens its declaration
