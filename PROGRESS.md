@@ -19,7 +19,8 @@ Ankus is released on nuget.org: 0.1.0 on 2026-10-15, servicing releases
 through 0.1.7, 0.2.0 on 2026-10-17, 0.2.1 and 0.2.2 on 2026-10-18, 0.2.3 on
 2026-10-19, 0.2.4 on 2026-10-20, 0.2.5 on 2026-10-22, 0.2.6 on 2026-10-22,
 0.2.7 and 0.2.8 on 2026-10-24, 0.2.9 on 2026-10-25, 0.2.10 and 0.2.11 on
-2026-10-26, and 0.2.12 on 2026-10-27 (see remaining-work item 8).
+2026-10-26, 0.2.12 on 2026-10-27 and 0.2.13 on 2026-10-28 (see remaining-work
+item 8).
 
 The upstream inventory is pinned to pgrx **0.19.3**, commit
 `fc91c63ebad11784647b50ee7e265c1fd9c9924f`. The refresh covers every release
@@ -908,6 +909,25 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   were pushed and listed on nuget.org. On the MacBook, with `/usr/bin/clang`
   first on `PATH`, `Ankus.Tool` 0.2.2 from nuget.org created a solution whose
   7 tests passed.
+- 0.2.13 is released (release run 40746395534 on ac738315, after CI
+  40742559285, CodeQL, Docs and the secret scan passed on that commit, and
+  PostgreSQL versions 40694580522, .NET versions 40705954107 and platform
+  versions 40720265440 passed every major on dc97c5d0). It embeds one source
+  document per generated binding declaration in the companion PDB (#130). All
+  seven packages were pushed and listed on nuget.org about 9 minutes after
+  publishing. On Linux x64 and Windows x64 with PostgreSQL 18.6, worf's 30
+  regression tests and 26 tests passed on 0.2.12, on a local 0.2.13 pack before
+  publishing, and on 0.2.13 from nuget.org after. Worf's companion PDB from
+  0.2.12 embeds no binding source, so none of its 27,682 binding methods on
+  Linux and 27,801 on Windows has a source to open; from 0.2.13 every one opens
+  its own embedded document, as does every generated type except the
+  `NativeMethods` and `NativeGlobals` classes. On Linux x64, building worf with
+  fresh bindings took 64 and 65 s on 0.2.12 and 66 s twice on 0.2.13, and
+  builds that reused the cached bindings took 10 to 11 s on both. A machine
+  whose NuGet read the Ankus.Sdk version list shortly before 0.2.13 was listed
+  kept failing to resolve the SDK, because the SDK resolver reuses a cached
+  version list for up to 30 minutes; `dotnet nuget locals http-cache --clear`
+  fixed it.
 - 0.2.12 is released (release run 40628231264 on d16e7188, after CI
   40626024451, CodeQL, Docs and the secret scan passed on that commit). It
   moves the tool to System.CommandLine 2.0.14 and drops the package readme's
