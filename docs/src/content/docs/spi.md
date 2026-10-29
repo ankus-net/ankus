@@ -51,6 +51,38 @@ accepts catalog parameter OIDs for named composite plans; `Prepare` with
 `typeof(PgHeapTuple)` declares an anonymous `record` parameter. Both static and
 session APIs support these plans and their usual cursor/ownership operations.
 
+### Value types
+
+A type with no PostgreSQL conversion is compiler error **ANKUS541** wherever a
+value is bound or read: `Spi.Sql` interpolations, `SpiParameter.Create`,
+`typeof` arguments to `Prepare`, `ExecuteScalar` and `ExecuteScalars` results,
+row and tuple `Get` and `Set`, `PgDatum.Create` and `Read`, and
+`PgFunctions.Call` arguments and results.
+
+PostgreSQL has no unsigned integer types apart from `oid`, which `uint` binds
+as. Convert other unsigned values yourself: a `long` when the value fits, an
+unchecked `long` to keep all 64 bits as `pg_control_system()` reports the
+system identifier, or `decimal` or text for the exact unsigned value.
+
+```csharp
+// ANKUS541: Type 'ulong' has no supported SQL conversion.
+Spi.Execute(Spi.Sql($"INSERT INTO nodes (sysid) VALUES ({systemIdentifier})"));
+
+// numeric holds every ulong exactly.
+decimal exact = systemIdentifier;
+Spi.Execute(Spi.Sql($"INSERT INTO nodes (sysid) VALUES ({exact})"));
+```
+
+`object`, interfaces and open type parameters are checked when the command
+runs, because only a value carries their type. So are base classes of mapped
+types, which a read can still match. To check a helper's callers the same way,
+mark its own type parameter with `[PgConvertible]`:
+
+```csharp
+static T Setting<[PgConvertible] T>(string name)
+    => Spi.ExecuteScalar<T>(Spi.Sql($"SELECT value FROM settings WHERE name = {name}"));
+```
+
 ### Parameterized interpolation
 
 Use `Spi.Sql` to bind interpolated values without formatting them into SQL:

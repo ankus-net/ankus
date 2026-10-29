@@ -18,7 +18,8 @@ public static class PgRange
     /// <param name="lowerInclusive">Whether the lower bound is included.</param>
     /// <param name="upperInclusive">Whether the upper bound is included.</param>
     /// <returns>The uncanonicalized range.</returns>
-    public static PgRange<T> Create<T>(T lower, T upper, bool lowerInclusive = true, bool upperInclusive = false) where T : struct
+    public static PgRange<T> Create<[PgConvertible] T>(T lower, T upper, bool lowerInclusive = true, bool upperInclusive = false)
+        where T : struct
         => new(lower, upper, lowerInclusive, upperInclusive);
 
     /// <summary>
@@ -26,14 +27,14 @@ public static class PgRange
     /// </summary>
     /// <typeparam name="T">The supported bound type.</typeparam>
     /// <returns>The empty range.</returns>
-    public static PgRange<T> Empty<T>() where T : struct => new();
+    public static PgRange<T> Empty<[PgConvertible] T>() where T : struct => new();
 
     /// <summary>
     /// Creates a fully unbounded range, distinct from empty and from SQL NULL.
     /// </summary>
     /// <typeparam name="T">The supported bound type.</typeparam>
     /// <returns>The unbounded range.</returns>
-    public static PgRange<T> Unbounded<T>() where T : struct => new(null, null);
+    public static PgRange<T> Unbounded<[PgConvertible] T>() where T : struct => new(null, null);
 
     /// <summary>
     /// Resolves a .NET index range against a collection length and returns its half-open PostgreSQL integer interval.
@@ -54,7 +55,7 @@ public static class PgRange
     /// <typeparam name="T">The supported bound type.</typeparam>
     /// <param name="text">The PostgreSQL range text.</param>
     /// <returns>The canonical range.</returns>
-    public static PgRange<T> Parse<T>(string text) where T : struct
+    public static PgRange<T> Parse<[PgConvertible] T>(string text) where T : struct
         => NativeBackend.Range<PgRange<T>>(RangeOperation.Parse, [PgTemporal.Text(text)]);
 
     /// <summary>
@@ -69,7 +70,7 @@ public static class PgRange
     /// roll back an internal subtransaction. Before PostgreSQL 16, transaction callbacks and parallel operations forbid
     /// that rollback; native errors there remain pending and throw PgException.
     /// </remarks>
-    public static bool TryParse<T>(string? text, [NotNullWhen(true)] out PgRange<T>? value) where T : struct
+    public static bool TryParse<[PgConvertible] T>(string? text, [NotNullWhen(true)] out PgRange<T>? value) where T : struct
     {
         value = null;
         if (text is null || text.Contains('\0', StringComparison.Ordinal))

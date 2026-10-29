@@ -518,3 +518,5 @@ ANKUS537 | Ankus | Error | Duplicate custom scan name
 ANKUS538 | Ankus | Error | Invalid custom scan provider
 ANKUS539 | Ankus | Error | Custom scan callback must be synchronous
 ANKUS540 | Ankus | Error | Parallel custom scan needs one shared memory layout
+ANKUS541 | Ankus | Error | Unsupported PostgreSQL value type
+ANKUS542 | Ankus | Error | Unsupported PostgreSQL range bound

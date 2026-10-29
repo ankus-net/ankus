@@ -61,6 +61,7 @@ Assembly: `Ankus.Runtime.dll`
 - [PgColumnNamesAttribute](/api/ankus.pgcolumnnamesattribute/)
 - [PgCompositeTypeAttribute](/api/ankus.pgcompositetypeattribute/)
 - [PgContextValue&lt;T&gt;](/api/ankus.pgcontextvalue-1/)
+- [PgConvertibleAttribute](/api/ankus.pgconvertibleattribute/)
 - [PgCustomScanAttribute](/api/ankus.pgcustomscanattribute/)
 - [PgCustomScanSharedMemory&lt;TShared&gt;](/api/ankus.pgcustomscansharedmemory-1/)
 - [PgDateTimeParts](/api/ankus.pgdatetimeparts/)

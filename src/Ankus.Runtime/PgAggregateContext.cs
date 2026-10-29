@@ -101,7 +101,7 @@ public sealed class PgAggregateContext
     /// <param name="right">The right operand.</param>
     /// <param name="sortKey">The zero-based index in SortKeys.</param>
     /// <returns>A negative value, zero, or a positive value according to PostgreSQL's ordering.</returns>
-    public int Compare<T>(T left, T right, int sortKey = 0) => NativeAggregate.Compare(this, left, right, sortKey);
+    public int Compare<[PgConvertible] T>(T left, T right, int sortKey = 0) => NativeAggregate.Compare(this, left, right, sortKey);
 
     /// <summary>
     /// Compares explicitly typed operands using the selected PostgreSQL sort operator, collation and NULL placement.

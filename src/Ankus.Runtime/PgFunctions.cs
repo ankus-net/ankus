@@ -41,7 +41,7 @@ public static class PgFunctions
     /// PostgreSQL errors remain guarded, but invalid pointers or ABI contracts can crash the backend.
     /// </remarks>
     [NativeUnsafeAccess]
-    public static T DangerousCall<T>(nint function, uint collationOid, params ReadOnlySpan<PgDatum> arguments)
+    public static T DangerousCall<[PgConvertible] T>(nint function, uint collationOid, params ReadOnlySpan<PgDatum> arguments)
         => NativeBackend.CallNativeFunction<T>(function, collationOid, arguments);
 
     /// <summary>
@@ -69,7 +69,7 @@ public static class PgFunctions
     /// <param name="name">The SQL identifier, with ordinary PostgreSQL quoting and search-path rules.</param>
     /// <param name="arguments">Typed values, NULLs, and defaults. Trailing default arguments may be omitted.</param>
     /// <returns>An independent managed copy or callback-owned polymorphic result.</returns>
-    public static T Call<T>(string name, params ReadOnlySpan<PgFunctionArgument> arguments)
+    public static T Call<[PgConvertible] T>(string name, params ReadOnlySpan<PgFunctionArgument> arguments)
         => NativeBackend.CallFunction<T>(name, 0, null, arguments);
 
     /// <summary>
@@ -80,7 +80,7 @@ public static class PgFunctions
     /// <param name="options">The call options.</param>
     /// <param name="arguments">The typed arguments.</param>
     /// <returns>An independent managed copy or callback-owned polymorphic result.</returns>
-    public static T Call<T>(string name, PgFunctionCallOptions options, params ReadOnlySpan<PgFunctionArgument> arguments)
+    public static T Call<[PgConvertible] T>(string name, PgFunctionCallOptions options, params ReadOnlySpan<PgFunctionArgument> arguments)
     {
         ArgumentNullException.ThrowIfNull(options);
         return NativeBackend.CallFunction<T>(name, 0, options, arguments);
@@ -93,7 +93,7 @@ public static class PgFunctions
     /// <param name="functionOid">The nonzero function OID.</param>
     /// <param name="arguments">Typed arguments; supply a variadic parameter as an array.</param>
     /// <returns>An independent managed copy or callback-owned polymorphic result.</returns>
-    public static T Call<T>(uint functionOid, params ReadOnlySpan<PgFunctionArgument> arguments)
+    public static T Call<[PgConvertible] T>(uint functionOid, params ReadOnlySpan<PgFunctionArgument> arguments)
     {
         ArgumentOutOfRangeException.ThrowIfZero(functionOid);
         return NativeBackend.CallFunction<T>(null, functionOid, null, arguments);
@@ -107,7 +107,8 @@ public static class PgFunctions
     /// <param name="options">The call options.</param>
     /// <param name="arguments">The declared argument list, including any variadic array.</param>
     /// <returns>An independent managed copy or callback-owned polymorphic result.</returns>
-    public static T Call<T>(uint functionOid, PgFunctionCallOptions options, params ReadOnlySpan<PgFunctionArgument> arguments)
+    public static T Call<[PgConvertible] T>(uint functionOid, PgFunctionCallOptions options,
+        params ReadOnlySpan<PgFunctionArgument> arguments)
     {
         ArgumentOutOfRangeException.ThrowIfZero(functionOid);
         ArgumentNullException.ThrowIfNull(options);

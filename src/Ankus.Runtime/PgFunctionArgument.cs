@@ -39,7 +39,7 @@ public readonly struct PgFunctionArgument
     /// <typeparam name="T">The managed argument type.</typeparam>
     /// <param name="value">The argument value.</param>
     /// <returns>The typed argument.</returns>
-    public static PgFunctionArgument Create<T>(T value) => new(SpiParameter.Create(value), false);
+    public static PgFunctionArgument Create<[PgConvertible] T>(T value) => new(SpiParameter.Create(value), false);
 
     /// <summary>
     /// Supplies an existing typed parameter, including explicit composite descriptors and raw datums.
@@ -57,7 +57,7 @@ public readonly struct PgFunctionArgument
     /// </summary>
     /// <typeparam name="T">The default argument's expected managed type.</typeparam>
     /// <returns>The typed default request.</returns>
-    public static PgFunctionArgument Default<T>() => new(SpiParameter.CreateType(SpiType.GetOid<T>()), true);
+    public static PgFunctionArgument Default<[PgConvertible] T>() => new(SpiParameter.CreateType(SpiType.GetOid<T>()), true);
 
     /// <summary>
     /// Requests a declared default using an exact PostgreSQL type identity.

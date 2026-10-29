@@ -153,7 +153,7 @@ public sealed partial class SpiSession
     /// <param name="commandText">The SQL command.</param>
     /// <param name="parameters">The typed positional parameters.</param>
     /// <returns>The scalar value.</returns>
-    public T ExecuteScalar<T>(string commandText, params ReadOnlySpan<SpiParameter> parameters)
+    public T ExecuteScalar<[PgConvertible] T>(string commandText, params ReadOnlySpan<SpiParameter> parameters)
     {
         CheckAccess();
         SpiScalarResult result = SpiScalarResult.Run(commandText, parameters, SpiResultMode.Scalar, SpiScalarResult.RequiresRaw<T>(), this);
@@ -171,7 +171,7 @@ public sealed partial class SpiSession
     /// <returns>The first two values from the final statement, without implicit type conversions.</returns>
     /// <exception cref="InvalidOperationException">A returned row has fewer than two columns, or SQL NULL is read as a non-nullable value type.</exception>
     /// <exception cref="InvalidCastException">A column cannot be read as its requested managed type.</exception>
-    public (TFirst First, TSecond Second) ExecuteScalars<TFirst, TSecond>(
+    public (TFirst First, TSecond Second) ExecuteScalars<[PgConvertible] TFirst, [PgConvertible] TSecond>(
         string commandText, params ReadOnlySpan<SpiParameter> parameters)
     {
         CheckAccess();
@@ -192,8 +192,8 @@ public sealed partial class SpiSession
     /// <returns>The first three values from the final statement, without implicit type conversions.</returns>
     /// <exception cref="InvalidOperationException">A returned row has fewer than three columns, or SQL NULL is read as a non-nullable value type.</exception>
     /// <exception cref="InvalidCastException">A column cannot be read as its requested managed type.</exception>
-    public (TFirst First, TSecond Second, TThird Third) ExecuteScalars<TFirst, TSecond, TThird>(
-        string commandText, params ReadOnlySpan<SpiParameter> parameters)
+    public (TFirst First, TSecond Second, TThird Third) ExecuteScalars<[PgConvertible] TFirst, [PgConvertible] TSecond,
+        [PgConvertible] TThird>(string commandText, params ReadOnlySpan<SpiParameter> parameters)
     {
         CheckAccess();
         SpiScalarResult result = SpiScalarResult.Run(commandText, parameters, SpiResultMode.Triple,
@@ -207,7 +207,7 @@ public sealed partial class SpiSession
     /// <param name="commandText">The SQL command text.</param>
     /// <param name="parameterTypes">The declared CLR parameter types.</param>
     /// <returns>A session-bound prepared statement.</returns>
-    public SpiPreparedStatement Prepare(string commandText, params ReadOnlySpan<Type> parameterTypes)
+    public SpiPreparedStatement Prepare(string commandText, [PgConvertible] params ReadOnlySpan<Type> parameterTypes)
     {
         CheckAccess();
         return NativeBackend.Prepare(commandText, parameterTypes, this);

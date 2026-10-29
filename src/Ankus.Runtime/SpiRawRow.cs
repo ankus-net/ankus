@@ -54,7 +54,7 @@ public sealed class SpiRawRow : IReadOnlyList<PgDatum>
     /// <typeparam name="T">The requested representation.</typeparam>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The copied managed value or checked native wrapper.</returns>
-    public T Get<T>(int ordinal) => this[ordinal].Read<T>();
+    public T Get<[PgConvertible] T>(int ordinal) => this[ordinal].Read<T>();
 
     /// <summary>
     /// Reads the first column with an exact case-sensitive name.
@@ -62,7 +62,7 @@ public sealed class SpiRawRow : IReadOnlyList<PgDatum>
     /// <typeparam name="T">The requested representation.</typeparam>
     /// <param name="name">The column name.</param>
     /// <returns>The copied managed value or a wrapper sharing this result's lifetime.</returns>
-    public T Get<T>(string name) => this[name].Read<T>();
+    public T Get<[PgConvertible] T>(string name) => this[name].Read<T>();
 
     /// <summary>
     /// Enumerates datums in column order.

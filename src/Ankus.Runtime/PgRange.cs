@@ -8,7 +8,7 @@ namespace Ankus;
 /// Construction retains the requested bounds. PostgreSQL validates and canonicalizes them on datum conversion.
 /// </summary>
 /// <typeparam name="T">A supported built-in bound or a closed value type declaring both PgDatumType and PgRangeType.</typeparam>
-public sealed class PgRange<T> : IEquatable<PgRange<T>>, IPgRange where T : struct
+public sealed class PgRange<[PgConvertible] T> : IEquatable<PgRange<T>>, IPgRange where T : struct
 {
     /// <summary>
     /// Creates an empty range of the supported bound type.

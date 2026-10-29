@@ -61,7 +61,7 @@ public static partial class Spi
     /// <typeparam name="T">The expected managed result type.</typeparam>
     /// <param name="command">SQL and its declared bindings.</param>
     /// <returns>The scalar value with the existing SQL NULL and empty-result rules.</returns>
-    public static T ExecuteScalar<T>(SpiCommand command) => ExecuteScalar<T>(command.CommandText, command.Parameters);
+    public static T ExecuteScalar<[PgConvertible] T>(SpiCommand command) => ExecuteScalar<T>(command.CommandText, command.Parameters);
 
     /// <summary>
     /// Reads two parameterized result cells without implicit conversion or limiting command effects.
@@ -70,7 +70,7 @@ public static partial class Spi
     /// <typeparam name="TSecond">The second column's managed type.</typeparam>
     /// <param name="command">SQL and its declared bindings.</param>
     /// <returns>The first row's two values with the existing SQL NULL and empty-result rules.</returns>
-    public static (TFirst First, TSecond Second) ExecuteScalars<TFirst, TSecond>(SpiCommand command)
+    public static (TFirst First, TSecond Second) ExecuteScalars<[PgConvertible] TFirst, [PgConvertible] TSecond>(SpiCommand command)
         => ExecuteScalars<TFirst, TSecond>(command.CommandText, command.Parameters);
 
     /// <summary>
@@ -81,7 +81,8 @@ public static partial class Spi
     /// <typeparam name="TThird">The third column's managed type.</typeparam>
     /// <param name="command">SQL and its declared bindings.</param>
     /// <returns>The first row's three values with the existing SQL NULL and empty-result rules.</returns>
-    public static (TFirst First, TSecond Second, TThird Third) ExecuteScalars<TFirst, TSecond, TThird>(SpiCommand command)
+    public static (TFirst First, TSecond Second, TThird Third) ExecuteScalars<[PgConvertible] TFirst, [PgConvertible] TSecond,
+        [PgConvertible] TThird>(SpiCommand command)
         => ExecuteScalars<TFirst, TSecond, TThird>(command.CommandText, command.Parameters);
 
     /// <summary>

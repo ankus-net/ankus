@@ -18,6 +18,10 @@ The ordinary .NET types use the same checked conversions as [scalar numeric](/nu
 and [temporal values](/date-and-time/). Use the `Pg*` types for values outside .NET's
 range, explicit temporal infinities, and full-precision numeric bounds.
 
+Any other bound type is compiler error **ANKUS542** in a `PgRange<T>` constructor
+or a `PgRange` factory method, since PostgreSQL has no range type for it. A
+[mapped bound](#mapped-bounds) supplies its own range type.
+
 ## Declare a function
 
 ```csharp
