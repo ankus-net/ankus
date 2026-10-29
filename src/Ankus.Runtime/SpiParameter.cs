@@ -72,7 +72,7 @@ public readonly struct SpiParameter
     /// <typeparam name="T">The managed parameter type.</typeparam>
     /// <param name="value">The parameter value.</param>
     /// <returns>A typed parameter.</returns>
-    public static SpiParameter Create<T>(T value)
+    public static SpiParameter Create<[PgConvertible] T>(T value)
     {
         if (PgDatumRegistry.Find(typeof(T)) is { } mapping)
         {

@@ -60,7 +60,7 @@ public sealed class PgDatum
     /// PgArrayView&lt;T&gt; instead retains this source lifetime and converts only accessed cells. It validates element identity
     /// even for whole-array SQL NULL, which returns a null view. Dispose the view while the source backend remains active.
     /// </remarks>
-    public T Read<T>() => NativeBackend.ReadDatum<T>(this);
+    public T Read<[PgConvertible] T>() => NativeBackend.ReadDatum<T>(this);
 
     /// <summary>
     /// Converts this datum using an explicit converter without runtime code generation or reflection.
@@ -101,7 +101,7 @@ public sealed class PgDatum
     /// <param name="value">The value.</param>
     /// <param name="context">The destination context whose reset or deletion ends the datum's lifetime.</param>
     /// <returns>The converted datum.</returns>
-    public static PgDatum Create<T>(T value, PgMemoryContext context) => Create(SpiParameter.Create(value), context);
+    public static PgDatum Create<[PgConvertible] T>(T value, PgMemoryContext context) => Create(SpiParameter.Create(value), context);
 
     /// <summary>
     /// Converts a typed value to a datum of its declared PostgreSQL type, allocated in the destination context. A domain's

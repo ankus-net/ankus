@@ -53,7 +53,7 @@ public sealed class SpiRow
     /// <typeparam name="T">The replacement type, including its type when the value is null.</typeparam>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <param name="value">The replacement value.</param>
-    public void Set<T>(int ordinal, T value)
+    public void Set<[PgConvertible] T>(int ordinal, T value)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(ordinal);
         ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(ordinal, Count);
@@ -92,7 +92,7 @@ public sealed class SpiRow
     /// <typeparam name="T">The replacement managed type.</typeparam>
     /// <param name="name">The column name; duplicate names resolve to the first column.</param>
     /// <param name="value">The replacement value.</param>
-    public void Set<T>(string name, T value) => Set(GetOrdinal(name), value);
+    public void Set<[PgConvertible] T>(string name, T value) => Set(GetOrdinal(name), value);
 
     /// <summary>
     /// Gets a cell's PostgreSQL type OID, including its original domain OID until replaced by Set.
@@ -118,7 +118,7 @@ public sealed class SpiRow
     /// <typeparam name="T">The expected managed type.</typeparam>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The cell value.</returns>
-    public T Get<T>(int ordinal)
+    public T Get<[PgConvertible] T>(int ordinal)
     {
         if (typeof(T) == typeof(PgDatum))
         {
@@ -152,7 +152,7 @@ public sealed class SpiRow
     /// <typeparam name="T">The expected managed type.</typeparam>
     /// <param name="name">The column name.</param>
     /// <returns>The cell value.</returns>
-    public T Get<T>(string name) => Get<T>(GetOrdinal(name));
+    public T Get<[PgConvertible] T>(string name) => Get<T>(GetOrdinal(name));
 
     /// <summary>
     /// Resolves an exact, case-sensitive column name to its zero-based ordinal. Duplicate names resolve to the first column.

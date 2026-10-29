@@ -23,7 +23,7 @@ public sealed class PgAnyElement(PgDatum datum)
     /// </summary>
     /// <typeparam name="T">The managed representation.</typeparam>
     /// <returns>The managed copy or wrapper sharing this value's lifetime.</returns>
-    public T Read<T>() => Datum.Read<T>();
+    public T Read<[PgConvertible] T>() => Datum.Read<T>();
 
     /// <summary>
     /// Copies the value into a different native owner.

@@ -14,7 +14,7 @@ public static class PgEnums
     /// <typeparam name="T">A C# enum declared with PgEnum.</typeparam>
     /// <param name="value">The declared enum value.</param>
     /// <returns>The case-sensitive label.</returns>
-    public static string GetLabel<T>(T value) where T : struct, Enum => PgEnumRegistry.Require(typeof(T)).ToLabel(value);
+    public static string GetLabel<[PgConvertible] T>(T value) where T : struct, Enum => PgEnumRegistry.Require(typeof(T)).ToLabel(value);
 
     /// <summary>
     /// Converts an exact PostgreSQL label without requiring a backend. Unknown labels are rejected.
@@ -22,7 +22,7 @@ public static class PgEnums
     /// <typeparam name="T">A C# enum declared with PgEnum.</typeparam>
     /// <param name="label">The exact case-sensitive label.</param>
     /// <returns>The declared enum value.</returns>
-    public static T Parse<T>(string label) where T : struct, Enum => (T)PgEnumRegistry.Require(typeof(T)).FromLabel(label);
+    public static T Parse<[PgConvertible] T>(string label) where T : struct, Enum => (T)PgEnumRegistry.Require(typeof(T)).FromLabel(label);
 
     /// <summary>
     /// Resolves the enum type in the active extension's installation schema or its declared fixed schema.
@@ -30,7 +30,7 @@ public static class PgEnums
     /// </summary>
     /// <typeparam name="T">A C# enum declared with PgEnum.</typeparam>
     /// <returns>The current PostgreSQL type OID.</returns>
-    public static uint GetTypeOid<T>() where T : struct, Enum => PgEnumRegistry.Require(typeof(T)).GetOid();
+    public static uint GetTypeOid<[PgConvertible] T>() where T : struct, Enum => PgEnumRegistry.Require(typeof(T)).GetOid();
 
     /// <summary>
     /// Resolves the stored PostgreSQL enum value OID from a generated value and its current catalog type.
@@ -39,7 +39,7 @@ public static class PgEnums
     /// <typeparam name="T">A C# enum declared with PgEnum.</typeparam>
     /// <param name="value">The declared enum value.</param>
     /// <returns>The pg_enum row OID.</returns>
-    public static uint GetValueOid<T>(T value) where T : struct, Enum
+    public static uint GetValueOid<[PgConvertible] T>(T value) where T : struct, Enum
         => NativeBackend.EnumValueOid(GetTypeOid<T>(), GetLabel(value));
 
     /// <summary>

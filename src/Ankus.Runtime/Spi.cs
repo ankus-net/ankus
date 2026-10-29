@@ -129,7 +129,7 @@ public static partial class Spi
     /// <param name="commandText">The SQL commands to prepare.</param>
     /// <param name="parameterTypes">The declared CLR types of $1, $2, and subsequent parameters.</param>
     /// <returns>A statement that must be disposed from an extension callback on its owning backend.</returns>
-    public static SpiPreparedStatement Prepare(string commandText, params ReadOnlySpan<Type> parameterTypes)
+    public static SpiPreparedStatement Prepare(string commandText, [PgConvertible] params ReadOnlySpan<Type> parameterTypes)
         => NativeBackend.Prepare(commandText, parameterTypes);
 
     /// <summary>
@@ -241,7 +241,7 @@ public static partial class Spi
     /// <param name="commandText">The SQL command.</param>
     /// <param name="parameters">Typed positional parameters.</param>
     /// <returns>The scalar result.</returns>
-    public static T ExecuteScalar<T>(string commandText, params ReadOnlySpan<SpiParameter> parameters)
+    public static T ExecuteScalar<[PgConvertible] T>(string commandText, params ReadOnlySpan<SpiParameter> parameters)
     {
         SpiScalarResult result = SpiScalarResult.Run(commandText, parameters, SpiResultMode.Scalar, SpiScalarResult.RequiresRaw<T>());
         return result.Read(static values => values.Get<T>(0, allowMissing: true));
@@ -258,7 +258,7 @@ public static partial class Spi
     /// <returns>The first two values from the final statement, without implicit type conversions.</returns>
     /// <exception cref="InvalidOperationException">A returned row has fewer than two columns, or SQL NULL is read as a non-nullable value type.</exception>
     /// <exception cref="InvalidCastException">A column cannot be read as its requested managed type.</exception>
-    public static (TFirst First, TSecond Second) ExecuteScalars<TFirst, TSecond>(
+    public static (TFirst First, TSecond Second) ExecuteScalars<[PgConvertible] TFirst, [PgConvertible] TSecond>(
         string commandText, params ReadOnlySpan<SpiParameter> parameters)
     {
         SpiScalarResult result = SpiScalarResult.Run(commandText, parameters, SpiResultMode.Pair,
@@ -278,8 +278,8 @@ public static partial class Spi
     /// <returns>The first three values from the final statement, without implicit type conversions.</returns>
     /// <exception cref="InvalidOperationException">A returned row has fewer than three columns, or SQL NULL is read as a non-nullable value type.</exception>
     /// <exception cref="InvalidCastException">A column cannot be read as its requested managed type.</exception>
-    public static (TFirst First, TSecond Second, TThird Third) ExecuteScalars<TFirst, TSecond, TThird>(
-        string commandText, params ReadOnlySpan<SpiParameter> parameters)
+    public static (TFirst First, TSecond Second, TThird Third) ExecuteScalars<[PgConvertible] TFirst, [PgConvertible] TSecond,
+        [PgConvertible] TThird>(string commandText, params ReadOnlySpan<SpiParameter> parameters)
     {
         SpiScalarResult result = SpiScalarResult.Run(commandText, parameters, SpiResultMode.Triple,
             SpiScalarResult.RequiresRaw<TFirst, TSecond, TThird>());

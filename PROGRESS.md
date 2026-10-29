@@ -1432,6 +1432,39 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   holds the lock. Without the change it failed on the lock during the run;
   with it, the 27 regress and template tests that run on Linux x64 pass with
   PostgreSQL 18.
+- `Spi.Sql` interpolations, `SpiParameter.Create`, typed SPI reads and writes,
+  datum and function call conversions, enum lookups and range construction
+  accepted any managed type, so a value with no PostgreSQL conversion compiled
+  and failed only when it ran in the backend (#146). The worf port met it with a
+  `ulong` system identifier. pgrx rejects the same code at compile time through
+  its `IntoDatum`, `FromDatum` and `RangeSubType` bounds, as Ankus already did
+  for function signatures with ANKUS040. The runtime now marks each such type
+  parameter, and the `Type` parameters of `Prepare`, with the public
+  `[PgConvertible]` attribute. `PgConversionAnalyzer` reports a closed type
+  argument, method group or `typeof` operand without a conversion as ANKUS541,
+  and a range bound without a range type as ANKUS542, at the type argument or
+  the value that inferred it. Its classifier follows the runtime's `SpiType`,
+  `SpiArray`, `PgArrayViews` and `SpiRange` tables and counts a mapped, enum or
+  custom type by its attribute. `object`, interfaces, open type parameters and
+  base classes of converted types stay value-dependent, because a read matches
+  the cell's value against the requested type. An extension can mark its own
+  helper's type parameter to check that helper's callers.
+  `ClassificationMatchesRuntimeParameters` binds 1,166 types through the
+  runtime's `SpiParameter.Create` outside PostgreSQL: the public non-generic
+  Ankus types and 42 .NET types as scalars, nullable values, vectors,
+  two-dimensional arrays, `PgArray<T>`, `PgArrayView<T>` and ranges. The
+  classifier agrees on every one, and `BoundsMatchRuntimeRanges` checks range
+  bounds the same way. On Linux x64 with PostgreSQL 18.6, a solution from
+  Ankus 0.2.16 compiled 17 forms (interpolations, explicit and inferred
+  parameters, scalar, row, datum and prepared reads, a prepared `typeof`,
+  function calls, a range and an enum without `[PgEnum]`), and all 17 failed in
+  the backend. With a local 0.2.17 pack each form failed the build with one
+  error at that form, 15 corrected forms and the template's 7 tests passed, and
+  a marked helper reported its caller. Worf at 5d2b94c built with that pack and
+  no diagnostics, and a `ulong` probe added to it reported ANKUS541. The
+  repository builds with no diagnostics, and the complete suite passed on
+  Linux x64 with PostgreSQL 18.6: 15,362 tests, 61 skipped. After method groups
+  were added, the 5,224 generator tests pass.
 - On Windows, VS Code failed to load an Ankus 0.2.14 extension project (#139).
   The Claude Code extension sets `NoDefaultCurrentDirectoryInExePath` in the
   extension host, which every extension's build host inherits. Visual Studio

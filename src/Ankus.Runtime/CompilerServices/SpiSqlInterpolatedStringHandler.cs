@@ -52,7 +52,7 @@ public readonly ref struct SpiSqlInterpolatedStringHandler(int literalLength, in
     /// </summary>
     /// <typeparam name="T">The declared managed parameter type.</typeparam>
     /// <param name="value">The value to bind without text formatting.</param>
-    public void AppendFormatted<T>(T value) => AppendFormatted(SpiParameter.Create(value));
+    public void AppendFormatted<[PgConvertible] T>(T value) => AppendFormatted(SpiParameter.Create(value));
 
     /// <summary>
     /// Binds text or an untyped null interpolation as PostgreSQL text.

@@ -76,7 +76,7 @@ public sealed class PgAnyArray : IReadOnlyList<PgAnyElement?>
     /// </summary>
     /// <typeparam name="T">The requested array representation.</typeparam>
     /// <returns>The managed array copy or checked polymorphic wrapper.</returns>
-    public T Read<T>() => Datum.Read<T>();
+    public T Read<[PgConvertible] T>() => Datum.Read<T>();
 
     /// <summary>
     /// Copies the complete array into an independent native owner.

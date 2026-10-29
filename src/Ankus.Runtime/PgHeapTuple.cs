@@ -117,7 +117,7 @@ public sealed class PgHeapTuple
     /// <typeparam name="T">The requested managed type.</typeparam>
     /// <param name="ordinal">The zero-based physical ordinal.</param>
     /// <returns>The converted cell.</returns>
-    public T Get<T>(int ordinal)
+    public T Get<[PgConvertible] T>(int ordinal)
     {
         object? cell = GetStoredCell(ordinal);
         if (typeof(T) == typeof(PgDatum))
@@ -153,7 +153,7 @@ public sealed class PgHeapTuple
     /// <typeparam name="T">The requested managed type.</typeparam>
     /// <param name="name">The exact attribute name.</param>
     /// <returns>The converted cell.</returns>
-    public T Get<T>(string name) => Get<T>(Descriptor.GetOrdinal(name));
+    public T Get<[PgConvertible] T>(string name) => Get<T>(Descriptor.GetOrdinal(name));
 
     /// <summary>
     /// Replaces a cell while preserving declared type, domain, collation, and type-modifier metadata.
@@ -164,7 +164,7 @@ public sealed class PgHeapTuple
     /// <typeparam name="T">The replacement's declared managed type, including its type when null.</typeparam>
     /// <param name="ordinal">The zero-based physical ordinal.</param>
     /// <param name="value">The replacement cell.</param>
-    public void Set<T>(int ordinal, T value)
+    public void Set<[PgConvertible] T>(int ordinal, T value)
     {
         // A built-in type's OID is fixed and no generated mapping can claim it, so the registries need no lookup.
         if (BuiltinCell<T>.Oid != 0)
@@ -215,7 +215,7 @@ public sealed class PgHeapTuple
     /// <typeparam name="T">The replacement's managed type.</typeparam>
     /// <param name="name">The exact attribute name.</param>
     /// <param name="value">The replacement value.</param>
-    public void Set<T>(string name, T value) => Set(Descriptor.GetOrdinal(name), value);
+    public void Set<[PgConvertible] T>(string name, T value) => Set(Descriptor.GetOrdinal(name), value);
 
     /// <summary>
     /// Replaces a cell using an explicit parameter identity, including a typed NULL composite or array.
