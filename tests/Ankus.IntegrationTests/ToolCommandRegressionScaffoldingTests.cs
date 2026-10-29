@@ -128,16 +128,6 @@ public sealed partial class ToolCommandTests
             "WHERE application_name = '" + Release + "') LOOP PERFORM pg_stat_clear_snapshot(); PERFORM pg_sleep(0.05); " +
             "END LOOP; END $$;\nSELECT 42;", "42\n", token);
         await WriteRegressionCaseAsync(suite, "differs", "SELECT 7;", "0\n", token);
-        await GitAsync(output, ["init", "--quiet", "--initial-branch=main"], token);
-        await GitAsync(output, ["add", "--all"], token);
-        await GitAsync(output, ["-c", "user.name=Ankus", "-c", "user.email=ankus@example.invalid", "-c", "commit.gpgsign=false",
-            "commit", "--quiet", "--message=Generated"], token);
-
-        // Ankus 0.2.15 and earlier kept the lock in the suite, and a run killed on Linux or macOS left it there.
-        string abandoned = Path.Join(suite, ".ankus-regress.lock");
-        await File.WriteAllTextAsync(abandoned, "", token);
-        Assert.AreEqual("?? src/" + ProjectName + "/pg_regress/.ankus-regress.lock", (await GitStatusAsync(output, token)).Trim());
-
         await using PostgresTestInstallation owner = await PostgresTestInstallation.StageAsync(s_installation, CreateDirectory(), token);
         string home = CreateDirectory();
         var cluster = new PostgresDevelopmentCluster(owner.Installation, home);
@@ -145,9 +135,19 @@ public sealed partial class ToolCommandTests
         int port = reservation.Port;
         reservation.Dispose();
         string[] options = [.. RegressionOptions(owner.Installation, home, project, port), "--no-build"];
+        string abandoned = Path.Join(suite, ".ankus-regress.lock");
         Task<ProcessResult>? running = null;
         try
         {
+            await GitAsync(output, ["init", "--quiet", "--initial-branch=main"], token);
+            await GitAsync(output, ["add", "--all"], token);
+            await GitAsync(output, ["-c", "user.name=Ankus", "-c", "user.email=ankus@example.invalid", "-c", "commit.gpgsign=false",
+                "commit", "--quiet", "--message=Generated"], token);
+
+            // Ankus 0.2.15 and earlier kept the lock in the suite, and a run killed on Linux or macOS left it there.
+            await File.WriteAllTextAsync(abandoned, "", token);
+            Assert.AreEqual("?? src/" + ProjectName + "/pg_regress/.ankus-regress.lock", (await GitStatusAsync(output, token)).Trim());
+
             running = InvokeAsync([.. options, "waits"], token);
             while (!await IsWaitingAsync())
             {
@@ -185,6 +185,9 @@ public sealed partial class ToolCommandTests
             }
 
             await cluster.StopAsync(CancellationToken.None);
+
+            // Git for Windows makes its objects read-only, which the case directory's cleanup can't delete.
+            DeleteGitDirectory(output);
         }
 
         async Task<bool> IsWaitingAsync()
