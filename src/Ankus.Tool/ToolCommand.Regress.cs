@@ -143,8 +143,14 @@ internal static partial class ToolCommand
             PostgresInstallation installation = selection.Installation;
             string driver = await installation.GetRegressionDriverPathAsync(token);
             Directory.CreateDirectory(suite.DirectoryPath);
-            using var suiteLock = new FileStream(Path.Join(suite.DirectoryPath, ".ankus-regress.lock"), FileMode.OpenOrCreate,
+
+            // The lock keeps two runs from writing the same results. It stays with the publications in bin/ankus, which
+            // .NET gitignore files exclude, so a run adds nothing to the project's Git changes.
+            string lockDirectory = Path.Join(Path.GetDirectoryName(project)!, "bin", "ankus");
+            Directory.CreateDirectory(lockDirectory);
+            using var suiteLock = new FileStream(Path.Join(lockDirectory, "regress.lock"), FileMode.OpenOrCreate,
                 FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose);
+            DeleteAbandonedSuiteLock(suite.DirectoryPath);
             var cluster = new PostgresDevelopmentCluster(installation, result.GetValue(home));
             await cluster.StopAsync(token);
             string output = GetOutputDirectory(result, selection);
@@ -258,5 +264,28 @@ internal static partial class ToolCommand
             return failed ? 1 : 0;
         });
         return command;
+    }
+
+    /// <summary>
+    /// Deletes the lock that Ankus 0.2.15 and earlier kept in the suite directory, where a run killed on Linux or macOS
+    /// left it behind. A run of one of those versions that still holds it keeps it.
+    /// </summary>
+    /// <param name="suite">The suite directory.</param>
+    private static void DeleteAbandonedSuiteLock(string suite)
+    {
+        string path = Path.Join(suite, ".ankus-regress.lock");
+        if (!File.Exists(path))
+        {
+            return;
+        }
+
+        try
+        {
+            new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose).Dispose();
+        }
+        catch (IOException)
+        {
+            // An earlier version's run still holds it, or that run has just deleted it.
+        }
     }
 }

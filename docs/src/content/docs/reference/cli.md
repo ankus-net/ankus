@@ -664,6 +664,8 @@ Results are written to `pg_regress/results/`; differences go to
 `pg_regress/regression.diffs`. `--verbose` prints the differences.
 With `--repeat`, each failed iteration keeps `regression.<number>.diffs`.
 Any failed iteration makes the command fail, even if a later iteration succeeds.
+A run holds `bin/ankus/regress.lock` beside its publications, so a second run
+of the same project fails until the first ends.
 `--auto` replaces expected output only for selected tests that the native
 comparator reports as different; the failed run still returns a nonzero exit code.
 Review those changes before accepting them. `--add` cannot be combined with a

@@ -101,8 +101,8 @@ public sealed partial class ToolCommandTests
         (await PackageProcessRunner.RunAsync("git", ["init", "--quiet", "--initial-branch=main"], s_environment, token,
             workingDirectory: directory)).EnsureSuccess("git", ["init"]);
         string root = "src/" + name + "/pg_regress/";
-        string[] generated = [root + "results/setup.out", root + "regression.diffs", root + "regression.out",
-            ".vs/" + name + "/v18/.suo", ".idea/workspace.xml", "src/" + name + "/" + name + ".csproj.user"];
+        string[] generated = [root + "results/setup.out", root + "regression.diffs", root + "regression.2.diffs",
+            root + "regression.out", ".vs/" + name + "/v18/.suo", ".idea/workspace.xml", "src/" + name + "/" + name + ".csproj.user"];
         foreach (string path in generated)
         {
             string file = Path.Join(directory, path.Replace('/', Path.DirectorySeparatorChar));

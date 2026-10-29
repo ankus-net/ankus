@@ -99,6 +99,135 @@ public sealed partial class ToolCommandTests
     }
 
     /// <summary>
+    /// Regress adds nothing to a generated solution's Git changes while it runs or after repeated failures, removes the
+    /// lock that earlier versions left in the suite, and still refuses a second run of the same suite.
+    /// </summary>
+    [RetryPortCollisionTestMethod]
+    public async Task RegressLeavesGitChangesAlone()
+    {
+        CancellationToken token = context.CancellationToken;
+        const string ProjectName = "Acme.RegressProbe";
+        const string Database = "acme_regress_probe_regress";
+        const string Release = "ankus regress release";
+        string output = Path.Join(CreateDirectory(), "regression solution with spaces");
+        string[] arguments = ["new", ProjectName, "--output", output];
+        (await InvokeAsync(arguments, token)).EnsureSuccess(s_tool, arguments);
+        string project = Path.Join(output, "src", ProjectName, ProjectName + ".csproj");
+        string suite = Path.Join(Path.GetDirectoryName(project)!, "pg_regress");
+
+        // The same files as NewSolutionScaffoldsRunnableRegressionSetup's first case share its build.
+        await WriteRegressionCaseAsync(suite, "addition", "SELECT add(17, 25);", "42\n", token);
+        string relativeProject = Path.GetRelativePath(output, project);
+        SharedOutput build = await GetSharedOutputAsync(ContentKey(output, "ankus", "build", relativeProject),
+            shared => BuildSharedExtensionAsync(CopySharedSnapshot(output), relativeProject, shared), token);
+        CopyFiles(build.Directory, Path.Join(Path.GetDirectoryName(project)!, "bin", "ankus", s_postgresKey,
+            RuntimeInformation.RuntimeIdentifier, "Release"));
+
+        // This case runs until a session with the release name connects, so the test can read Git's changes meanwhile.
+        await WriteRegressionCaseAsync(suite, "waits", "DO $$ BEGIN WHILE NOT EXISTS (SELECT FROM pg_stat_activity " +
+            "WHERE application_name = '" + Release + "') LOOP PERFORM pg_stat_clear_snapshot(); PERFORM pg_sleep(0.05); " +
+            "END LOOP; END $$;\nSELECT 42;", "42\n", token);
+        await WriteRegressionCaseAsync(suite, "differs", "SELECT 7;", "0\n", token);
+        await GitAsync(output, ["init", "--quiet", "--initial-branch=main"], token);
+        await GitAsync(output, ["add", "--all"], token);
+        await GitAsync(output, ["-c", "user.name=Ankus", "-c", "user.email=ankus@example.invalid", "-c", "commit.gpgsign=false",
+            "commit", "--quiet", "--message=Generated"], token);
+
+        // Ankus 0.2.15 and earlier kept the lock in the suite, and a run killed on Linux or macOS left it there.
+        string abandoned = Path.Join(suite, ".ankus-regress.lock");
+        await File.WriteAllTextAsync(abandoned, "", token);
+        Assert.AreEqual("?? src/" + ProjectName + "/pg_regress/.ankus-regress.lock", (await GitStatusAsync(output, token)).Trim());
+
+        await using PostgresTestInstallation owner = await PostgresTestInstallation.StageAsync(s_installation, CreateDirectory(), token);
+        string home = CreateDirectory();
+        var cluster = new PostgresDevelopmentCluster(owner.Installation, home);
+        using PortReservation reservation = PortReservation.Create();
+        int port = reservation.Port;
+        reservation.Dispose();
+        string[] options = [.. RegressionOptions(owner.Installation, home, project, port), "--no-build"];
+        Task<ProcessResult>? running = null;
+        try
+        {
+            running = InvokeAsync([.. options, "waits"], token);
+            while (!await IsWaitingAsync())
+            {
+                if (running.IsCompleted)
+                {
+                    ProcessResult early = await running;
+                    Assert.Fail("ankus regress ended before its waiting case ran: " + early.StandardOutput + early.StandardError);
+                }
+
+                await Task.Delay(100, token);
+            }
+
+            Assert.AreEqual("", await GitStatusAsync(output, token));
+            ProcessResult second = await InvokeAsync([.. options, "waits"], token);
+            Assert.AreEqual(1, second.ExitCode, second.StandardOutput + second.StandardError);
+            Assert.Contains(Path.Join("bin", "ankus", "regress.lock"), second.StandardError);
+
+            ProcessResult completed = await ReleaseAsync(running);
+            Assert.AreEqual(0, completed.ExitCode, completed.StandardOutput + completed.StandardError);
+            Assert.Contains("Selected 2 tests; skipped 0.", completed.StandardOutput);
+            Assert.IsFalse(File.Exists(abandoned));
+            Assert.AreEqual("", await GitStatusAsync(output, token));
+
+            ProcessResult repeated = await InvokeAsync([.. options, "--repeat", "2", "differs"], token);
+            Assert.AreEqual(1, repeated.ExitCode, repeated.StandardOutput + repeated.StandardError);
+            Assert.IsTrue(File.Exists(Path.Join(suite, "regression.1.diffs")));
+            Assert.IsTrue(File.Exists(Path.Join(suite, "regression.2.diffs")));
+            Assert.AreEqual("", await GitStatusAsync(output, token));
+        }
+        finally
+        {
+            if (running is { IsCompleted: false })
+            {
+                _ = await ReleaseAsync(running);
+            }
+
+            await cluster.StopAsync(CancellationToken.None);
+        }
+
+        async Task<bool> IsWaitingAsync()
+        {
+            try
+            {
+                await using NpgsqlConnection connection = await OpenRegressionConnectionAsync(port, Database, token);
+                await using var command = new NpgsqlCommand("SELECT EXISTS (SELECT FROM pg_stat_activity " +
+                    "WHERE state = 'active' AND query LIKE 'DO $$%' AND pid <> pg_backend_pid())", connection);
+                return await command.ExecuteScalarAsync(token) is true;
+            }
+            catch (NpgsqlException)
+            {
+                // The server or the database isn't ready yet.
+                return false;
+            }
+        }
+
+        async Task<ProcessResult> ReleaseAsync(Task<ProcessResult> run)
+        {
+            await using var connection = new NpgsqlConnection(new NpgsqlConnectionStringBuilder
+            {
+                Host = "127.0.0.1", Port = port, Username = "postgres", Database = Database, Pooling = false,
+                ApplicationName = Release,
+            }.ConnectionString);
+            await connection.OpenAsync(CancellationToken.None);
+            return await run;
+        }
+    }
+
+    private static async Task GitAsync(string directory, string[] arguments, CancellationToken token)
+        => (await PackageProcessRunner.RunAsync("git", arguments, s_environment, token, workingDirectory: directory))
+            .EnsureSuccess("git", arguments);
+
+    private static async Task<string> GitStatusAsync(string directory, CancellationToken token)
+    {
+        string[] arguments = ["status", "--porcelain", "--untracked-files=all"];
+        ProcessResult status = await PackageProcessRunner.RunAsync("git", arguments, s_environment, token, workingDirectory: directory);
+        status.EnsureSuccess("git", arguments);
+        return status.StandardOutput;
+    }
+
+    /// <summary>
     /// Builds a generated extension through the installed tool in class-owned storage.
     /// </summary>
     /// <param name="solution">The class-owned copy of the generated solution.</param>
