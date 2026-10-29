@@ -19,8 +19,8 @@ Ankus is released on nuget.org: 0.1.0 on 2026-10-15, servicing releases
 through 0.1.7, 0.2.0 on 2026-10-17, 0.2.1 and 0.2.2 on 2026-10-18, 0.2.3 on
 2026-10-19, 0.2.4 on 2026-10-20, 0.2.5 on 2026-10-22, 0.2.6 on 2026-10-22,
 0.2.7 and 0.2.8 on 2026-10-24, 0.2.9 on 2026-10-25, 0.2.10 and 0.2.11 on
-2026-10-26, 0.2.12 on 2026-10-27, and 0.2.13, 0.2.14 and 0.2.15 on 2026-10-28
-(see remaining-work item 8).
+2026-10-26, 0.2.12 on 2026-10-27, 0.2.13, 0.2.14 and 0.2.15 on 2026-10-28,
+and 0.2.16 on 2026-10-29 (see remaining-work item 8).
 
 The upstream inventory is pinned to pgrx **0.19.3**, commit
 `fc91c63ebad11784647b50ee7e265c1fd9c9924f`. The refresh covers every release
@@ -909,6 +909,23 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   were pushed and listed on nuget.org. On the MacBook, with `/usr/bin/clang`
   first on `PATH`, `Ankus.Tool` 0.2.2 from nuget.org created a solution whose
   7 tests passed.
+- 0.2.16 is released (release run 40859457556 on 5ecb9bfc, after CI
+  40856105673, CodeQL, Docs and the secret scan passed on that commit). It
+  carries #143, which keeps the `ankus regress` lock out of the extension's Git
+  changes. All seven packages were pushed, and the flat container and the
+  registration index listed them about 10 minutes after publishing. On Linux
+  x64 and Windows x64 with PostgreSQL 18, `Ankus.Tool` 0.2.16 from a local pack
+  and then from nuget.org created a solution, committed it to Git, and left
+  `git status` empty while a run waited, after it, after a killed run and after
+  a failing `--repeat 2` run. It refused a second run while the first held
+  `bin/ankus/regress.lock` and deleted an abandoned `.ankus-regress.lock`;
+  `--dry-run` created no lock. The same check with 0.2.15 on Linux x64 listed
+  the lock during the run and after the killed run, and listed both repeat
+  diffs. One Windows x64 run of #143 failed
+  `DatabaseRemovalHonorsForceLocksCancellationAndRecovery` when a forced
+  `DROP DATABASE` still found the session it had terminated after PostgreSQL's
+  five-second wait. Its rerun passed, none of the 25 failed CI runs before it
+  had that failure, and its cause is not known.
 - 0.2.15 is released (release run 40812941164 on dbaafd4c, after CI
   40810705083, CodeQL, Docs and the secret scan passed on that commit). It
   carries #139, which keeps Visual Studio's discovery errors out of Windows
