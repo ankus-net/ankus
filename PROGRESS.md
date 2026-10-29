@@ -1389,6 +1389,30 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   public surface. The complete suite passed on Linux x64 with PostgreSQL 18:
   15,221 tests, 55 skipped. On main at ce9f9e86 (#135), CI 40767242311 passed
   on Linux x64, macOS ARM64 and Windows x64.
+- On Windows, VS Code failed to load an Ankus 0.2.14 extension project (#139).
+  The Claude Code extension sets `NoDefaultCurrentDirectoryInExePath` in the
+  extension host, which every extension's build host inherits. Visual Studio
+  18's developer script then cannot run `vswhere.exe` by name and writes an
+  error to stderr. .NET 10 Native AOT's `findvcvarsall.bat` captures stderr with
+  the tools directory, so the binding checks received a `cl.exe` path that began
+  with the error and failed to start it. The SDK now runs that script with
+  stderr discarded before Native AOT's own discovery and hands Native AOT the
+  result, which .NET 10 reads in place of its own run. The .NET 11 targets
+  already discard the script's stderr and ship no `findvcvarsall.bat`, so they
+  are unchanged. CI selects a developer environment for Native AOT and never ran
+  this discovery. `BuildsIgnoreDeveloperScriptErrors` clears that setting, sets
+  the variable, and runs an editor design-time build, a publication and a
+  Visual Studio MSBuild build of a new extension, failing on any such error in
+  their diagnostic logs. With the test and without the change, CI run
+  40801314316 failed its design-time and publication rows on Windows x64 with
+  the same `cl.exe` error, the only 2 failures among 5,618 tests. On Windows x64
+  with Visual Studio 18 and ILCompiler 10.0.13, the design-time build of a new
+  extension failed on 0.2.14 with 23 log lines naming vswhere and passes with
+  none; its publication links with Visual Studio's `link.exe`; and a VS Code
+  project load with C# Dev Kit 3.40.215 lists no vswhere messages, where each
+  of the four loads before it did. MSBuild keeps files under the NuGet package
+  folder in memory in its reused worker nodes and never checks them again, so
+  testing an edited package file in an editor needs those nodes stopped first.
 - Disposing a `PgRelationWriter` took time proportional to the writers still
   open (#104). Open writers were a singly linked list that every operation
   walked to find its writer, that close walked twice more, and that the context
