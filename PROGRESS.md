@@ -1400,6 +1400,21 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   public surface. The complete suite passed on Linux x64 with PostgreSQL 18:
   15,221 tests, 55 skipped. On main at ce9f9e86 (#135), CI 40767242311 passed
   on Linux x64, macOS ARM64 and Windows x64.
+- `ankus regress` kept its lock in `pg_regress/`, so `.ankus-regress.lock`
+  appeared in an extension's Git changes during every run, and a run killed on
+  Linux or macOS left it there (#142). The lock is now `bin/ankus/regress.lock`
+  beside the publications, which .NET gitignore files exclude, and a run deletes
+  the file an earlier version abandoned in the suite unless that version's run
+  still holds it. The generated gitignore also covers the
+  `regression.<number>.diffs` files that `--repeat` keeps. On Linux x64 with
+  PostgreSQL 18, Ankus 0.2.15 showed the lock in `git status` of a new solution
+  during a run and after a killed one, and showed both repeat diffs.
+  `RegressLeavesGitChangesAlone` commits a new solution and checks `git status`
+  while a run waits in SQL, after it ends, and after a failing `--repeat` run,
+  and checks that a second run of the same suite is refused while the first
+  holds the lock. Without the change it failed on the lock during the run;
+  with it, the 27 regress and template tests that run on Linux x64 pass with
+  PostgreSQL 18.
 - On Windows, VS Code failed to load an Ankus 0.2.14 extension project (#139).
   The Claude Code extension sets `NoDefaultCurrentDirectoryInExePath` in the
   extension host, which every extension's build host inherits. Visual Studio

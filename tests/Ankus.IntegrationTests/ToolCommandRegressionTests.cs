@@ -68,7 +68,7 @@ public sealed partial class ToolCommandTests
             Assert.Contains("Created database " + Database, changed.StandardOutput);
             Assert.AreEqual("\\set ECHO none\n84\n", (await File.ReadAllTextAsync(Path.Join(suite, "results", "native.out"), token)).ReplaceLineEndings("\n"));
             Assert.IsTrue(await cluster.IsRunningAsync(token));
-            Assert.IsFalse(File.Exists(Path.Join(suite, ".ankus-regress.lock")));
+            Assert.IsFalse(File.Exists(Path.Join(Path.GetDirectoryName(project)!, "bin", "ankus", "regress.lock")));
         }
         finally
         {
@@ -328,7 +328,7 @@ public sealed partial class ToolCommandTests
             ProcessResult recovered = await InvokeAsync([.. options, "--add", "broken"], token);
             Assert.AreEqual(0, recovered.ExitCode, recovered.StandardOutput + recovered.StandardError);
             Assert.AreEqual("\\set ECHO none\n42\n", (await File.ReadAllTextAsync(expected, token)).ReplaceLineEndings("\n"));
-            Assert.IsFalse(File.Exists(Path.Join(suite, ".ankus-regress.lock")));
+            Assert.IsFalse(File.Exists(Path.Join(Path.GetDirectoryName(project)!, "bin", "ankus", "regress.lock")));
         }
         finally
         {
