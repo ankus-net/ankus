@@ -1,4 +1,34 @@
 <Project>
+  <PropertyGroup Condition="'$(ILCompilerTargetsPath)' != ''">
+    <_AnkusFindVCVarsall>$([System.IO.Path]::GetDirectoryName('$(ILCompilerTargetsPath)'))\findvcvarsall.bat</_AnkusFindVCVarsall>
+  </PropertyGroup>
+
+  <Target Name="_FindAnkusWindowsTools" BeforeTargets="SetupOSSpecificProps"
+          Condition="'$(_targetOS)' == 'win' and '$(IlcUseEnvironmentalTools)' != 'true' and '$(_AnkusFindVCVarsall)' != '' and Exists('$(_AnkusFindVCVarsall)')">
+    <!-- .NET 10 Native AOT runs this script and reads its errors with its output. With NoDefaultCurrentDirectoryInExePath
+         set, Visual Studio's developer script cannot run vswhere.exe by name and says so on stderr, which then reaches
+         the linker path and an editor's problem list. Run the script with stderr discarded and let Native AOT read the
+         result in place of its own run. -->
+    <Exec Command="&quot;$(_AnkusFindVCVarsall)&quot; $(_targetArchitecture) 2&gt; NUL" IgnoreExitCode="true"
+          ConsoleToMSBuild="true" StandardOutputImportance="Low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_FindVCVarsallOutput" />
+      <Output TaskParameter="ExitCode" PropertyName="_VCVarsAllFound" />
+    </Exec>
+    <PropertyGroup>
+      <_AnkusIlcUseEnvironmentalTools>$(IlcUseEnvironmentalTools)</_AnkusIlcUseEnvironmentalTools>
+      <_AnkusFoundWindowsTools>true</_AnkusFoundWindowsTools>
+      <IlcUseEnvironmentalTools>true</IlcUseEnvironmentalTools>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="_RestoreAnkusEnvironmentalTools" AfterTargets="SetupOSSpecificProps"
+          Condition="'$(_AnkusFoundWindowsTools)' == 'true'">
+    <PropertyGroup>
+      <IlcUseEnvironmentalTools>$(_AnkusIlcUseEnvironmentalTools)</IlcUseEnvironmentalTools>
+      <_AnkusFoundWindowsTools />
+    </PropertyGroup>
+  </Target>
+
   <Target Name="_SelectAnkusWindowsEnvironment" AfterTargets="SetupOSSpecificProps"
           Condition="'$(_targetOS)' == 'win' and '$(IlcUseEnvironmentalTools)' == 'true'">
     <!-- Native AOT uses PATH and LIB from the configured developer environment.

@@ -43,6 +43,8 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
         string[] commands = [.. Directory.EnumerateFiles(Path.Join(AppContext.BaseDirectory, "AnkusSdk", "targets"), "*.targets")
             .SelectMany(static file => XDocument.Load(file).Descendants("Exec"))
             .Where(static exec => !((string?)exec.Attribute("Command") ?? "").Contains("--version", StringComparison.Ordinal))
+            // Native AOT's Visual Studio discovery runs no build tool, and its output is the toolchain it reads.
+            .Where(static exec => !((string?)exec.Attribute("Command") ?? "").Contains("$(_AnkusFindVCVarsall)", StringComparison.Ordinal))
             .Select(static exec => (string?)exec.Attribute("StandardOutputImportance") ?? "")];
         Assert.IsNotEmpty(commands);
         Assert.IsTrue(commands.All(static importance => importance == "$(_AnkusToolOutputImportance)"),
