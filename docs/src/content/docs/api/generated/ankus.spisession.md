@@ -40,6 +40,10 @@ Returns: [long](https://learn.microsoft.com/dotnet/api/system.int64)
 
 The final statement's processed row count.
 
+Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <code>SELECT</code>. A hot
+standby can't assign one, and a later <code>DROP INDEX CONCURRENTLY</code> in the same transaction fails, as it needs a
+transaction without one. <code>Select</code> reads without assigning an ID.
+
 <a id="member-3f3db5f8071d1fcf"></a>
 
 ### Execute(string, params ReadOnlySpan&lt;SpiParameter&gt;)
@@ -63,6 +67,10 @@ The typed positional parameters.
 Returns: [long](https://learn.microsoft.com/dotnet/api/system.int64)
 
 The processed-row count.
+
+Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <code>SELECT</code>. A hot
+standby can't assign one, and a later <code>DROP INDEX CONCURRENTLY</code> in the same transaction fails, as it needs a
+transaction without one. <code>Select</code> reads without assigning an ID.
 
 <a id="member-f29e96434d51dd49"></a>
 
@@ -89,6 +97,10 @@ SQL and its declared bindings.
 Returns: <code>T</code>
 
 The scalar value with the existing SQL NULL and empty-result rules.
+
+Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <code>SELECT</code>. A hot
+standby can't assign one, and a later <code>DROP INDEX CONCURRENTLY</code> in the same transaction fails, as it needs a
+transaction without one. <code>Select</code> reads without assigning an ID.
 
 <a id="member-ebeeb6ccc6dc3fd6"></a>
 
@@ -120,6 +132,10 @@ Returns: <code>T</code>
 
 The scalar value.
 
+Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <code>SELECT</code>. A hot
+standby can't assign one, and a later <code>DROP INDEX CONCURRENTLY</code> in the same transaction fails, as it needs a
+transaction without one. <code>Select</code> reads without assigning an ID.
+
 <a id="member-c9413fd04f3dea8f"></a>
 
 ### ExecuteScalars&lt;TFirst, TSecond&gt;(SpiCommand)
@@ -149,6 +165,10 @@ SQL and its declared bindings.
 Returns: <code>(TFirst First, TSecond Second)</code>
 
 The first row's two values with the existing SQL NULL and empty-result rules.
+
+Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <code>SELECT</code>. A hot
+standby can't assign one, and a later <code>DROP INDEX CONCURRENTLY</code> in the same transaction fails, as it needs a
+transaction without one. <code>Select</code> reads without assigning an ID.
 
 <a id="member-ac0fa9cc12fb1070"></a>
 
@@ -190,6 +210,10 @@ Exceptions:
 - [InvalidOperationException](https://learn.microsoft.com/dotnet/api/system.invalidoperationexception): A returned row has fewer than two columns, or SQL NULL is read as a non-nullable value type.
 - [InvalidCastException](https://learn.microsoft.com/dotnet/api/system.invalidcastexception): A column cannot be read as its requested managed type.
 
+Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <code>SELECT</code>. A hot
+standby can't assign one, and a later <code>DROP INDEX CONCURRENTLY</code> in the same transaction fails, as it needs a
+transaction without one. <code>Select</code> reads without assigning an ID.
+
 <a id="member-19d79a6e24292589"></a>
 
 ### ExecuteScalars&lt;TFirst, TSecond, TThird&gt;(SpiCommand)
@@ -223,6 +247,10 @@ SQL and its declared bindings.
 Returns: <code>(TFirst First, TSecond Second, TThird Third)</code>
 
 The first row's three values with the existing SQL NULL and empty-result rules.
+
+Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <code>SELECT</code>. A hot
+standby can't assign one, and a later <code>DROP INDEX CONCURRENTLY</code> in the same transaction fails, as it needs a
+transaction without one. <code>Select</code> reads without assigning an ID.
 
 <a id="member-a465ff04c659021b"></a>
 
@@ -267,6 +295,10 @@ Exceptions:
 
 - [InvalidOperationException](https://learn.microsoft.com/dotnet/api/system.invalidoperationexception): A returned row has fewer than three columns, or SQL NULL is read as a non-nullable value type.
 - [InvalidCastException](https://learn.microsoft.com/dotnet/api/system.invalidcastexception): A column cannot be read as its requested managed type.
+
+Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <code>SELECT</code>. A hot
+standby can't assign one, and a later <code>DROP INDEX CONCURRENTLY</code> in the same transaction fails, as it needs a
+transaction without one. <code>Select</code> reads without assigning an ID.
 
 <a id="member-8df29d71a221d3ac"></a>
 
@@ -350,7 +382,7 @@ One row-producing statement and its declared bindings.
 
 `readOnly` — [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
 
-Whether to enforce read-only SPI execution.
+Whether to use read-only SPI execution; false first assigns the transaction an ID.
 
 Returns: [SpiCursor](/api/ankus.spicursor/)
 
@@ -374,7 +406,7 @@ The SQL query.
 
 `readOnly` — [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
 
-Whether to use read-only execution.
+Whether to use read-only SPI execution; false first assigns the transaction an ID.
 
 `parameters` — [ReadOnlySpan&lt;SpiParameter&gt;](https://learn.microsoft.com/dotnet/api/system.readonlyspan-1)
 
@@ -475,7 +507,7 @@ SQL and its declared bindings.
 
 `readOnly` — [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
 
-Whether to enforce read-only SPI execution.
+Whether to use read-only SPI execution; false first assigns the transaction an ID.
 
 `limit` — [int](https://learn.microsoft.com/dotnet/api/system.int32)
 
@@ -484,6 +516,10 @@ The maximum returned rows, or zero for unlimited.
 Returns: [SpiResult](/api/ankus.spiresult/)
 
 Owned managed rows and column metadata.
+
+Unless <code class="paramref">readOnly</code> is true, the call first assigns the transaction an ID, as pgrx's writable SPI
+helpers do, even for a <code>SELECT</code>. A hot standby can't assign one, and a later <code>DROP INDEX CONCURRENTLY</code> in
+the same transaction fails, as it needs a transaction without one. <code>Select</code> reads without assigning an ID.
 
 <a id="member-8c82aac863ee50a2"></a>
 
@@ -503,7 +539,7 @@ The SQL query.
 
 `readOnly` — [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
 
-Whether to use PostgreSQL's read-only SPI execution mode.
+Whether to use read-only SPI execution; false first assigns the transaction an ID.
 
 `limit` — [int](https://learn.microsoft.com/dotnet/api/system.int32)
 
@@ -541,6 +577,10 @@ Returns: [SpiResult](/api/ankus.spiresult/)
 
 The independently owned managed result.
 
+Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <code>SELECT</code>. A hot
+standby can't assign one, and a later <code>DROP INDEX CONCURRENTLY</code> in the same transaction fails, as it needs a
+transaction without one. <code>Select</code> reads without assigning an ID.
+
 <a id="member-af068a232ad59792"></a>
 
 ### QueryRaw(SpiCommand, bool, int)
@@ -559,7 +599,7 @@ SQL and its declared bindings.
 
 `readOnly` — [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
 
-Whether to enforce read-only SPI execution.
+Whether to use read-only SPI execution; false first assigns the transaction an ID.
 
 `limit` — [int](https://learn.microsoft.com/dotnet/api/system.int32)
 
@@ -568,6 +608,10 @@ The maximum returned rows, or zero for unlimited.
 Returns: [SpiRawResult](/api/ankus.spirawresult/)
 
 An owned native result to dispose before leaving the backend callback.
+
+Unless <code class="paramref">readOnly</code> is true, the call first assigns the transaction an ID, as pgrx's writable SPI
+helpers do, even for a <code>SELECT</code>. A hot standby can't assign one, and a later <code>DROP INDEX CONCURRENTLY</code> in
+the same transaction fails, as it needs a transaction without one. <code>Select</code> reads without assigning an ID.
 
 <a id="member-1751b5c8cbf2364d"></a>
 
@@ -587,7 +631,7 @@ The SQL command.
 
 `readOnly` — [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
 
-Whether PostgreSQL should use read-only SPI execution.
+Whether to use read-only SPI execution; false first assigns the transaction an ID.
 
 `limit` — [int](https://learn.microsoft.com/dotnet/api/system.int32)
 
@@ -624,6 +668,10 @@ Typed positional parameters.
 Returns: [SpiRawResult](/api/ankus.spirawresult/)
 
 An owned result that survives this session and expires on disposal or callback-context cleanup.
+
+Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <code>SELECT</code>. A hot
+standby can't assign one, and a later <code>DROP INDEX CONCURRENTLY</code> in the same transaction fails, as it needs a
+transaction without one. <code>Select</code> reads without assigning an ID.
 
 <a id="member-b6cbfeefc6c14356"></a>
 

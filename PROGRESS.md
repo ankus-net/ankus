@@ -1480,6 +1480,16 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   repository builds with no diagnostics, and the complete suite passed on
   Linux x64 with PostgreSQL 18.6: 15,362 tests, 61 skipped. After method groups
   were added, the 5,224 generator tests pass.
+- The SPI write-intent helpers assign the transaction an ID before they run,
+  even for a `SELECT`, as pgrx's `Spi::get_one` and `SpiClient::update` do,
+  but only the SPI guide said so (#150). Worf read a catalog with
+  `Spi.ExecuteScalar` in its utility hook, so every `DROP INDEX CONCURRENTLY`
+  failed as "must be first action in transaction". The XML documentation of
+  `Execute`, `ExecuteScalar`, `ExecuteScalars` and the `Query` and `QueryRaw`
+  overloads that default to writable execution, on `Spi`, `SpiSession` and
+  `SpiPreparedStatement` and with `SpiCommand`, now says so and points to
+  `Select`, and each `readOnly` parameter says what `false` does. The
+  behaviour is unchanged.
 - On Windows, VS Code failed to load an Ankus 0.2.14 extension project (#139).
   The Claude Code extension sets `NoDefaultCurrentDirectoryInExePath` in the
   extension host, which every extension's build host inherits. Visual Studio
