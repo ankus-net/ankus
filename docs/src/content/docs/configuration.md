@@ -309,7 +309,13 @@ until the command finishes; a display failure after an autocommitted `SET`
 therefore terminates that backend.
 
 Typed setting reads are available in every hook. Check hooks can use guarded SQL
-when PostgreSQL has a valid transaction. Assign and show cannot use SQL, including
+when PostgreSQL has a valid transaction. Before the transaction's first query,
+as in a `SET` that starts it, a check reads with a snapshot of its own, so a
+`REPEATABLE READ` transaction still takes its snapshot at its first query. While
+PostgreSQL applies database and role settings at connection start, a check's
+SQL is read-only: a write-intent helper such as `Spi.ExecuteScalar` reads
+without assigning a transaction ID, and a statement that writes fails.
+Assign and show cannot use SQL, including
 during ordinary `SET`, because PostgreSQL also calls them during restoration and
 outside transactions. `PgLog` is available in every hook through a separate native
 binding, including file reloads, rollback restoration, and client parameter

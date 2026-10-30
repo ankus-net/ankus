@@ -1490,6 +1490,38 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   `SpiPreparedStatement` and with `SpiCommand`, now says so and points to
   `Select`, and each `readOnly` parameter says what `false` does. The
   behaviour is unchanged.
+- A managed check hook pushed `GetTransactionSnapshot()` whenever it ran in a
+  transaction without an active snapshot (#152). At connection start
+  PostgreSQL applies database and role settings under a catalog snapshot it
+  registered, and `GetTransactionSnapshot` asserts that none is registered when
+  it takes a transaction's first, so every connection of a role or database
+  that set a shared-preloaded hook's setting aborted on assertion-enabled
+  servers. Worf met it with `ALTER ROLE ... SET worf.conflict_resolution`. The
+  same push fixed a transaction's snapshot at a `SET` before its first query,
+  so a later `SET TRANSACTION ISOLATION LEVEL` failed. Before the first
+  snapshot a check now reads with a snapshot of its own, taken as snapmgr takes
+  its secondary one, and while a snapshot is registered at that point its SQL
+  runs read-only, so write-intent helpers assign no transaction ID there.
+  PostgreSQL 13 and 14 on Windows export `FirstSnapshotSet` without a DLL
+  import annotation, so it's resolved from the server's exports there.
+  `SharedPreloadChecksDatabaseAndRoleSettingsAtConnectionStart` connects as a
+  role and through a database that set a shared-preloaded check's setting, and
+  `CheckBeforeFirstQueryLeavesTransactionSnapshot` sets a hooked setting before
+  `SET TRANSACTION ISOLATION LEVEL`. On an assertion-enabled PostgreSQL 18.6
+  without the change, the first connection failed `TRAP: failed
+  Assert("pairingheap_is_empty(&RegisteredSnapshots)")` in snapmgr.c and the
+  second test failed with 25001.
+- `walrcv_connect` allocates its connection in the current memory context, so a
+  `PgReplicationConnection` opened in a function, trigger or hook pointed at
+  freed memory once that statement's or transaction's context ended (#153).
+  Worf kept one across a `CREATE INDEX CONCURRENTLY`'s internal commits and its
+  backend crashed. The connection is now allocated in `TopMemoryContext`, as
+  the bridge's own entry already was. `ConnectionsOutliveTheStatementThatOpenedThem`
+  keeps a replication and an ordinary connection across statements and a
+  rolled-back transaction; without the change the first later query ended the
+  backend with signal 11 on PostgreSQL 18.6. With both changes, the 134 GUC and
+  replication connection tests pass on assertion-enabled PostgreSQL 15.19,
+  17.11 and 18.6 on Linux x64, and the 5,224 generator tests pass.
 - On Windows, VS Code failed to load an Ankus 0.2.14 extension project (#139).
   The Claude Code extension sets `NoDefaultCurrentDirectoryInExePath` in the
   extension host, which every extension's build host inherits. Visual Studio

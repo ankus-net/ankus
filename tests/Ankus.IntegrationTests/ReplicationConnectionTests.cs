@@ -36,6 +36,39 @@ public sealed class ReplicationConnectionTests(TestContext context)
     }
 
     /// <summary>
+    /// A connection opened in one statement keeps working in later statements and transactions, including one that
+    /// rolls back, until it's closed.
+    /// </summary>
+    /// <param name="replication">Whether it's a replication connection or an ordinary one.</param>
+    [TestMethod]
+    [DataRow(true)]
+    [DataRow(false)]
+    public async Task ConnectionsOutliveTheStatementThatOpenedThem(bool replication)
+    {
+        CancellationToken token = context.CancellationToken;
+        await using NpgsqlConnection connection = await PostgresFixture.Cluster.OpenConnectionAsync(token);
+        int version = await ScalarAsync<int>(connection, "SELECT current_setting('server_version_num')::integer", token);
+        Assert.AreEqual(version, await ScalarAsync<int>(connection,
+            $"SELECT datatype.replication_keep(@connection, {(replication ? "true" : "false")})", token, ConnectionString(connection)));
+        try
+        {
+            for (int statement = 0; statement < 3; statement++)
+            {
+                Assert.AreEqual($"{statement}|café 😀", await ScalarAsync<string>(connection,
+                    $"SELECT datatype.replication_kept_query('SELECT {statement}, ''café 😀''', 2)", token));
+            }
+
+            await ExecuteAsync(connection, "BEGIN; SELECT datatype.replication_kept_query('SELECT 1', 1); ROLLBACK", token);
+            Assert.AreEqual("after rollback", await ScalarAsync<string>(connection,
+                "SELECT datatype.replication_kept_query('SELECT ''after rollback''', 1)", token));
+        }
+        finally
+        {
+            Assert.IsTrue(await ScalarAsync<bool>(connection, "SELECT datatype.replication_kept_close()", token));
+        }
+    }
+
+    /// <summary>
     /// An ordinary connection opens for a role without the REPLICATION attribute, which a replication connection
     /// refuses, runs as a client backend with replication's text settings, and copies a table.
     /// </summary>

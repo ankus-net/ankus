@@ -201,6 +201,19 @@ public sealed class GucTests(TestContext context)
     }
 
     /// <summary>
+    /// A check during a SET that starts a transaction leaves the transaction's snapshot to its first query, so the
+    /// transaction can still choose its isolation level.
+    /// </summary>
+    [TestMethod]
+    public async Task CheckBeforeFirstQueryLeavesTransactionSnapshot()
+    {
+        await using NpgsqlConnection connection = await OpenAsync();
+        await ExecuteAsync(connection, "BEGIN; SET ankus_guc.hook_int = '20'; SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
+        Assert.AreEqual("repeatable read", await ScalarAsync(connection, "SHOW transaction_isolation"));
+        await ExecuteAsync(connection, "COMMIT");
+    }
+
+    /// <summary>
     /// Check normalization reaches all five native storage types and show hooks affect display only.
     /// </summary>
     [TestMethod]

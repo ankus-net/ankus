@@ -10,6 +10,11 @@ namespace Ankus.TestExtension;
 public static class ReplicationConnectionFunctions
 {
     /// <summary>
+    /// The connection <see cref="ReplicationKeep"/> opened, which this backend keeps between calls.
+    /// </summary>
+    private static PgReplicationConnection? s_kept;
+
+    /// <summary>
     /// Runs a query over a replication connection and returns its rows.
     /// </summary>
     /// <param name="connection">The connection string.</param>
@@ -213,6 +218,43 @@ public static class ReplicationConnectionFunctions
         {
             return exception.GetType().Name;
         }
+    }
+
+    /// <summary>
+    /// Opens a connection this backend keeps after the statement and transaction that opened it end.
+    /// </summary>
+    /// <param name="connection">The connection string.</param>
+    /// <param name="replication">Whether it's a replication connection or an ordinary one.</param>
+    /// <returns>The server version.</returns>
+    [PgFunction]
+    public static int ReplicationKeep(string connection, bool replication)
+    {
+        s_kept?.Dispose();
+        s_kept = PgReplicationConnection.Connect(connection, "ankus_kept", replication);
+        return s_kept.ServerVersion;
+    }
+
+    /// <summary>
+    /// Runs a query on the connection <see cref="ReplicationKeep"/> opened, in a later statement or transaction.
+    /// </summary>
+    /// <param name="query">The query.</param>
+    /// <param name="columns">The query's column count.</param>
+    /// <returns>Rows separated by semicolons and values by bars.</returns>
+    [PgFunction]
+    public static string ReplicationKeptQuery(string query, int columns)
+        => Format((s_kept ?? throw new InvalidOperationException("No connection is kept.")).Query(query, columns));
+
+    /// <summary>
+    /// Closes the connection <see cref="ReplicationKeep"/> opened.
+    /// </summary>
+    /// <returns>Whether one was open.</returns>
+    [PgFunction]
+    public static bool ReplicationKeptClose()
+    {
+        bool open = s_kept is not null;
+        s_kept?.Dispose();
+        s_kept = null;
+        return open;
     }
 
     /// <summary>

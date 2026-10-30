@@ -204,9 +204,13 @@ internal static class NativeReplicationBridge
             char *failure = NULL;
             WalReceiverConn *connection;
             AnkusReplicationConnection *entry;
+            MemoryContext caller;
             bool ordinary = request->value == 1;
             if (WalReceiverFunctions == NULL)
                 load_file("libpqwalreceiver", false);
+            /* walrcv_connect allocates its connection in the current context, which is the statement's or the
+             * transaction's when a function or hook connects, and the connection lives until it's closed. */
+            caller = MemoryContextSwitchTo(TopMemoryContext);
         #if PG_VERSION_NUM >= 170000
             connection = walrcv_connect(conninfo, !ordinary, !ordinary, false, application, &failure);
         #elif PG_VERSION_NUM >= 160000
@@ -216,6 +220,14 @@ internal static class NativeReplicationBridge
             connection = ordinary ? ankus_replication_connect_ordinary(conninfo, application, &failure) :
                 walrcv_connect(conninfo, true, application, &failure);
         #endif
+            MemoryContextSwitchTo(caller);
+            if (failure != NULL)
+            {
+                char *message = pstrdup(failure);
+                pfree(failure);
+                failure = message;
+            }
+
             if (conninfo != (char *) request->pointer)
                 pfree(conninfo);
             if (application != (char *) request->data)

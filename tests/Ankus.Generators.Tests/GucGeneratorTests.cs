@@ -287,7 +287,8 @@ public sealed partial class PgFunctionGeneratorTests
             Assert.Contains("ankus_guc_check(", native);
             Assert.Contains("ankus_spi_execute(", native);
             Assert.Contains("ankus_read_guc = ankus_guc_read;", native);
-            Assert.Contains("&frame->error, ankus_guc_read, transactional ? ankus_spi_execute : NULL, ankus_guc_log, &memory));", native);
+            Assert.Contains("!transactional ? NULL : read_only ? ankus_guc_read_only_execute : ankus_spi_execute, ankus_guc_log, &memory));", native);
+            Assert.Contains("PushActiveSnapshot(GetSnapshotData(&ankus_guc_check_snapshot_data));", native);
         }
         else
         {
