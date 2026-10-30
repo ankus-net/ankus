@@ -1382,6 +1382,56 @@ internal static class NativeGucBridge
     /// Checks and normalizes proposed values with native GUC rejection semantics.
     /// </summary>
     private const string Check = """
+        #include "storage/procarray.h"
+
+        /* A check's own snapshot, taken before the transaction has one, as snapmgr keeps its
+         * secondary snapshot. */
+        static SnapshotData ankus_guc_check_snapshot_data;
+
+        static bool
+        ankus_guc_first_snapshot_set(void)
+        {
+        #if defined(WIN32) && PG_VERSION_NUM < 150000
+            /* PostgreSQL 13 and 14 export this flag, but their headers omit its DLL import
+             * annotation. Resolve its actual storage once. */
+            static bool *first = NULL;
+            if (first == NULL)
+            {
+                first = (bool *) GetProcAddress(GetModuleHandle(NULL), "FirstSnapshotSet");
+                if (first == NULL)
+                    elog(ERROR, "could not resolve PostgreSQL's transaction snapshot state");
+            }
+
+            return *first;
+        #else
+            return FirstSnapshotSet;
+        #endif
+        }
+
+        /* Whether a snapshot is registered, with no active snapshot and the catalog snapshot
+         * released, as when PostgreSQL applies database and role settings at connection start. */
+        static bool
+        ankus_guc_snapshot_registered(void)
+        {
+        #if PG_VERSION_NUM >= 150000
+            return HaveRegisteredOrActiveSnapshot();
+        #else
+            return GetOldestSnapshot() != NULL;
+        #endif
+        }
+
+        /* Runs a check's SQL read-only, without the transaction ID that write intent assigns. */
+        static int
+        ankus_guc_read_only_execute(AnkusRequest *request, AnkusResult *result, AnkusError *error)
+        {
+            if (request->read_only == 0 &&
+                (request->operation == ANKUS_SPI_EXECUTE || request->operation == ANKUS_SPI_EXECUTE_PLAN ||
+                    request->operation == ANKUS_SPI_OPEN_CURSOR || request->operation == ANKUS_SPI_OPEN_PLAN_CURSOR))
+                request->read_only = 1;
+
+            return ankus_spi_execute(request, result, error);
+        }
+
         static int
         ankus_guc_source(GucSource source)
         {
@@ -1516,9 +1566,26 @@ internal static class NativeGucBridge
                 {
                     ankus_guc_arguments(definition, proposed, NULL, frame);
                     bool transactional = IsTransactionState();
+                    bool read_only = false;
                     if (transactional && !ActiveSnapshotSet())
                     {
-                        PushActiveSnapshot(GetTransactionSnapshot());
+                        if (ankus_guc_first_snapshot_set() || HistoricSnapshotActive())
+                            PushActiveSnapshot(GetTransactionSnapshot());
+                        else
+                        {
+                            /* Before the transaction's first snapshot, as during a SET that starts it,
+                             * the check reads with a snapshot of its own and leaves the transaction's
+                             * first snapshot to its first query, as PostgreSQL's own SET does. At
+                             * connection start PostgreSQL applies database and role settings under a
+                             * snapshot it registered, and asserts that the transaction's first snapshot
+                             * comes with none registered, so the check's SQL can't write there, which
+                             * would take that snapshot. */
+                            InvalidateCatalogSnapshot();
+                            read_only = ankus_guc_snapshot_registered();
+                            ankus_guc_check_snapshot_data.snapshot_type = SNAPSHOT_MVCC;
+                            PushActiveSnapshot(GetSnapshotData(&ankus_guc_check_snapshot_data));
+                        }
+
                         frame->snapshot_owned = true;
                     }
 
@@ -1526,7 +1593,8 @@ internal static class NativeGucBridge
                     frame->fork_entered = true;
                     int status;
                     ANKUS_MANAGED_INVOKE(status, &frame->error, definition->hook(0, frame->arguments, frame->results, ankus_guc_source(source),
-                        &frame->error, ankus_guc_read, transactional ? ankus_spi_execute : NULL, ankus_guc_log, &memory));
+                        &frame->error, ankus_guc_read,
+                        !transactional ? NULL : read_only ? ankus_guc_read_only_execute : ankus_spi_execute, ankus_guc_log, &memory));
                     if (frame->snapshot_owned)
                     {
                         frame->snapshot_owned = false;

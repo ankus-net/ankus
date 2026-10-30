@@ -181,6 +181,49 @@ public sealed class GucPreloadTests(TestContext context)
     }
 
     /// <summary>
+    /// A shared-preloaded check runs while PostgreSQL applies database and role settings at connection start, under a
+    /// snapshot PostgreSQL registered, and its SQL reads there without a transaction ID.
+    /// </summary>
+    [TestMethod]
+    public async Task SharedPreloadChecksDatabaseAndRoleSettingsAtConnectionStart()
+    {
+        CancellationToken token = context.CancellationToken;
+        PostgresTestClusterOptions defaults = await IntegrationEnvironment.CreateOptionsAsync(token);
+        PostgresTestClusterOptions options = new()
+        {
+            Installation = defaults.Installation,
+            DataDirectoryBase = defaults.DataDirectoryBase,
+            LogDirectory = defaults.LogDirectory,
+            PostgreSqlConfiguration = [.. defaults.PostgreSqlConfiguration, "shared_preload_libraries = 'Ankus.GucHooksExtension'",
+                "log_min_messages = notice"],
+        };
+        await using PostgresTestCluster cluster = await PostgresTestCluster.StartAsync(options, token);
+        await using NpgsqlConnection administrator = await cluster.OpenConnectionAsync(token);
+        await ExecuteAsync(administrator, "CREATE ROLE role_setting LOGIN; CREATE ROLE database_setting LOGIN");
+        await ExecuteAsync(administrator, "ALTER ROLE role_setting SET ankus_guc_hooks.enabled = 'off'");
+        await ExecuteAsync(administrator, $"ALTER DATABASE \"{administrator.Database}\" SET ankus_guc_hooks.enabled = 'off'");
+        string[] roles = ["role_setting", "database_setting"];
+        foreach (string role in roles)
+        {
+            var builder = new NpgsqlConnectionStringBuilder(administrator.ConnectionString) { Username = role, Pooling = false };
+            await using var connection = new NpgsqlConnection(builder.ConnectionString);
+            await connection.OpenAsync(token);
+            string source = role == "role_setting" ? "user" : "database";
+            Assert.AreEqual($"off|{source}", await ScalarAsync(connection,
+                "SELECT setting || '|' || source FROM pg_settings WHERE name = 'ankus_guc_hooks.enabled'"));
+            string check = $"source={(role == "role_setting" ? "User" : "Database")};sql=42;pid={connection.ProcessID}";
+            string log = cluster.ReadServerLog();
+            for (int attempt = 0; attempt < 100 && !log.Contains(check, StringComparison.Ordinal); attempt++)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(50), token);
+                log = cluster.ReadServerLog();
+            }
+
+            Assert.Contains(check, log, role);
+        }
+    }
+
+    /// <summary>
     /// Native preload leaves managed execution until each independent backend, preserving inherited settings.
     /// </summary>
     [TestMethod]
