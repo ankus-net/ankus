@@ -50,6 +50,11 @@ public sealed partial class SpiSession
     /// <param name="commandText">The SQL command text.</param>
     /// <param name="parameters">The typed positional parameters.</param>
     /// <returns>The processed-row count.</returns>
+    /// <remarks>
+    /// Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <c>SELECT</c>. A hot
+    /// standby can't assign one, and a later <c>DROP INDEX CONCURRENTLY</c> in the same transaction fails, as it needs a
+    /// transaction without one. <c>Select</c> reads without assigning an ID.
+    /// </remarks>
     public long Execute(string commandText, params ReadOnlySpan<SpiParameter> parameters)
     {
         CheckAccess();
@@ -62,6 +67,11 @@ public sealed partial class SpiSession
     /// <param name="commandText">The SQL query.</param>
     /// <param name="parameters">The typed positional parameters.</param>
     /// <returns>The independently owned managed result.</returns>
+    /// <remarks>
+    /// Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <c>SELECT</c>. A hot
+    /// standby can't assign one, and a later <c>DROP INDEX CONCURRENTLY</c> in the same transaction fails, as it needs a
+    /// transaction without one. <c>Select</c> reads without assigning an ID.
+    /// </remarks>
     public SpiResult Query(string commandText, params ReadOnlySpan<SpiParameter> parameters)
         => Query(commandText, readOnly: false, limit: 0, parameters);
 
@@ -69,7 +79,7 @@ public sealed partial class SpiSession
     /// Executes a query with explicit read-only mode and row limit.
     /// </summary>
     /// <param name="commandText">The SQL query.</param>
-    /// <param name="readOnly">Whether to use PostgreSQL's read-only SPI execution mode.</param>
+    /// <param name="readOnly">Whether to use read-only SPI execution; false first assigns the transaction an ID.</param>
     /// <param name="limit">The maximum returned rows, or zero for no limit.</param>
     /// <param name="parameters">The typed positional parameters.</param>
     /// <returns>The independently owned managed result.</returns>
@@ -129,6 +139,11 @@ public sealed partial class SpiSession
     /// <param name="commandText">The SQL command.</param>
     /// <param name="parameters">Typed positional parameters.</param>
     /// <returns>An owned result that survives this session and expires on disposal or callback-context cleanup.</returns>
+    /// <remarks>
+    /// Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <c>SELECT</c>. A hot
+    /// standby can't assign one, and a later <c>DROP INDEX CONCURRENTLY</c> in the same transaction fails, as it needs a
+    /// transaction without one. <c>Select</c> reads without assigning an ID.
+    /// </remarks>
     public SpiRawResult QueryRaw(string commandText, params ReadOnlySpan<SpiParameter> parameters)
         => QueryRaw(commandText, readOnly: false, limit: 0, parameters);
 
@@ -136,7 +151,7 @@ public sealed partial class SpiSession
     /// Copies raw native results with explicit snapshot mode and row limit.
     /// </summary>
     /// <param name="commandText">The SQL command.</param>
-    /// <param name="readOnly">Whether PostgreSQL should use read-only SPI execution.</param>
+    /// <param name="readOnly">Whether to use read-only SPI execution; false first assigns the transaction an ID.</param>
     /// <param name="limit">The maximum returned rows, or zero for no limit.</param>
     /// <param name="parameters">Typed positional parameters.</param>
     /// <returns>A result to dispose before leaving the backend callback.</returns>
@@ -153,6 +168,11 @@ public sealed partial class SpiSession
     /// <param name="commandText">The SQL command.</param>
     /// <param name="parameters">The typed positional parameters.</param>
     /// <returns>The scalar value.</returns>
+    /// <remarks>
+    /// Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <c>SELECT</c>. A hot
+    /// standby can't assign one, and a later <c>DROP INDEX CONCURRENTLY</c> in the same transaction fails, as it needs a
+    /// transaction without one. <c>Select</c> reads without assigning an ID.
+    /// </remarks>
     public T ExecuteScalar<[PgConvertible] T>(string commandText, params ReadOnlySpan<SpiParameter> parameters)
     {
         CheckAccess();
@@ -171,6 +191,11 @@ public sealed partial class SpiSession
     /// <returns>The first two values from the final statement, without implicit type conversions.</returns>
     /// <exception cref="InvalidOperationException">A returned row has fewer than two columns, or SQL NULL is read as a non-nullable value type.</exception>
     /// <exception cref="InvalidCastException">A column cannot be read as its requested managed type.</exception>
+    /// <remarks>
+    /// Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <c>SELECT</c>. A hot
+    /// standby can't assign one, and a later <c>DROP INDEX CONCURRENTLY</c> in the same transaction fails, as it needs a
+    /// transaction without one. <c>Select</c> reads without assigning an ID.
+    /// </remarks>
     public (TFirst First, TSecond Second) ExecuteScalars<[PgConvertible] TFirst, [PgConvertible] TSecond>(
         string commandText, params ReadOnlySpan<SpiParameter> parameters)
     {
@@ -192,6 +217,11 @@ public sealed partial class SpiSession
     /// <returns>The first three values from the final statement, without implicit type conversions.</returns>
     /// <exception cref="InvalidOperationException">A returned row has fewer than three columns, or SQL NULL is read as a non-nullable value type.</exception>
     /// <exception cref="InvalidCastException">A column cannot be read as its requested managed type.</exception>
+    /// <remarks>
+    /// Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <c>SELECT</c>. A hot
+    /// standby can't assign one, and a later <c>DROP INDEX CONCURRENTLY</c> in the same transaction fails, as it needs a
+    /// transaction without one. <c>Select</c> reads without assigning an ID.
+    /// </remarks>
     public (TFirst First, TSecond Second, TThird Third) ExecuteScalars<[PgConvertible] TFirst, [PgConvertible] TSecond,
         [PgConvertible] TThird>(string commandText, params ReadOnlySpan<SpiParameter> parameters)
     {
@@ -242,7 +272,7 @@ public sealed partial class SpiSession
     /// Opens a cursor with explicit read-only execution mode.
     /// </summary>
     /// <param name="commandText">The SQL query.</param>
-    /// <param name="readOnly">Whether to use read-only execution.</param>
+    /// <param name="readOnly">Whether to use read-only SPI execution; false first assigns the transaction an ID.</param>
     /// <param name="parameters">The typed positional parameters.</param>
     /// <returns>An owned transaction-bound cursor.</returns>
     public SpiCursor OpenCursor(string commandText, bool readOnly, params ReadOnlySpan<SpiParameter> parameters)

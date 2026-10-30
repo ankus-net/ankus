@@ -15,15 +15,25 @@ public static partial class Spi
     /// </summary>
     /// <param name="command">SQL and its declared bindings.</param>
     /// <returns>The final statement's processed row count.</returns>
+    /// <remarks>
+    /// Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <c>SELECT</c>. A hot
+    /// standby can't assign one, and a later <c>DROP INDEX CONCURRENTLY</c> in the same transaction fails, as it needs a
+    /// transaction without one. <c>Select</c> reads without assigning an ID.
+    /// </remarks>
     public static long Execute(SpiCommand command) => Execute(command.CommandText, command.Parameters);
 
     /// <summary>
     /// Executes a parameterized command with explicit snapshot mode and a row limit.
     /// </summary>
     /// <param name="command">SQL and its declared bindings.</param>
-    /// <param name="readOnly">Whether to enforce read-only SPI execution.</param>
+    /// <param name="readOnly">Whether to use read-only SPI execution; false first assigns the transaction an ID.</param>
     /// <param name="limit">The maximum returned rows, or zero for unlimited.</param>
     /// <returns>Owned managed rows and column metadata.</returns>
+    /// <remarks>
+    /// Unless <paramref name="readOnly"/> is true, the call first assigns the transaction an ID, as pgrx's writable SPI
+    /// helpers do, even for a <c>SELECT</c>. A hot standby can't assign one, and a later <c>DROP INDEX CONCURRENTLY</c> in
+    /// the same transaction fails, as it needs a transaction without one. <c>Select</c> reads without assigning an ID.
+    /// </remarks>
     public static SpiResult Query(SpiCommand command, bool readOnly = false, int limit = 0)
         => Query(command.CommandText, readOnly, limit, command.Parameters);
 
@@ -49,9 +59,14 @@ public static partial class Spi
     /// Executes a parameterized command with owned native results and explicit snapshot mode.
     /// </summary>
     /// <param name="command">SQL and its declared bindings.</param>
-    /// <param name="readOnly">Whether to enforce read-only SPI execution.</param>
+    /// <param name="readOnly">Whether to use read-only SPI execution; false first assigns the transaction an ID.</param>
     /// <param name="limit">The maximum returned rows, or zero for unlimited.</param>
     /// <returns>An owned native result to dispose before leaving the backend callback.</returns>
+    /// <remarks>
+    /// Unless <paramref name="readOnly"/> is true, the call first assigns the transaction an ID, as pgrx's writable SPI
+    /// helpers do, even for a <c>SELECT</c>. A hot standby can't assign one, and a later <c>DROP INDEX CONCURRENTLY</c> in
+    /// the same transaction fails, as it needs a transaction without one. <c>Select</c> reads without assigning an ID.
+    /// </remarks>
     public static SpiRawResult QueryRaw(SpiCommand command, bool readOnly = false, int limit = 0)
         => QueryRaw(command.CommandText, readOnly, limit, command.Parameters);
 
@@ -61,6 +76,11 @@ public static partial class Spi
     /// <typeparam name="T">The expected managed result type.</typeparam>
     /// <param name="command">SQL and its declared bindings.</param>
     /// <returns>The scalar value with the existing SQL NULL and empty-result rules.</returns>
+    /// <remarks>
+    /// Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <c>SELECT</c>. A hot
+    /// standby can't assign one, and a later <c>DROP INDEX CONCURRENTLY</c> in the same transaction fails, as it needs a
+    /// transaction without one. <c>Select</c> reads without assigning an ID.
+    /// </remarks>
     public static T ExecuteScalar<[PgConvertible] T>(SpiCommand command) => ExecuteScalar<T>(command.CommandText, command.Parameters);
 
     /// <summary>
@@ -70,6 +90,11 @@ public static partial class Spi
     /// <typeparam name="TSecond">The second column's managed type.</typeparam>
     /// <param name="command">SQL and its declared bindings.</param>
     /// <returns>The first row's two values with the existing SQL NULL and empty-result rules.</returns>
+    /// <remarks>
+    /// Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <c>SELECT</c>. A hot
+    /// standby can't assign one, and a later <c>DROP INDEX CONCURRENTLY</c> in the same transaction fails, as it needs a
+    /// transaction without one. <c>Select</c> reads without assigning an ID.
+    /// </remarks>
     public static (TFirst First, TSecond Second) ExecuteScalars<[PgConvertible] TFirst, [PgConvertible] TSecond>(SpiCommand command)
         => ExecuteScalars<TFirst, TSecond>(command.CommandText, command.Parameters);
 
@@ -81,6 +106,11 @@ public static partial class Spi
     /// <typeparam name="TThird">The third column's managed type.</typeparam>
     /// <param name="command">SQL and its declared bindings.</param>
     /// <returns>The first row's three values with the existing SQL NULL and empty-result rules.</returns>
+    /// <remarks>
+    /// Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <c>SELECT</c>. A hot
+    /// standby can't assign one, and a later <c>DROP INDEX CONCURRENTLY</c> in the same transaction fails, as it needs a
+    /// transaction without one. <c>Select</c> reads without assigning an ID.
+    /// </remarks>
     public static (TFirst First, TSecond Second, TThird Third) ExecuteScalars<[PgConvertible] TFirst, [PgConvertible] TSecond,
         [PgConvertible] TThird>(SpiCommand command)
         => ExecuteScalars<TFirst, TSecond, TThird>(command.CommandText, command.Parameters);
@@ -103,7 +133,7 @@ public static partial class Spi
     /// Opens a parameterized cursor with explicit read-only SPI execution mode.
     /// </summary>
     /// <param name="command">One row-producing statement and its declared bindings.</param>
-    /// <param name="readOnly">Whether to enforce read-only SPI execution.</param>
+    /// <param name="readOnly">Whether to use read-only SPI execution; false first assigns the transaction an ID.</param>
     /// <returns>An owned transaction-bound cursor.</returns>
     public static SpiCursor OpenCursor(SpiCommand command, bool readOnly)
         => OpenCursor(command.CommandText, readOnly, command.Parameters);

@@ -312,6 +312,10 @@ use an explicit `readOnly` overload when you need a fixed snapshot policy.
 Write-intent helpers fail on a hot standby even for a `SELECT`: PostgreSQL
 cannot assign a transaction ID during recovery. Use `Select`, `SelectRaw` or
 an available explicit `readOnly: true` overload for standby reads.
+The ID also stays with the transaction, so a utility hook that reads through
+one of these helpers makes a later `DROP INDEX CONCURRENTLY` in the same
+transaction fail, as PostgreSQL requires that statement to start a transaction
+that has no ID yet. Read with `Select` in such hooks.
 
 ### Raw PostgreSQL values
 

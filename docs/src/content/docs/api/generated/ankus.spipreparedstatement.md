@@ -82,6 +82,10 @@ Returns: [long](https://learn.microsoft.com/dotnet/api/system.int64)
 
 The processed-row count.
 
+Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <code>SELECT</code>. A hot
+standby can't assign one, and a later <code>DROP INDEX CONCURRENTLY</code> in the same transaction fails, as it needs a
+transaction without one. <code>Select</code> reads without assigning an ID.
+
 <a id="member-2e17af102c2c384d"></a>
 
 ### ExecuteScalar&lt;T&gt;(params ReadOnlySpan&lt;SpiParameter&gt;)
@@ -108,6 +112,10 @@ Values matching the declared parameter types.
 Returns: <code>T</code>
 
 The scalar value.
+
+Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <code>SELECT</code>. A hot
+standby can't assign one, and a later <code>DROP INDEX CONCURRENTLY</code> in the same transaction fails, as it needs a
+transaction without one. <code>Select</code> reads without assigning an ID.
 
 <a id="member-239e43263637d9db"></a>
 
@@ -144,6 +152,10 @@ Exceptions:
 
 - [InvalidOperationException](https://learn.microsoft.com/dotnet/api/system.invalidoperationexception): A returned row has fewer than two columns, or SQL NULL is read as a non-nullable value type.
 - [InvalidCastException](https://learn.microsoft.com/dotnet/api/system.invalidcastexception): A column cannot be read as its requested managed type.
+
+Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <code>SELECT</code>. A hot
+standby can't assign one, and a later <code>DROP INDEX CONCURRENTLY</code> in the same transaction fails, as it needs a
+transaction without one. <code>Select</code> reads without assigning an ID.
 
 <a id="member-9683e69519896742"></a>
 
@@ -185,6 +197,10 @@ Exceptions:
 - [InvalidOperationException](https://learn.microsoft.com/dotnet/api/system.invalidoperationexception): A returned row has fewer than three columns, or SQL NULL is read as a non-nullable value type.
 - [InvalidCastException](https://learn.microsoft.com/dotnet/api/system.invalidcastexception): A column cannot be read as its requested managed type.
 
+Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <code>SELECT</code>. A hot
+standby can't assign one, and a later <code>DROP INDEX CONCURRENTLY</code> in the same transaction fails, as it needs a
+transaction without one. <code>Select</code> reads without assigning an ID.
+
 <a id="member-1bc56f024c323ae3"></a>
 
 ### Keep()
@@ -214,7 +230,7 @@ Parameters:
 
 `readOnly` — [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
 
-Whether PostgreSQL should use read-only execution.
+Whether to use read-only SPI execution; false first assigns the transaction an ID.
 
 `parameters` — [ReadOnlySpan&lt;SpiParameter&gt;](https://learn.microsoft.com/dotnet/api/system.readonlyspan-1)
 
@@ -259,7 +275,7 @@ Parameters:
 
 `readOnly` — [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
 
-Whether PostgreSQL should use read-only SPI execution.
+Whether to use read-only SPI execution; false first assigns the transaction an ID.
 
 `limit` — [int](https://learn.microsoft.com/dotnet/api/system.int32)
 
@@ -293,6 +309,10 @@ Returns: [SpiResult](/api/ankus.spiresult/)
 
 The managed result.
 
+Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <code>SELECT</code>. A hot
+standby can't assign one, and a later <code>DROP INDEX CONCURRENTLY</code> in the same transaction fails, as it needs a
+transaction without one. <code>Select</code> reads without assigning an ID.
+
 <a id="member-bd31ffee346830be"></a>
 
 ### QueryRaw(bool, int, params ReadOnlySpan&lt;SpiParameter&gt;)
@@ -307,7 +327,7 @@ Parameters:
 
 `readOnly` — [bool](https://learn.microsoft.com/dotnet/api/system.boolean)
 
-Whether PostgreSQL should use read-only SPI execution.
+Whether to use read-only SPI execution; false first assigns the transaction an ID.
 
 `limit` — [int](https://learn.microsoft.com/dotnet/api/system.int32)
 
@@ -340,6 +360,10 @@ Values matching the declared parameter types.
 Returns: [SpiRawResult](/api/ankus.spirawresult/)
 
 An owned result that survives this plan and expires on disposal or callback-context cleanup.
+
+Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <code>SELECT</code>. A hot
+standby can't assign one, and a later <code>DROP INDEX CONCURRENTLY</code> in the same transaction fails, as it needs a
+transaction without one. <code>Select</code> reads without assigning an ID.
 
 <a id="member-4379be293408545b"></a>
 

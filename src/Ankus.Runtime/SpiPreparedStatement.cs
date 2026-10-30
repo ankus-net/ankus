@@ -87,7 +87,7 @@ public sealed class SpiPreparedStatement : IDisposable
     /// <summary>
     /// Opens a cursor from this plan with explicit read-only execution mode.
     /// </summary>
-    /// <param name="readOnly">Whether PostgreSQL should use read-only execution.</param>
+    /// <param name="readOnly">Whether to use read-only SPI execution; false first assigns the transaction an ID.</param>
     /// <param name="parameters">Values matching the declared parameter types.</param>
     /// <returns>An owned cursor independent of the prepared statement's lifetime.</returns>
     public SpiCursor OpenCursor(bool readOnly, params ReadOnlySpan<SpiParameter> parameters)
@@ -118,6 +118,11 @@ public sealed class SpiPreparedStatement : IDisposable
     /// </summary>
     /// <param name="parameters">Values whose PostgreSQL types must match the declared parameter types.</param>
     /// <returns>The processed-row count.</returns>
+    /// <remarks>
+    /// Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <c>SELECT</c>. A hot
+    /// standby can't assign one, and a later <c>DROP INDEX CONCURRENTLY</c> in the same transaction fails, as it needs a
+    /// transaction without one. <c>Select</c> reads without assigning an ID.
+    /// </remarks>
     public long Execute(params ReadOnlySpan<SpiParameter> parameters)
         => Run(parameters, readOnly: false, limit: 0, SpiResultMode.None).RowsAffected;
 
@@ -126,13 +131,18 @@ public sealed class SpiPreparedStatement : IDisposable
     /// </summary>
     /// <param name="parameters">Values matching the declared parameter types.</param>
     /// <returns>The managed result.</returns>
+    /// <remarks>
+    /// Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <c>SELECT</c>. A hot
+    /// standby can't assign one, and a later <c>DROP INDEX CONCURRENTLY</c> in the same transaction fails, as it needs a
+    /// transaction without one. <c>Select</c> reads without assigning an ID.
+    /// </remarks>
     public SpiResult Query(params ReadOnlySpan<SpiParameter> parameters)
         => Query(readOnly: false, limit: 0, parameters);
 
     /// <summary>
     /// Executes the statement with explicit read-only mode and row limit.
     /// </summary>
-    /// <param name="readOnly">Whether PostgreSQL should use read-only SPI execution.</param>
+    /// <param name="readOnly">Whether to use read-only SPI execution; false first assigns the transaction an ID.</param>
     /// <param name="limit">The maximum returned rows, or zero for no limit.</param>
     /// <param name="parameters">Values matching the declared parameter types.</param>
     /// <returns>The managed result.</returns>
@@ -178,13 +188,18 @@ public sealed class SpiPreparedStatement : IDisposable
     /// </summary>
     /// <param name="parameters">Values matching the declared parameter types.</param>
     /// <returns>An owned result that survives this plan and expires on disposal or callback-context cleanup.</returns>
+    /// <remarks>
+    /// Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <c>SELECT</c>. A hot
+    /// standby can't assign one, and a later <c>DROP INDEX CONCURRENTLY</c> in the same transaction fails, as it needs a
+    /// transaction without one. <c>Select</c> reads without assigning an ID.
+    /// </remarks>
     public SpiRawResult QueryRaw(params ReadOnlySpan<SpiParameter> parameters)
         => QueryRaw(readOnly: false, limit: 0, parameters);
 
     /// <summary>
     /// Copies raw native results with explicit snapshot mode and row limit.
     /// </summary>
-    /// <param name="readOnly">Whether PostgreSQL should use read-only SPI execution.</param>
+    /// <param name="readOnly">Whether to use read-only SPI execution; false first assigns the transaction an ID.</param>
     /// <param name="limit">The maximum returned rows, or zero for no limit.</param>
     /// <param name="parameters">Values matching the declared parameter types.</param>
     /// <returns>A result to dispose before leaving the backend callback.</returns>
@@ -219,6 +234,11 @@ public sealed class SpiPreparedStatement : IDisposable
     /// <typeparam name="T">The expected managed result type.</typeparam>
     /// <param name="parameters">Values matching the declared parameter types.</param>
     /// <returns>The scalar value.</returns>
+    /// <remarks>
+    /// Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <c>SELECT</c>. A hot
+    /// standby can't assign one, and a later <c>DROP INDEX CONCURRENTLY</c> in the same transaction fails, as it needs a
+    /// transaction without one. <c>Select</c> reads without assigning an ID.
+    /// </remarks>
     public T ExecuteScalar<[PgConvertible] T>(params ReadOnlySpan<SpiParameter> parameters)
     {
         SpiScalarResult result = RunScalars(parameters, SpiResultMode.Scalar, SpiScalarResult.RequiresRaw<T>());
@@ -235,6 +255,11 @@ public sealed class SpiPreparedStatement : IDisposable
     /// <returns>The first two values from the final statement, without implicit type conversions.</returns>
     /// <exception cref="InvalidOperationException">A returned row has fewer than two columns, or SQL NULL is read as a non-nullable value type.</exception>
     /// <exception cref="InvalidCastException">A column cannot be read as its requested managed type.</exception>
+    /// <remarks>
+    /// Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <c>SELECT</c>. A hot
+    /// standby can't assign one, and a later <c>DROP INDEX CONCURRENTLY</c> in the same transaction fails, as it needs a
+    /// transaction without one. <c>Select</c> reads without assigning an ID.
+    /// </remarks>
     public (TFirst First, TSecond Second) ExecuteScalars<[PgConvertible] TFirst, [PgConvertible] TSecond>(
         params ReadOnlySpan<SpiParameter> parameters)
     {
@@ -253,6 +278,11 @@ public sealed class SpiPreparedStatement : IDisposable
     /// <returns>The first three values from the final statement, without implicit type conversions.</returns>
     /// <exception cref="InvalidOperationException">A returned row has fewer than three columns, or SQL NULL is read as a non-nullable value type.</exception>
     /// <exception cref="InvalidCastException">A column cannot be read as its requested managed type.</exception>
+    /// <remarks>
+    /// Like pgrx's writable SPI helpers, the call first assigns the transaction an ID, even for a <c>SELECT</c>. A hot
+    /// standby can't assign one, and a later <c>DROP INDEX CONCURRENTLY</c> in the same transaction fails, as it needs a
+    /// transaction without one. <c>Select</c> reads without assigning an ID.
+    /// </remarks>
     public (TFirst First, TSecond Second, TThird Third) ExecuteScalars<[PgConvertible] TFirst, [PgConvertible] TSecond,
         [PgConvertible] TThird>(params ReadOnlySpan<SpiParameter> parameters)
     {
