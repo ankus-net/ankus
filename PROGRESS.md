@@ -20,7 +20,8 @@ through 0.1.7, 0.2.0 on 2026-10-17, 0.2.1 and 0.2.2 on 2026-10-18, 0.2.3 on
 2026-10-19, 0.2.4 on 2026-10-20, 0.2.5 on 2026-10-22, 0.2.6 on 2026-10-22,
 0.2.7 and 0.2.8 on 2026-10-24, 0.2.9 on 2026-10-25, 0.2.10 and 0.2.11 on
 2026-10-26, 0.2.12 on 2026-10-27, 0.2.13, 0.2.14 and 0.2.15 on 2026-10-28,
-and 0.2.16 and 0.2.17 on 2026-10-29 (see remaining-work item 8).
+0.2.16 and 0.2.17 on 2026-10-29, and 0.2.18 on 2026-10-30 (see remaining-work
+item 8).
 
 The upstream inventory is pinned to pgrx **0.19.3**, commit
 `fc91c63ebad11784647b50ee7e265c1fd9c9924f`. The refresh covers every release
@@ -909,6 +910,15 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   were pushed and listed on nuget.org. On the MacBook, with `/usr/bin/clang`
   first on `PATH`, `Ankus.Tool` 0.2.2 from nuget.org created a solution whose
   7 tests passed.
+- 0.2.18 is released (release run 41061323932 on 41e31230, after CI
+  41061284911, CodeQL, Docs and the secret scan passed on that commit). It
+  carries #151, which documents that the SPI write-intent helpers assign a
+  transaction ID, and #154, which fixes #152 and #153. The verify job and then
+  the publish job failed to download the build artifacts from GitHub before
+  anything was pushed, and each passed when rerun. All seven packages were
+  pushed, and the flat container listed them about 8 minutes after publishing.
+  `Ankus.Tool` 0.2.18 from nuget.org reported 41e31230, and the published
+  `Ankus.Generators` contains both fixes' native code.
 - 0.2.17 is released (release run 40951099652 on 7209c8d2, after CI
   40947442000, CodeQL, Docs and the secret scan passed on that commit). It
   carries #146, which reports SPI values and range bounds without a PostgreSQL
