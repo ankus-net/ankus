@@ -20,8 +20,8 @@ through 0.1.7, 0.2.0 on 2026-10-17, 0.2.1 and 0.2.2 on 2026-10-18, 0.2.3 on
 2026-10-19, 0.2.4 on 2026-10-20, 0.2.5 on 2026-10-22, 0.2.6 on 2026-10-22,
 0.2.7 and 0.2.8 on 2026-10-24, 0.2.9 on 2026-10-25, 0.2.10 and 0.2.11 on
 2026-10-26, 0.2.12 on 2026-10-27, 0.2.13, 0.2.14 and 0.2.15 on 2026-10-28,
-0.2.16 and 0.2.17 on 2026-10-29, and 0.2.18 on 2026-10-30 (see remaining-work
-item 8).
+0.2.16 and 0.2.17 on 2026-10-29, 0.2.18 on 2026-10-30, and 0.2.19 on 2026-11-01
+(see remaining-work item 8).
 
 The upstream inventory is pinned to pgrx **0.19.3**, commit
 `fc91c63ebad11784647b50ee7e265c1fd9c9924f`. The refresh covers every release
@@ -942,6 +942,18 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   were pushed and listed on nuget.org. On the MacBook, with `/usr/bin/clang`
   first on `PATH`, `Ankus.Tool` 0.2.2 from nuget.org created a solution whose
   7 tests passed.
+- 0.2.19 is released (release run 41273773297 on 79191466, after CI
+  41272162555, CodeQL, Docs and the secret scan passed on that commit). It
+  carries #157, the runtime fix for recursive tail-call epilogues, as runtime
+  and compiler packages `10.0.13-ankus.2` and `11.0.0-rc.2.26504.105-ankus.2`.
+  The release built both runtime lines for all five runtime identifiers from
+  the new fork commits; the Intel macOS builds took 16 and 18 minutes. All seven
+  packages and the 20 runtime and compiler packages were listed on nuget.org
+  within 13 minutes of publishing. With its own tool path, package folder and
+  `ANKUS_HOME` on Linux x64, `Ankus.Tool` 0.2.19 from nuget.org reported
+  79191466, and an extension made from the 0.2.19 templates packaged against
+  PostgreSQL 18 with compiler and runtime `10.0.13-ankus.2`, whose
+  `TrailingEpilogueInstructionsCount` has the fixed comparison.
 - 0.2.18 is released (release run 41061323932 on 41e31230, after CI
   41061284911, CodeQL, Docs and the secret scan passed on that commit). It
   carries #151, which documents that the SPI write-intent helpers assign a
