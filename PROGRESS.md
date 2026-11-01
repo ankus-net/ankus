@@ -287,9 +287,16 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   next edge reads `_graph` from freed memory. The window is one epilogue, so
   23,258 hello-world compilations on hosted runners and 1,400 extension
   compilations on a Linux host, with and without a 64 KB gen0 budget, didn't
-  reproduce it. Extensions on Linux x64 and Intel macOS embed this runtime too,
-  so the fix ships as **10.0.13-ankus.2** and
-  **11.0.0-rc.2.26504.105-ankus.2**.
+  reproduce it. Upstream's regression test, which forces collections while
+  `ImmutableSortedDictionary` searches recurse through such a tail call, did: on
+  hosted Ubuntu 24.04 runners, 75 runs on 10.0.13-ankus.1 ended in 54 Access
+  Violation crashes in `ImmutableSortedDictionary.Node`, 19 runs over the
+  300-second limit and 2 passes, and 75 runs on the fixed runtime in no crash,
+  38 passes in 79–291 seconds and 37 runs over the limit. CI run 41262683606
+  built the fixed runtime on Linux x64, macOS ARM64 and Windows x64 and passed
+  the complete suite on each (15,371 tests, none failed; PostgreSQL 18, 18 and
+  17). Extensions on Linux x64 and Intel macOS embed this runtime too, so the
+  fix ships as **10.0.13-ankus.2** and **11.0.0-rc.2.26504.105-ankus.2**.
 - Security checks run on every change. `SECURITY.md` describes private
   vulnerability reporting, Dependabot proposes NuGet, workflow and site updates
   weekly, secret scanning and push protection are on, and
