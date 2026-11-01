@@ -2250,8 +2250,8 @@ internal sealed record RuntimeLine(string TargetFramework, string Base, string C
     /// <summary>
     /// Gets the line for net10.0, which commands use when no line is named.
     /// </summary>
-    internal static RuntimeLine Default { get; } = new("net10.0", "v10.0.13", "72c3927a21db0faa1205127265bda90fdf2874dd",
-        "10.0.13-ankus.1", "10.0.13");
+    internal static RuntimeLine Default { get; } = new("net10.0", "v10.0.13", "8f71811a04631bb8cbcb75fa7ddea5a0caadf90e",
+        "10.0.13-ankus.2", "10.0.13");
 
     /// <summary>
     /// Gets every supported line.
@@ -2259,8 +2259,8 @@ internal sealed record RuntimeLine(string TargetFramework, string Base, string C
     internal static IReadOnlyList<RuntimeLine> All { get; } =
     [
         Default,
-        new("net11.0", "v11.0.0-rc.2.26504.105", "9692d0ff7adccba4178cc65bdc5d9bd093c031cc",
-            "11.0.0-rc.2.26504.105-ankus.1", "11.0.0-rc.2.26504.105"),
+        new("net11.0", "v11.0.0-rc.2.26504.105", "5b9c21283a5ca7559ecc59f0adf1caa8a58a7f7b",
+            "11.0.0-rc.2.26504.105-ankus.2", "11.0.0-rc.2.26504.105"),
     ];
 
     /// <summary>

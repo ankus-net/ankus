@@ -43,13 +43,15 @@ Repository `global.json` selects stable SDK **10.0.400** with
 target is **net10.0**. Installing another SDK does not silently change an
 extension's selected compiler, target framework or embedded runtime.
 
-Extensions embed runtime and compiler host **10.0.13-ankus.1**, built from runtime
-fork commit `f97c4dea9e1cab1f4afcbd8d9c67eb5f7d88a492` on branch
+Extensions embed runtime and compiler host **10.0.13-ankus.2**, built from runtime
+fork commit `8f71811a04631bb8cbcb75fa7ddea5a0caadf90e` on branch
 `ankus/runtime-10.0.13` and paired with the 10.0.13 Native AOT framework and
-compiler targets. It keeps PostgreSQL's signals on the backend thread. It
-replaces **10.0.12-ankus.5** (`e3f084f4590644bcf7c191c0d281076757c0b93c`).
-Complete suites pass on it for every supported PostgreSQL major on Linux x64,
-macOS ARM64, Windows x64 and Intel macOS; see
+compiler targets. It keeps PostgreSQL's signals on the backend thread, and on
+Unix x64 it finds the return address of a thread stopped in a self-recursive
+tail call's epilogue (see the active work below). It replaces
+**10.0.13-ankus.1** (`72c3927a21db0faa1205127265bda90fdf2874dd`), whose complete
+suites passed for every supported PostgreSQL major on Linux x64, macOS ARM64,
+Windows x64 and Intel macOS; see
 [current acceptance](#current-complete-acceptance-evidence).
 Servicing requires
 immutable patched-runtime and compiler packages, matching compiler selection,
@@ -265,6 +267,36 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- The patched runtime now finds the return address of a thread that a GC
+  suspension stops in a self-recursive tail call's epilogue on Unix x64. This is
+  upstream's fix for dotnet/runtime#135912 (#135990), which no release branch
+  carries; both lines take it with its regression test, as fork commits
+  `8f71811a046` (10.0.13) and `5b9c21283a5` (11.0 RC2). Such an epilogue ends in
+  `pop …; jmp` to the method's own entry. The runtime treated it as body code,
+  applied the body's unwind rule to a stack pointer the epilogue had already
+  raised, and wrote the return-address hijack into a slot of the caller's frame
+  while it kept the real value where the collector couldn't update it. A
+  hosted-runner CI run (41212614226) hit this in the compiler itself: `ilc`,
+  which embeds the same runtime, threw a `NullReferenceException` reading
+  `GraphBuilder._graph` while building generic cycle information.
+  `ForEachEmbeddedGenericFormalWorker` ends its array, byref and pointer cases
+  with such a tail call, and its body rule (`CFA = rsp+112`) puts a misplaced
+  hijack on the `GraphBuilder` constructor's `this` (`rbp-0xe8`) or
+  `EmbeddingStateList._builder` (`rbp-0xc0`). Once the collector moves the
+  builder, restoring the hijacked slot leaves the old address there, and the
+  next edge reads `_graph` from freed memory. The window is one epilogue, so
+  23,258 hello-world compilations on hosted runners and 1,400 extension
+  compilations on a Linux host, with and without a 64 KB gen0 budget, didn't
+  reproduce it. Upstream's regression test, which forces collections while
+  `ImmutableSortedDictionary` searches recurse through such a tail call, did: on
+  hosted Ubuntu 24.04 runners, 75 runs on 10.0.13-ankus.1 ended in 54 Access
+  Violation crashes in `ImmutableSortedDictionary.Node`, 19 runs over the
+  300-second limit and 2 passes, and 75 runs on the fixed runtime in no crash,
+  38 passes in 79–291 seconds and 37 runs over the limit. CI run 41262683606
+  built the fixed runtime on Linux x64, macOS ARM64 and Windows x64 and passed
+  the complete suite on each (15,371 tests, none failed; PostgreSQL 18, 18 and
+  17). Extensions on Linux x64 and Intel macOS embed this runtime too, so the
+  fix ships as **10.0.13-ankus.2** and **11.0.0-rc.2.26504.105-ankus.2**.
 - Security checks run on every change. `SECURITY.md` describes private
   vulnerability reporting, Dependabot proposes NuGet, workflow and site updates
   weekly, secret scanning and push protection are on, and
@@ -3001,7 +3033,7 @@ review's findings are fixed or kept by documented design.
 4. Measured hot paths are done: a trimming row trigger costs about the same as PL/pgSQL (0.72 µs against 0.72 µs per row on one host, 0.55 µs against 0.52 µs on another), as the [guard-tier evidence](docs/contributing/evidence/guard-tiers.md#row-triggers) shows. Keep the in-backend baseline, and measure again when boundary code changes, preserving recovery and ownership guarantees.
 5. Keep samples and guides current with API changes, and recheck changed guides before release. Test discovery for MSTest, xUnit and NUnit consumers and samples for all 37 pgrx examples are complete.
 6. Keep the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) current as a pglogical port exercises it; every planned capability is done.
-7. Support .NET 11 as an extension target (required, in progress). The runtime fork's changes over 10.0.13 are ported onto .NET 11 RC2 as fork commit `34f19a015e3` on branch `ankus/runtime-11.0-rc2`, and every fork probe passes on Linux x64; rebase onto GA when it ships. `Ankus.Sdk` selects the `net11.0` line, `ankus new` and the templates take `--framework net11.0`, and CI and releases build both lines. The complete suite passes on every PostgreSQL major on Linux x64, macOS ARM64, Windows x64 and Intel macOS. Remaining: the rebase onto the .NET 11 release in November, which ships as a servicing update.
+7. Support .NET 11 as an extension target (required, in progress). The runtime fork's changes over 10.0.13 are ported onto .NET 11 RC2 on branch `ankus/runtime-11.0-rc2`, now at fork commit `5b9c21283a5`, and every fork probe passes on Linux x64; rebase onto GA when it ships. `Ankus.Sdk` selects the `net11.0` line, `ankus new` and the templates take `--framework net11.0`, and CI and releases build both lines. The complete suite passes on every PostgreSQL major on Linux x64, macOS ARM64, Windows x64 and Intel macOS. Remaining: the rebase onto the .NET 11 release in November, which ships as a servicing update.
 8. 0.1.0 through 0.2.2 are released; 0.1.1 reports build tool failures as build errors, 0.1.2 and 0.1.3 fix `ankus upgrade` and PostgreSQL discovery for the first outside install, 0.1.4 finds a Clang 20 or later when the one on `PATH` is older, 0.1.5 links Windows binding probes with MSVC's linker, 0.1.6 records each development cluster's log path in `.ankus-log`, 0.1.7 finds MacPorts' LLVM, 0.2.0 adds `PgSettings`, the benchmark rollback modes and the fixes for issues #5 through #13 and #18, 0.2.1 builds in Visual Studio, and 0.2.2 searches for Clang 20 in every build tool command. For 0.1.0, release run 38804273089 on e71e226 built, verified and published all 27 packages to nuget.org through the trusted publishing policy: the seven 0.1.0 packages and the patched runtime and compiler for five runtime identifiers on both lines (`10.0.13-ankus.1` and the `11.0.0-rc.2.26504.105-ankus.1` preview). From nuget.org alone, `Ankus.Tool` 0.1.0 creates a solution whose 7 tests pass against PostgreSQL 18, the templates do the same and publish an extension, and a fresh clone of the repository publishes a sample without staging a runtime.
 
 Continue independent work while CI runs. Before every commit and push, check and
