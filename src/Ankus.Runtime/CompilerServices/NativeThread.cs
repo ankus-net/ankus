@@ -55,8 +55,18 @@ internal sealed class NativeThread
     internal static NativeThread Get() => s_current ??= new NativeThread();
 
     /// <summary>
+    /// Gets the failure of the innermost guarded scope when the current callback runs that scope's work, or null.
+    /// </summary>
+    /// <remarks>
+    /// A callback that PostgreSQL enters during the scope's work, such as a hook or an invalidation callback, has its
+    /// own native recovery frame, and the statement that entered it may roll back its own failure. The scope's failure
+    /// therefore applies only at the callback depth where the scope started.
+    /// </remarks>
+    internal Exception? ScopeFailure => _invocation is { Failure: { } failure } invocation && invocation.Depth == _depth ? failure : null;
+
+    /// <summary>
     /// Gets whether a raw call may enter PostgreSQL without the checks that would otherwise refuse it: no guarded scope
     /// has failed and no spinlock guard or lightweight-lock access is held.
     /// </summary>
-    internal bool AdmitsBackendCalls => _invocation?.Failure is null && _spinLease is null && _sharedBorrows == 0;
+    internal bool AdmitsBackendCalls => ScopeFailure is null && _spinLease is null && _sharedBorrows == 0;
 }

@@ -269,6 +269,9 @@ boundary. Raw calls retain PostgreSQL's resource and transaction behavior. Use
 [`PgTransaction.RunInSubtransaction`](/transaction-callbacks/#recoverable-work)
 when an operation needs rollback before a caught exception reaches its caller.
 An error marks that scope for rollback even if the callback catches it.
+When a hook or other callback that one of the scope's statements runs makes the
+failing call, the error fails that statement, and a recoverable scope rolls back
+that statement alone.
 Without an explicit scope, Ankus retains the original failure, blocks further
 backend work and reports it after managed cleanup unwinds. Returning a value or
 throwing a replacement exception cannot turn that native failure into success.
