@@ -267,6 +267,21 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- A recoverable `RunInSubtransaction` scope now recovers DDL that fails inside a
+  managed utility hook. The hook's raw `standard_ProcessUtility` failure was
+  recorded on the enclosing scope, although the hook's own native frame owns it
+  and the statement's subtransaction rolls it back. That rollback runs relcache
+  invalidation callbacks; a managed one found the stale scope failure in its
+  binding check, so its dispatcher raised during `AbortSubTransaction`, and the
+  backend ended with "Unable to recover PostgreSQL state after a guarded SPI
+  failure", then hung exiting while it held its locks. Without such a callback
+  the stale failure still blocked the rest of the scope. A scope's failure now
+  applies only at the callback depth where the scope runs its work, which is how
+  native recovery frames already nest. `UtilityHookDdlFailureRecoversInsideRecoverableScope`
+  runs an overlapping partition directly and through PL/pgSQL `EXECUTE` with the
+  hook and a managed relcache callback installed; before the fix both cases hit
+  that FATAL on PostgreSQL 18. The runtime test
+  `NestedCallbackRawFailureLeavesEnclosingScopeUsable` covers the managed rule.
 - The patched runtime now finds the return address of a thread that a GC
   suspension stops in a self-recursive tail call's epilogue on Unix x64. This is
   upstream's fix for dotnet/runtime#135912 (#135990), which no release branch

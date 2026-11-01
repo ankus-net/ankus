@@ -26,7 +26,7 @@ internal static unsafe class NativeSubtransaction
         ArgumentNullException.ThrowIfNull(action);
         NativeBackend.CheckAccess();
         TResult result = default!;
-        var invocation = new Invocation(() => result = action());
+        var invocation = new Invocation(() => result = action(), NativeMemoryContext.Depth);
         GCHandle handle = GCHandle.Alloc(invocation);
         try
         {
@@ -67,12 +67,17 @@ internal static unsafe class NativeSubtransaction
     }
 
     /// <summary>
-    /// Marks the innermost scope for rollback after an unrecovered native operation fails.
+    /// Marks the innermost scope for rollback after an unrecovered native operation in its own work fails.
     /// </summary>
     /// <param name="exception">The owned native diagnostic.</param>
+    /// <remarks>
+    /// A failure inside a nested callback belongs to that callback's native frame. Its error unwinds through the
+    /// statement that entered the callback, whose own subtransaction may recover it.
+    /// </remarks>
     internal static void RecordFailure(Exception exception)
     {
-        if (NativeThread.Current?._invocation is { } current)
+        NativeThread? thread = NativeThread.Current;
+        if (thread?._invocation is { } current && current.Depth == thread._depth)
         {
             current.Failure ??= exception;
         }
@@ -83,7 +88,7 @@ internal static unsafe class NativeSubtransaction
     /// </summary>
     internal static void CheckAccess()
     {
-        if (NativeThread.Current?._invocation?.Failure is { } failure)
+        if (NativeThread.Current?.ScopeFailure is { } failure)
         {
             ExceptionDispatchInfo.Capture(failure).Throw();
         }
@@ -92,7 +97,7 @@ internal static unsafe class NativeSubtransaction
     /// <summary>
     /// Gets whether rollback must reclaim native SPI frames itself; otherwise ordinary session close reclaims them.
     /// </summary>
-    internal static bool HasFailure => NativeThread.Current?._invocation?.Failure is not null;
+    internal static bool HasFailure => NativeThread.Current?.ScopeFailure is not null;
 
     /// <summary>
     /// Returns every managed exception to native code as a status before recovery begins.
@@ -135,12 +140,18 @@ internal static unsafe class NativeSubtransaction
     /// Retains a synchronous callback and the first failure requiring rollback.
     /// </summary>
     /// <param name="action">The callback with its managed result destination.</param>
-    internal sealed class Invocation(Action action)
+    /// <param name="depth">The callback depth at which the scope runs its work.</param>
+    internal sealed class Invocation(Action action, int depth)
     {
         /// <summary>
         /// Gets the work to invoke once from the native guard.
         /// </summary>
         internal Action Action { get; } = action;
+
+        /// <summary>
+        /// Gets the callback depth at which the scope runs its work.
+        /// </summary>
+        internal int Depth { get; } = depth;
 
         /// <summary>
         /// Gets or sets the first error to rethrow after rollback.

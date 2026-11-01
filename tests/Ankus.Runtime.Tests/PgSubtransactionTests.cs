@@ -151,6 +151,49 @@ public sealed unsafe class PgSubtransactionTests
     }
 
     /// <summary>
+    /// A raw failure inside a callback that PostgreSQL enters during a scope's statement belongs to that callback. The
+    /// statement's own rollback recovers it, so later callbacks and the scope's own work are still admitted.
+    /// </summary>
+    [TestMethod]
+    public void NestedCallbackRawFailureLeavesEnclosingScopeUsable()
+    {
+        using var memory = new MemoryContextTestFixture
+        {
+            Handler = static _ => throw new PgException("42P17", "nested raw failure"),
+        };
+        using MemoryContextTestFixture.Scope memoryScope = MemoryContextTestFixture.Enter();
+        nint previous = Enter();
+        try
+        {
+            int result = PgTransaction.RunInSubtransaction(() =>
+            {
+                using (MemoryContextTestFixture.Enter())
+                {
+                    PgException failure = Assert.ThrowsExactly<PgException>(() => NativeRawCall.Invoke(1, [], 0, 0));
+                    Assert.AreEqual("42P17", failure.SqlState);
+                }
+
+                Assert.IsFalse(NativeSubtransaction.HasFailure);
+                memory.Handler = null;
+                using (MemoryContextTestFixture.Enter())
+                {
+                    NativeRawCall.Invoke(2, [], 0, 0);
+                }
+
+                NativeRawCall.Invoke(3, [], 0, 0);
+                return 42;
+            });
+            Assert.AreEqual(42, result);
+            Assert.AreSequenceEqual([0], s_statuses!);
+            Assert.HasCount(3, memory.Requests);
+        }
+        finally
+        {
+            Exit(previous);
+        }
+    }
+
+    /// <summary>
     /// Native memory transport marks a recovery scope only when the native diagnostic still requires rollback.
     /// </summary>
     /// <param name="unrecovered">Whether PostgreSQL has not yet rolled back the failed operation.</param>

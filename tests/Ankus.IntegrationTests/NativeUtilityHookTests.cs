@@ -1,3 +1,4 @@
+using System.Data;
 using Ankus.Testing;
 using Npgsql;
 
@@ -94,6 +95,70 @@ public sealed class NativeUtilityHookTests(TestContext context)
         await using var peer = new NpgsqlCommand("SELECT 6 * 7", observer);
         Assert.AreEqual(42, await peer.ExecuteScalarAsync(token));
         Assert.DoesNotContain("terminated by signal", cluster.ReadServerLog());
+    }
+
+    /// <summary>
+    /// DDL that fails inside the utility hook's raw call is recovered by its statement's subtransaction, even though a
+    /// managed relation-cache callback runs during that rollback, and the recovery scope that ran it continues.
+    /// </summary>
+    /// <param name="plpgsql">Whether the DDL runs through PL/pgSQL's EXECUTE instead of directly.</param>
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task UtilityHookDdlFailureRecoversInsideRecoverableScope(bool plpgsql)
+    {
+        CancellationToken token = context.CancellationToken;
+        string parent = "recoverable_ddl_" + Guid.NewGuid().ToString("N");
+        string overlap = $"CREATE TABLE {parent}_b PARTITION OF {parent} FOR VALUES FROM (50) TO (150)";
+        int logStart = PostgresFixture.Cluster.ReadServerLog().Length;
+        await using NpgsqlConnection connection = await PostgresFixture.Cluster.OpenConnectionAsync(token);
+        int backend = connection.ProcessID;
+        await using var command = new NpgsqlCommand(
+            $"""
+            CREATE TABLE {parent} (id integer) PARTITION BY RANGE (id);
+            CREATE TABLE {parent}_a PARTITION OF {parent} FOR VALUES FROM (1) TO (100);
+            CREATE FUNCTION {parent}_overlap() RETURNS void LANGUAGE plpgsql AS $$ BEGIN EXECUTE '{overlap}'; END $$;
+            """, connection);
+        await command.ExecuteNonQueryAsync(token);
+        try
+        {
+            command.CommandText = "SELECT recoverable_ddl.recoverable_ddl_watch()";
+            await command.ExecuteScalarAsync(token);
+            command.CommandText = "SELECT utility_hook_values.native_utility_hook_install(0)";
+            Assert.IsTrue(Assert.IsInstanceOfType<bool>(await command.ExecuteScalarAsync(token)));
+
+            command.CommandText = "SELECT recoverable_ddl.recoverable_ddl_run($1)";
+            command.Parameters.AddWithValue(plpgsql ? $"SELECT {parent}_overlap()" : overlap);
+            Assert.AreEqual($"42P17|42|42P17:partition \"{parent}_b\" would overlap partition \"{parent}_a\"|True",
+                await command.ExecuteScalarAsync(token));
+            command.Parameters.Clear();
+
+            // The same backend still runs DDL through the hook.
+            command.CommandText = $"CREATE TABLE {parent}_c PARTITION OF {parent} FOR VALUES FROM (100) TO (200)";
+            await command.ExecuteNonQueryAsync(token);
+            command.CommandText = $"SELECT count(*) FROM pg_catalog.pg_inherits WHERE inhparent = '{parent}'::regclass";
+            Assert.AreEqual(2L, await command.ExecuteScalarAsync(token));
+            command.CommandText = "SELECT pg_catalog.pg_backend_pid()";
+            Assert.AreEqual(backend, await command.ExecuteScalarAsync(token));
+        }
+        finally
+        {
+            // A backend that failed recovery has exited, and its hook with it.
+            if (connection.State == ConnectionState.Open)
+            {
+                command.Parameters.Clear();
+                command.CommandText = "SELECT utility_hook_values.native_utility_hook_restore()";
+                Assert.IsTrue(Assert.IsInstanceOfType<bool>(await command.ExecuteScalarAsync(CancellationToken.None)));
+            }
+
+            await using NpgsqlConnection cleanup = await PostgresFixture.Cluster.OpenConnectionAsync(CancellationToken.None);
+            await using var drop = new NpgsqlCommand($"DROP TABLE {parent}; DROP FUNCTION {parent}_overlap()", cleanup);
+            await drop.ExecuteNonQueryAsync(CancellationToken.None);
+        }
+
+        string log = PostgresFixture.Cluster.ReadServerLog()[logStart..];
+        Assert.DoesNotContain("Unable to recover PostgreSQL state", log);
+        Assert.DoesNotContain("AbortSubTransaction while in ABORT state", log);
     }
 
     /// <summary>
