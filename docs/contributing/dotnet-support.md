@@ -37,12 +37,13 @@ runtime included in published extensions.
 `eng/Ankus.Ci.cs` pins upstream 10.0.13 as shipped (dotnet/dotnet
 `4099f83977f4d29604a9aeb971fb0a7bc1d5f699`, whose `src/runtime` is dotnet/runtime
 `6aa72daa24f66c01c3d7b6a32519e9d21396deec` plus the release's security changes),
-fork commit `f97c4dea9e1cab1f4afcbd8d9c67eb5f7d88a492`, runtime and compiler-host packages
-`10.0.13-ankus.1`, and ILCompiler targets/framework packs `10.0.13`. The fork's
-last commit only restores two build tasks with the patched
-`System.Security.Cryptography.Pkcs` 10.0.13, since NuGet's audit now rejects the
-9.0.6 that `NuGet.Packaging` brings; the runtime and compiler it builds are
-unchanged. The SDK
+fork commit `8f71811a04631bb8cbcb75fa7ddea5a0caadf90e`, runtime and compiler-host packages
+`10.0.13-ankus.2`, and ILCompiler targets/framework packs `10.0.13`. The fork's
+last commit takes upstream's fix for dotnet/runtime#135912: on Unix x64 a GC
+suspension in a self-recursive tail call's epilogue hijacked a slot of the
+caller's frame instead of the return address. A runtime fix changes every
+extension's embedded runtime and the compiler, so it needs a new package version;
+a release skips a runtime version that nuget.org already has. The SDK
 target and per-RID package properties carry matching target runtime and host
 compiler identities. Framework runtime packs also use 10.0.13 instead of
 following the installed SDK's default patch. Check
