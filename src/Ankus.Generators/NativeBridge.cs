@@ -125,6 +125,78 @@ internal static class NativeBridge
             }
         }
 
+        /* A SQL_ASCII database stores name bytes PostgreSQL never checks. Each byte of a name that is not valid UTF-8
+         * travels as an unpaired low surrogate from U+DC80 to U+DCFF in its three-byte form, which valid UTF-8 never
+         * holds, so the name reads and writes back exactly. Other database encodings convert every name. */
+        static inline char *
+        ankus_name_to_utf8(const char *name)
+        {
+            int length = strlen(name);
+            char *escaped;
+            int written = 0;
+            if (GetDatabaseEncoding() != PG_SQL_ASCII)
+                return pg_server_to_any(name, length, PG_UTF8);
+            if (pg_verify_mbstr(PG_UTF8, name, length, true))
+                return (char *) name;
+
+            escaped = palloc(length * 3 + 1);
+            for (int index = 0; index < length;)
+            {
+                const unsigned char *bytes = (const unsigned char *) name + index;
+                int width = pg_utf_mblen(bytes);
+                if (bytes[0] < 0x80 || (width <= length - index && pg_utf8_islegal(bytes, width)))
+                {
+                    memcpy(escaped + written, bytes, width);
+                    written += width;
+                    index += width;
+                }
+                else
+                {
+                    escaped[written++] = (char) 0xED;
+                    escaped[written++] = (char) (bytes[0] < 0xC0 ? 0xB2 : 0xB3);
+                    escaped[written++] = (char) (0x80 | (bytes[0] & 0x3F));
+                    index++;
+                }
+            }
+
+            escaped[written] = '\0';
+            return escaped;
+        }
+
+        /* Restores the name bytes ankus_name_to_utf8 escaped, or converts a name from UTF-8 in other encodings. */
+        static inline char *
+        ankus_name_from_utf8(const char *utf8, int length)
+        {
+            char *terminated = pnstrdup(utf8, length);
+            char *name;
+            int written = 0;
+            if (GetDatabaseEncoding() != PG_SQL_ASCII)
+            {
+                name = pg_any_to_server(terminated, length, PG_UTF8);
+                if (name != terminated)
+                    pfree(terminated);
+                return name;
+            }
+
+            name = palloc(length + 1);
+            for (int index = 0; index < length; index++)
+            {
+                const unsigned char *bytes = (const unsigned char *) terminated + index;
+                if (length - index >= 3 && bytes[0] == 0xED && (bytes[1] == 0xB2 || bytes[1] == 0xB3) &&
+                    (bytes[2] & 0xC0) == 0x80)
+                {
+                    name[written++] = (char) ((bytes[1] == 0xB2 ? 0x80 : 0xC0) | (bytes[2] & 0x3F));
+                    index += 2;
+                }
+                else
+                    name[written++] = (char) bytes[0];
+            }
+
+            name[written] = '\0';
+            pfree(terminated);
+            return name;
+        }
+
         static inline void
         ankus_free_input(AnkusInputBuffer *owned)
         {

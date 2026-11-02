@@ -203,6 +203,12 @@ public unsafe partial struct NativeValue
     public readonly string ReadString() => s_utf8.GetString(new ReadOnlySpan<byte>(_data, _length));
 
     /// <summary>
+    /// Copies a borrowed attribute name, keeping the bytes of a SQL_ASCII name that is not valid UTF-8 exact.
+    /// </summary>
+    /// <returns>The decoded name.</returns>
+    internal readonly string ReadAttributeName() => PgAttributeName.Decode(new ReadOnlySpan<byte>(_data, _length));
+
+    /// <summary>
     /// Reads character text holding exactly one Unicode scalar value.
     /// </summary>
     /// <returns>The scalar value.</returns>

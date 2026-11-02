@@ -373,7 +373,7 @@ public static unsafe partial class NativeBackend
             var columns = new SpiColumn[result._columnCount];
             for (int index = 0; index < columns.Length; index++)
             {
-                columns[index] = new SpiColumn(result._columns[index]._name.ReadString(), result._columns[index]._typeOid);
+                columns[index] = new SpiColumn(result._columns[index]._name.ReadAttributeName(), result._columns[index]._typeOid);
             }
 
             IReadOnlyList<SpiColumn> metadata = Array.AsReadOnly(columns);

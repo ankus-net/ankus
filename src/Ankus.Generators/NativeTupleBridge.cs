@@ -217,7 +217,7 @@ internal static class NativeTupleBridge
         ankus_tuple_shape_field(Form_pg_attribute attribute, AnkusTupleShapeField *field, bool persistent)
         {
             const char *name = NameStr(attribute->attname);
-            char *utf8 = pg_server_to_any(name, strlen(name), PG_UTF8);
+            char *utf8 = ankus_name_to_utf8(name);
             field->base_type = attribute->attisdropped ? InvalidOid : getBaseType(attribute->atttypid);
             field->flags = (attribute->attisdropped ? 1 : 0) | (attribute->attnotnull ? 2 : 0);
             if (OidIsValid(field->base_type) &&
@@ -489,8 +489,7 @@ internal static class NativeTupleBridge
             for (int index = 0; index < count; index++)
             {
                 const AnkusTupleField *field = &fields[index];
-                char *terminated = pnstrdup(field->name, field->name_length);
-                char *name = pg_any_to_server(terminated, field->name_length, PG_UTF8);
+                char *name = ankus_name_from_utf8(field->name, field->name_length);
                 if (field->flags & 1)
                     ereport(ERROR, (errcode(ERRCODE_DATATYPE_MISMATCH), errmsg("New anonymous tuple descriptors cannot contain dropped attributes")));
                 if (strlen(name) >= NAMEDATALEN || strlen(name) == 0)
@@ -498,9 +497,7 @@ internal static class NativeTupleBridge
                 TupleDescInitEntry(descriptor, index + 1, name, field->type, field->modifier, 0);
                 if (OidIsValid(field->collation))
                     TupleDescInitEntryCollation(descriptor, index + 1, field->collation);
-                if (name != terminated)
-                    pfree(name);
-                pfree(terminated);
+                pfree(name);
             }
 
         #if PG_VERSION_NUM >= 190000
@@ -576,7 +573,7 @@ internal static class NativeTupleBridge
                     else
                     {
                         const char *name = NameStr(attribute->attname);
-                        char *utf8 = pg_server_to_any(name, strlen(name), PG_UTF8);
+                        char *utf8 = ankus_name_to_utf8(name);
                         same_name = strlen(utf8) == (Size) field->name_length && memcmp(utf8, field->name, field->name_length) == 0;
                         if (utf8 != name)
                             pfree(utf8);

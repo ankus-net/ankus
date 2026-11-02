@@ -94,7 +94,7 @@ internal unsafe struct NativeSpiResult
         var columns = new SpiColumn[_columnCount];
         for (int index = 0; index < columns.Length; index++)
         {
-            columns[index] = new SpiColumn(_columns[index]._name.ReadString(), _columns[index]._typeOid);
+            columns[index] = new SpiColumn(_columns[index]._name.ReadAttributeName(), _columns[index]._typeOid);
         }
 
         IReadOnlyList<SpiColumn> metadata = Array.AsReadOnly(columns);

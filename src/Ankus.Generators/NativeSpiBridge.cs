@@ -748,7 +748,7 @@ internal static class NativeSpiBridge
             {
                 Form_pg_attribute attribute = TupleDescAttr(descriptor, column);
                 const char *name = NameStr(attribute->attname);
-                char *utf8 = pg_server_to_any(name, strlen(name), PG_UTF8);
+                char *utf8 = ankus_name_to_utf8(name);
                 result->columns[column].type_oid = attribute->atttypid;
                 result->columns[column].base_type_oid = getBaseType(attribute->atttypid);
                 ankus_copy_owned(&result->columns[column].name, (unsigned char *) utf8, strlen(utf8));

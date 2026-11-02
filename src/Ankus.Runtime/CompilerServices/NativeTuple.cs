@@ -291,7 +291,7 @@ public unsafe partial struct NativeValue
 
             if (attribute is null)
             {
-                string name = s_utf8.GetString(nameBytes);
+                string name = PgAttributeName.Decode(nameBytes);
                 if (name.Contains('\0', StringComparison.Ordinal) || (!dropped && (name.Length == 0 || declaredOid == 0 || baseOid == 0)))
                 {
                     throw new InvalidOperationException("Invalid native tuple attribute name or identity.");
