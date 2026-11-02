@@ -41,7 +41,8 @@ public sealed partial class ToolCommandTests
                 Assert.AreEqual("exact value", await command.ExecuteScalarAsync(token));
             }
 
-            ProcessResult reused = await InvokeAsync([.. options, "--no-build"], token);
+            // A failure prints its native differences, which the job's temporary directory does not keep.
+            ProcessResult reused = await InvokeAsync([.. options, "--no-build", "--verbose"], token);
             Assert.AreEqual(0, reused.ExitCode, reused.StandardOutput + reused.StandardError);
             Assert.Contains("Reusing database " + Database, reused.StandardOutput);
             await using (NpgsqlConnection connection = await OpenRegressionConnectionAsync(port, Database, token))
