@@ -243,11 +243,6 @@ internal static class NativeSpiBridge
                 return (Datum) 0;
             }
 
-            /* An exact copy of a cell, such as text a SQL_ASCII database holds that is not valid UTF-8, restores its
-             * bytes whatever its type. */
-            if (value->auxiliary1 == -9)
-                return ankus_write_detached(value, parameter->type_oid);
-
             switch (parameter->type_oid)
             {
                 case INT4RANGEOID: case INT8RANGEOID: case NUMRANGEOID: case DATERANGEOID: case TSRANGEOID: case TSTZRANGEOID:
@@ -284,6 +279,10 @@ internal static class NativeSpiBridge
 
                 case VARCHAROID:
                 case BPCHAROID:
+                    /* An exact copy of text a SQL_ASCII database holds that is not valid UTF-8 restores its bytes.
+                     * Temporal values carry data in this field, so only types that hold text check it. */
+                    if (value->auxiliary1 == -9)
+                        return ankus_write_detached(value, parameter->type_oid);
                     return ankus_write_typed_buffer(value, TEXTOID);
                 case TEXTOID:
                 case BYTEAOID:
@@ -295,8 +294,12 @@ internal static class NativeSpiBridge
                 case INETOID:
                 case CIDROID:
                 case POINTOID: case LSEGOID: case LINEOID: case BOXOID: case CIRCLEOID: case PATHOID: case POLYGONOID:
+                    if (value->auxiliary1 == -9)
+                        return ankus_write_detached(value, parameter->type_oid);
                     return ankus_write_typed_buffer(value, parameter->type_oid);
                 default:
+                    if (value->auxiliary1 == -9)
+                        return ankus_write_detached(value, parameter->type_oid);
                     if (parameter->type_oid == RECORDOID || get_typtype(parameter->type_oid) == TYPTYPE_COMPOSITE)
                         return ankus_write_tuple(value, parameter->type_oid, NULL);
                     if (get_typtype(parameter->type_oid) == TYPTYPE_ENUM)

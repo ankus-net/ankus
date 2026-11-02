@@ -391,8 +391,9 @@ internal static class SpiType
             return null;
         }
 
-        // An exact copy can have any type, including text a SQL_ASCII database holds that is not valid UTF-8.
-        if (value.IsDetachedDatum)
+        // An exact copy can have any type that holds text, including text a SQL_ASCII database holds that is not valid
+        // UTF-8. Time with time zone and interval carry data in the field that marks a copy, and are never copied.
+        if (value.IsDetachedDatum && oid is not (1186 or 1266))
         {
             return value.ReadDetachedDatum(oid);
         }
