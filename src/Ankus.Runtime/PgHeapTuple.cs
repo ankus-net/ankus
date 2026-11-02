@@ -96,6 +96,8 @@ public sealed class PgHeapTuple
     /// <summary>
     /// Gets an owned cell by zero-based physical ordinal. SQL NULL and dropped attributes return null; unavailable fields throw.
     /// A cell whose type has no managed conversion throws; read it with its <see cref="PgDatumTypeAttribute"/> type.
+    /// Text that a SQL_ASCII database holds as bytes that are not valid UTF-8 throws a <see cref="PgException"/> with
+    /// SQLSTATE 22021; read it as <see cref="PgDatum"/> to keep its bytes.
     /// </summary>
     /// <param name="ordinal">The physical ordinal.</param>
     /// <returns>The managed cell.</returns>
@@ -246,7 +248,8 @@ public sealed class PgHeapTuple
 
     /// <summary>
     /// Copies a native heap tuple and its descriptor, such as a row a hook or custom scan receives, as pgrx's
-    /// <c>PgHeapTuple::from_heap_tuple</c> does. Cells whose types have no managed conversion are copied exactly.
+    /// <c>PgHeapTuple::from_heap_tuple</c> does. Cells whose types have no managed conversion, and text a SQL_ASCII
+    /// database holds that is not valid UTF-8, are copied exactly.
     /// </summary>
     /// <param name="heapTuple">The native HeapTuple address.</param>
     /// <param name="tupleDescriptor">The native TupleDesc address describing the tuple.</param>

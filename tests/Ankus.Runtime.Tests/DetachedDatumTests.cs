@@ -10,6 +10,7 @@ public sealed class DetachedDatumTests
     private const uint MacAddress = 829;
     private const uint TextSearchVector = 3614;
     private const uint Unknown = 705;
+    private const uint Text = 25;
 
     /// <summary>
     /// Each storage form survives the native transport unchanged.
@@ -100,6 +101,51 @@ public sealed class DetachedDatumTests
             AssertSame(new DetachedDatum(MacAddress, 6, [1, 2, 3, 4, 5, 6]), (DetachedDatum)copy.GetStoredCell(1)!);
             AssertSame(new DetachedDatum(Money, -7), (DetachedDatum)copy.GetStoredCell(2)!);
             Assert.AreEqual(42, copy.Get<int>(3));
+        }
+        finally
+        {
+            native.Release();
+        }
+    }
+
+    /// <summary>
+    /// Text a SQL_ASCII database holds that is not valid UTF-8 travels as an exact copy of its text type, through a
+    /// cell and a composite, and reading it as a managed value fails with PostgreSQL's SQLSTATE for a character it
+    /// cannot convert.
+    /// </summary>
+    [TestMethod]
+    public void UntranslatableTextKeepsItsBytesAndRejectsManagedReads()
+    {
+        byte[] bytes = [0x63, 0x61, 0x66, 0xE9];
+        NativeValue cell = NativeValue.FromDetachedDatum(new DetachedDatum(Text, -1, bytes, untranslatable: true));
+        DetachedDatum copy;
+        try
+        {
+            copy = Assert.IsInstanceOfType<DetachedDatum>(SpiType.FromNative(cell, Text));
+        }
+        finally
+        {
+            cell.Release();
+        }
+
+        Assert.IsTrue(copy.IsUntranslatable);
+        Assert.AreSequenceEqual(bytes, copy.Payload.ToArray());
+        var row = new SpiRow([copy, 7], [new SpiColumn("name", Text), new SpiColumn("id", 23)]);
+        PgException error = Assert.ThrowsExactly<PgException>(() => row["name"]);
+        Assert.AreEqual(PgSqlStates.CharacterNotInRepertoire, error.SqlState);
+        Assert.ThrowsExactly<PgException>(() => row.Get<string>("name"));
+        Assert.AreEqual(7, row.Get<int>("id"));
+
+        PgTupleAttributeInfo[] attributes = [new("name", Text, Text, -1, 0), new("id", 23, 23, -1, 0)];
+        NativeValue native = NativeValue.FromTuple(new PgHeapTuple(new PgTupleDescriptor(2249, -1, attributes), [copy, 7]));
+        try
+        {
+            PgHeapTuple restored = native.ReadTuple();
+            var field = (DetachedDatum)restored.GetStoredCell(0)!;
+            Assert.IsTrue(field.IsUntranslatable);
+            AssertSame(copy, field);
+            Assert.AreEqual(PgSqlStates.CharacterNotInRepertoire, Assert.ThrowsExactly<PgException>(() => restored.Get<string>("name")).SqlState);
+            Assert.AreEqual(7, restored.Get<int>("id"));
         }
         finally
         {

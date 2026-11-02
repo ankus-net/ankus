@@ -279,6 +279,10 @@ internal static class NativeSpiBridge
 
                 case VARCHAROID:
                 case BPCHAROID:
+                    /* An exact copy of text a SQL_ASCII database holds that is not valid UTF-8 restores its bytes.
+                     * Temporal values carry data in this field, so only types that hold text check it. */
+                    if (value->auxiliary1 == -9)
+                        return ankus_write_detached(value, parameter->type_oid);
                     return ankus_write_typed_buffer(value, TEXTOID);
                 case TEXTOID:
                 case BYTEAOID:
@@ -290,6 +294,8 @@ internal static class NativeSpiBridge
                 case INETOID:
                 case CIDROID:
                 case POINTOID: case LSEGOID: case LINEOID: case BOXOID: case CIRCLEOID: case PATHOID: case POLYGONOID:
+                    if (value->auxiliary1 == -9)
+                        return ankus_write_detached(value, parameter->type_oid);
                     return ankus_write_typed_buffer(value, parameter->type_oid);
                 default:
                     if (value->auxiliary1 == -9)
@@ -468,11 +474,55 @@ internal static class NativeSpiBridge
             ankus_convert_base_value(datum, getBaseType(type), value, owned, detach);
         }
 
+        /* A SQL_ASCII database stores text bytes PostgreSQL never checks, and they convert to UTF-8 only when they are
+         * valid UTF-8. Every other database encoding converts each value it stores. The text of a cell's type, or the
+         * output of a type that holds text, is checked the way the conversion would check it. */
+        static bool
+        ankus_cell_untranslatable(Datum datum, Oid type)
+        {
+            if (GetDatabaseEncoding() != PG_SQL_ASCII)
+                return false;
+            if (type == TEXTOID || type == VARCHAROID || type == BPCHAROID || type == JSONOID)
+            {
+                struct varlena *original = (struct varlena *) DatumGetPointer(datum);
+                struct varlena *unpacked = pg_detoast_datum_packed(original);
+                bool valid = pg_verify_mbstr(PG_UTF8, VARDATA_ANY(unpacked), VARSIZE_ANY_EXHDR(unpacked), true);
+                if (unpacked != original)
+                    pfree(unpacked);
+                return !valid;
+            }
+
+            if (type == JSONBOID || get_typtype(type) == TYPTYPE_ENUM || OidIsValid(get_element_type(type)) ||
+                ankus_custom_type_supported(type))
+            {
+                Oid output;
+                bool is_varlena;
+                char *text;
+                bool valid;
+                getTypeOutputInfo(type, &output, &is_varlena);
+                text = OidOutputFunctionCall(output, datum);
+                valid = pg_verify_mbstr(PG_UTF8, text, strlen(text), true);
+                pfree(text);
+                return !valid;
+            }
+
+            return false;
+        }
+
         /* Converts a value whose base type the caller has already resolved, such as a result column or an
          * aggregate argument, without another catalog lookup. */
         static void
         ankus_convert_base_value(Datum datum, Oid type, AnkusValue *value, AnkusInputBuffer *owned, bool detach)
         {
+            /* A row cell keeps an exact copy of text it cannot convert, as pgrx converts a field only when it is
+             * read; reading it as a managed value fails, and writing the row back restores its bytes. */
+            if (detach && ankus_cell_untranslatable(datum, type))
+            {
+                ankus_read_detached(datum, type, value, owned);
+                value->temporal_infinity |= 2;
+                return;
+            }
+
             switch (type)
             {
                 case INTERNALOID: value->integral = (int64) (uintptr_t) datum; break;
@@ -610,7 +660,7 @@ internal static class NativeSpiBridge
             int16 length;
             bool by_value;
             get_typlenbyval(type, &length, &by_value);
-            if ((Oid) value->auxiliary2 != type || value->temporal_infinity != (by_value ? 1 : 0) || value->length < 0 ||
+            if ((Oid) value->auxiliary2 != type || (value->temporal_infinity & ~2) != (by_value ? 1 : 0) || value->length < 0 ||
                 (value->length != 0 && value->data == NULL) || (by_value ? value->length != 0 : value->integral != length) ||
                 (length > 0 && !by_value && value->length != length) ||
                 (length == -2 && value->length != 0 && memchr(value->data, '\0', value->length) != NULL))

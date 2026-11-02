@@ -267,6 +267,19 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- A row, composite or query cell keeps an exact copy of text that a SQL_ASCII
+  database holds as bytes that are not valid UTF-8. Every cell read converted
+  text to UTF-8 with `pg_server_to_any`, which raises for such bytes, so
+  `PgRelationWriter.Find`, `FindConflict`, tuple copies and SPI rows failed on the
+  whole row. pglogical applies these rows, and worf's apply stopped on them. The
+  copy is a detached cell marked as text that does not convert: reading it as a
+  managed value throws `PgException` 22021, `Get<PgDatum>` keeps its bytes, and
+  writing the row back restores them. Text, `varchar`, `char`, `json` and `jsonb`
+  are checked directly, and enums, arrays and custom types through their output
+  text; only SQL_ASCII databases pay for the check. `SqlAsciiTextThatIsNotUtf8KeepsItsBytes`
+  finds, conflicts, updates and copies such a row through a writer, a composite
+  and a query, and `UntranslatableTextKeepsItsBytesAndRejectsManagedReads` covers
+  the transport. Column names that are not valid UTF-8 still fail.
 - A recoverable `RunInSubtransaction` scope now recovers DDL that fails inside a
   managed utility hook. The hook's raw `standard_ProcessUtility` failure was
   recorded on the enclosing scope, although the hook's own native frame owns it

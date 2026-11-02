@@ -28,6 +28,8 @@ public sealed class SpiRow
     /// <summary>
     /// Gets a cell by its zero-based column ordinal. SQL NULL is represented by null.
     /// A cell whose type has no managed conversion throws; read it with its <see cref="PgDatumTypeAttribute"/> type.
+    /// Text that a SQL_ASCII database holds as bytes that are not valid UTF-8 throws a <see cref="PgException"/> with
+    /// SQLSTATE 22021; read it as <see cref="PgDatum"/> to keep its bytes.
     /// </summary>
     /// <param name="ordinal">The zero-based column ordinal.</param>
     /// <returns>The managed cell.</returns>

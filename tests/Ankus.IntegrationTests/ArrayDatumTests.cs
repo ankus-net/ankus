@@ -45,10 +45,10 @@ public sealed class ArrayDatumTests(TestContext context)
                     ("numeric", "numeric", "'12345678901234567890.123456789012345678900', 'NaN', 'Infinity', '-Infinity', '0.000', NULL"),
                     ("date", "date", "'4714-11-24 BC', '5874897-12-31', 'infinity', '-infinity', NULL"),
                     ("time", "time", "'00:00:00.000001', '24:00:00', NULL"),
-                    ("timetz", "timetz", "'24:00:00+15:59:59', '01:02:03.000001-00:00:01', NULL"),
+                    ("timetz", "timetz", "'24:00:00+15:59:59', '01:02:03.000001-00:00:01', '01:02:03-00:00:09', NULL"),
                     ("timestamp", "timestamp", "'4714-11-24 BC', '294276-12-31 23:59:59.999999', 'infinity', NULL"),
                     ("timestamptz", "timestamptz", "'4714-11-24+00 BC', '294276-12-31 23:59:59.999999+00', '-infinity', NULL"),
-                    ("interval", "interval", "'1 mon -1 day -1 microsecond', 'infinity', '-infinity', NULL"),
+                    ("interval", "interval", "'1 mon -1 day -1 microsecond', '-9 days', 'infinity', '-infinity', NULL"),
                 ];
                 foreach ((string name, string type, string values) in cases)
                 {

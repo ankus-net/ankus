@@ -126,6 +126,11 @@ if (local is { CommitTime: { } localTime } && localTime > remoteCommitTime)
 }
 ```
 
+The found row is a [`PgHeapTuple`](/composites/), and writing it back with
+`Update` restores each value exactly. In a SQL_ASCII database, text that is not
+valid UTF-8 can't be read as a string; read it as `PgDatum` or write the row
+back unchanged.
+
 `TransactionId` is the row's `xmin`. With `track_commit_timestamp` on,
 `CommitOrigin` is the origin that wrote the row, or zero for a local write, and
 `CommitTime` is when it committed. With it off, PostgreSQL does not record

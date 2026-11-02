@@ -391,6 +391,13 @@ internal static class SpiType
             return null;
         }
 
+        // An exact copy can have any type that holds text, including text a SQL_ASCII database holds that is not valid
+        // UTF-8. Time with time zone and interval carry data in the field that marks a copy, and are never copied.
+        if (value.IsDetachedDatum && oid is not (1186 or 1266))
+        {
+            return value.ReadDetachedDatum(oid);
+        }
+
         return oid switch
         {
             2281 => value.ReadInternal(),
@@ -437,7 +444,6 @@ internal static class SpiType
             _ when value.IsTuple => value.ReadTuple(),
             _ when value.IsEnum => PgEnumRegistry.FindOid(oid).FromLabel(value.ReadString()),
             _ when value.IsCustomType => PgTypeRegistry.FindOid(oid).Read(value),
-            _ when value.IsDetachedDatum => value.ReadDetachedDatum(oid),
             _ => throw new NotSupportedException($"SPI result type OID {oid} does not have a registered managed conversion."),
         };
     }

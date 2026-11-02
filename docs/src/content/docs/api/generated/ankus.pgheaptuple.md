@@ -62,7 +62,8 @@ An owned record with a canonical registered type modifier.
 ### DangerousCopy(nint, nint)
 
 Copies a native heap tuple and its descriptor, such as a row a hook or custom scan receives, as pgrx's
-<code>PgHeapTuple::from_heap_tuple</code> does. Cells whose types have no managed conversion are copied exactly.
+<code>PgHeapTuple::from_heap_tuple</code> does. Cells whose types have no managed conversion, and text a SQL_ASCII
+database holds that is not valid UTF-8, are copied exactly.
 
 ```csharp
 [NativeUnsafeAccess]
@@ -294,6 +295,8 @@ Value: [PgTupleDescriptor](/api/ankus.pgtupledescriptor/)
 
 Gets an owned cell by zero-based physical ordinal. SQL NULL and dropped attributes return null; unavailable fields throw.
 A cell whose type has no managed conversion throws; read it with its [PgDatumTypeAttribute](/api/ankus.pgdatumtypeattribute/) type.
+Text that a SQL_ASCII database holds as bytes that are not valid UTF-8 throws a [PgException](/api/ankus.pgexception/) with
+SQLSTATE 22021; read it as [PgDatum](/api/ankus.pgdatum/) to keep its bytes.
 
 ```csharp
 public object? this[int ordinal] { get; }

@@ -55,6 +55,9 @@ mapping, or an array of one, which must have exactly the field's type. The index
 and other managed types throw `NotSupportedException`. `Get<PgDatum>` rebuilds any
 field that is not dropped, including SQL NULL, as a raw datum owned by the current
 memory context. A tuple returned to PostgreSQL writes the copy back unchanged.
+Text that a SQL_ASCII database holds as bytes that are not valid UTF-8 is also
+copied exactly, and reading it as a string throws a `PgException` with SQLSTATE
+22021.
 
 `Descriptor.Attributes` records names, declared and base type OIDs, type
 modifiers, collations, dropped slots, and catalog `NOT NULL` metadata.
