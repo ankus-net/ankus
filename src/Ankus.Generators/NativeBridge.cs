@@ -134,13 +134,14 @@ internal static class NativeBridge
             int length = strlen(name);
             char *escaped;
             int written = 0;
+            int index = 0;
             if (GetDatabaseEncoding() != PG_SQL_ASCII)
                 return pg_server_to_any(name, length, PG_UTF8);
             if (pg_verify_mbstr(PG_UTF8, name, length, true))
                 return (char *) name;
 
             escaped = palloc(length * 3 + 1);
-            for (int index = 0; index < length;)
+            while (index < length)
             {
                 const unsigned char *bytes = (const unsigned char *) name + index;
                 int width = pg_utf_mblen(bytes);
@@ -170,6 +171,7 @@ internal static class NativeBridge
             char *terminated = pnstrdup(utf8, length);
             char *name;
             int written = 0;
+            int index = 0;
             if (GetDatabaseEncoding() != PG_SQL_ASCII)
             {
                 name = pg_any_to_server(terminated, length, PG_UTF8);
@@ -179,17 +181,20 @@ internal static class NativeBridge
             }
 
             name = palloc(length + 1);
-            for (int index = 0; index < length; index++)
+            while (index < length)
             {
                 const unsigned char *bytes = (const unsigned char *) terminated + index;
                 if (length - index >= 3 && bytes[0] == 0xED && (bytes[1] == 0xB2 || bytes[1] == 0xB3) &&
                     (bytes[2] & 0xC0) == 0x80)
                 {
                     name[written++] = (char) ((bytes[1] == 0xB2 ? 0x80 : 0xC0) | (bytes[2] & 0x3F));
-                    index += 2;
+                    index += 3;
                 }
                 else
+                {
                     name[written++] = (char) bytes[0];
+                    index++;
+                }
             }
 
             name[written] = '\0';
