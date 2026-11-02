@@ -37,6 +37,8 @@ Value: [int](https://learn.microsoft.com/dotnet/api/system.int32)
 
 Gets a cell by its zero-based column ordinal. SQL NULL is represented by null.
 A cell whose type has no managed conversion throws; read it with its [PgDatumTypeAttribute](/api/ankus.pgdatumtypeattribute/) type.
+Text that a SQL_ASCII database holds as bytes that are not valid UTF-8 throws a [PgException](/api/ankus.pgexception/) with
+SQLSTATE 22021; read it as [PgDatum](/api/ankus.pgdatum/) to keep its bytes.
 
 ```csharp
 public object? this[int ordinal] { get; }

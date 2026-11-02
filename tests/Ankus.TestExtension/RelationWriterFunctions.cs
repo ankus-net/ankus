@@ -354,6 +354,60 @@ public static class RelationWriterFunctions
     }
 
     /// <summary>
+    /// Finds row 1 of a table of <c>(id integer PRIMARY KEY, name text, code varchar(10), label char(6), doc jsonb,
+    /// tags text[], note text)</c>, whose text a SQL_ASCII database holds as bytes that are not valid UTF-8, through its
+    /// key and as an insert's conflict. Then reads its cells, writes it back with a new note, and reads it again as a
+    /// composite and through a query.
+    /// </summary>
+    /// <param name="table">The table's OID.</param>
+    /// <returns>
+    /// The rows found by key and as a conflict, the SQLSTATE of reading the found name and whether its raw datum reads,
+    /// whether the update found the row, and the copied composite's id with the SQLSTATEs of reading its name and the
+    /// queried name.
+    /// </returns>
+    [PgFunction]
+    public static string WriterKeepsUnconvertedText(uint table)
+    {
+        (string schema, string name) = Spi.ExecuteScalars<string, string>(
+            "SELECT n.nspname::text, c.relname::text FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.oid = $1",
+            SpiParameter.Create(table));
+        string qualified = Spi.QuoteQualifiedIdentifier(schema, name);
+        using PgRelationWriter writer = PgRelationWriter.Open(table);
+        int id = writer.Descriptor.GetOrdinal("id");
+        PgReplicatedRow key = writer.CreateReplicatedRow();
+        key.SetText(id, "1"u8);
+        PgFoundRow found = writer.Find(key) ?? throw new InvalidOperationException("No row 1");
+        PgReplicatedRow insert = writer.CreateReplicatedRow();
+        insert.SetText(id, "1"u8);
+        insert.SetText(writer.Descriptor.GetOrdinal("name"), [0x63, 0x61, 0x66, 0xE9]);
+        PgFoundRow conflict = writer.FindConflict(insert) ?? throw new InvalidOperationException("No conflict with row 1");
+        string nameState = SqlState(() => found.Row.Get<string>("name"));
+        bool raw = !found.Row.Get<PgDatum>("name").IsNull;
+        PgHeapTuple row = found.Row;
+        row.Set("note", "changed");
+        bool updated = writer.Update(row, row);
+        PgHeapTuple copy = Spi.ExecuteScalar<PgHeapTuple>($"SELECT t FROM {qualified} t WHERE id = 1");
+        string copyState = SqlState(() => copy.Get<string>("name"));
+        SpiRow queried = Spi.Select($"SELECT name FROM {qualified} WHERE id = 1")[0];
+        string queryState = SqlState(() => queried[0]);
+        return string.Join('|', found.Row.Get<int>("id"), conflict.Row.Get<int>("id"), nameState, raw, updated,
+            copy.Get<int>("id"), copyState, queryState);
+
+        static string SqlState(Func<object?> read)
+        {
+            try
+            {
+                _ = read();
+                return "read";
+            }
+            catch (PgException exception)
+            {
+                return exception.SqlState;
+            }
+        }
+    }
+
+    /// <summary>
     /// Opens several writers for one table, inserts a row through each in turn, then disposes them oldest or newest
     /// first.
     /// </summary>

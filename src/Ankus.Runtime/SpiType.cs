@@ -391,6 +391,12 @@ internal static class SpiType
             return null;
         }
 
+        // An exact copy can have any type, including text a SQL_ASCII database holds that is not valid UTF-8.
+        if (value.IsDetachedDatum)
+        {
+            return value.ReadDetachedDatum(oid);
+        }
+
         return oid switch
         {
             2281 => value.ReadInternal(),
@@ -437,7 +443,6 @@ internal static class SpiType
             _ when value.IsTuple => value.ReadTuple(),
             _ when value.IsEnum => PgEnumRegistry.FindOid(oid).FromLabel(value.ReadString()),
             _ when value.IsCustomType => PgTypeRegistry.FindOid(oid).Read(value),
-            _ when value.IsDetachedDatum => value.ReadDetachedDatum(oid),
             _ => throw new NotSupportedException($"SPI result type OID {oid} does not have a registered managed conversion."),
         };
     }

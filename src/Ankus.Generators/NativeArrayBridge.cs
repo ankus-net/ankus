@@ -423,7 +423,7 @@ internal static class NativeArrayBridge
                 parameter.value.is_null = is_null;
                 data = pq_getmsgbytes(&buffer, parameter.value.length);
                 /* These scalar input routines consume C strings rather than length-delimited buffers. */
-                if (!is_null && (base_type == JSONOID || base_type == JSONBOID))
+                if (!is_null && (base_type == JSONOID || base_type == JSONBOID) && parameter.value.auxiliary1 != -9)
                 {
                     terminated = pnstrdup(data, parameter.value.length);
                     data = terminated;

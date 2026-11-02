@@ -283,6 +283,12 @@ cell, and the rest of the row stays readable. `row.Get<PgDatum>("value")` rebuil
 cell, including SQL NULL, as a raw datum of its type owned by the current callback.
 `result.GetOrdinal(name)` resolves a column even when the query returned no rows.
 
+A SQL_ASCII database stores text without checking its bytes, so a value can hold
+bytes that are not valid UTF-8, which a .NET string cannot represent. Such a cell
+is copied exactly too, and reading it as a string throws a `PgException` with
+SQLSTATE 22021, as PostgreSQL's own conversion to UTF-8 does. `Get<PgDatum>`
+keeps its bytes.
+
 Results are managed copies. Rows, text, and binary buffers remain valid after
 another SPI command or after the original SPI connection is released.
 PostgreSQL first materializes the complete result in SPI memory, as with pgrx's

@@ -504,6 +504,55 @@ public sealed class RelationWriterTests(TestContext context)
                 $"SELECT string_agg(id || '|' || note || '|' || mood || '|' || moods::text, ';') FROM {table}", token));
         }, context.CancellationToken);
 
+    /// <summary>
+    /// A SQL_ASCII database stores text bytes that are not valid UTF-8. A row holding them is found by key and as a
+    /// conflict, written back and copied with its exact bytes, as pglogical applies it. Reading such text as a managed
+    /// string fails with PostgreSQL's 22021, and the session keeps working.
+    /// </summary>
+    [TestMethod]
+    public async Task SqlAsciiTextThatIsNotUtf8KeepsItsBytes()
+    {
+        CancellationToken token = context.CancellationToken;
+        string database = "writer_sql_ascii_" + Guid.NewGuid().ToString("N");
+        await using NpgsqlConnection administrator = await PostgresFixture.Cluster.OpenConnectionAsync(token);
+        await ExecuteAsync(administrator,
+            $"CREATE DATABASE {database} TEMPLATE template0 ENCODING 'SQL_ASCII' LC_COLLATE 'C' LC_CTYPE 'C'", token);
+        try
+        {
+            var builder = new NpgsqlConnectionStringBuilder(administrator.ConnectionString) { Database = database, Pooling = false };
+            await using var connection = new NpgsqlConnection(builder.ConnectionString);
+            await connection.OpenAsync(token);
+            await ExecuteAsync(connection, """
+                CREATE SCHEMA datatype;
+                CREATE EXTENSION ankus_test WITH SCHEMA datatype;
+                CREATE TABLE t (id integer PRIMARY KEY, name text, code varchar(10), label char(6), doc jsonb, tags text[], note text);
+                INSERT INTO t VALUES
+                    (1, convert_from('\x636166e9206c6f63616c', 'SQL_ASCII'), convert_from('\xe9e9', 'SQL_ASCII'),
+                        convert_from('\xe961', 'SQL_ASCII'), convert_from('\x7b226b223a2022e9227d', 'SQL_ASCII')::jsonb,
+                        ARRAY[convert_from('\xe9', 'SQL_ASCII'), 'ok'], 'note'),
+                    (2, 'two', 'b', 'c', '{}', '{}', 'kept');
+                """, token);
+            const string Bytes = """
+                SELECT string_agg(concat_ws('|', id, encode(convert_to(name, 'SQL_ASCII'), 'hex'),
+                    encode(convert_to(code, 'SQL_ASCII'), 'hex'), encode(convert_to(label::text, 'SQL_ASCII'), 'hex'),
+                    encode(convert_to(doc::text, 'SQL_ASCII'), 'hex'), encode(convert_to(tags::text, 'SQL_ASCII'), 'hex'), note),
+                    ';' ORDER BY id) FROM t
+                """;
+            const string Second = "2|74776f|62|63|7b7d|7b7d|kept";
+            Assert.AreEqual("1|636166e9206c6f63616c|e9e9|e961|7b226b223a2022e9227d|7be92c6f6b7d|note;" + Second,
+                await ScalarAsync<string>(connection, Bytes, token));
+            Assert.AreEqual("1|1|22021|True|True|1|22021|22021", await ScalarAsync<string>(connection,
+                "SELECT datatype.writer_keeps_unconverted_text('t'::regclass::oid)", token));
+            Assert.AreEqual("1|636166e9206c6f63616c|e9e9|e961|7b226b223a2022e9227d|7be92c6f6b7d|changed;" + Second,
+                await ScalarAsync<string>(connection, Bytes, token));
+            Assert.AreEqual(connection.ProcessID, await ScalarAsync<int>(connection, "SELECT pg_catalog.pg_backend_pid()", token));
+        }
+        finally
+        {
+            await ExecuteAsync(administrator, $"DROP DATABASE {database} WITH (FORCE)", CancellationToken.None);
+        }
+    }
+
     private async Task WithTableAsync(string columns, Func<NpgsqlConnection, string, CancellationToken, Task> test)
     {
         CancellationToken token = context.CancellationToken;

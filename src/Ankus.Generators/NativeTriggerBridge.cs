@@ -292,7 +292,7 @@ internal static class NativeTriggerBridge
                 return (Datum) 0;
             parameter.type_oid = attribute->atttypid;
             parameter.value = *cell;
-            if (base_type == JSONOID || base_type == JSONBOID)
+            if ((base_type == JSONOID || base_type == JSONBOID) && parameter.value.auxiliary1 != -9)
                 parameter.value.data = (unsigned char *) pnstrdup((char *) parameter.value.data, parameter.value.length);
             datum = ankus_parameter_datum_resolved(&parameter, base_type);
             if (attribute->atttypmod >= 0)
