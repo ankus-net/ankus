@@ -408,6 +408,37 @@ public static class RelationWriterFunctions
     }
 
     /// <summary>
+    /// Finds and rewrites a row of a table whose second column's name holds bytes that are not valid UTF-8 in a
+    /// SQL_ASCII database, reads that name through a query, and sends an anonymous record with it to PostgreSQL.
+    /// </summary>
+    /// <param name="table">The table's OID.</param>
+    /// <returns>
+    /// The managed name's UTF-16 code units in hexadecimal, whether the update found the row, whether the query's
+    /// column has the same name, and the record's JSON bytes in hexadecimal, separated by vertical bars.
+    /// </returns>
+    [PgFunction]
+    public static string WriterKeepsUnconvertedNames(uint table)
+    {
+        using PgRelationWriter writer = PgRelationWriter.Open(table);
+        PgReplicatedRow key = writer.CreateReplicatedRow();
+        key.SetText(writer.Descriptor.GetOrdinal("id"), "1"u8);
+        PgFoundRow found = writer.Find(key) ?? throw new InvalidOperationException("No row 1");
+        string name = writer.Descriptor.Attributes[1].Name;
+        PgHeapTuple row = found.Row;
+        row.Set(name, "renamed");
+        bool updated = writer.Update(row, row);
+        (string schema, string relation) = Spi.ExecuteScalars<string, string>(
+            "SELECT n.nspname::text, c.relname::text FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.oid = $1",
+            SpiParameter.Create(table));
+        SpiResult queried = Spi.Select($"SELECT * FROM {Spi.QuoteQualifiedIdentifier(schema, relation)} WHERE id = 1");
+        PgHeapTuple record = PgHeapTuple.Create((name, SpiParameter.Create(5)));
+        string json = Spi.ExecuteScalar<string>("SELECT encode(convert_to(row_to_json($1)::text, 'SQL_ASCII'), 'hex')",
+            SpiParameter.Create(record));
+        return string.Join('|', string.Concat(name.Select(static unit => ((int)unit).ToString("x4", CultureInfo.InvariantCulture))),
+            updated, queried.Columns[1].Name == name, json);
+    }
+
+    /// <summary>
     /// Opens several writers for one table, inserts a row through each in turn, then disposes them oldest or newest
     /// first.
     /// </summary>

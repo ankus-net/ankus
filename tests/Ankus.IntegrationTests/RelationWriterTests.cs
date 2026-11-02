@@ -553,6 +553,48 @@ public sealed class RelationWriterTests(TestContext context)
         }
     }
 
+    /// <summary>
+    /// A SQL_ASCII database also stores column names whose bytes are not valid UTF-8. Each such byte reads as an
+    /// unpaired low surrogate, so the row is found and written back by that name, a query reports the same name, and
+    /// an anonymous record built with it reaches PostgreSQL with the original bytes, including bytes that would read
+    /// as an escape.
+    /// </summary>
+    [TestMethod]
+    public async Task SqlAsciiColumnNamesThatAreNotUtf8KeepTheirBytes()
+    {
+        CancellationToken token = context.CancellationToken;
+        string database = "writer_sql_ascii_names_" + Guid.NewGuid().ToString("N");
+        await using NpgsqlConnection administrator = await PostgresFixture.Cluster.OpenConnectionAsync(token);
+        await ExecuteAsync(administrator,
+            $"CREATE DATABASE {database} TEMPLATE template0 ENCODING 'SQL_ASCII' LC_COLLATE 'C' LC_CTYPE 'C'", token);
+        try
+        {
+            var builder = new NpgsqlConnectionStringBuilder(administrator.ConnectionString) { Database = database, Pooling = false };
+            await using var connection = new NpgsqlConnection(builder.ConnectionString);
+            await connection.OpenAsync(token);
+            await ExecuteAsync(connection, """
+                CREATE SCHEMA datatype;
+                CREATE EXTENSION ankus_test WITH SCHEMA datatype;
+                DO $$ BEGIN
+                    EXECUTE format('CREATE TABLE n (id integer PRIMARY KEY, %I text)', convert_from('\x636166e9edb280', 'SQL_ASCII'));
+                END $$;
+                INSERT INTO n VALUES (1, 'value'), (2, 'kept');
+                """, token);
+            Assert.AreEqual("006300610066dce9dceddcb2dc80|True|True|7b22636166e9edb280223a357d", await ScalarAsync<string>(connection,
+                "SELECT datatype.writer_keeps_unconverted_names('n'::regclass::oid)", token));
+            Assert.AreEqual("636166e9edb280", await ScalarAsync<string>(connection,
+                "SELECT encode(convert_to(attname::text, 'SQL_ASCII'), 'hex') FROM pg_attribute WHERE attrelid = 'n'::regclass AND attnum = 2",
+                token));
+            Assert.AreEqual("1|renamed;2|kept", await ScalarAsync<string>(connection,
+                "SELECT string_agg(id || '|' || v, ';' ORDER BY id) FROM n AS x(id, v)", token));
+            Assert.AreEqual(connection.ProcessID, await ScalarAsync<int>(connection, "SELECT pg_catalog.pg_backend_pid()", token));
+        }
+        finally
+        {
+            await ExecuteAsync(administrator, $"DROP DATABASE {database} WITH (FORCE)", CancellationToken.None);
+        }
+    }
+
     private async Task WithTableAsync(string columns, Func<NpgsqlConnection, string, CancellationToken, Task> test)
     {
         CancellationToken token = context.CancellationToken;

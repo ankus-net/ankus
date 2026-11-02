@@ -57,7 +57,9 @@ field that is not dropped, including SQL NULL, as a raw datum owned by the curre
 memory context. A tuple returned to PostgreSQL writes the copy back unchanged.
 Text that a SQL_ASCII database holds as bytes that are not valid UTF-8 is also
 copied exactly, and reading it as a string throws a `PgException` with SQLSTATE
-22021.
+22021. A column name can hold such bytes too; each one reads as an unpaired low
+surrogate from U+DC80 to U+DCFF, and the name looks up the field and writes back
+to PostgreSQL with its original bytes.
 
 `Descriptor.Attributes` records names, declared and base type OIDs, type
 modifiers, collations, dropped slots, and catalog `NOT NULL` metadata.

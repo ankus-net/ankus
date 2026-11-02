@@ -1,5 +1,4 @@
 using System;
-using System.Text;
 
 namespace Ankus;
 
@@ -8,8 +7,6 @@ namespace Ankus;
 /// </summary>
 public sealed class PgTupleAttributeInfo
 {
-    private static readonly UTF8Encoding s_utf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
-
     private byte[]? _utf8Name;
 
     /// <summary>
@@ -36,10 +33,11 @@ public sealed class PgTupleAttributeInfo
     }
 
     /// <summary>
-    /// Gets the name's UTF-8 bytes, computed once, so rows can be written and transported metadata matched without
-    /// encoding or decoding it again. A name that is not valid UTF-16 throws, as writing it to PostgreSQL would.
+    /// Gets the name's transported bytes, computed once, so rows can be written and transported metadata matched
+    /// without encoding or decoding it again. A name that is not valid UTF-16 throws, as writing it to PostgreSQL would,
+    /// except for the bytes of a SQL_ASCII name that is not valid UTF-8, which read as unpaired low surrogates.
     /// </summary>
-    internal ReadOnlySpan<byte> Utf8Name => _utf8Name ??= s_utf8.GetBytes(Name);
+    internal ReadOnlySpan<byte> Utf8Name => _utf8Name ??= PgAttributeName.Encode(Name);
 
     /// <summary>
     /// Gets the exact catalog name. Dropped attributes retain their physical placeholder names.

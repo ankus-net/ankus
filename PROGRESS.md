@@ -279,7 +279,13 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   text; only SQL_ASCII databases pay for the check. `SqlAsciiTextThatIsNotUtf8KeepsItsBytes`
   finds, conflicts, updates and copies such a row through a writer, a composite
   and a query, and `UntranslatableTextKeepsItsBytesAndRejectsManagedReads` covers
-  the transport. Column names that are not valid UTF-8 still fail.
+  the transport. Column names in such a database can hold the same bytes, so each
+  byte of a name that is not valid UTF-8 reads as an unpaired low surrogate from
+  U+DC80 to U+DCFF and travels in that surrogate's three-byte form, which valid
+  UTF-8 never holds; rows, query columns and anonymous records keep the name's
+  exact bytes. `SqlAsciiColumnNamesThatAreNotUtf8KeepTheirBytes` finds and
+  rewrites a row by such a name, reads it from a query, and sends a record with
+  it, and `PgAttributeNameTests` covers the escape.
 - A recoverable `RunInSubtransaction` scope now recovers DDL that fails inside a
   managed utility hook. The hook's raw `standard_ProcessUtility` failure was
   recorded on the enclosing scope, although the hook's own native frame owns it
