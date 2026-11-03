@@ -21,7 +21,8 @@ through 0.1.7, 0.2.0 on 2026-10-17, 0.2.1 and 0.2.2 on 2026-10-18, 0.2.3 on
 0.2.7 and 0.2.8 on 2026-10-24, 0.2.9 on 2026-10-25, 0.2.10 and 0.2.11 on
 2026-10-26, 0.2.12 on 2026-10-27, 0.2.13, 0.2.14 and 0.2.15 on 2026-10-28,
 0.2.16 and 0.2.17 on 2026-10-29, 0.2.18 on 2026-10-30, 0.2.19 and 0.2.20 on
-2026-11-01, and 0.2.21 on 2026-11-02 (see remaining-work item 8).
+2026-11-01, 0.2.21 on 2026-11-02, and 0.2.22 on 2026-11-03 (see remaining-work
+item 8).
 
 The upstream inventory is pinned to pgrx **0.19.3**, commit
 `fc91c63ebad11784647b50ee7e265c1fd9c9924f`. The refresh covers every release
@@ -976,6 +977,24 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   were pushed and listed on nuget.org. On the MacBook, with `/usr/bin/clang`
   first on `PATH`, `Ankus.Tool` 0.2.2 from nuget.org created a solution whose
   7 tests passed.
+- 0.2.22 is released (release run 41557700726 on e6ed96ac, after CI, CodeQL,
+  Docs and the secret scan passed on that commit). It carries #166, which keeps
+  column names a SQL_ASCII database holds that are not valid UTF-8 exact, and
+  #168. CodeQL's C analysis runs only on main, and on #166's merge it found
+  `cpp/loop-variable-changed` in the new name helper, once in each generated
+  bridge, 45 alerts; #168 steps through names in `while` loops, a dispatched
+  CodeQL run passed on its branch, and main's analysis closed all 45. That
+  merge's Windows PostgreSQL 17 job and #167's each failed one regression test
+  whose reused run took about 11 seconds and differed; both passed on rerun, and
+  #169 makes those reused runs print their native differences. The Intel macOS
+  runtime builds took 20 and 40 minutes, and nuget.org listed all seven packages
+  within 7 minutes of publishing. On Linux x64 with PostgreSQL 18 and its own
+  tool path, package folder and `ANKUS_HOME`, a solution made by `Ankus.Tool`
+  0.2.21 from nuget.org, which finds and rewrites a row through `PgRelationWriter`
+  by a column named with byte 0xE9 in a SQL_ASCII database, failed that test with
+  `22021: invalid byte sequence for encoding "UTF8": 0xe9` (8 tests, 1 failed).
+  After `ankus upgrade` to 0.2.22 from nuget.org, whose tool and `Ankus.Runtime`
+  report e6ed96ac, all 8 passed.
 - 0.2.21 is released (release run 41502688318 on c8bff0c7, after CI
   41498796974, CodeQL, Docs and the secret scan passed on that commit). It
   carries #163, which keeps text a SQL_ASCII database holds as bytes that are
