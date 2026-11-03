@@ -83,7 +83,8 @@ public sealed partial class ToolCommandTests
                 Assert.AreEqual(42, await command.ExecuteScalarAsync(token));
             }
 
-            ProcessResult reused = await InvokeAsync([.. options, "--no-build"], token);
+            // A failure prints its native differences, which the job's temporary directory does not keep.
+            ProcessResult reused = await InvokeAsync([.. options, "--no-build", "--verbose"], token);
             Assert.AreEqual(0, reused.ExitCode, reused.StandardOutput + reused.StandardError);
             Assert.Contains("Reusing database " + expectedName + "_regress", reused.StandardOutput);
             Assert.Contains("Selected 1 tests; skipped 0.", reused.StandardOutput);
