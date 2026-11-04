@@ -21,8 +21,8 @@ through 0.1.7, 0.2.0 on 2026-10-17, 0.2.1 and 0.2.2 on 2026-10-18, 0.2.3 on
 0.2.7 and 0.2.8 on 2026-10-24, 0.2.9 on 2026-10-25, 0.2.10 and 0.2.11 on
 2026-10-26, 0.2.12 on 2026-10-27, 0.2.13, 0.2.14 and 0.2.15 on 2026-10-28,
 0.2.16 and 0.2.17 on 2026-10-29, 0.2.18 on 2026-10-30, 0.2.19 and 0.2.20 on
-2026-11-01, 0.2.21 on 2026-11-02, and 0.2.22 on 2026-11-03 (see remaining-work
-item 8).
+2026-11-01, 0.2.21 on 2026-11-02, 0.2.22 on 2026-11-03, and 0.2.23 on
+2026-11-04 (see remaining-work item 8).
 
 The upstream inventory is pinned to pgrx **0.19.3**, commit
 `fc91c63ebad11784647b50ee7e265c1fd9c9924f`. The refresh covers every release
@@ -1058,6 +1058,24 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   were pushed and listed on nuget.org. On the MacBook, with `/usr/bin/clang`
   first on `PATH`, `Ankus.Tool` 0.2.2 from nuget.org created a solution whose
   7 tests passed.
+- 0.2.23 is released (release run 41786569653 on 00c41b7f, after CI, CodeQL,
+  Docs and the secret scan passed on that commit; CI's quality job passed on
+  rerun, and #177 fixes the race that failed it). It carries #175, which moves
+  both Native AOT lines to the releases that fix GHSA-p3jp-9v83-76w9 (#173). The
+  first attempt's Windows net11.0 runtime job failed in setup-dotnet: tar could
+  not replace a `hostfxr.dll` that the net10.0 job on another runner had loaded
+  from the install directory the runners shared, and that install was six files
+  short until they were restored from Microsoft's archive. The rerun passed, and
+  #178 gives each self-hosted runner its own install. nuget.org listed every
+  package within 9 minutes of publishing. On Linux x64 with PostgreSQL 18 and
+  its own tool path, package folder, HTTP cache and `ANKUS_HOME`, solutions made
+  by `Ankus.Tool` 0.2.22 failed restore with warnings as errors on NU1903 for
+  ILCompiler 10.0.13 (`net10.0`) and 11.0.0-rc.2.26504.105 (`net11.0`). After
+  `ankus upgrade` to 0.2.23 from nuget.org, whose tool reports 00c41b7f, they
+  resolve the compiler and Native AOT packs at 10.0.14 and
+  11.0.0-rc.3.26522.148, restore without warnings and pass their 7 tests each.
+  The `net11.0` solution keeps the RC2 SDK in `global.json`, and publishes with
+  SDK 11.0.100-rc.2.26504.105 as well as RC3.
 - 0.2.22 is released (release run 41557700726 on e6ed96ac, after CI, CodeQL,
   Docs and the secret scan passed on that commit). It carries #166, which keeps
   column names a SQL_ASCII database holds that are not valid UTF-8 exact, and
