@@ -336,9 +336,10 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   `IsExternalInit` must stay in `System.Runtime.CompilerServices`, so it moved to
   `src/Common/System/Runtime/CompilerServices`, a folder that matches its
   namespace, and the generator links it, as dotnet/runtime shares its own copy.
-  `dotnet format style --severity info` now reports nothing. On Linux x64 the
-  Release build has no warnings, and the complete suite passes against
-  PostgreSQL 18.6: 15,383 tests, 58 of them skipped as Windows or macOS only.
+  `dotnet format style --severity info` now reports nothing, and the Release
+  build has no warnings. CI run 41805513744 passed all 15,386 tests on Linux x64
+  with PostgreSQL 18 (58 skipped), macOS ARM64 with PostgreSQL 18 (71 skipped)
+  and Windows x64 with PostgreSQL 17 (54 skipped).
 - A row, composite or query cell keeps an exact copy of text that a SQL_ASCII
   database holds as bytes that are not valid UTF-8. Every cell read converted
   text to UTF-8 with `pg_server_to_any`, which raises for such bytes, so
