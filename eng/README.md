@@ -283,6 +283,12 @@ first had loaded. The workflows therefore install .NET through
 tool cache, and runs `dotnet-roots`, pointing any
 `DOTNET_ROOT_X64`, `DOTNET_ROOT_ARM64` or `DOTNET_ROOT_X86` the service sets at
 that install so apphosts load the same runtime.
+On self-hosted Linux and macOS runners, `runtime-test-run` also watches the
+checkout's volume. The first time free space falls below 20, 10 and 4 GiB, it
+prints the largest entries in the job's temporary, test artifact and package
+folders and the largest deleted files a process still holds open, because the
+macOS runners twice ran out of space during suites that otherwise need under
+10 GB and the space returned before anything could be inspected.
 Native binding entries persist in
 `runner.tool_cache/ankus-binding-cache` and retain normal content and ABI
 validation. Parallel binding compiler restores share the package cache but keep
