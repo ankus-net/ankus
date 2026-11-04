@@ -2394,11 +2394,9 @@ internal sealed class DiskSpaceWatch : IDisposable
                     }
                 }
 
-                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                // Disposal cancels the wait, and the loop condition then ends the watch.
+                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
             }
-        }
-        catch (OperationCanceledException)
-        {
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
