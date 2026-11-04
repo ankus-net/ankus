@@ -52,16 +52,21 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
     }
 
     /// <summary>
-    /// A fresh editor load builds its tools and preserves the consumer's nullable settings. Later loads build the tools
-    /// again only when a source has changed or an output is missing, so an unchanged repository loads without build
-    /// messages, which editors list as problems.
+    /// A fresh editor load builds its tools and their own project references and preserves the consumer's nullable
+    /// settings. Later loads build the tools again only when a source has changed or an output is missing, so an
+    /// unchanged repository loads without build messages, which editors list as problems.
     /// </summary>
+    /// <remarks>
+    /// Visual Studio sets <c>BuildingInsideVisualStudio</c>, under which MSBuild only asks project references for their
+    /// paths. If the tools' builds kept it, a tool's own reference would never build, so its compilation would fail.
+    /// </remarks>
     /// <param name="configuration">The selected output configuration.</param>
     /// <param name="nullable">The consumer's nullable annotation setting.</param>
+    /// <param name="visualStudio">Whether the editor is Visual Studio.</param>
     [TestMethod]
-    [DataRow("Debug", "enable")]
-    [DataRow("Release", "annotations")]
-    public async Task FreshEditorLoadPreparesDependenciesAndCompilerOptions(string configuration, string nullable)
+    [DataRow("Debug", "enable", true)]
+    [DataRow("Release", "annotations", false)]
+    public async Task FreshEditorLoadPreparesDependenciesAndCompilerOptions(string configuration, string nullable, bool visualStudio)
     {
         string directory = Directory.CreateTempSubdirectory("ankus-sdk-editor-").FullName;
         try
@@ -72,6 +77,17 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
             await File.WriteAllTextAsync(Path.Join(directory, "global.json"),
                 JsonSerializer.Serialize(new { sdk = new { version = sdk, rollForward = "disable", allowPrerelease = false } }), context.CancellationToken);
             string[] dependencies = ["Ankus.Runtime", "Ankus.Build", "Ankus.Generators", "Ankus.CodeFixes"];
+            string[] host = visualStudio ? ["-property:BuildingInsideVisualStudio=true"] : [];
+            // Ankus.Build compiles against a project of its own, as the real tool does against Ankus.PgConfig.
+            string nested = Directory.CreateDirectory(Path.Join(directory, "Ankus.PgConfig")).FullName;
+            string nestedBuilds = Path.Join(directory, "builds", "nested", "Ankus.PgConfig.log");
+            new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
+                new XElement("PropertyGroup", new XElement("TargetFramework", "net10.0")),
+                new XElement("Target", new XAttribute("Name", "RecordBuild"), new XAttribute("AfterTargets", "Build"),
+                    new XElement("WriteLinesToFile", new XAttribute("File", nestedBuilds),
+                        new XAttribute("Lines", "$(Configuration)"))))).Save(Path.Join(nested, "Ankus.PgConfig.csproj"));
+            await File.WriteAllTextAsync(Path.Join(nested, "Proof.cs"),
+                "namespace Ankus_PgConfig { public static class Proof { public static int Read() => 42; } }", context.CancellationToken);
             foreach (string name in dependencies)
             {
                 string dependency = Directory.CreateDirectory(Path.Join(directory, name)).FullName;
@@ -79,6 +95,10 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                 new XDocument(new XElement("Project", new XAttribute("Sdk", "Microsoft.NET.Sdk"),
                     new XElement("PropertyGroup", new XElement("TargetFramework", framework),
                         new XElement("OutputType", name == "Ankus.Build" ? "Exe" : "Library")),
+                    name == "Ankus.Build"
+                        ? new XElement("ItemGroup", new XElement("ProjectReference",
+                            new XAttribute("Include", Path.Join("..", "Ankus.PgConfig", "Ankus.PgConfig.csproj"))))
+                        : null,
                     new XElement("Target", new XAttribute("Name", "RejectEditorOnlyCompilation"),
                         new XAttribute("BeforeTargets", "CoreCompile"),
                         new XElement("Error", new XAttribute("Condition", "'$(DesignTimeBuild)' == 'true' or '$(SkipCompilerExecution)' == 'true'"),
@@ -100,6 +120,7 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                         {
                             public static void Main(string[] args)
                             {
+                                _ = Ankus_PgConfig.Proof.Read();
                                 string output = args[0] == "binding-sources" ? args[3] : args[1];
                                 System.IO.Directory.CreateDirectory(output);
                                 string file = args[0] == "binding-sources" ? "native-binding.assembly-name" : "native-binding.assembly-path";
@@ -139,6 +160,8 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                 Assert.IsFalse(Directory.Exists(Path.Join(directory, name, "bin")), "Restore must leave the dependencies unbuilt.");
             }
 
+            Assert.IsFalse(Directory.Exists(Path.Join(nested, "bin")), "Restore must leave the tool's own reference unbuilt.");
+
             string builds = Path.Join(directory, "builds");
             for (int load = 0; load < 4; load++)
             {
@@ -158,7 +181,7 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                         "-property:TargetFramework=net10.0", "-property:DesignTimeBuild=true", "-property:BuildProjectReferences=false",
                         "-property:BuildingProject=false", "-property:ProvideCommandLineArgs=true", "-property:SkipCompilerExecution=true",
                         "-property:ContinueOnError=ErrorAndContinue", "-getItem:CscCommandLineArgs,TargetPathWithTargetPlatformMoniker",
-                        "-bl:" + Path.Join(directory, "editor-{}.binlog")], directory, context.CancellationToken);
+                        "-bl:" + Path.Join(directory, "editor-{}.binlog"), .. host], directory, context.CancellationToken);
                 using JsonDocument result = JsonDocument.Parse(output);
                 string[] arguments = [.. result.RootElement.GetProperty("Items").GetProperty("CscCommandLineArgs").EnumerateArray()
                     .Select(static item => item.GetProperty("Identity").GetString()!)];
@@ -186,6 +209,10 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                     "The editor must compile dependencies without building the extension itself.");
                 Assert.AreEqual(dependencies.Length * (load == 0 ? 1 : load), await CountBuildsAsync(builds),
                     $"Load {load} built the dependencies an unexpected number of times.");
+                // The tool's reference builds once with each tool build, in the tool's configuration.
+                Assert.AreEqual(string.Join('\n', Enumerable.Repeat(configuration, load == 0 ? 1 : load)),
+                    string.Join('\n', await File.ReadAllLinesAsync(nestedBuilds, context.CancellationToken)),
+                    $"Load {load} built the tool's own reference unexpectedly.");
             }
 
             // Editors list a design-time build's high-importance messages, warnings and errors as problems. Minimal
@@ -194,7 +221,7 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
             string visible = await NativeBindingLayoutCommand.RunProcessAsync("dotnet",
                 ["msbuild", project, "-nologo", "-nodeReuse:false", "-tl:off", "-verbosity:minimal", "-target:ResolveReferences",
                     "-property:Configuration=" + configuration, "-property:TargetFramework=net10.0", "-property:DesignTimeBuild=true",
-                    "-property:BuildProjectReferences=false", "-property:BuildingProject=false"], directory, context.CancellationToken);
+                    "-property:BuildProjectReferences=false", "-property:BuildingProject=false", .. host], directory, context.CancellationToken);
             // A preview SDK announces itself for every project (NETSDK1057). The SDK emits that notice itself.
             string[] lines = [.. visible.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
                 .Where(static line => !line.Contains(": message NETSDK1057: ", StringComparison.Ordinal))];
