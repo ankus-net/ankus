@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="../Common/VisualStudioDeveloperEnvironment.cs" Link="Common/VisualStudioDeveloperEnvironment.cs" />
     <PackageReference Include="Npgsql" />
     <ProjectReference Include="../../src/Ankus.Testing/Ankus.Testing.csproj" />
     <ProjectReference Include="../../src/Ankus.Tool/Ankus.Tool.csproj" ReferenceOutputAssembly="false" />

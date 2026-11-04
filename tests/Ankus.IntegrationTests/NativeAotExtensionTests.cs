@@ -1,5 +1,6 @@
 using System.Globalization;
 using Ankus.PgConfig;
+using Ankus.Tests;
 using Npgsql;
 
 namespace Ankus.IntegrationTests;
@@ -18,6 +19,9 @@ public sealed class NativeAotExtensionTests(TestContext context)
     [AssemblyInitialize]
     public static Task InitializeAssemblyAsync(TestContext context)
     {
+        // Extensions and native fixtures build with the x64 developer environment CI configures, from any shell.
+        VisualStudioDeveloperEnvironment.Configure(context);
+
         // As PostgreSQL's own harness does on slow machines, give pg_ctl waits without an explicit limit the suite's
         // startup budget, unless the caller chose one.
         if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PGCTLTIMEOUT")))
