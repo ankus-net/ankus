@@ -271,12 +271,14 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 ## Active validation and work
 
 - Workflows install .NET through `.github/actions/setup-dotnet`, which puts a
-  self-hosted runner's SDKs in its own `runner.tool_cache/dotnet`. The runners
-  on each host shared one install directory, and the 0.2.23 release's two
-  Windows runtime jobs extracted SDK 11.0.100-rc.3.26522.148 into it at once:
-  one failed on the `hostfxr.dll` the other had loaded, and the install was
-  missing six files until they were restored from Microsoft's archive. The
-  Linux and macOS runner pairs had extracted the same SDK together too.
+  self-hosted runner's SDKs in a `dotnet` folder beside its checkout. The
+  runners on each host shared one install directory, and the 0.2.23 release's
+  two Windows runtime jobs extracted SDK 11.0.100-rc.3.26522.148 into it at
+  once: one failed on the `hostfxr.dll` the other had loaded, and the install
+  was missing six files until they were restored from Microsoft's archive. The
+  Linux and macOS runner pairs had extracted the same SDK together too. A
+  runner's tool cache would not separate them, since one Linux host's runners
+  share it.
 - The repository SDK's references to Ankus.Generators, Ankus.CodeFixes and
   Ankus.Build inherit a command-line `PublishAot`. They removed it before, so
   CI's `dotnet build Ankus.slnx -p:PublishAot=false` built each of them in two

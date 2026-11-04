@@ -1,5 +1,5 @@
 name: Set up .NET
-description: Installs .NET SDKs with actions/setup-dotnet, on a self-hosted runner into a directory of that runner's own.
+description: Installs .NET SDKs with actions/setup-dotnet, on a self-hosted runner into a folder beside its checkout.
 inputs:
   dotnet-version:
     description: The SDK versions to install, one per line.
@@ -9,9 +9,10 @@ runs:
   steps:
     # The runners on one host shared an install directory, and two jobs that installed a new SDK at once extracted
     # the same files together. Windows failed on the hostfxr.dll another job had loaded, and the install lost files.
+    # Some hosts also share a tool cache, so each runner installs beside its own checkout, as its NuGet HTTP cache is.
     - uses: actions/setup-dotnet@v6
       env:
-        DOTNET_INSTALL_DIR: ${{ runner.environment == 'self-hosted' && format('{0}{1}dotnet', runner.tool_cache, runner.os == 'Windows' && '\' || '/') || '' }}
+        DOTNET_INSTALL_DIR: ${{ runner.environment == 'self-hosted' && format('{0}/../dotnet', github.workspace) || '' }}
       with:
         dotnet-version: ${{ inputs.dotnet-version }}
 
