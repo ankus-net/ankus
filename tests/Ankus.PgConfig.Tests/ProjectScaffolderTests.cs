@@ -48,9 +48,9 @@ public sealed class ProjectScaffolderTests(TestContext context)
     /// <param name="allowPrerelease">Whether global.json should allow a prerelease SDK.</param>
     [TestMethod]
     [DataRow("net10.0", "mstest", "10.0.400", false)]
-    [DataRow("net11.0", "mstest", "11.0.100-rc.2.26504.105", true)]
-    [DataRow("net11.0", "xunit", "11.0.100-rc.2.26504.105", true)]
-    [DataRow("net11.0", "nunit", "11.0.100-rc.2.26504.105", true)]
+    [DataRow("net11.0", "mstest", "11.0.100-rc.3.26522.148", true)]
+    [DataRow("net11.0", "xunit", "11.0.100-rc.3.26522.148", true)]
+    [DataRow("net11.0", "nunit", "11.0.100-rc.3.26522.148", true)]
     public async Task TargetFrameworkSelectsFrameworkAndSdk(string targetFramework, string testFramework, string sdk, bool allowPrerelease)
     {
         string directory = Directory.CreateTempSubdirectory("ankus-scaffold-").FullName;

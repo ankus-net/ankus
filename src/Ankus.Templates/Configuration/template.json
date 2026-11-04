@@ -42,7 +42,7 @@
         "source": "Framework",
         "steps": [
           { "regex": "^net10\\.0$", "replacement": "10.0.400" },
-          { "regex": "^net11\\.0$", "replacement": "11.0.100-rc.2.26504.105" }
+          { "regex": "^net11\\.0$", "replacement": "11.0.100-rc.3.26522.148" }
         ]
       },
       "replaces": "__SDK_VERSION__"

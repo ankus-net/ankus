@@ -66,7 +66,7 @@ internal static partial class ProjectScaffolder
     internal static (string Version, bool AllowPrerelease) SelectSdk(string targetFramework) => targetFramework switch
     {
         "net10.0" => ("10.0.400", false),
-        "net11.0" => ("11.0.100-rc.2.26504.105", true),
+        "net11.0" => ("11.0.100-rc.3.26522.148", true),
         _ => throw new ArgumentException("The target framework must be net10.0 or net11.0.", nameof(targetFramework)),
     };
 
