@@ -323,7 +323,16 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   behind pass-through properties are now internal fields, as
   `SqlTypeProviderDiagnostics` already declared its own, and callers use them
   directly. The four discard switches IDE0066 converts have arms of different
-  types, so each switch expression is cast to `object?`, which gives it a type.
+  types, so each switch expression selects an `Action` that makes the call, and
+  the method then invokes it. That form exhausted ANKUS044's analysis budget in
+  `ParityTemporalRecovery`, which selects one of 23 callbacks inside a loop, so
+  every command in the method was reported. The flow analysis took blocks in
+  the order they were queued, so the switch's join ran again after each arm and
+  analyzed the callbacks chosen so far each time; it now takes the lowest
+  pending block, and a callback called again from an equivalent state reuses
+  its earlier result. A 24-arm generator test took more than 10,000 steps
+  before and takes 1,353 now. Local helpers that reach a new state on every
+  call still exhaust the budget and fail closed.
   `IsExternalInit` must stay in `System.Runtime.CompilerServices`, so it moved to
   `src/Common/System/Runtime/CompilerServices`, a folder that matches its
   namespace, and the generator links it, as dotnet/runtime shares its own copy.

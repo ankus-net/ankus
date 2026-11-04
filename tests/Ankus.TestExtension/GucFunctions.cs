@@ -22,15 +22,16 @@ public static partial class GucFunctions
     {
         try
         {
-            _ = (object?)(mode switch
+            Action call = mode switch
             {
-                0 => NativeGuc.ReadInt32("ankus_guc.missing"),
-                1 => NativeGuc.ReadBoolean("ankus_guc.limit"),
-                2 => NativeGuc.ReadInt32("ankus_guc.enabled"),
-                3 => NativeGuc.ReadString("ankus_guc.limit"),
-                4 => NativeGuc.ReadEnum("ankus_guc.limit"),
+                0 => () => NativeGuc.ReadInt32("ankus_guc.missing"),
+                1 => () => NativeGuc.ReadBoolean("ankus_guc.limit"),
+                2 => () => NativeGuc.ReadInt32("ankus_guc.enabled"),
+                3 => () => NativeGuc.ReadString("ankus_guc.limit"),
+                4 => () => NativeGuc.ReadEnum("ankus_guc.limit"),
                 _ => throw new ArgumentOutOfRangeException(nameof(mode)),
-            });
+            };
+            call();
         }
         catch (PgException error)
         {
