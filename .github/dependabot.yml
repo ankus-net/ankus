@@ -29,7 +29,9 @@ updates:
 
   # One pull request for the actions the workflows use, since they are tested together anyway.
   - package-ecosystem: github-actions
-    directory: /
+    directories:
+      - /
+      - /.github/actions/*
     schedule:
       interval: weekly
     assignees:

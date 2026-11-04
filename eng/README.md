@@ -275,6 +275,13 @@ lock files under each runner's own `TEMP`; one runner's restore could then fail
 on vulnerability data another was replacing. The workflows therefore set
 `NUGET_HTTP_CACHE_PATH` to a folder beside each runner's checkout, so every
 restore in a job, starting with the CI script's own, uses that runner's cache.
+Runners that shared `DOTNET_INSTALL_DIR` also extracted a new SDK into the same
+files at once, and on Windows the second install failed on the `hostfxr.dll` the
+first had loaded. The workflows therefore install .NET through
+`.github/actions/setup-dotnet`, which on a self-hosted runner installs into
+`runner.tool_cache/dotnet` and runs `dotnet-roots`, pointing any
+`DOTNET_ROOT_X64`, `DOTNET_ROOT_ARM64` or `DOTNET_ROOT_X86` the service sets at
+that install so apphosts load the same runtime.
 Native binding entries persist in
 `runner.tool_cache/ankus-binding-cache` and retain normal content and ABI
 validation. Parallel binding compiler restores share the package cache but keep

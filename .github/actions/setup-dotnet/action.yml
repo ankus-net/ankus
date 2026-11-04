@@ -1,0 +1,24 @@
+name: Set up .NET
+description: Installs .NET SDKs with actions/setup-dotnet, on a self-hosted runner into a directory of that runner's own.
+inputs:
+  dotnet-version:
+    description: The SDK versions to install, one per line.
+    required: true
+runs:
+  using: composite
+  steps:
+    # The runners on one host shared an install directory, and two jobs that installed a new SDK at once extracted
+    # the same files together. Windows failed on the hostfxr.dll another job had loaded, and the install lost files.
+    - uses: actions/setup-dotnet@v6
+      env:
+        DOTNET_INSTALL_DIR: ${{ runner.environment == 'self-hosted' && format('{0}{1}dotnet', runner.tool_cache, runner.os == 'Windows' && '\' || '/') || '' }}
+      with:
+        dotnet-version: ${{ inputs.dotnet-version }}
+
+    - if: runner.environment == 'self-hosted' && runner.os == 'Windows'
+      shell: pwsh
+      run: dotnet run --file ./eng/Ankus.Ci.cs -- dotnet-roots
+
+    - if: runner.environment == 'self-hosted' && runner.os != 'Windows'
+      shell: bash
+      run: dotnet run --file ./eng/Ankus.Ci.cs -- dotnet-roots
