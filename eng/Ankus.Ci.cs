@@ -201,6 +201,11 @@ try
             CleanRunnerWorkspace(repositoryRoot);
             break;
 
+        case "dotnet-roots":
+            RequireArguments(args, 1);
+            PointDotNetRootsAtRunnerInstall();
+            break;
+
         case "release-managed":
             RequireArguments(args, 2);
             PackManaged(repositoryRoot, args[1]);
@@ -1530,6 +1535,23 @@ static PostgresVersion VerifyPostgreSqlHeaders(string pgConfig, string version)
     }
 
     return installation.Version;
+}
+
+// Setup installs .NET into the runner's own directory and sets DOTNET_ROOT to it. Apphosts read an
+// architecture-specific root first, and a runner's environment can still point one at the host's shared install.
+static void PointDotNetRootsAtRunnerInstall()
+{
+    string root = Environment.GetEnvironmentVariable("DOTNET_ROOT") is { Length: > 0 } value
+        ? value : throw new InvalidOperationException("DOTNET_ROOT is required.");
+    Console.WriteLine($"Using .NET from {root}.");
+    foreach (string name in (string[])["DOTNET_ROOT_X64", "DOTNET_ROOT_ARM64", "DOTNET_ROOT_X86"])
+    {
+        if (Environment.GetEnvironmentVariable(name) is { Length: > 0 } previous && previous != root)
+        {
+            Console.WriteLine($"{name} pointed at {previous}.");
+            WriteEnvironment(name, root);
+        }
+    }
 }
 
 static void WriteEnvironment(string name, string value)
