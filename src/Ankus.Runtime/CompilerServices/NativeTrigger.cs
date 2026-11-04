@@ -154,7 +154,7 @@ public unsafe partial struct NativeValue
                 *block = index + 1;
                 if (attribute.IsDropped || attribute.IsUnavailable)
                 {
-                    cell._isNull = 1;
+                    cell.IsNull = 1;
                     cell._auxiliary1 = attribute.IsUnavailable ? -12 : 0;
                     continue;
                 }
@@ -173,7 +173,7 @@ public unsafe partial struct NativeValue
                 if (fromNew && !row.IsReplaced(index) && IsImmutableCell(value, includeBytes: false))
                 {
                     // PostgreSQL keeps the datum this cell was read from.
-                    cell._isNull = 1;
+                    cell.IsNull = 1;
                     cell._auxiliary1 = -11;
                     continue;
                 }
@@ -200,7 +200,7 @@ public unsafe partial struct NativeValue
             _length = count,
             _auxiliary1 = -10,
             _auxiliary2 = (int)size,
-            _integer = row.Descriptor.BaseTypeOid,
+            Integral = row.Descriptor.BaseTypeOid,
             _release = !borrowed ? &ReleaseCells : released ? &ReleaseLentCells : null,
         };
     }
@@ -240,7 +240,7 @@ public unsafe partial struct NativeValue
 
         PgTupleDescriptor known = site.Definition.Descriptor;
         int count = known.AttributeSpan.Length;
-        if (_isNull != 0 || _length != count || (_data == null && count != 0) || _integer != known.BaseTypeOid)
+        if (IsNull != 0 || _length != count || (_data == null && count != 0) || Integral != known.BaseTypeOid)
         {
             throw new InvalidOperationException("A trigger row does not match its relation's columns.");
         }
@@ -253,12 +253,12 @@ public unsafe partial struct NativeValue
         {
             PgTupleAttributeInfo attribute = attributes[index];
             ref readonly NativeValue cell = ref cells[index];
-            if (cell._isNull != 0 && cell._auxiliary1 is 0 or -12)
+            if (cell.IsNull != 0 && cell._auxiliary1 is 0 or -12)
             {
                 continue;
             }
 
-            if (cell._isNull != 0 || cell._auxiliary1 == -12 || attribute.IsDropped || cell.IsTuple != attribute.IsComposite)
+            if (cell.IsNull != 0 || cell._auxiliary1 == -12 || attribute.IsDropped || cell.IsTuple != attribute.IsComposite)
             {
                 throw new InvalidOperationException("A trigger row cell does not match its column.");
             }
@@ -344,7 +344,7 @@ public unsafe partial struct NativeValue
         for (int index = 0; index < SiteSlots.Length; index++)
         {
             NativeValue slot = arguments[SiteSlots[index]];
-            buffers[index] = ((nint)slot._data, slot._length, slot._isNull);
+            buffers[index] = ((nint)slot._data, slot._length, slot.IsNull);
         }
 
         var site = new TriggerSite(identity, buffers, new PgTriggerDefinition(relationOid, triggerOid, name, tableName, tableSchema,
@@ -363,40 +363,40 @@ public unsafe partial struct NativeValue
     private static long ReadTriggerSiteIdentity(in NativeValue value)
     {
         // The site can also lend a buffer for the returned row.
-        if (value._isNull != 0 || value._integer < 0 || (value._data == null) != (value._length == 0) || value._length < 0 ||
+        if (value.IsNull != 0 || value.Integral < 0 || (value._data == null) != (value._length == 0) || value._length < 0 ||
             value._auxiliary1 != 0 || value._auxiliary2 != 0 || value._temporalInfinity != 0)
         {
             throw new InvalidOperationException("Invalid native trigger call site envelope.");
         }
 
-        return value._integer;
+        return value.Integral;
     }
 
     private static (uint Oid, int Flags) ReadTriggerConstraint(in NativeValue value)
     {
-        if (value._isNull != 0 || value._integer is < 0 or > uint.MaxValue || value._data != null || value._length != 0 ||
+        if (value.IsNull != 0 || value.Integral is < 0 or > uint.MaxValue || value._data != null || value._length != 0 ||
             value._auxiliary1 is < 0 or > 3 || value._auxiliary2 != 0 || value._temporalInfinity != 0)
         {
             throw new InvalidOperationException("Invalid native trigger constraint envelope.");
         }
 
-        return ((uint)value._integer, value._auxiliary1);
+        return ((uint)value.Integral, value._auxiliary1);
     }
 
     private static uint ReadTriggerUnsigned(in NativeValue value)
     {
-        if (value._isNull != 0 || value._integer is < 0 or > uint.MaxValue || value._data != null || value._length != 0 ||
+        if (value.IsNull != 0 || value.Integral is < 0 or > uint.MaxValue || value._data != null || value._length != 0 ||
             value._auxiliary1 != 0 || value._auxiliary2 != 0 || value._temporalInfinity != 0)
         {
             throw new InvalidOperationException("Invalid native trigger event or OID envelope.");
         }
 
-        return (uint)value._integer;
+        return (uint)value.Integral;
     }
 
     private static string ReadTriggerName(in NativeValue value)
     {
-        if (value._isNull != 0 || value._integer != 0 || value._data == null || value._length is < 1 or > 252 ||
+        if (value.IsNull != 0 || value.Integral != 0 || value._data == null || value._length is < 1 or > 252 ||
             value._auxiliary1 != 0 || value._auxiliary2 != 0 || value._temporalInfinity != 0)
         {
             throw new InvalidOperationException("Invalid native trigger name envelope.");
@@ -407,12 +407,12 @@ public unsafe partial struct NativeValue
 
     private static bool ReadTriggerIsNull(in NativeValue value)
     {
-        if (value._isNull == 0)
+        if (value.IsNull == 0)
         {
             return false;
         }
 
-        if (value._isNull != 1 || value._integer != 0 || value._data != null || value._length != 0 ||
+        if (value.IsNull != 1 || value.Integral != 0 || value._data != null || value._length != 0 ||
             value._auxiliary1 != 0 || value._auxiliary2 != 0 || value._temporalInfinity != 0)
         {
             throw new InvalidOperationException("Invalid native trigger SQL NULL envelope.");
@@ -502,7 +502,7 @@ public unsafe partial struct NativeValue
             {
                 ref readonly NativeValue slot = ref slots[indexes[index]];
                 if ((nint)slot._data != expected[index].Data || slot._length != expected[index].Length ||
-                    slot._isNull != expected[index].IsNull)
+                    slot.IsNull != expected[index].IsNull)
                 {
                     return false;
                 }

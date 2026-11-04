@@ -866,7 +866,7 @@ public sealed partial class SpiInterpolationAnalyzer
                     "Append" when arguments.Count == 1 => Join(current, AsText(arguments[0].Value, state)),
                     "AppendLine" when arguments.Count <= 1 => Join(arguments.Count == 0 ? current : Join(current, AsText(arguments[0].Value, state)),
                         Value.Constant("\n")),
-                    "AppendFormat" => Join(current, Format(invocation, arguments, state)),
+                    "AppendFormat" => Join(current, Format(arguments, state)),
                     "AppendJoin" => Join(current, JoinValues(arguments, state)),
                     _ => arguments.Any(static pair => InsertsText(pair.Argument) && !pair.Value.IsLiteral)
                         ? Join(current, Value.Raw()) : Value.Unspecified(current),
@@ -885,7 +885,7 @@ public sealed partial class SpiInterpolationAnalyzer
                 switch (method.Name)
                 {
                     case "Format":
-                        return Format(invocation, arguments, state);
+                        return Format(arguments, state);
                     case "Join":
                         return JoinValues(arguments, state);
                     case "Concat":
@@ -1217,7 +1217,7 @@ public sealed partial class SpiInterpolationAnalyzer
             return result.Returned ?? Value.Raw();
         }
 
-        private Value Format(IInvocationOperation invocation, List<(IArgumentOperation Argument, Value Value)> arguments, FlowState state)
+        private Value Format(List<(IArgumentOperation Argument, Value Value)> arguments, FlowState state)
         {
             (IArgumentOperation Argument, Value Value) template = arguments.FirstOrDefault(static pair => pair.Argument.Parameter?.Name == "format");
             if (template.Argument?.Value.ConstantValue is not { HasValue: true, Value: string format } ||
@@ -1618,7 +1618,7 @@ public sealed partial class SpiInterpolationAnalyzer
             internal const int MaxLayouts = 128;
             private readonly ImmutableArray<Text> _layouts = [.. texts.GroupBy(static text => TextKey(text), StringComparer.Ordinal)
                 .Select(static group => group.First()).Take(MaxLayouts + 1)];
-            private string? _key;
+
             /// <summary>
             /// Gets the exact alternatives when their bounded representation is retained.
             /// </summary>
@@ -1717,7 +1717,7 @@ public sealed partial class SpiInterpolationAnalyzer
             /// <summary>
             /// Gets the deterministic comparison representation used by the flow worklist.
             /// </summary>
-            internal string Key => _key ??= string.Join("|", Texts.Select(static text => TextKey(text)).OrderBy(static item => item, StringComparer.Ordinal)) +
+            internal string Key => field ??= string.Join("|", Texts.Select(static text => TextKey(text)).OrderBy(static item => item, StringComparer.Ordinal)) +
                 $"\0{Unsafe},{Unknown},{Quoted},{SafeSummary},{StartsWithBoundary},{EndsWithBoundary},{NonEmpty},{MayBeNonEmpty},{StartsWithParameter},{EndsAfterParameter},{Input}\0" + string.Join(",", References) +
                 (Elements.IsDefault ? "" : string.Join(";", Elements.Select(static value => value.Key.Length + ":" + value.Key))) + "\0" + string.Join(",", Functions);
 

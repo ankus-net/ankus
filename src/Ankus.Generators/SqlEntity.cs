@@ -10,7 +10,6 @@ namespace Ankus.Generators;
 /// </summary>
 internal sealed class SqlEntity
 {
-    private string _sql = string.Empty;
     private string? _sqlTemplate = string.Empty;
     /// <summary>
     /// Creates an installation node with a stable internal key and diagnostic location.
@@ -52,13 +51,13 @@ internal sealed class SqlEntity
     /// </summary>
     internal string Sql
     {
-        get => _sqlTemplate is null ? Function!.Emit().Replace("\0", string.Empty) : _sql;
+        get => _sqlTemplate is null ? Function!.Emit().Replace("\0", string.Empty) : field;
         set
         {
             _sqlTemplate = value;
-            _sql = value.Replace("\0", string.Empty);
+            field = value.Replace("\0", string.Empty);
         }
-    }
+    } = string.Empty;
 
     /// <summary>
     /// Gets typed schema markers separately from ordinary installation SQL.

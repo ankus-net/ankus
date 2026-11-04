@@ -66,8 +66,7 @@ internal static class GucPipeline
     /// </summary>
     private static Analysis? Analyze(GeneratorAttributeSyntaxContext syntax, CancellationToken cancellationToken)
     {
-        var property = syntax.TargetSymbol as IPropertySymbol;
-        if (property is null || property.GetAttributes().Any(NativeCallbackDeclaration.IsAttribute))
+        if (syntax.TargetSymbol is not IPropertySymbol property || property.GetAttributes().Any(NativeCallbackDeclaration.IsAttribute))
         {
             return null;
         }

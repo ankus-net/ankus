@@ -1,5 +1,5 @@
-using Microsoft.CodeAnalysis;
 using System.Collections.Immutable;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Text;
 

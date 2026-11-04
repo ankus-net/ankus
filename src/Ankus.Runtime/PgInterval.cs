@@ -12,9 +12,7 @@ namespace Ankus;
 [JsonConverter(typeof(PgIntervalConverter))]
 public readonly partial record struct PgInterval : IComparable<PgInterval>
 {
-    private readonly int _infinity;
-
-    private PgInterval(int infinity) => _infinity = infinity;
+    private PgInterval(int infinity) => Infinity = infinity;
 
     /// <summary>
     /// Creates an interval without normalizing months to days or days to hours.
@@ -59,12 +57,12 @@ public readonly partial record struct PgInterval : IComparable<PgInterval>
     /// <summary>
     /// Gets whether this interval has finite components. Infinity is distinct from any finite component combination.
     /// </summary>
-    public bool IsFinite => _infinity == 0;
+    public bool IsFinite => Infinity == 0;
 
     /// <summary>
     /// Gets the native transport discriminator: negative one for negative infinity, zero for finite, or one for positive infinity.
     /// </summary>
-    internal int Infinity => _infinity;
+    internal int Infinity { get; }
 
     /// <summary>
     /// Constructs an interval with PostgreSQL's make_interval rules, allowing mixed component signs.
@@ -159,7 +157,7 @@ public readonly partial record struct PgInterval : IComparable<PgInterval>
     public int CompareTo(PgInterval other)
         => IsFinite && other.IsFinite
             ? ToComparisonMicroseconds().CompareTo(other.ToComparisonMicroseconds())
-            : _infinity.CompareTo(other._infinity);
+            : Infinity.CompareTo(other.Infinity);
 
     /// <summary>
     /// Tests equality using PostgreSQL's interval comparison, preserving the original calendar components.
@@ -173,7 +171,7 @@ public readonly partial record struct PgInterval : IComparable<PgInterval>
     /// </summary>
     /// <returns>A managed hash consistent with equality, without requiring backend access.</returns>
     public override int GetHashCode()
-        => IsFinite ? HashCode.Combine(0, ToComparisonMicroseconds()) : HashCode.Combine(_infinity);
+        => IsFinite ? HashCode.Combine(0, ToComparisonMicroseconds()) : HashCode.Combine(Infinity);
 
     /// <summary>
     /// Tests whether the left interval sorts before the right interval using PostgreSQL's comparison approximation.
@@ -199,7 +197,7 @@ public readonly partial record struct PgInterval : IComparable<PgInterval>
     /// Gets -1, 0, or 1 by comparing with zero under PostgreSQL's thirty-day-month comparison, including infinities.
     /// Mixed-sign components contribute to one comparison duration. No backend is required.
     /// </summary>
-    public int Sign => IsFinite ? ToComparisonMicroseconds().CompareTo(Int128.Zero) : _infinity;
+    public int Sign => IsFinite ? ToComparisonMicroseconds().CompareTo(Int128.Zero) : Infinity;
 
     /// <summary>
     /// Gets the time-of-day part of the interval's time component, wrapped into one day, as PostgreSQL's

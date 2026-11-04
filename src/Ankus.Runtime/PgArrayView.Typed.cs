@@ -149,7 +149,6 @@ public sealed class PgArrayView<T> : IReadOnlyList<T>, IPgArrayView
     /// </summary>
     private sealed class Enumerator(IEnumerator<PgDatum> cursor) : IEnumerator<T>
     {
-        private T _current = default!;
         private bool _positioned;
 
         /// <inheritdoc />
@@ -158,9 +157,11 @@ public sealed class PgArrayView<T> : IReadOnlyList<T>, IPgArrayView
             get
             {
                 _ = cursor.Current;
-                return _positioned ? _current : throw new InvalidOperationException("The enumerator is not positioned on a converted cell.");
+                return _positioned ? field : throw new InvalidOperationException("The enumerator is not positioned on a converted cell.");
             }
-        }
+
+            private set;
+        } = default!;
 
         object? IEnumerator.Current => Current;
 
@@ -168,13 +169,13 @@ public sealed class PgArrayView<T> : IReadOnlyList<T>, IPgArrayView
         public bool MoveNext()
         {
             _positioned = false;
-            _current = default!;
+            Current = default!;
             if (!cursor.MoveNext())
             {
                 return false;
             }
 
-            _current = cursor.Current.Read<T>();
+            Current = cursor.Current.Read<T>();
             _positioned = true;
             return true;
         }
@@ -187,7 +188,7 @@ public sealed class PgArrayView<T> : IReadOnlyList<T>, IPgArrayView
         {
             cursor.Dispose();
             _positioned = false;
-            _current = default!;
+            Current = default!;
         }
     }
 }

@@ -19,7 +19,7 @@ public sealed class PgAssertTests
         PgAssert.IsFalse(s_pair.Contains(3));
         PgAssert.AreEqual(42, 42);
         PgAssert.AreNotEqual("a", "b");
-        PgAssert.AreSequenceEqual(s_pair, new List<int> { 1, 2 });
+        PgAssert.AreSequenceEqual(s_pair, [1, 2]);
         PgAssert.IsNull(null);
         PgAssert.IsNotNull("value");
         int answer = 41;

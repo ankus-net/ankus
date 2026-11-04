@@ -139,7 +139,7 @@ public sealed class PgIntervalOrderingTests
         Assert.AreEqual(Math.Abs(sign), absolute.Sign);
         Assert.IsTrue(absolute >= value);
         Assert.IsTrue(absolute >= default(PgInterval));
-        Assert.AreEqual(sign == 0, absolute == default(PgInterval));
+        Assert.AreEqual(sign == 0, absolute == default);
         Assert.AreEqual(sign >= 0, absolute.Equals(value));
         if (months != int.MinValue && days != int.MinValue && micros != long.MinValue)
         {

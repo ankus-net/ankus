@@ -764,8 +764,8 @@ public sealed class PgAggregateTests
         SpiParameter right = SpiParameter.Create("right");
         try
         {
-            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => context.Compare(default(SpiParameter), right));
-            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => context.Compare(left, default(SpiParameter)));
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => context.Compare(default, right));
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => context.Compare(left, default));
             Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => context.Compare(left, right, -1));
             Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => context.Compare(left, right, 2));
             Assert.ThrowsExactly<ArgumentException>(() => context.Compare(left, SpiParameter.Create("bad\0text")));

@@ -71,8 +71,8 @@ public sealed class PgJsonTests
     [TestMethod]
     public void DefaultNullAndTextEqualityHaveConsistentHashes()
     {
-        Assert.AreEqual(new PgJson("null"), default(PgJson));
-        Assert.AreEqual(new PgJsonb("null"), default(PgJsonb));
+        Assert.AreEqual(new PgJson("null"), default);
+        Assert.AreEqual(new PgJsonb("null"), default);
         Assert.AreEqual(new PgJson("null").GetHashCode(), default(PgJson).GetHashCode());
         Assert.AreEqual(new PgJsonb("null").GetHashCode(), default(PgJsonb).GetHashCode());
         Assert.AreNotEqual(new PgJson("1"), new PgJson("1.0"));

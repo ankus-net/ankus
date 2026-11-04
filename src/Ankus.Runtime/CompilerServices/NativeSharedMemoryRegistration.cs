@@ -13,14 +13,17 @@ namespace Ankus.CompilerServices;
 /// </summary>
 internal sealed unsafe class NativeSharedMemoryRegistration(string name, string identity, int size, NativeSharedMemoryKind kind = NativeSharedMemoryKind.Locked)
 {
-    private nint _provider;
     private nint _handle;
     private nint _access;
 
     /// <summary>
     /// Gets the provider whose native callback may acquire embedded backend locks.
     /// </summary>
-    internal nint Provider => _provider;
+    internal nint Provider
+    {
+        get;
+        private set;
+    }
 
     /// <summary>
     /// Registers the descriptor once; failure retains the ability to retry.
@@ -31,7 +34,7 @@ internal sealed unsafe class NativeSharedMemoryRegistration(string name, string 
         nint provider = NativeMemoryContext.Provider;
         if (_handle != 0)
         {
-            NativeMemoryContext.CheckProvider(_provider);
+            NativeMemoryContext.CheckProvider(Provider);
             return;
         }
 
@@ -68,7 +71,7 @@ internal sealed unsafe class NativeSharedMemoryRegistration(string name, string 
                     throw new InvalidOperationException("PostgreSQL returned invalid shared-memory access storage.");
                 }
 
-                _provider = provider;
+                Provider = provider;
                 _handle = result._value;
                 Volatile.Write(ref _access, result._data);
             }
@@ -147,7 +150,7 @@ internal sealed unsafe class NativeSharedMemoryRegistration(string name, string 
             throw new InvalidOperationException("Register the PostgreSQL shared-memory descriptor during shared preload before acquiring it.");
         }
 
-        NativeMemoryContext.CheckProvider(_provider);
+        NativeMemoryContext.CheckProvider(Provider);
         NativeBorrowScope scope = NativeMemoryContext.BorrowScope;
         var lease = new NativeSharedMemoryLease(scope, _handle);
         scope.Register(lease);

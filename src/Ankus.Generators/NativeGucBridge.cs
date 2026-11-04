@@ -661,12 +661,7 @@ internal static class NativeGucBridge
     /// functions that pass the slot's definition to the shared hook path; the managed dispatcher then selects the
     /// delegates registered for that slot.
     /// </remarks>
-    internal static string RuntimeHooks => s_runtimeHooks;
-
-    /// <summary>
-    /// The composed run-time hook source.
-    /// </summary>
-    private static readonly string s_runtimeHooks = """
+    internal static string RuntimeHooks { get; } = """
         extern int ankus_guc_runtime_hook(int, AnkusValue *, AnkusValue *, int, AnkusError *, AnkusGucRead, AnkusExecute, AnkusGucLog,
             AnkusMemoryApi *);
 

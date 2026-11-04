@@ -164,11 +164,7 @@ public sealed class PostgresInstallation
     {
         ThrowIfTarget();
         string pgxs = Path.GetFullPath(await QueryAsync(PgConfigPath, "--pgxs", cancellationToken).ConfigureAwait(false));
-        string? sourceDirectory = Path.GetDirectoryName(Path.GetDirectoryName(pgxs));
-        if (sourceDirectory is null)
-        {
-            throw new FormatException("PostgreSQL's PGXS path does not identify an installed development tree.");
-        }
+        string? sourceDirectory = Path.GetDirectoryName(Path.GetDirectoryName(pgxs)) ?? throw new FormatException("PostgreSQL's PGXS path does not identify an installed development tree.");
 
         string driver = Path.Join(sourceDirectory, "test", "regress", OperatingSystem.IsWindows() ? "pg_regress.exe" : "pg_regress");
         if (!File.Exists(driver) && OperatingSystem.IsWindows())
@@ -324,11 +320,7 @@ public sealed class PostgresInstallation
             return new PostgresInstallation(PostgresTargetInfo.Open(pgConfigPath));
         }
 
-        string? resolvedPath = ExecutableLocator.Find(pgConfigPath);
-        if (resolvedPath is null)
-        {
-            throw new FileNotFoundException($"The specified pg_config executable was not found. Path: '{pgConfigPath}'.", pgConfigPath);
-        }
+        string? resolvedPath = ExecutableLocator.Find(pgConfigPath) ?? throw new FileNotFoundException($"The specified pg_config executable was not found. Path: '{pgConfigPath}'.", pgConfigPath);
 
         Task<string> version = QueryAsync(resolvedPath, "--version", cancellationToken);
         Task<string> binDirectory = QueryAsync(resolvedPath, "--bindir", cancellationToken);

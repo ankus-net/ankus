@@ -56,7 +56,7 @@ public sealed class PackagePipeDirectoryTests(TestContext context)
                 using var client = new NamedPipeClientStream(".", pipe, PipeDirection.InOut, PipeOptions.Asynchronous);
                 await Task.WhenAll(server.WaitForConnectionAsync(context.CancellationToken),
                     client.ConnectAsync(context.CancellationToken));
-                await client.WriteAsync(new byte[] { 42 }, context.CancellationToken);
+                await client.WriteAsync("*"u8.ToArray(), context.CancellationToken);
                 byte[] received = new byte[1];
                 await server.ReadExactlyAsync(received, context.CancellationToken);
                 Assert.AreEqual((byte)42, received[0]);

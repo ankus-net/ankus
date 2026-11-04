@@ -17,7 +17,6 @@ public sealed unsafe class PgAllocation : IDisposable
 {
     private readonly nint _provider;
     private nint _id;
-    private nuint _length;
 
     /// <summary>
     /// Wraps a checked allocation registered by the native provider.
@@ -31,7 +30,7 @@ public sealed unsafe class PgAllocation : IDisposable
     {
         _provider = provider;
         _id = id;
-        _length = length;
+        Length = length;
         Options = options;
         Alignment = alignment;
     }
@@ -39,7 +38,11 @@ public sealed unsafe class PgAllocation : IDisposable
     /// <summary>
     /// Gets the allocation's byte length.
     /// </summary>
-    public nuint Length => _length;
+    public nuint Length
+    {
+        get;
+        private set;
+    }
 
     /// <summary>
     /// Gets the original initialization and native size policies, retained through resizing.
@@ -162,7 +165,7 @@ public sealed unsafe class PgAllocation : IDisposable
     {
         if (length == 0)
         {
-            length = _length - offset;
+            length = Length - offset;
         }
 
         EnsureRange(offset, length);
@@ -198,7 +201,7 @@ public sealed unsafe class PgAllocation : IDisposable
         };
         Invoke(ref request, out NativeMemoryResult result);
         _id = result._context;
-        _length = result._length;
+        Length = result._length;
     }
 
     /// <summary>
@@ -224,7 +227,7 @@ public sealed unsafe class PgAllocation : IDisposable
         }
 
         _id = result._context;
-        _length = result._length;
+        Length = result._length;
         return true;
     }
 
@@ -247,7 +250,7 @@ public sealed unsafe class PgAllocation : IDisposable
         };
         Invoke(ref request, out NativeMemoryResult result);
         _id = 0;
-        _length = 0;
+        Length = 0;
         return (void*)result._pointer;
     }
 
@@ -290,7 +293,7 @@ public sealed unsafe class PgAllocation : IDisposable
         };
         NativeMemoryContext.Invoke(ref request, out _);
         _id = 0;
-        _length = 0;
+        Length = 0;
     }
 
     /// <summary>
@@ -319,7 +322,7 @@ public sealed unsafe class PgAllocation : IDisposable
     internal NativeMemoryRequest CreateReferenceRequest(nuint offset, nuint length)
     {
         ValidateAccess(offset, length);
-        return new NativeMemoryRequest { _context = _id, _value = (nint)offset, _length = _length - offset };
+        return new NativeMemoryRequest { _context = _id, _value = (nint)offset, _length = Length - offset };
     }
 
     private void EnsureLive()
@@ -332,7 +335,7 @@ public sealed unsafe class PgAllocation : IDisposable
     private void EnsureRange(nuint offset, nuint length)
     {
         EnsureLive();
-        if (offset > _length || length > _length - offset)
+        if (offset > Length || length > Length - offset)
         {
             throw new ArgumentOutOfRangeException(nameof(length), "The requested range exceeds the native allocation.");
         }

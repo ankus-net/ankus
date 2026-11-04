@@ -187,15 +187,13 @@ public readonly ref struct PgCustomScanPlanner
     /// <param name="columns">The number of columns the planner sees, including dropped columns.</param>
     private sealed class RowType(uint oid, int columns)
     {
-        private PgTupleDescriptor? _descriptor;
-
         /// <summary>
         /// Holds a descriptor that is already loaded.
         /// </summary>
         /// <param name="descriptor">The table's columns.</param>
         internal RowType(PgTupleDescriptor descriptor)
             : this(descriptor.TypeOid, descriptor.Attributes.Count)
-            => _descriptor = descriptor;
+            => Descriptor = descriptor;
 
         internal int Columns => columns;
 
@@ -203,7 +201,7 @@ public readonly ref struct PgCustomScanPlanner
         {
             get
             {
-                if (_descriptor is null)
+                if (field is null)
                 {
                     PgTupleDescriptor descriptor = PgTupleDescriptor.Load(oid);
                     if (descriptor.Attributes.Count != columns)
@@ -211,10 +209,10 @@ public readonly ref struct PgCustomScanPlanner
                         throw new InvalidOperationException("The custom scan table's row type does not match its planned columns.");
                     }
 
-                    _descriptor = descriptor;
+                    field = descriptor;
                 }
 
-                return _descriptor;
+                return field;
             }
         }
     }

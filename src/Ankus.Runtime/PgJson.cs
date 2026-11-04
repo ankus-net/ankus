@@ -13,8 +13,6 @@ namespace Ankus;
 [JsonConverter(typeof(PgJsonConverter))]
 public readonly record struct PgJson
 {
-    private readonly string? _text;
-
     /// <summary>
     /// Creates a JSON value after validating its syntax without converting numeric tokens to floating-point values.
     /// </summary>
@@ -22,13 +20,13 @@ public readonly record struct PgJson
     public PgJson(string text)
     {
         PgJsonText.Validate(text);
-        _text = text;
+        Text = text;
     }
 
     /// <summary>
     /// Gets the original JSON text, or null's JSON spelling for the default value.
     /// </summary>
-    public string Text => _text ?? "null";
+    public string Text => field ?? "null";
 
     /// <summary>
     /// Parses an independently owned document. The caller must dispose it after use.

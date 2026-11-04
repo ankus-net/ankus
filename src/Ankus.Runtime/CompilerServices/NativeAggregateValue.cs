@@ -9,12 +9,12 @@ public unsafe partial struct NativeValue
     /// </summary>
     internal readonly long ReadAggregateScalar(bool allowNull = false)
     {
-        if (_isNull > (allowNull ? 1 : 0) || (_isNull != 0 && _integer != 0) || _data != null || _length != 0 ||
+        if (IsNull > (allowNull ? 1 : 0) || (IsNull != 0 && Integral != 0) || _data != null || _length != 0 ||
             _auxiliary1 != 0 || _auxiliary2 != 0 || _temporalInfinity != 0)
         {
             throw new InvalidOperationException("Invalid native aggregate scalar envelope.");
         }
 
-        return _integer;
+        return Integral;
     }
 }

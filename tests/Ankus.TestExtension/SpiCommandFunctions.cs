@@ -134,7 +134,7 @@ public static class SpiCommandFunctions
         try
         {
             // codeql[cs/call-to-object-tostring] Spi.Sql binds each interpolated value as a parameter; nothing is formatted as text.
-            ReadCommand(mode, Spi.Sql($"SELECT {42}, {"label"}, {new byte[] { 42 }}"), expired);
+            ReadCommand(mode, Spi.Sql($"SELECT {42}, {"label"}, {"*"u8.ToArray()}"), expired);
         }
         catch (ObjectDisposedException)
         {

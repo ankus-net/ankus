@@ -1,4 +1,4 @@
-namespace Ankus.Examples.DateTimes;
+namespace Ankus.Examples.DateTime;
 
 /// <summary>
 /// Ports pgrx's temporal example with native arithmetic, timezone rules and PostgreSQL clocks.

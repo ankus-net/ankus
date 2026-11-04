@@ -128,7 +128,7 @@ public sealed class PgNumericTests
         }
 
         Assert.AreEqual("0", default(PgNumeric).Text);
-        Assert.AreEqual(PgNumeric.FromDecimal(0m), default(PgNumeric));
+        Assert.AreEqual(PgNumeric.FromDecimal(0m), default);
         Assert.IsTrue(default(PgNumeric).IsFinite);
         Assert.AreEqual(0, default(PgNumeric).Sign);
         Assert.AreEqual(-1, PgNumeric.NegativeInfinity.Sign);

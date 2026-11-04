@@ -302,11 +302,7 @@ internal sealed class DefaultTypeSerializer(INamedTypeSymbol root, IAssemblySymb
                 (constructors.Length == 1 ? constructors[0] : null),
             1 when IsVisible(marked[0], assembly) => marked[0],
             _ => null,
-        };
-        if (node.Constructor is null)
-        {
-            throw Invalid(CustomTypeDiagnosticKind.SerializationConstructor, SourceLocation(named.Locations.FirstOrDefault(), usage), Display(type));
-        }
+        } ?? throw Invalid(CustomTypeDiagnosticKind.SerializationConstructor, SourceLocation(named.Locations.FirstOrDefault(), usage), Display(type));
 
         foreach (IParameterSymbol parameter in node.Constructor.Parameters)
         {

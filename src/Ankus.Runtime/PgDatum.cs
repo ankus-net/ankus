@@ -15,9 +15,6 @@ namespace Ankus;
 /// </remarks>
 public sealed class PgDatum
 {
-    private readonly nuint _bits;
-    private readonly PgDatumLifetime _lifetime;
-
     /// <summary>
     /// Captures a native value whose storage belongs to the supplied checked lifetime.
     /// </summary>
@@ -27,10 +24,10 @@ public sealed class PgDatum
     /// <param name="lifetime">The storage lifetime.</param>
     internal PgDatum(nuint bits, uint typeOid, bool isNull, PgDatumLifetime lifetime)
     {
-        _bits = bits;
+        UncheckedBits = bits;
         TypeOid = typeOid;
         IsNull = isNull;
-        _lifetime = lifetime;
+        Lifetime = lifetime;
     }
 
     /// <summary>
@@ -46,7 +43,7 @@ public sealed class PgDatum
     /// <summary>
     /// Gets the checked native owner shared by derived raw values.
     /// </summary>
-    internal PgDatumLifetime Lifetime => _lifetime;
+    internal PgDatumLifetime Lifetime { get; }
 
     /// <summary>
     /// Reads a supported managed type with the ordinary SPI checks, or invokes registered scalar or array element readers.
@@ -71,7 +68,7 @@ public sealed class PgDatum
     public T Read<T>(Func<PgDatum, T> converter)
     {
         ArgumentNullException.ThrowIfNull(converter);
-        _lifetime.Validate();
+        Lifetime.Validate();
         return converter(this);
     }
 
@@ -152,14 +149,14 @@ public sealed class PgDatum
     /// </remarks>
     public nuint DangerousGetBits()
     {
-        _lifetime.Validate();
-        return _bits;
+        Lifetime.Validate();
+        return UncheckedBits;
     }
 
     /// <summary>
     /// Gets the native Datum word without checking its owner, for a caller that has just validated the lifetime.
     /// </summary>
-    internal nuint UncheckedBits => _bits;
+    internal nuint UncheckedBits { get; }
 
     /// <summary>
     /// Copies the lifetime identity and raw word into an owned parameter envelope.
@@ -167,7 +164,7 @@ public sealed class PgDatum
     /// <returns>The raw native parameter with its SQL NULL flag.</returns>
     internal NativeValue ToNative()
     {
-        _lifetime.Validate();
-        return NativeValue.FromDatum(_bits, _lifetime.ContextId, _lifetime.Generation, IsNull);
+        Lifetime.Validate();
+        return NativeValue.FromDatum(UncheckedBits, Lifetime.ContextId, Lifetime.Generation, IsNull);
     }
 }

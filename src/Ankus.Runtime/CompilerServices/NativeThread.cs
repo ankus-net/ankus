@@ -11,9 +11,6 @@ namespace Ankus.CompilerServices;
 /// </remarks>
 internal sealed class NativeThread
 {
-    [ThreadStatic]
-    private static NativeThread? s_current;
-
     /// <summary>
     /// The active callback's native capability, or zero outside a callback.
     /// </summary>
@@ -47,12 +44,17 @@ internal sealed class NativeThread
     /// <summary>
     /// Gets this thread's state, or null before the thread first enters a callback or takes a lease.
     /// </summary>
-    internal static NativeThread? Current => s_current;
+    [field: ThreadStatic]
+    internal static NativeThread? Current
+    {
+        get;
+        private set;
+    }
 
     /// <summary>
     /// Gets this thread's state, creating it on first use.
     /// </summary>
-    internal static NativeThread Get() => s_current ??= new NativeThread();
+    internal static NativeThread Get() => Current ??= new NativeThread();
 
     /// <summary>
     /// Gets the failure of the innermost guarded scope when the current callback runs that scope's work, or null.

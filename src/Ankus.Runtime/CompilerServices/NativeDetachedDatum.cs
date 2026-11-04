@@ -18,11 +18,11 @@ public unsafe partial struct NativeValue
     {
         // The low bit marks a by-value word, and the next marks text that is not valid UTF-8.
         bool untranslatable = (_temporalInfinity & 2) != 0;
-        bool valid = IsDetachedDatum && _isNull == 0 && oid != 0 && unchecked((uint)_auxiliary2) == oid && _length >= 0 &&
+        bool valid = IsDetachedDatum && IsNull == 0 && oid != 0 && unchecked((uint)_auxiliary2) == oid && _length >= 0 &&
             (_length == 0 || _data != null) && (_temporalInfinity & ~2) switch
             {
                 1 => _length == 0,
-                0 => _integer is -1 or -2 || (_integer is > 0 and <= short.MaxValue && _integer == _length),
+                0 => Integral is -1 or -2 || (Integral is > 0 and <= short.MaxValue && Integral == _length),
                 _ => false,
             };
         if (!valid)
@@ -31,8 +31,8 @@ public unsafe partial struct NativeValue
         }
 
         return (_temporalInfinity & 1) != 0
-            ? new DetachedDatum(oid, _integer, untranslatable)
-            : new DetachedDatum(oid, (short)_integer, new ReadOnlySpan<byte>(_data, _length), untranslatable);
+            ? new DetachedDatum(oid, Integral, untranslatable)
+            : new DetachedDatum(oid, (short)Integral, new ReadOnlySpan<byte>(_data, _length), untranslatable);
     }
 
     /// <summary>
@@ -48,7 +48,7 @@ public unsafe partial struct NativeValue
             result._temporalInfinity |= 2;
         }
 
-        result._integer = value.Bits;
+        result.Integral = value.Bits;
         result._auxiliary1 = -9;
         result._auxiliary2 = unchecked((int)value.TypeOid);
         return result;

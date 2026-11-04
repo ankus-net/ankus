@@ -44,7 +44,7 @@ public sealed partial class SpiInterpolationAnalyzer : DiagnosticAnalyzer
 
             start.RegisterOperationBlockStartAction(block =>
             {
-                System.Collections.Concurrent.ConcurrentBag<IArgumentOperation> commands = new();
+                System.Collections.Concurrent.ConcurrentBag<IArgumentOperation> commands = [];
                 block.RegisterOperationAction(operation =>
                 {
                     var invocation = (IInvocationOperation)operation.Operation;

@@ -299,6 +299,34 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   On debian-dev, Linux x64, `runtime-build` and `runtime-pack` pass for both
   lines with every host-shutdown, signal-mask and host-signals check, and the
   RC3 fork's own probe suite passes all 30 steps.
+- A first Visual Studio build of a fresh clone failed with CS0006 in
+  `Ankus.Examples.Hello.Tests` and `Ankus.IntegrationTests`, which could not find
+  the Hello, Arrays, Notify and PglzInspect reference assemblies in `obj`. Before
+  binding generation, an editor's design-time build compiles Ankus.Build, the
+  runtime, the generators and the code fixes, and it passed Visual Studio's
+  `BuildingInsideVisualStudio` on to them. Under that property MSBuild only asks
+  project references for their paths, so Ankus.PgConfig, which Ankus.Build
+  references, never built, and each extension's design-time build failed with
+  CS0006 for its reference assembly. Visual Studio's up-to-date check takes a
+  project's outputs from its design-time build, so after that failure it could
+  count a sample that was never compiled as up to date and only copy its runtime
+  files. The dependency build now removes the property, so the tools build their
+  own references once, in the same configuration.
+  `FreshEditorLoadPreparesDependenciesAndCompilerOptions` gives the build tool a
+  project reference and loads once as Visual Studio does; before the fix that row
+  fails with the same CS0006. With Visual Studio 18.11.2 on Windows x64, a clone
+  with no `bin`, `obj` or `.vs` built all 72 projects without errors, deleting
+  those four samples' `obj` outputs rebuilt them without errors, and an unchanged
+  build found all 72 up to date. The repository also applies the IDE suggestions
+  reported at information severity where the fix keeps the build valid. Roslyn's
+  release tracking reads diagnostic descriptors only from field initializers, so
+  the 294 descriptor properties stay field-backed (IDE0032 would cause RS2002);
+  IDE0066's switch expressions for four discard switches have arms of different
+  types (CS8506); and `IsExternalInit` stays in `System.Runtime.CompilerServices`,
+  where the compiler looks for it (IDE0130). Those 299 are all that Visual Studio
+  and `dotnet format style --severity info` still report. On Linux x64 the
+  Release build has no warnings, and the complete suite passes against
+  PostgreSQL 18.6: 15,383 tests, 58 of them skipped as Windows or macOS only.
 - A row, composite or query cell keeps an exact copy of text that a SQL_ASCII
   database holds as bytes that are not valid UTF-8. Every cell read converted
   text to UTF-8 with `pg_server_to_any`, which raises for such bytes, so

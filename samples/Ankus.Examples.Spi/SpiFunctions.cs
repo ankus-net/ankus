@@ -5,7 +5,7 @@
     CREATE TABLE spi.foo ();
     """, Requires = ["spi.schema"])]
 
-namespace Ankus.Examples.SpiQueries;
+namespace Ankus.Examples.Spi;
 
 /// <summary>
 /// Ports pgrx's SPI example using owned results and parameterized commands.
@@ -19,7 +19,7 @@ public static class SpiFunctions
     /// <returns>Relation OIDs and names suffixed with the PostgreSQL major.</returns>
     [PgFunction]
     public static IEnumerable<(uint? Oid, string? Name)> SpiReturnQuery()
-        => Spi.Connect(static session => session.Select("""
+        => Ankus.Spi.Connect(static session => session.Select("""
             SELECT oid, relname::text || '-pg' || (current_setting('server_version_num')::integer / 10000)::text AS name
             FROM pg_catalog.pg_class
             """).Select(static row => (row.Get<uint?>("oid"), row.Get<string?>("name"))).ToArray());
@@ -30,7 +30,7 @@ public static class SpiFunctions
     /// <returns>A randomly selected identifier.</returns>
     [PgFunction]
     public static long? SpiQueryRandomId()
-        => Spi.ExecuteScalar<long?>("SELECT id FROM spi.spi_example ORDER BY random() LIMIT 1");
+        => Ankus.Spi.ExecuteScalar<long?>("SELECT id FROM spi.spi_example ORDER BY random() LIMIT 1");
 
     /// <summary>
     /// Finds a title using a separately bound value.
@@ -39,7 +39,7 @@ public static class SpiFunctions
     /// <returns>The first matching identifier, or null.</returns>
     [PgFunction]
     public static long? SpiQueryTitle(string title)
-        => Spi.ExecuteScalar<long?>(Spi.Sql($"SELECT id FROM spi.spi_example WHERE title = {title}"));
+        => Ankus.Spi.ExecuteScalar<long?>(Ankus.Spi.Sql($"SELECT id FROM spi.spi_example WHERE title = {title}"));
 
     /// <summary>
     /// Reads and logs an identifier while returning its independently owned title.
@@ -49,9 +49,9 @@ public static class SpiFunctions
     [PgFunction]
     public static string? SpiQueryById(long id)
     {
-        (long? foundId, string? title) = Spi.Connect(session =>
+        (long? foundId, string? title) = Ankus.Spi.Connect(session =>
         {
-            SpiResult rows = session.Select(Spi.Sql($"SELECT id, title FROM spi.spi_example WHERE id = {id}"));
+            SpiResult rows = session.Select(Ankus.Spi.Sql($"SELECT id, title FROM spi.spi_example WHERE id = {id}"));
             return rows.Count == 0 ? (null, null) : (rows[0].Get<long?>(0), rows[0].Get<string?>(1));
         });
         PgLog.Info(FormattableString.Invariant($"id={foundId}"));
@@ -65,7 +65,7 @@ public static class SpiFunctions
     /// <returns>The inserted identifier.</returns>
     [PgFunction]
     public static long? SpiInsertTitle(string title)
-        => Spi.ExecuteScalar<long?>(Spi.Sql($"INSERT INTO spi.spi_example(title) VALUES ({title}) RETURNING id"));
+        => Ankus.Spi.ExecuteScalar<long?>(Ankus.Spi.Sql($"INSERT INTO spi.spi_example(title) VALUES ({title}) RETURNING id"));
 
     /// <summary>
     /// Inserts a bound title and returns both columns as a one-row SQL table.
@@ -75,8 +75,8 @@ public static class SpiFunctions
     [PgFunction]
     public static IEnumerable<(long? Id, string? Title)> SpiInsertTitle2(string title)
     {
-        (long? id, string? insertedTitle) = Spi.ExecuteScalars<long?, string?>(
-            Spi.Sql($"INSERT INTO spi.spi_example(title) VALUES ({title}) RETURNING id, title"));
+        (long? id, string? insertedTitle) = Ankus.Spi.ExecuteScalars<long?, string?>(
+            Ankus.Spi.Sql($"INSERT INTO spi.spi_example(title) VALUES ({title}) RETURNING id, title"));
         return [(id, insertedTitle)];
     }
 
@@ -87,7 +87,7 @@ public static class SpiFunctions
     [PgFunction(Name = "issue1209_fixed")]
     public static string? DetachedCursorText()
     {
-        string?[] values = Spi.Connect(static session =>
+        string?[] values = Ankus.Spi.Connect(static session =>
         {
             using SpiCursor cursor = session.OpenCursor("SELECT 'hello'::text FROM generate_series(1, 10000)");
             return cursor.Fetch(10000).Select(static row => row.Get<string?>(0)).ToArray();

@@ -746,7 +746,7 @@ public sealed partial class PgFunctionGeneratorTests
         string project = Path.Join(AppContext.BaseDirectory, "mapping-project");
         var original = new SqlInput(Path.Join(project, "types.sql"), "SELECT 'original';");
         var changed = new SqlInput(original.Path, "SELECT 'changed';");
-        string Source(string name, string? schema) => "[assembly: Ankus.PgSqlFile(\"types\", \"types.sql\", Relocatable=true)]" +
+        static string Source(string name, string? schema) => "[assembly: Ankus.PgSqlFile(\"types\", \"types.sql\", Relocatable=true)]" +
             "[assembly: Ankus.PgSqlTypeProvider(\"types\", typeof(Value))]" + DatumMappingSource(external: false, name: name, schema: schema) +
             "public static class Functions { [Ankus.PgFunction] public static Value Read() => default; }";
         CSharpCompilation input = CSharpCompilation.Create("GeneratorTest", [CSharpSyntaxTree.ParseText(Source("first", null), cancellationToken: context.CancellationToken)], s_references,

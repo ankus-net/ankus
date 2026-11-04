@@ -18,7 +18,7 @@ public unsafe partial struct NativeValue
             return ReadMapped<PgRange<T>>();
         }
 
-        if (_isNull != 0 || _auxiliary1 != -2 || _data == null || _length < 8)
+        if (IsNull != 0 || _auxiliary1 != -2 || _data == null || _length < 8)
         {
             throw new InvalidOperationException("Invalid native range header.");
         }
@@ -127,7 +127,7 @@ public unsafe partial struct NativeValue
         {
             var bound = new NativeValue
             {
-                _integer = integral,
+                Integral = integral,
                 _auxiliary1 = BinaryPrimitives.ReadInt32BigEndian(header[8..]),
                 _auxiliary2 = BinaryPrimitives.ReadInt32BigEndian(header[12..]),
                 _temporalInfinity = BinaryPrimitives.ReadInt32BigEndian(header[16..]),
@@ -146,7 +146,7 @@ public unsafe partial struct NativeValue
         try
         {
             Span<byte> header = buffer.GetSpan(28);
-            BinaryPrimitives.WriteInt64BigEndian(header, bound._integer);
+            BinaryPrimitives.WriteInt64BigEndian(header, bound.Integral);
             BinaryPrimitives.WriteInt32BigEndian(header[8..], bound._auxiliary1);
             BinaryPrimitives.WriteInt32BigEndian(header[12..], bound._auxiliary2);
             BinaryPrimitives.WriteInt32BigEndian(header[16..], bound._temporalInfinity);

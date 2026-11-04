@@ -14,7 +14,6 @@ internal sealed class NativeBorrowedBuffer : IDisposable
     private readonly PgDatum _datum;
     private readonly nint _data;
     private readonly NativeBufferKind _kind;
-    private bool _released;
 
     /// <summary>
     /// Borrows a present bytea, text or C-string datum: a flat value in place, otherwise under a private child of its
@@ -55,7 +54,11 @@ internal sealed class NativeBorrowedBuffer : IDisposable
     /// <summary>
     /// Gets whether the view has been disposed.
     /// </summary>
-    internal bool IsReleased => _released;
+    internal bool IsReleased
+    {
+        get;
+        private set;
+    }
 
     /// <summary>
     /// Gets the copied payload length in bytes.
@@ -84,7 +87,7 @@ internal sealed class NativeBorrowedBuffer : IDisposable
     /// </summary>
     internal void Validate()
     {
-        ObjectDisposedException.ThrowIf(_released, this);
+        ObjectDisposedException.ThrowIf(IsReleased, this);
         _datum.Lifetime.Validate();
     }
 
@@ -118,7 +121,7 @@ internal sealed class NativeBorrowedBuffer : IDisposable
             _datum.Lifetime.Scope?.Unregister(this);
         }
 
-        _released = true;
+        IsReleased = true;
     }
 
     /// <summary>

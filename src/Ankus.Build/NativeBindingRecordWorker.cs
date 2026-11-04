@@ -94,40 +94,38 @@ internal static class NativeBindingRecordWorker
         start.ArgumentList.Add(typeof(NativeBindingRecordWorker).Assembly.Location);
         start.ArgumentList.Add(command);
         start.ArgumentList.Add(input);
-        await using (FileStream observations = File.Create(output))
+        await using FileStream observations = File.Create(output);
+        using Process process = Process.Start(start) ?? throw new InvalidOperationException($"Cannot start {description}.");
+        using var errors = new MemoryStream();
+        Task copy = NativeBindingHeaderCommand.CopyAsync(process.StandardOutput.BaseStream, observations, 512 * 1024 * 1024, cancellationToken);
+        Task diagnostics = NativeBindingHeaderCommand.CopyAsync(process.StandardError.BaseStream, errors, 4 * 1024 * 1024, cancellationToken);
+        Task exit = process.WaitForExitAsync(cancellationToken);
+        try
         {
-            using Process process = Process.Start(start) ?? throw new InvalidOperationException($"Cannot start {description}.");
-            using var errors = new MemoryStream();
-            Task copy = NativeBindingHeaderCommand.CopyAsync(process.StandardOutput.BaseStream, observations, 512 * 1024 * 1024, cancellationToken);
-            Task diagnostics = NativeBindingHeaderCommand.CopyAsync(process.StandardError.BaseStream, errors, 4 * 1024 * 1024, cancellationToken);
-            Task exit = process.WaitForExitAsync(cancellationToken);
-            try
+            // Observe either stream's bound/cancellation failure before waiting indefinitely for native parsing.
+            var pending = new List<Task> { copy, diagnostics, exit };
+            while (pending.Count != 0)
             {
-                // Observe either stream's bound/cancellation failure before waiting indefinitely for native parsing.
-                var pending = new List<Task> { copy, diagnostics, exit };
-                while (pending.Count != 0)
-                {
-                    Task completed = await Task.WhenAny(pending);
-                    await completed;
-                    pending.Remove(completed);
-                }
-
-                if (process.ExitCode != 0)
-                {
-                    throw new InvalidOperationException($"{description} exited with {process.ExitCode}: {System.Text.Encoding.UTF8.GetString(errors.ToArray())}");
-                }
+                Task completed = await Task.WhenAny(pending);
+                await completed;
+                pending.Remove(completed);
             }
-            catch
+
+            if (process.ExitCode != 0)
             {
-                if (!process.HasExited)
-                {
-                    process.Kill(entireProcessTree: true);
-                }
-
-                await process.WaitForExitAsync(CancellationToken.None);
-                await Task.WhenAll(copy, diagnostics);
-                throw;
+                throw new InvalidOperationException($"{description} exited with {process.ExitCode}: {System.Text.Encoding.UTF8.GetString(errors.ToArray())}");
             }
+        }
+        catch
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+
+            await process.WaitForExitAsync(CancellationToken.None);
+            await Task.WhenAll(copy, diagnostics);
+            throw;
         }
     }
 

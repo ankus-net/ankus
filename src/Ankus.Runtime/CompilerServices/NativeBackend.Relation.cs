@@ -11,7 +11,7 @@ public static partial class NativeBackend
         bool missingOk = false, nint pointer = 0)
     {
         CheckAccess();
-        var relation = new PgRelation(s_execute, operation != 3);
+        var relation = new PgRelation(CleanupBinding, operation != 3);
         var request = new NativeSpiRequest
         {
             _operation = SpiOperation.Relation,

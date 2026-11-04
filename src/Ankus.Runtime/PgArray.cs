@@ -21,7 +21,6 @@ public sealed class PgArray<T> : IReadOnlyList<T>, IPgArray
     private readonly int[] _lengths;
     private readonly int[] _lowerBounds;
     private readonly uint _elementOid;
-    private readonly uint _elementBaseOid;
 
     /// <summary>
     /// Takes ownership of validated materialized elements and shape without copying them again.
@@ -36,7 +35,7 @@ public sealed class PgArray<T> : IReadOnlyList<T>, IPgArray
         _lengths = shape.Lengths;
         _lowerBounds = shape.LowerBounds;
         _elementOid = elementOid;
-        _elementBaseOid = elementBaseOid;
+        ElementBaseTypeOid = elementBaseOid;
     }
 
     /// <summary>
@@ -99,7 +98,7 @@ public sealed class PgArray<T> : IReadOnlyList<T>, IPgArray
     /// <summary>
     /// Gets the heap tuple identity underlying a composite domain element, or the declared element type.
     /// </summary>
-    internal uint ElementBaseTypeOid => _elementBaseOid != 0 ? _elementBaseOid : ElementTypeOid;
+    internal uint ElementBaseTypeOid => field != 0 ? field : ElementTypeOid;
 
     /// <summary>
     /// Gets the dimension lengths without exposing mutable storage.

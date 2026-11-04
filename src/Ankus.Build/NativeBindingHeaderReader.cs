@@ -176,7 +176,7 @@ internal sealed unsafe class NativeBindingHeaderReader(NativeClang library, Nati
         bool constant = TypeFlag(type, "clang_isConstQualifiedType") ||
             type.Kind is 112 or 114 && TypeFlag(library.Transform(type, "clang_getArrayElementType"), "clang_isConstQualifiedType");
         NativeCType converted = Convert(type, cursor);
-        AstValue? value = null;
+        AstValue? value;
         if (Integer(canonical))
         {
             value = Evaluate(cursor, AstValueKind.Integer);

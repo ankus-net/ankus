@@ -150,11 +150,11 @@ public unsafe partial struct NativeValue
                 }
 
                 Span<byte> header = buffer.GetSpan(28);
-                BinaryPrimitives.WriteInt64BigEndian(header, item._integer);
+                BinaryPrimitives.WriteInt64BigEndian(header, item.Integral);
                 BinaryPrimitives.WriteInt32BigEndian(header[8..], item._auxiliary1);
                 BinaryPrimitives.WriteInt32BigEndian(header[12..], item._auxiliary2);
                 BinaryPrimitives.WriteInt32BigEndian(header[16..], item._temporalInfinity);
-                BinaryPrimitives.WriteInt32BigEndian(header[20..], item._isNull);
+                BinaryPrimitives.WriteInt32BigEndian(header[20..], item.IsNull);
                 BinaryPrimitives.WriteInt32BigEndian(header[24..], item._length);
                 buffer.Advance(28);
                 buffer.Write(new ReadOnlySpan<byte>(item._data, item._length));
@@ -171,7 +171,7 @@ public unsafe partial struct NativeValue
             PgEnumRegistry.FindArray(value.GetType()) is null ? 0 : 1;
         if (value is PgArray<PgHeapTuple> tuples)
         {
-            result._integer = tuples.ElementBaseTypeOid;
+            result.Integral = tuples.ElementBaseTypeOid;
         }
 
         return result;
@@ -179,7 +179,7 @@ public unsafe partial struct NativeValue
 
     private readonly uint ReadArrayElementOid()
     {
-        if (!IsArray || _isNull != 0 || _data == null || _length < 12)
+        if (!IsArray || IsNull != 0 || _data == null || _length < 12)
         {
             throw new InvalidOperationException("Invalid native array header.");
         }
@@ -189,7 +189,7 @@ public unsafe partial struct NativeValue
         {
             _ = SpiArray.ArrayOid(oid);
         }
-        else if (_auxiliary2 is not 1 and not 2 and not 3 || oid == 0 || (_auxiliary2 == 2 && _integer is < 0 or > uint.MaxValue))
+        else if (_auxiliary2 is not 1 and not 2 and not 3 || oid == 0 || (_auxiliary2 == 2 && Integral is < 0 or > uint.MaxValue))
         {
             throw new InvalidOperationException("Invalid array element conversion discriminator.");
         }
@@ -217,7 +217,7 @@ public unsafe partial struct NativeValue
     private readonly PgArray<T> ReadArrayDataCore<T>(uint oid, EnumMapping? enumeration)
     {
         T[] values = ReadArrayValues<T>(oid, enumeration, vector: false, out int[] lengths, out int[] bounds);
-        uint baseOid = _auxiliary2 == 2 && _integer != 0 ? (uint)_integer : oid;
+        uint baseOid = _auxiliary2 == 2 && Integral != 0 ? (uint)Integral : oid;
         return new PgArray<T>(values, (lengths, bounds), _auxiliary2 == 2 ? oid : 0, _auxiliary2 == 2 ? baseOid : 0);
     }
 
@@ -431,7 +431,7 @@ public unsafe partial struct NativeValue
     /// </summary>
     private readonly void ReadArrayElements<T>(T[] values, ReadOnlySpan<byte> data, int offset, uint oid, EnumMapping? enumeration)
     {
-        uint baseOid = _auxiliary2 == 2 && _integer != 0 ? (uint)_integer : oid;
+        uint baseOid = _auxiliary2 == 2 && Integral != 0 ? (uint)Integral : oid;
         // A scalar element of the requested type needs none of the mapped-array checks a general conversion makes.
         for (int index = 0; index < values.Length; index++)
         {
@@ -450,11 +450,11 @@ public unsafe partial struct NativeValue
 
             var item = new NativeValue
             {
-                _integer = BinaryPrimitives.ReadInt64BigEndian(header),
+                Integral = BinaryPrimitives.ReadInt64BigEndian(header),
                 _auxiliary1 = BinaryPrimitives.ReadInt32BigEndian(header[8..]),
                 _auxiliary2 = BinaryPrimitives.ReadInt32BigEndian(header[12..]),
                 _temporalInfinity = BinaryPrimitives.ReadInt32BigEndian(header[16..]),
-                _isNull = (byte)isNull,
+                IsNull = (byte)isNull,
                 _length = length,
                 _data = _data + offset + 28,
             };

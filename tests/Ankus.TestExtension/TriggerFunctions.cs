@@ -509,16 +509,19 @@ public static class TriggerFunctions
     /// </summary>
     private sealed class CleanupEnumerator(string name, bool fail) : IEnumerator<int>
     {
-        private int _current;
         private bool _disposed;
 
         /// <inheritdoc />
-        public int Current => _current;
+        public int Current
+        {
+            get;
+            private set;
+        }
 
         object System.Collections.IEnumerator.Current => Current;
 
         /// <inheritdoc />
-        public bool MoveNext() => ++_current <= 3;
+        public bool MoveNext() => ++Current <= 3;
 
         /// <inheritdoc />
         public void Reset() => throw new NotSupportedException();

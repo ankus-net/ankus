@@ -47,8 +47,8 @@ public sealed class PgNetworkTests
         Assert.AreEqual(new PgInet(IPAddress.Parse("::ffff:192.0.2.1")).GetHashCode(), value.GetHashCode());
         Assert.AreEqual("0.0.0.0/0", default(PgInet).ToString());
         Assert.AreEqual("0.0.0.0/0", default(PgCidr).ToString());
-        Assert.AreEqual(default(PgInet), new PgInet(IPAddress.Any, 0));
-        Assert.AreEqual(default(PgCidr), new PgCidr(default(IPNetwork)));
+        Assert.AreEqual(default, new PgInet(IPAddress.Any, 0));
+        Assert.AreEqual(default, new PgCidr(default(IPNetwork)));
     }
 
     /// <summary>

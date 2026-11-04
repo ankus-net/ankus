@@ -169,7 +169,7 @@ public unsafe partial struct NativeValue
 
             NativeValue result = FromBytes(buffer.WrittenSpan);
             result._auxiliary1 = -4;
-            result._integer = value.Descriptor.BaseTypeOid;
+            result.Integral = value.Descriptor.BaseTypeOid;
             return result;
         }
         finally
@@ -221,7 +221,7 @@ public unsafe partial struct NativeValue
     private readonly PgTupleDescriptor ReadTupleDescriptor(bool physicalMetadata, out object?[] values,
         PgTupleDescriptor? expected = null)
     {
-        if (!IsTuple || _auxiliary2 != 0 || _isNull != 0 || _data == null || _length < 12)
+        if (!IsTuple || _auxiliary2 != 0 || IsNull != 0 || _data == null || _length < 12)
         {
             throw new InvalidOperationException("Invalid native tuple header.");
         }
@@ -230,13 +230,13 @@ public unsafe partial struct NativeValue
         uint oid = BinaryPrimitives.ReadUInt32BigEndian(data);
         int typeModifier = BinaryPrimitives.ReadInt32BigEndian(data[4..]);
         int count = BinaryPrimitives.ReadInt32BigEndian(data[8..]);
-        if ((oid == 0 && (!physicalMetadata || _integer != 0 || typeModifier != -1)) ||
-            _integer is < 0 or > uint.MaxValue || count is < 0 or > 1664 || 12L + count * 52L > data.Length)
+        if ((oid == 0 && (!physicalMetadata || Integral != 0 || typeModifier != -1)) ||
+            Integral is < 0 or > uint.MaxValue || count is < 0 or > 1664 || 12L + count * 52L > data.Length)
         {
             throw new InvalidOperationException("Invalid native tuple identity or attribute count.");
         }
 
-        uint baseTypeOid = _integer == 0 ? oid : (uint)_integer;
+        uint baseTypeOid = Integral == 0 ? oid : (uint)Integral;
         bool reuse = expected is not null && expected.TypeOid == oid && expected.TypeModifier == typeModifier &&
             expected.BaseTypeOid == baseTypeOid && expected.AttributeSpan.Length == count;
         PgTupleAttributeInfo[]? attributes = reuse ? null : new PgTupleAttributeInfo[count];
@@ -344,11 +344,11 @@ public unsafe partial struct NativeValue
 
         var result = new NativeValue
         {
-            _integer = BinaryPrimitives.ReadInt64BigEndian(header),
+            Integral = BinaryPrimitives.ReadInt64BigEndian(header),
             _auxiliary1 = BinaryPrimitives.ReadInt32BigEndian(header[8..]),
             _auxiliary2 = BinaryPrimitives.ReadInt32BigEndian(header[12..]),
             _temporalInfinity = BinaryPrimitives.ReadInt32BigEndian(header[16..]),
-            _isNull = (byte)isNull,
+            IsNull = (byte)isNull,
             _length = length,
             _data = _data + offset + 28,
         };
@@ -361,11 +361,11 @@ public unsafe partial struct NativeValue
     {
         EnsureContainerCapacity(buffer, 28L + item._length);
         Span<byte> header = buffer.GetSpan(28);
-        BinaryPrimitives.WriteInt64BigEndian(header, item._integer);
+        BinaryPrimitives.WriteInt64BigEndian(header, item.Integral);
         BinaryPrimitives.WriteInt32BigEndian(header[8..], item._auxiliary1);
         BinaryPrimitives.WriteInt32BigEndian(header[12..], item._auxiliary2);
         BinaryPrimitives.WriteInt32BigEndian(header[16..], item._temporalInfinity);
-        BinaryPrimitives.WriteInt32BigEndian(header[20..], item._isNull);
+        BinaryPrimitives.WriteInt32BigEndian(header[20..], item.IsNull);
         BinaryPrimitives.WriteInt32BigEndian(header[24..], item._length);
         buffer.Advance(28);
         buffer.Write(new ReadOnlySpan<byte>(item._data, item._length));
