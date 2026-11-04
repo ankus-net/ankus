@@ -13,6 +13,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../Ankus.Runtime/CompilerServices/SpiSqlTokenLayout.cs" Link="CompilerServices/SpiSqlTokenLayout.cs" />
+    <Compile Include="../Common/System/Runtime/CompilerServices/IsExternalInit.cs" Link="Common/System/Runtime/CompilerServices/IsExternalInit.cs" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
     <ProjectReference Include="../Ankus.CodeFixes/Ankus.CodeFixes.csproj" ReferenceOutputAssembly="false" PrivateAssets="all"
                       GlobalPropertiesToRemove="RuntimeIdentifier;SelfContained" />

@@ -201,80 +201,33 @@ public static class TemporalParityFunctions
             {
                 PgTransaction.RunInSubtransaction(() =>
                 {
-                    switch (operation)
+                    _ = (object?)(operation switch
                     {
-                        case "zone":
-                            _ = PgTimeZone.GetOffset("Unknown/ParityZone");
-                            break;
-                        case "zone-empty":
-                            _ = PgTimeZone.GetOffset("");
-                            break;
-                        case "zone-space":
-                            _ = PgTimeZone.GetOffset(" ");
-                            break;
-                        case "zone-nul":
-                            _ = PgTimeZone.GetOffset("UT\0C");
-                            break;
-                        case "zone-encoding":
-                            _ = PgTimeZone.GetOffset("\uD800");
-                            break;
-                        case "zone-instant":
-                            _ = PgTimeZone.GetOffset("Unknown/ParityZone", new PgTimestampTz(0));
-                            break;
-                        case "zone-positive-infinity":
-                            _ = PgTimeZone.GetOffset("UTC", PgTimestampTz.PositiveInfinity);
-                            break;
-                        case "zone-negative-infinity":
-                            _ = PgTimeZone.GetOffset("UTC", PgTimestampTz.NegativeInfinity);
-                            break;
-                        case "named-time":
-                            _ = PgTimeTz.Create(12, 34, 56.123456, "Unknown/ParityZone");
-                            break;
-                        case "named-time-offset":
-                            _ = PgTimeTz.Create(12, 34, 56.123456, "UTC+20");
-                            break;
-                        case "timestamp-month":
-                            _ = new PgTimestamp(0).AtTimeZone(PgInterval.FromMonths(1));
-                            break;
-                        case "timestamp-day":
-                            _ = new PgTimestamp(0).AtTimeZone(PgInterval.FromDays(1));
-                            break;
-                        case "timestamp-infinite":
-                            _ = new PgTimestamp(0).AtTimeZone(PgInterval.PositiveInfinity);
-                            break;
-                        case "instant-month":
-                            _ = new PgTimestampTz(0).AtTimeZone(PgInterval.FromMonths(1));
-                            break;
-                        case "instant-day":
-                            _ = new PgTimestampTz(0).AtTimeZone(PgInterval.FromDays(1));
-                            break;
-                        case "instant-infinite":
-                            _ = new PgTimestampTz(0).AtTimeZone(PgInterval.NegativeInfinity);
-                            break;
-                        case "time-month":
-                            _ = new PgTimeTz(default, 0).AtTimeZone(PgInterval.FromMonths(1));
-                            break;
-                        case "time-day":
-                            _ = new PgTimeTz(default, 0).AtTimeZone(PgInterval.FromDays(1));
-                            break;
-                        case "time-infinite":
-                            _ = new PgTimeTz(default, 0).AtTimeZone(PgInterval.PositiveInfinity);
-                            break;
-                        case "time-offset":
-                            _ = new PgTimeTz(default, 0).AtTimeZone(PgInterval.FromHours(16));
-                            break;
-                        case "time-offset-negative":
-                            _ = new PgTimeTz(default, 0).AtTimeZone(PgInterval.FromHours(-16));
-                            break;
-                        case "timestamp-range":
-                            _ = PgTimestamp.Parse("294276-12-31 23:59:59.999999").AtTimeZone(PgInterval.FromHours(-1));
-                            break;
-                        case "instant-range":
-                            _ = PgTimestampTz.Parse("294276-12-31 23:59:59.999999+00").AtTimeZone(PgInterval.FromHours(1));
-                            break;
-                        default:
-                            throw new ArgumentException("Unknown temporal operation.", nameof(operation));
-                    }
+                        "zone" => PgTimeZone.GetOffset("Unknown/ParityZone"),
+                        "zone-empty" => PgTimeZone.GetOffset(""),
+                        "zone-space" => PgTimeZone.GetOffset(" "),
+                        "zone-nul" => PgTimeZone.GetOffset("UT\0C"),
+                        "zone-encoding" => PgTimeZone.GetOffset("\uD800"),
+                        "zone-instant" => PgTimeZone.GetOffset("Unknown/ParityZone", new PgTimestampTz(0)),
+                        "zone-positive-infinity" => PgTimeZone.GetOffset("UTC", PgTimestampTz.PositiveInfinity),
+                        "zone-negative-infinity" => PgTimeZone.GetOffset("UTC", PgTimestampTz.NegativeInfinity),
+                        "named-time" => PgTimeTz.Create(12, 34, 56.123456, "Unknown/ParityZone"),
+                        "named-time-offset" => PgTimeTz.Create(12, 34, 56.123456, "UTC+20"),
+                        "timestamp-month" => new PgTimestamp(0).AtTimeZone(PgInterval.FromMonths(1)),
+                        "timestamp-day" => new PgTimestamp(0).AtTimeZone(PgInterval.FromDays(1)),
+                        "timestamp-infinite" => new PgTimestamp(0).AtTimeZone(PgInterval.PositiveInfinity),
+                        "instant-month" => new PgTimestampTz(0).AtTimeZone(PgInterval.FromMonths(1)),
+                        "instant-day" => new PgTimestampTz(0).AtTimeZone(PgInterval.FromDays(1)),
+                        "instant-infinite" => new PgTimestampTz(0).AtTimeZone(PgInterval.NegativeInfinity),
+                        "time-month" => new PgTimeTz(default, 0).AtTimeZone(PgInterval.FromMonths(1)),
+                        "time-day" => new PgTimeTz(default, 0).AtTimeZone(PgInterval.FromDays(1)),
+                        "time-infinite" => new PgTimeTz(default, 0).AtTimeZone(PgInterval.PositiveInfinity),
+                        "time-offset" => new PgTimeTz(default, 0).AtTimeZone(PgInterval.FromHours(16)),
+                        "time-offset-negative" => new PgTimeTz(default, 0).AtTimeZone(PgInterval.FromHours(-16)),
+                        "timestamp-range" => PgTimestamp.Parse("294276-12-31 23:59:59.999999").AtTimeZone(PgInterval.FromHours(-1)),
+                        "instant-range" => PgTimestampTz.Parse("294276-12-31 23:59:59.999999+00").AtTimeZone(PgInterval.FromHours(1)),
+                        _ => throw new ArgumentException("Unknown temporal operation.", nameof(operation)),
+                    });
                 });
             }
             catch (PgException error)

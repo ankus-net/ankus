@@ -125,7 +125,7 @@ internal static class GucPipeline
             if (!names.Add(GucDeclaration.Fold(model.Name)))
             {
                 GeneratorDiagnostics diagnostics = context;
-                diagnostics.Report(GucDeclarationDiagnostics.DuplicateName, analysis.Location?.Resolve(compilation), model.Name);
+                diagnostics.Report(GucDeclarationDiagnostics.s_duplicateName, analysis.Location?.Resolve(compilation), model.Name);
                 continue;
             }
 

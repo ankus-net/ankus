@@ -201,14 +201,14 @@ internal sealed class AggregateDeclaration(INamedTypeSymbol type, AttributeData 
         AttributeData? inheritedSchema = null;
         if (type.TypeKind is not (TypeKind.Class or TypeKind.Struct))
         {
-            return Invalid(AggregateDiagnostics.Container, type.Locations.FirstOrDefault());
+            return Invalid(AggregateDiagnostics.s_container, type.Locations.FirstOrDefault());
         }
 
         foreach (INamedTypeSymbol container in TypeNesting.SelfAndContainers(type))
         {
             if (container.IsGenericType || container.IsFileLocal || container.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal))
             {
-                return Invalid(AggregateDiagnostics.Container, container.Locations.FirstOrDefault());
+                return Invalid(AggregateDiagnostics.s_container, container.Locations.FirstOrDefault());
             }
 
             // The nearest container schema applies, including a missing or null argument while the attribute is being typed.
@@ -222,33 +222,33 @@ internal sealed class AggregateDeclaration(INamedTypeSymbol type, AttributeData 
 
         if (!SqlText.IsIdentifier(aggregate.Name))
         {
-            return Invalid(AggregateDiagnostics.Name, Option("Name"));
+            return Invalid(AggregateDiagnostics.s_name, Option("Name"));
         }
 
         if ((aggregate.Schema is not null || inheritedSchema is not null) && !SqlText.IsIdentifier(aggregate.Schema))
         {
-            return Invalid(FunctionDeclarationDiagnostics.Schema, inheritedSchema is null ? Option("Schema") :
+            return Invalid(FunctionDeclarationDiagnostics.s_schema, inheritedSchema is null ? Option("Schema") :
                 FunctionDeclarationDiagnostics.ConstructorArgument(inheritedSchema, context.CancellationToken));
         }
 
         if (aggregate.Kind is < 0 or > 2)
         {
-            return Invalid(AggregateDiagnostics.ExecutionOption, Option("Kind"), "Kind", "PgAggregateKind");
+            return Invalid(AggregateDiagnostics.s_executionOption, Option("Kind"), "Kind", "PgAggregateKind");
         }
 
         if (aggregate.Parallel is < 0 or > 2)
         {
-            return Invalid(AggregateDiagnostics.ExecutionOption, Option("ParallelSafety"), "ParallelSafety", "PgParallelSafety");
+            return Invalid(AggregateDiagnostics.s_executionOption, Option("ParallelSafety"), "ParallelSafety", "PgParallelSafety");
         }
 
         if (aggregate.FinalModify is < 0 or > 3)
         {
-            return Invalid(AggregateDiagnostics.ExecutionOption, Option("FinalModify"), "FinalModify", "PgAggregateFinalModify");
+            return Invalid(AggregateDiagnostics.s_executionOption, Option("FinalModify"), "FinalModify", "PgAggregateFinalModify");
         }
 
         if (aggregate.MovingFinalModify is < 0 or > 3)
         {
-            return Invalid(AggregateDiagnostics.ExecutionOption, Option("MovingFinalModify"), "MovingFinalModify", "PgAggregateFinalModify");
+            return Invalid(AggregateDiagnostics.s_executionOption, Option("MovingFinalModify"), "MovingFinalModify", "PgAggregateFinalModify");
         }
 
         aggregate.FinalModify = aggregate.FinalModify == 0 ? (aggregate.Kind == 0 ? 1 : 3) : aggregate.FinalModify;
@@ -257,7 +257,7 @@ internal sealed class AggregateDeclaration(INamedTypeSymbol type, AttributeData 
             aggregate.MovingInitial is not null && !SqlText.IsText(aggregate.MovingInitial))
         {
             string option = aggregate.Initial is not null && !SqlText.IsText(aggregate.Initial) ? "InitialCondition" : "MovingInitialCondition";
-            return Invalid(AggregateDiagnostics.InitialText, Option(option), option);
+            return Invalid(AggregateDiagnostics.s_initialText, Option(option), option);
         }
 
         if (!AggregateContract.Interfaces(type).Any(static capability => capability.Name == "IPgAggregate"))
@@ -274,7 +274,7 @@ internal sealed class AggregateDeclaration(INamedTypeSymbol type, AttributeData 
         AggregateHelper transition = aggregate.Helpers["Transition"];
         if (transition.Types.Length == 0 || !transition.Result.Matches(transition.Types[0]) || transition.Result.Sql == "record")
         {
-            return Invalid(AggregateDiagnostics.TransitionState, Result(transition));
+            return Invalid(AggregateDiagnostics.s_transitionState, Result(transition));
         }
 
         AggregateType state = transition.Result;
@@ -285,7 +285,7 @@ internal sealed class AggregateDeclaration(INamedTypeSymbol type, AttributeData 
             int directCount = final.Types.Length - 1 - (aggregate.FinalExtra ? inputs.Length : 0);
             if (directCount < 0 || !final.Types[0].Matches(state))
             {
-                return Invalid(AggregateDiagnostics.FinalState, final.Method.Parameters[1].Locations.FirstOrDefault());
+                return Invalid(AggregateDiagnostics.s_finalState, final.Method.Parameters[1].Locations.FirstOrDefault());
             }
 
             aggregate.Direct = [.. final.Types.Skip(1).Take(directCount)];
@@ -293,47 +293,47 @@ internal sealed class AggregateDeclaration(INamedTypeSymbol type, AttributeData 
 
         if (aggregate.Kind == 0 && aggregate.Direct.Length != 0)
         {
-            return Invalid(AggregateDiagnostics.DirectArguments, final!.Method.Parameters[2].Locations.FirstOrDefault());
+            return Invalid(AggregateDiagnostics.s_directArguments, final!.Method.Parameters[2].Locations.FirstOrDefault());
         }
 
         if (aggregate.Kind != 0 && inputs.Length == 0)
         {
-            return Invalid(AggregateDiagnostics.MissingInputs, transition.Method.Parameters[2].Locations.FirstOrDefault());
+            return Invalid(AggregateDiagnostics.s_missingInputs, transition.Method.Parameters[2].Locations.FirstOrDefault());
         }
 
         if (aggregate.Direct.Length + inputs.Length > 99)
         {
-            return Invalid(AggregateDiagnostics.ArgumentCount, type.Locations.FirstOrDefault());
+            return Invalid(AggregateDiagnostics.s_argumentCount, type.Locations.FirstOrDefault());
         }
 
         if (inputs.Any(static value => value.IsInternal) || aggregate.Direct.Any(static value => value.IsInternal))
         {
             AggregateHelper helper = inputs.Any(static value => value.IsInternal) ? transition : final!;
-            return Invalid(AggregateDiagnostics.InternalInput, helper.Method.Parameters[2].Locations.FirstOrDefault());
+            return Invalid(AggregateDiagnostics.s_internalInput, helper.Method.Parameters[2].Locations.FirstOrDefault());
         }
 
         string[] argumentNames = [.. (final?.Parameters.Skip(1).Take(aggregate.Direct.Length) ?? []).Concat(transition.Parameters.Skip(1))
             .Select(static parameter => parameter.Name)];
         if (argumentNames.Distinct(StringComparer.Ordinal).Count() != argumentNames.Length)
         {
-            return Invalid(AggregateDiagnostics.DuplicateNames, final?.Method.Parameters[2].Locations.FirstOrDefault());
+            return Invalid(AggregateDiagnostics.s_duplicateNames, final?.Method.Parameters[2].Locations.FirstOrDefault());
         }
 
         if (state.IsInternal && (final is null || final.Result.IsInternal) || final?.Result.IsInternal == true)
         {
-            return Invalid(AggregateDiagnostics.InternalResult, Result(final ?? transition));
+            return Invalid(AggregateDiagnostics.s_internalResult, Result(final ?? transition));
         }
 
         bool hasPolymorphicInput = aggregate.Direct.Concat(inputs).Any(static input => input.Datum?.IsSqlPolymorphic == true);
         if (!hasPolymorphicInput && (state.Datum?.IsSqlPolymorphic == true || final?.Result.Datum?.IsSqlPolymorphic == true))
         {
-            return Invalid(AggregateDiagnostics.PolymorphicState, Result(state.Datum?.IsSqlPolymorphic == true ? transition : final!));
+            return Invalid(AggregateDiagnostics.s_polymorphicState, Result(state.Datum?.IsSqlPolymorphic == true ? transition : final!));
         }
 
         if (aggregate.Kind == 2 && (aggregate.Direct.Length < inputs.Length ||
             !aggregate.Direct.Skip(aggregate.Direct.Length - inputs.Length).Zip(inputs, static (left, right) => left.Matches(right)).All(static same => same)))
         {
-            return Invalid(AggregateDiagnostics.HypotheticalArguments, final?.Method.Parameters[2].Locations.FirstOrDefault());
+            return Invalid(AggregateDiagnostics.s_hypotheticalArguments, final?.Method.Parameters[2].Locations.FirstOrDefault());
         }
 
         if (!ValidateTransition(transition, aggregate.Initial) || !ValidateFinal(final, state, aggregate.FinalExtra))
@@ -347,7 +347,7 @@ internal sealed class AggregateDeclaration(INamedTypeSymbol type, AttributeData 
             AttributeValues.Get(attribute, "MovingStateSize", 0) != 0))
         {
             aggregate.Helpers.TryGetValue("MovingFinal", out AggregateHelper? missingMovingFinal);
-            return Invalid(AggregateDiagnostics.MovingCapability, aggregate.MovingInitial is not null ? Option("MovingInitialCondition") :
+            return Invalid(AggregateDiagnostics.s_movingCapability, aggregate.MovingInitial is not null ? Option("MovingInitialCondition") :
                 AttributeValues.Get(attribute, "MovingStateSize", 0) != 0 ? Option("MovingStateSize") :
                 missingMovingFinal?.Method.Locations.FirstOrDefault());
         }
@@ -356,35 +356,35 @@ internal sealed class AggregateDeclaration(INamedTypeSymbol type, AttributeData 
         {
             if (!hasPolymorphicInput && moving!.Result.Datum?.IsSqlPolymorphic == true)
             {
-                return Invalid(AggregateDiagnostics.PolymorphicState, Result(moving));
+                return Invalid(AggregateDiagnostics.s_polymorphicState, Result(moving));
             }
 
             if (!moving!.Result.Matches(moving.Types[0]) || moving.Result.Sql == "record")
             {
-                return Invalid(AggregateDiagnostics.MovingState, Result(moving));
+                return Invalid(AggregateDiagnostics.s_movingState, Result(moving));
             }
 
             if (moving.Types.Length != transition.Types.Length ||
                 !moving.Types.Skip(1).Zip(inputs, static (left, right) => left.Matches(right)).All(static same => same))
             {
-                return Invalid(AggregateDiagnostics.MovingInputs, moving.Method.Parameters[2].Locations.FirstOrDefault());
+                return Invalid(AggregateDiagnostics.s_movingInputs, moving.Method.Parameters[2].Locations.FirstOrDefault());
             }
 
             if (inverse!.Types.Length != moving.Types.Length || !inverse.Result.Matches(moving.Result) ||
                 !inverse.Types.Zip(moving.Types, static (left, right) => left.Matches(right)).All(static same => same))
             {
-                return Invalid(AggregateDiagnostics.InverseState, Result(inverse));
+                return Invalid(AggregateDiagnostics.s_inverseState, Result(inverse));
             }
 
             if (inverse.Declaration.Strict != moving.Declaration.Strict)
             {
-                return Invalid(AggregateDiagnostics.InverseStrictness, inverse.Method.Locations.FirstOrDefault());
+                return Invalid(AggregateDiagnostics.s_inverseStrictness, inverse.Method.Locations.FirstOrDefault());
             }
 
             AggregateHelper? movingFinal = aggregate.Helpers.TryGetValue("MovingFinal", out AggregateHelper? selected) ? selected : null;
             if (!(movingFinal?.Result ?? moving.Result).Matches(final?.Result ?? state))
             {
-                return Invalid(AggregateDiagnostics.MovingResult, Result(movingFinal ?? moving));
+                return Invalid(AggregateDiagnostics.s_movingResult, Result(movingFinal ?? moving));
             }
 
             if (!ValidateTransition(moving, aggregate.MovingInitial) || !ValidateFinal(movingFinal, moving.Result, aggregate.MovingFinalExtra))
@@ -397,12 +397,12 @@ internal sealed class AggregateDeclaration(INamedTypeSymbol type, AttributeData 
         {
             if (combine.Types.Length != 2 || combine.Types.Any(value => !value.Matches(state)) || !combine.Result.Matches(state))
             {
-                return Invalid(AggregateDiagnostics.CombineState, Result(combine));
+                return Invalid(AggregateDiagnostics.s_combineState, Result(combine));
             }
 
             if (state.IsInternal && (combine.Declaration.Strict || combine.Types.Any(static value => !value.Nullable)))
             {
-                return Invalid(AggregateDiagnostics.CombineNulls, combine.Method.Locations.FirstOrDefault());
+                return Invalid(AggregateDiagnostics.s_combineNulls, combine.Method.Locations.FirstOrDefault());
             }
         }
 
@@ -411,7 +411,7 @@ internal sealed class AggregateDeclaration(INamedTypeSymbol type, AttributeData 
         if ((serializer is not null || deserializer is not null) &&
             (serializer is null || deserializer is null || !Serializes(serializer, deserializer, state)))
         {
-            return Invalid(AggregateDiagnostics.Serialization, (serializer ?? deserializer)?.Method.Locations.FirstOrDefault());
+            return Invalid(AggregateDiagnostics.s_serialization, (serializer ?? deserializer)?.Method.Locations.FirstOrDefault());
         }
 
         foreach (AggregateHelper helper in aggregate.Helpers.Values)
@@ -420,7 +420,7 @@ internal sealed class AggregateDeclaration(INamedTypeSymbol type, AttributeData 
                 (aggregate.Kind != 0 || helper.Role is not ("Transition" or "MovingTransition" or "MovingInverse" or "Final" or "MovingFinal") ||
                     helper.Types.Length < 2 || helper.Types[helper.Types.Length - 1].Datum?.IsVector != true || helper.Parameters.Take(helper.Parameters.Length - 1).Any(static parameter => parameter.IsVariadic)))
             {
-                return Invalid(AggregateDiagnostics.Variadic, helper.Method.Parameters[helper.Method.Parameters.Length - 1].Locations.FirstOrDefault());
+                return Invalid(AggregateDiagnostics.s_variadic, helper.Method.Parameters[helper.Method.Parameters.Length - 1].Locations.FirstOrDefault());
             }
         }
 
@@ -431,12 +431,12 @@ internal sealed class AggregateDeclaration(INamedTypeSymbol type, AttributeData 
             string operation = parts[parts.Length - 1];
             if (aggregate.Direct.Length + inputs.Length != 1)
             {
-                return Invalid(AggregateDiagnostics.SortArity, Option("SortOperator"));
+                return Invalid(AggregateDiagnostics.s_sortArity, Option("SortOperator"));
             }
 
             if (parts.Length > 2 || parts.Length == 2 && !SqlText.IsIdentifier(parts[0]) || !ValidOperator(operation))
             {
-                return Invalid(AggregateDiagnostics.SortOperator, Option("SortOperator"));
+                return Invalid(AggregateDiagnostics.s_sortOperator, Option("SortOperator"));
             }
 
             aggregate.SortOperator = parts.Length == 2 ? SqlText.Identifier(parts[0]) + "." + SqlText.Identifier(operation) : operation;
@@ -449,14 +449,14 @@ internal sealed class AggregateDeclaration(INamedTypeSymbol type, AttributeData 
             if (helper.Result.IsInternal && initial is not null)
             {
                 string option = helper.Role == "Transition" ? "InitialCondition" : "MovingInitialCondition";
-                Invalid(AggregateDiagnostics.InternalInitial, Option(option), option);
+                Invalid(AggregateDiagnostics.s_internalInitial, Option(option), option);
                 return false;
             }
 
             if (helper.Declaration.Strict && initial is null && (aggregate.Direct.Concat(inputs).FirstOrDefault() is not { } first || !helper.Result.AcceptsSeed(first) ||
                     inputs.FirstOrDefault() is not { } seed || !helper.Result.AcceptsSeed(seed)))
             {
-                Invalid(AggregateDiagnostics.Seed, helper.Method.Locations.FirstOrDefault());
+                Invalid(AggregateDiagnostics.s_seed, helper.Method.Locations.FirstOrDefault());
                 return false;
             }
 
@@ -473,13 +473,13 @@ internal sealed class AggregateDeclaration(INamedTypeSymbol type, AttributeData 
             AggregateType[] expected = [expectedState, .. aggregate.Direct, .. extra ? inputs : []];
             if (helper.Types.Length != expected.Length || !helper.Types.Zip(expected, static (left, right) => left.Matches(right)).All(static same => same))
             {
-                Invalid(AggregateDiagnostics.FinalArguments, helper.Method.Locations.FirstOrDefault());
+                Invalid(AggregateDiagnostics.s_finalArguments, helper.Method.Locations.FirstOrDefault());
                 return false;
             }
 
             if (extra && (helper.Declaration.Strict || helper.Types.Skip(1 + aggregate.Direct.Length).Any(static value => !value.Nullable)))
             {
-                Invalid(AggregateDiagnostics.FinalExtra, Option(helper.Role == "Final" ? "FinalExtra" : "MovingFinalExtra"));
+                Invalid(AggregateDiagnostics.s_finalExtra, Option(helper.Role == "Final" ? "FinalExtra" : "MovingFinalExtra"));
                 return false;
             }
 

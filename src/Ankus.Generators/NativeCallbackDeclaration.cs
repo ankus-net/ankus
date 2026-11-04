@@ -76,80 +76,80 @@ internal sealed class NativeCallbackDeclaration(IPropertySymbol property, IMetho
         AttributeData[] attributes = [.. property.GetAttributes().Where(IsAttribute)];
         if (attributes.Length != 1)
         {
-            return Invalid(NativeCallbackDeclarationDiagnostics.AttributeCount, property.Locations.FirstOrDefault());
+            return Invalid(NativeCallbackDeclarationDiagnostics.s_attributeCount, property.Locations.FirstOrDefault());
         }
 
         AttributeData marker = attributes[0];
         AttributeData? guc = property.GetAttributes().FirstOrDefault(GucDeclaration.IsGucAttribute);
         if (guc is not null)
         {
-            return Invalid(NativeCallbackDeclarationDiagnostics.GucConflict, AttributeLocation(guc));
+            return Invalid(NativeCallbackDeclarationDiagnostics.s_gucConflict, AttributeLocation(guc));
         }
 
         if (property.IsIndexer)
         {
-            return Invalid(NativeCallbackDeclarationDiagnostics.Indexer, property.Locations.FirstOrDefault());
+            return Invalid(NativeCallbackDeclarationDiagnostics.s_indexer, property.Locations.FirstOrDefault());
         }
 
         if (!property.IsStatic)
         {
-            return Invalid(NativeCallbackDeclarationDiagnostics.StaticProperty, property.Locations.FirstOrDefault());
+            return Invalid(NativeCallbackDeclarationDiagnostics.s_staticProperty, property.Locations.FirstOrDefault());
         }
 
         if (property.RefKind != RefKind.None)
         {
-            return Invalid(NativeCallbackDeclarationDiagnostics.ReferenceProperty, PropertyType());
+            return Invalid(NativeCallbackDeclarationDiagnostics.s_referenceProperty, PropertyType());
         }
 
         if (property.GetMethod is null)
         {
-            return Invalid(NativeCallbackDeclarationDiagnostics.Getter, property.Locations.FirstOrDefault());
+            return Invalid(NativeCallbackDeclarationDiagnostics.s_getter, property.Locations.FirstOrDefault());
         }
 
         if (property.SetMethod is not null)
         {
-            return Invalid(NativeCallbackDeclarationDiagnostics.Setter, property.SetMethod.Locations.FirstOrDefault());
+            return Invalid(NativeCallbackDeclarationDiagnostics.s_setter, property.SetMethod.Locations.FirstOrDefault());
         }
 
         if (!property.IsPartialDefinition)
         {
-            return Invalid(NativeCallbackDeclarationDiagnostics.PartialDefinition, property.Locations.FirstOrDefault());
+            return Invalid(NativeCallbackDeclarationDiagnostics.s_partialDefinition, property.Locations.FirstOrDefault());
         }
 
         if (property.PartialImplementationPart is not null)
         {
-            return Invalid(NativeCallbackDeclarationDiagnostics.ExistingImplementation, property.PartialImplementationPart.Locations.FirstOrDefault());
+            return Invalid(NativeCallbackDeclarationDiagnostics.s_existingImplementation, property.PartialImplementationPart.Locations.FirstOrDefault());
         }
 
         for (INamedTypeSymbol? type = property.ContainingType; type is not null; type = type.ContainingType)
         {
             if (type.TypeKind is not (TypeKind.Class or TypeKind.Struct))
             {
-                return Invalid(NativeCallbackDeclarationDiagnostics.ContainerKind, type.Locations.FirstOrDefault(), type.Name);
+                return Invalid(NativeCallbackDeclarationDiagnostics.s_containerKind, type.Locations.FirstOrDefault(), type.Name);
             }
 
             if (type.Arity != 0)
             {
-                return Invalid(NativeCallbackDeclarationDiagnostics.GenericContainer, type.Locations.FirstOrDefault(), type.Name);
+                return Invalid(NativeCallbackDeclarationDiagnostics.s_genericContainer, type.Locations.FirstOrDefault(), type.Name);
             }
 
             if (type.IsFileLocal)
             {
-                return Invalid(NativeCallbackDeclarationDiagnostics.FileContainer, type.Locations.FirstOrDefault(), type.Name);
+                return Invalid(NativeCallbackDeclarationDiagnostics.s_fileContainer, type.Locations.FirstOrDefault(), type.Name);
             }
 
             SyntaxNode? incomplete = type.DeclaringSyntaxReferences.Select(reference => reference.GetSyntax(context.CancellationToken))
                 .FirstOrDefault(static declaration => declaration is not TypeDeclarationSyntax syntax || !syntax.Modifiers.Any(SyntaxKind.PartialKeyword));
             if (incomplete is not null)
             {
-                return Invalid(NativeCallbackDeclarationDiagnostics.PartialContainer,
+                return Invalid(NativeCallbackDeclarationDiagnostics.s_partialContainer,
                     (incomplete as TypeDeclarationSyntax)?.Identifier.GetLocation() ?? incomplete.GetLocation(), type.Name);
             }
         }
 
         if (property.Type is not INamedTypeSymbol { IsUnmanagedType: true, IsGenericType: false, IsRefLikeType: false } value || !IsNativeValue(value))
         {
-            return Invalid(NativeCallbackDeclarationDiagnostics.PointerType, PropertyType());
+            return Invalid(NativeCallbackDeclarationDiagnostics.s_pointerType, PropertyType());
         }
 
         AttributeData[] metadata = [.. value.GetAttributes().Where(static attribute =>
@@ -157,26 +157,26 @@ internal sealed class NativeCallbackDeclaration(IPropertySymbol property, IMetho
         if (metadata.Length != 1 || metadata[0].ConstructorArguments.Length != 1 ||
             metadata[0].ConstructorArguments[0].Value is not int index || index < 0)
         {
-            return Invalid(NativeCallbackDeclarationDiagnostics.PointerMetadata, PropertyType());
+            return Invalid(NativeCallbackDeclarationDiagnostics.s_pointerMetadata, PropertyType());
         }
 
         IMethodSymbol[] signatures = [.. value.GetMembers("Invoke").OfType<IMethodSymbol>().Where(static method =>
             !method.IsStatic && method.DeclaredAccessibility == Accessibility.Public && IsSignature(method))];
         if (signatures.Length != 1)
         {
-            return Invalid(NativeCallbackDeclarationDiagnostics.PointerInvocation, PropertyType());
+            return Invalid(NativeCallbackDeclarationDiagnostics.s_pointerInvocation, PropertyType());
         }
 
         if (!value.InstanceConstructors.Any(static method => method.DeclaredAccessibility == Accessibility.Public &&
             method.Parameters.Length == 1 && method.Parameters[0].RefKind == RefKind.None &&
             method.Parameters[0].Type is IPointerTypeSymbol { PointedAtType.SpecialType: SpecialType.System_Void }))
         {
-            return Invalid(NativeCallbackDeclarationDiagnostics.PointerConstructor, PropertyType());
+            return Invalid(NativeCallbackDeclarationDiagnostics.s_pointerConstructor, PropertyType());
         }
 
         if (marker.ConstructorArguments.Length != 1 || marker.ConstructorArguments[0].Value is not string name || string.IsNullOrWhiteSpace(name))
         {
-            return Invalid(NativeCallbackDeclarationDiagnostics.HandlerName, FunctionDeclarationDiagnostics.ConstructorArgument(marker, context.CancellationToken));
+            return Invalid(NativeCallbackDeclarationDiagnostics.s_handlerName, FunctionDeclarationDiagnostics.ConstructorArgument(marker, context.CancellationToken));
         }
 
         IMethodSymbol signature = signatures[0];
@@ -193,77 +193,77 @@ internal sealed class NativeCallbackDeclaration(IPropertySymbol property, IMetho
                 SymbolEqualityComparer.Default.Equals(actual.Type, expected.Type)).All(static same => same))];
         if (handlers.Length > 1)
         {
-            return Invalid(NativeCallbackDeclarationDiagnostics.AmbiguousHandler, FunctionDeclarationDiagnostics.ConstructorArgument(marker, context.CancellationToken), name);
+            return Invalid(NativeCallbackDeclarationDiagnostics.s_ambiguousHandler, FunctionDeclarationDiagnostics.ConstructorArgument(marker, context.CancellationToken), name);
         }
 
         if (handlers.Length == 0)
         {
             if (named.Length == 0)
             {
-                return Invalid(NativeCallbackDeclarationDiagnostics.MissingHandler, FunctionDeclarationDiagnostics.ConstructorArgument(marker, context.CancellationToken), name);
+                return Invalid(NativeCallbackDeclarationDiagnostics.s_missingHandler, FunctionDeclarationDiagnostics.ConstructorArgument(marker, context.CancellationToken), name);
             }
 
             if (named.Length != 1)
             {
-                return Invalid(NativeCallbackDeclarationDiagnostics.NoMatchingHandler, FunctionDeclarationDiagnostics.ConstructorArgument(marker, context.CancellationToken), name);
+                return Invalid(NativeCallbackDeclarationDiagnostics.s_noMatchingHandler, FunctionDeclarationDiagnostics.ConstructorArgument(marker, context.CancellationToken), name);
             }
 
             IMethodSymbol method = named[0];
             if (method.MethodKind != MethodKind.Ordinary)
             {
-                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.HandlerKind, method.Locations.FirstOrDefault());
+                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.s_handlerKind, method.Locations.FirstOrDefault());
             }
 
             if (!method.IsStatic)
             {
-                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.StaticHandler, method.Locations.FirstOrDefault());
+                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.s_staticHandler, method.Locations.FirstOrDefault());
             }
 
             if (method.IsExtern)
             {
-                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.ExternalHandler, Modifier(method, SyntaxKind.ExternKeyword));
+                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.s_externalHandler, Modifier(method, SyntaxKind.ExternKeyword));
             }
 
             if (method.IsAsync || method.PartialImplementationPart?.IsAsync == true)
             {
-                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.AsyncHandler, Modifier(method, SyntaxKind.AsyncKeyword));
+                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.s_asyncHandler, Modifier(method, SyntaxKind.AsyncKeyword));
             }
 
             if (method.IsPartialDefinition && method.PartialImplementationPart is null)
             {
-                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.PartialHandler, method.Locations.FirstOrDefault());
+                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.s_partialHandler, method.Locations.FirstOrDefault());
             }
 
             if (method.IsGenericMethod)
             {
-                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.GenericHandler, method.Locations.FirstOrDefault());
+                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.s_genericHandler, method.Locations.FirstOrDefault());
             }
 
             if (method.IsVararg)
             {
-                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.VariadicHandler, method.Locations.FirstOrDefault());
+                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.s_variadicHandler, method.Locations.FirstOrDefault());
             }
 
             if (method.RefKind != RefKind.None)
             {
-                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.ReferenceResult, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken));
+                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.s_referenceResult, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken));
             }
 
             if (!method.ReturnsVoid && !IsValue(method.ReturnType))
             {
-                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.NativeResult, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken));
+                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.s_nativeResult, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken));
             }
 
             foreach (IParameterSymbol parameter in method.Parameters)
             {
                 if (parameter.RefKind != RefKind.None)
                 {
-                    return HandlerInvalid(NativeCallbackDeclarationDiagnostics.ReferenceArgument, parameter.Locations.FirstOrDefault(), parameter.Name);
+                    return HandlerInvalid(NativeCallbackDeclarationDiagnostics.s_referenceArgument, parameter.Locations.FirstOrDefault(), parameter.Name);
                 }
 
                 if (!IsValue(parameter.Type))
                 {
-                    return HandlerInvalid(NativeCallbackDeclarationDiagnostics.NativeArgument, parameter.Locations.FirstOrDefault(), parameter.Name);
+                    return HandlerInvalid(NativeCallbackDeclarationDiagnostics.s_nativeArgument, parameter.Locations.FirstOrDefault(), parameter.Name);
                 }
             }
 
@@ -271,18 +271,18 @@ internal sealed class NativeCallbackDeclaration(IPropertySymbol property, IMetho
                 "System.Runtime.InteropServices.UnmanagedCallersOnlyAttribute");
             if (unmanaged is not null)
             {
-                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.UnmanagedHandler, AttributeLocation(unmanaged));
+                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.s_unmanagedHandler, AttributeLocation(unmanaged));
             }
 
             if (!SymbolEqualityComparer.Default.Equals(method.ReturnType, signature.ReturnType))
             {
-                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.ResultMismatch,
+                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.s_resultMismatch,
                     FunctionDeclarationDiagnostics.Result(method, context.CancellationToken), signature.ReturnType.ToDisplayString());
             }
 
             if (method.Parameters.Length != signature.Parameters.Length)
             {
-                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.ArgumentCount, method.Locations.FirstOrDefault(),
+                return HandlerInvalid(NativeCallbackDeclarationDiagnostics.s_argumentCount, method.Locations.FirstOrDefault(),
                     signature.Parameters.Length.ToString(CultureInfo.InvariantCulture));
             }
 
@@ -291,12 +291,12 @@ internal sealed class NativeCallbackDeclaration(IPropertySymbol property, IMetho
                 IParameterSymbol parameter = method.Parameters[argument];
                 if (!SymbolEqualityComparer.Default.Equals(parameter.Type, signature.Parameters[argument].Type))
                 {
-                    return HandlerInvalid(NativeCallbackDeclarationDiagnostics.ArgumentType, parameter.Locations.FirstOrDefault(),
+                    return HandlerInvalid(NativeCallbackDeclarationDiagnostics.s_argumentType, parameter.Locations.FirstOrDefault(),
                         parameter.Name, signature.Parameters[argument].Type.ToDisplayString());
                 }
             }
 
-            return Invalid(NativeCallbackDeclarationDiagnostics.NoMatchingHandler, FunctionDeclarationDiagnostics.ConstructorArgument(marker, context.CancellationToken), name);
+            return Invalid(NativeCallbackDeclarationDiagnostics.s_noMatchingHandler, FunctionDeclarationDiagnostics.ConstructorArgument(marker, context.CancellationToken), name);
 
             NativeCallbackDeclaration? HandlerInvalid(DiagnosticDescriptor descriptor, Location? location, params string[] details)
                 => Invalid(descriptor, location, [method.Name, .. details]);

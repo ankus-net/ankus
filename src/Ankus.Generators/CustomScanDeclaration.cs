@@ -46,21 +46,21 @@ internal sealed record CustomScanDeclaration(string Name, string Provider, strin
             container.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal));
         if (unusable is not null)
         {
-            return Report(CustomScanDiagnostics.Container, unusable.Locations.FirstOrDefault(), unusable.Name);
+            return Report(CustomScanDiagnostics.s_container, unusable.Locations.FirstOrDefault(), unusable.Name);
         }
 
         INamedTypeSymbol[] contracts = [.. type.AllInterfaces.Where(static value => Is(value, "IPgCustomScan"))];
         ITypeSymbol[] states = [.. contracts.Select(static value => value.TypeArguments[0]).Distinct<ITypeSymbol>(SymbolEqualityComparer.Default)];
         if (states.Length != 1)
         {
-            return Report(CustomScanDiagnostics.Contract, type.Locations.FirstOrDefault(), type.Name,
+            return Report(CustomScanDiagnostics.s_contract, type.Locations.FirstOrDefault(), type.Name,
                 states.Length == 0 ? "it implements none" : $"it implements {states.Length} state types");
         }
 
         string name = AttributeValues.Get<string?>(attribute, "Name", null) ?? SqlText.SnakeCase(type.Name);
         if (!IsName(name))
         {
-            return Report(CustomScanDiagnostics.Name,
+            return Report(CustomScanDiagnostics.s_name,
                 FunctionDeclarationDiagnostics.Option(attribute, "Name", context.CancellationToken) ?? type.Locations.FirstOrDefault(), name);
         }
 
@@ -70,7 +70,7 @@ internal sealed record CustomScanDeclaration(string Name, string Provider, strin
         INamedTypeSymbol[] parallel = [.. type.AllInterfaces.Where(static value => Is(value, "IPgParallelCustomScan", 2))];
         if (parallel.Length > 1)
         {
-            return Report(CustomScanDiagnostics.Shared, type.Locations.FirstOrDefault(), type.Name, parallel.Length.ToString(CultureInfo.InvariantCulture));
+            return Report(CustomScanDiagnostics.s_shared, type.Locations.FirstOrDefault(), type.Name, parallel.Length.ToString(CultureInfo.InvariantCulture));
         }
 
         foreach (INamedTypeSymbol contract in type.AllInterfaces.Where(value => value.TypeArguments.Length is 1 or 2 &&
@@ -83,7 +83,7 @@ internal sealed record CustomScanDeclaration(string Name, string Provider, strin
                 {
                     SyntaxToken token = (implementation.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(context.CancellationToken) as
                         MethodDeclarationSyntax)?.Modifiers.FirstOrDefault(static value => value.IsKind(SyntaxKind.AsyncKeyword)) ?? default;
-                    return Report(CustomScanDiagnostics.Async, token.RawKind != 0 ? token.GetLocation() : implementation.Locations.FirstOrDefault(),
+                    return Report(CustomScanDiagnostics.s_async, token.RawKind != 0 ? token.GetLocation() : implementation.Locations.FirstOrDefault(),
                         implementation.Name);
                 }
             }

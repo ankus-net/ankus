@@ -47,7 +47,7 @@ internal static class AggregateContract
         if (interfaces.Count(static capability => capability.Name == "IPgAggregate") != 1 ||
             interfaces.GroupBy(static capability => capability.Name, StringComparer.Ordinal).Any(static group => group.Count() != 1))
         {
-            return Invalid(AggregateDiagnostics.CapabilityAmbiguity, type.Locations.FirstOrDefault());
+            return Invalid(AggregateDiagnostics.s_capabilityAmbiguity, type.Locations.FirstOrDefault());
         }
 
         var roles = new Dictionary<string, IMethodSymbol>(StringComparer.Ordinal);
@@ -68,7 +68,7 @@ internal static class AggregateContract
                 {
                     Location? location = uncontracted.Locations.FirstOrDefault(static candidate => candidate.IsInSource)
                         ?? type.Locations.FirstOrDefault(static candidate => candidate.IsInSource);
-                    return Invalid(AggregateDiagnostics.UncontractedRole, location, role);
+                    return Invalid(AggregateDiagnostics.s_uncontractedRole, location, role);
                 }
 
                 continue;
@@ -77,18 +77,18 @@ internal static class AggregateContract
             if (type.FindImplementationForInterfaceMember(contract) is not IMethodSymbol method || !method.IsStatic || method.IsAbstract ||
                 method.IsAsync || method.IsGenericMethod)
             {
-                return Invalid(AggregateDiagnostics.Implementation, type.Locations.FirstOrDefault(), role, contract.ContainingType.ToDisplayString());
+                return Invalid(AggregateDiagnostics.s_implementation, type.Locations.FirstOrDefault(), role, contract.ContainingType.ToDisplayString());
             }
 
             if (method.Parameters.FirstOrDefault(static parameter => parameter.RefKind != RefKind.None || parameter.IsOptional) is { } invalidInput)
             {
-                return Invalid(AggregateDiagnostics.CallbackInput, invalidInput.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(context.CancellationToken).GetLocation());
+                return Invalid(AggregateDiagnostics.s_callbackInput, invalidInput.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(context.CancellationToken).GetLocation());
             }
 
             IParameterSymbol invocation = method.Parameters[0];
             if (invocation.GetAttributes().Length != 0 || invocation.IsParams)
             {
-                return Invalid(AggregateDiagnostics.ContextMetadata,
+                return Invalid(AggregateDiagnostics.s_contextMetadata,
                     invocation.GetAttributes().FirstOrDefault()?.ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation() ??
                     invocation.Locations.FirstOrDefault());
             }
@@ -98,13 +98,13 @@ internal static class AggregateContract
                 method.GetReturnTypeAttributes().FirstOrDefault(static attribute => attribute.AttributeClass?.ToDisplayString() == "Ankus.PgColumnNamesAttribute");
             if (conflict is not null)
             {
-                return Invalid(AggregateDiagnostics.ConflictingAttribute,
+                return Invalid(AggregateDiagnostics.s_conflictingAttribute,
                     conflict.ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation());
             }
 
             if (SetResult.IsSequence(contract.ReturnType))
             {
-                return Invalid(AggregateDiagnostics.SetResult, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken));
+                return Invalid(AggregateDiagnostics.s_setResult, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken));
             }
 
             if (!AggregateContractNullability.Validate(contract, method, context) ||
@@ -124,7 +124,7 @@ internal static class AggregateContract
                     return false;
                 }
 
-                return Invalid(AggregateDiagnostics.ResultType, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken));
+                return Invalid(AggregateDiagnostics.s_resultType, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken));
             }
 
             var slots = new List<AggregateParameter>();
@@ -146,7 +146,7 @@ internal static class AggregateContract
                         !tupleType.TupleElements.Any(field => field.Name == element));
                     if (parameter.IsParams || invalidMetadata is not null)
                     {
-                        return Invalid(AggregateDiagnostics.TupleMetadata,
+                        return Invalid(AggregateDiagnostics.s_tupleMetadata,
                             FunctionDeclarationDiagnostics.Option(invalidMetadata, "Element", context.CancellationToken) ??
                             invalidMetadata?.ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation() ?? Parameter(parameter));
                     }
@@ -164,7 +164,7 @@ internal static class AggregateContract
                 {
                     if (parameter.GetAttributes().Length != 0 || parameter.IsParams)
                     {
-                        return Invalid(AggregateDiagnostics.EmptyMetadata,
+                        return Invalid(AggregateDiagnostics.s_emptyMetadata,
                             parameter.GetAttributes().FirstOrDefault()?.ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation() ?? Parameter(parameter));
                     }
                 }
@@ -198,19 +198,19 @@ internal static class AggregateContract
 
             if (slots.Count + (role == "Deserialize" ? 1 : 0) > 100)
             {
-                return Invalid(AggregateDiagnostics.HelperCount, method.Locations.FirstOrDefault());
+                return Invalid(AggregateDiagnostics.s_helperCount, method.Locations.FirstOrDefault());
             }
 
             var argumentNames = new HashSet<string>(StringComparer.Ordinal);
             int duplicate = slots.FindIndex(slot => !argumentNames.Add(slot.Name));
             if (duplicate >= 0)
             {
-                return Invalid(AggregateDiagnostics.HelperDuplicateName, slotLocations[duplicate]);
+                return Invalid(AggregateDiagnostics.s_helperDuplicateName, slotLocations[duplicate]);
             }
 
             if (result.Datum?.IsSqlPolymorphic == true && !slots.Any(static slot => slot.Type.Datum?.IsSqlPolymorphic == true))
             {
-                return Invalid(AggregateDiagnostics.PolymorphicResult, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken));
+                return Invalid(AggregateDiagnostics.s_polymorphicResult, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken));
             }
 
             AttributeData? function = method.GetAttributes().FirstOrDefault(static value => value.AttributeClass?.ToDisplayString() == "Ankus.PgFunctionAttribute");
@@ -222,7 +222,7 @@ internal static class AggregateContract
 
             if (!SqlText.IsIdentifier(helperName))
             {
-                return Invalid(AggregateDiagnostics.HelperName,
+                return Invalid(AggregateDiagnostics.s_helperName,
                     FunctionDeclarationDiagnostics.Option(function, "Name", context.CancellationToken) ?? method.Locations.FirstOrDefault());
             }
 
@@ -253,30 +253,30 @@ internal static class AggregateContract
                         return false;
                     }
 
-                    return Invalid(AggregateDiagnostics.InputType, Parameter(source));
+                    return Invalid(AggregateDiagnostics.s_inputType, Parameter(source));
                 }
 
                 if (!SqlText.IsIdentifier(name))
                 {
-                    return Invalid(AggregateDiagnostics.InputName,
+                    return Invalid(AggregateDiagnostics.s_inputName,
                         FunctionDeclarationDiagnostics.Option(naming.FirstOrDefault(), "Name", context.CancellationToken) ?? source.Locations.FirstOrDefault());
                 }
 
                 if (naming.Length > 1)
                 {
-                    return Invalid(AggregateDiagnostics.InputMetadata,
+                    return Invalid(AggregateDiagnostics.s_inputMetadata,
                         naming[1].ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation());
                 }
 
                 if (naming.FirstOrDefault(attribute => attribute.NamedArguments.Any(static argument => argument.Key == "Default")) is { } defaulted)
                 {
-                    return Invalid(AggregateDiagnostics.InputDefault,
+                    return Invalid(AggregateDiagnostics.s_inputDefault,
                         FunctionDeclarationDiagnostics.Option(defaulted, "Default", context.CancellationToken));
                 }
 
                 if (!grouped && naming.FirstOrDefault(attribute => AttributeValues.Get<string?>(attribute, "Element", null) is not null) is { } selected)
                 {
-                    return Invalid(AggregateDiagnostics.ScalarElement,
+                    return Invalid(AggregateDiagnostics.s_scalarElement,
                         FunctionDeclarationDiagnostics.Option(selected, "Element", context.CancellationToken));
                 }
 

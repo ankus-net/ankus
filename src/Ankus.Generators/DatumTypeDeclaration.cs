@@ -109,19 +109,19 @@ internal sealed class DatumTypeDeclaration(INamedTypeSymbol type, INamedTypeSymb
         if (type.TypeKind is not (TypeKind.Class or TypeKind.Struct or TypeKind.Enum) || type.IsStatic || type.IsAbstract ||
             type.IsRefLikeType || !IsClosed(type))
         {
-            return Invalid(DatumMappingDiagnostics.RootShape, root);
+            return Invalid(DatumMappingDiagnostics.s_rootShape, root);
         }
 
         if (!Accessible(type, assembly))
         {
-            return Invalid(DatumMappingDiagnostics.RootAccess, root, type.ToDisplayString());
+            return Invalid(DatumMappingDiagnostics.s_rootAccess, root, type.ToDisplayString());
         }
 
         AttributeData? storage = type.GetAttributes().FirstOrDefault(static item =>
             item.AttributeClass?.ToDisplayString() is "Ankus.PgTypeAttribute" or "Ankus.PgEnumAttribute");
         if (storage is not null)
         {
-            return Invalid(DatumMappingDiagnostics.StorageConflict,
+            return Invalid(DatumMappingDiagnostics.s_storageConflict,
                 storage.ApplicationSyntaxReference?.GetSyntax(context?.CancellationToken ?? default).GetLocation() ?? root, type.Name);
         }
 
@@ -130,7 +130,7 @@ internal sealed class DatumTypeDeclaration(INamedTypeSymbol type, INamedTypeSymb
             attributes.FirstOrDefault(static item => item.ConstructorArguments.Length == 2);
         if (attribute is null)
         {
-            return Invalid(DatumMappingDiagnostics.MissingMapping, usage ?? root, type.ToDisplayString());
+            return Invalid(DatumMappingDiagnostics.s_missingMapping, usage ?? root, type.ToDisplayString());
         }
 
         int offset = attribute.ConstructorArguments.Length == 3 ? 1 : 0;
@@ -139,35 +139,35 @@ internal sealed class DatumTypeDeclaration(INamedTypeSymbol type, INamedTypeSymb
         CancellationToken cancellationToken = context?.CancellationToken ?? default;
         if (compilation is not null && !MappedIdentityMetadata.TryRead(type, attribute, compilation, cancellationToken, out name, out schema))
         {
-            return Invalid(DatumMappingDiagnostics.Metadata, usage ?? root);
+            return Invalid(DatumMappingDiagnostics.s_metadata, usage ?? root);
         }
 
         Location? converterSource = DatumMappingDiagnostics.CurrentLocation(
             DatumMappingDiagnostics.Argument(attribute, offset + 1, cancellationToken), compilation, usage ?? root);
         if (!SqlText.IsIdentifier(name))
         {
-            return Invalid(DatumMappingDiagnostics.Name, DatumMappingDiagnostics.Argument(attribute, offset, cancellationToken));
+            return Invalid(DatumMappingDiagnostics.s_name, DatumMappingDiagnostics.Argument(attribute, offset, cancellationToken));
         }
 
         if (schema is not null && !SqlText.IsIdentifier(schema))
         {
-            return Invalid(DatumMappingDiagnostics.Schema, FunctionDeclarationDiagnostics.Option(attribute, "Schema", cancellationToken));
+            return Invalid(DatumMappingDiagnostics.s_schema, FunctionDeclarationDiagnostics.Option(attribute, "Schema", cancellationToken));
         }
 
         int origin = AttributeValues.Get(attribute, "Origin", 0);
         if (origin is not (0 or 1))
         {
-            return Invalid(DatumMappingDiagnostics.Origin, FunctionDeclarationDiagnostics.Option(attribute, "Origin", cancellationToken));
+            return Invalid(DatumMappingDiagnostics.s_origin, FunctionDeclarationDiagnostics.Option(attribute, "Origin", cancellationToken));
         }
 
         if (origin == 1 && schema is null)
         {
-            return Invalid(DatumMappingDiagnostics.ExternalSchema, FunctionDeclarationDiagnostics.Option(attribute, "Origin", cancellationToken));
+            return Invalid(DatumMappingDiagnostics.s_externalSchema, FunctionDeclarationDiagnostics.Option(attribute, "Origin", cancellationToken));
         }
 
         if (attribute.ConstructorArguments[offset + 1].Value is not INamedTypeSymbol converter)
         {
-            return Invalid(DatumMappingDiagnostics.ConverterShape, converterSource);
+            return Invalid(DatumMappingDiagnostics.s_converterShape, converterSource);
         }
 
         bool inferred = converter.IsUnboundGenericType;
@@ -185,19 +185,19 @@ internal sealed class DatumTypeDeclaration(INamedTypeSymbol type, INamedTypeSymb
         if (converter.TypeKind is not (TypeKind.Class or TypeKind.Struct) || converter.IsAbstract || converter.IsStatic ||
             converter.IsRefLikeType || !IsClosed(converter))
         {
-            return Invalid(DatumMappingDiagnostics.ConverterShape, converterSource);
+            return Invalid(DatumMappingDiagnostics.s_converterShape, converterSource);
         }
 
         if (!Accessible(converter, assembly))
         {
-            return Invalid(DatumMappingDiagnostics.ConverterAccess, converterSource, converter.ToDisplayString());
+            return Invalid(DatumMappingDiagnostics.s_converterAccess, converterSource, converter.ToDisplayString());
         }
 
         IMethodSymbol? constructor = converter.InstanceConstructors.FirstOrDefault(item => item.Parameters.Length == 0 &&
             IsAccessible(item, assembly));
         if (constructor is null)
         {
-            return Invalid(DatumMappingDiagnostics.Constructor, converterSource);
+            return Invalid(DatumMappingDiagnostics.s_constructor, converterSource);
         }
 
         INamedTypeSymbol[] contracts = [.. converter.AllInterfaces.Where(static item => item.Arity == 1 &&
@@ -205,7 +205,7 @@ internal sealed class DatumTypeDeclaration(INamedTypeSymbol type, INamedTypeSymb
             .Where(item => SymbolEqualityComparer.Default.Equals(item.TypeArguments[0], type))];
         if (contracts.Length == 0 || type.IsReferenceType && contracts.Any(static item => item.TypeArguments[0].NullableAnnotation == NullableAnnotation.Annotated))
         {
-            return Invalid(DatumMappingDiagnostics.Contract, converterSource, type.ToDisplayString());
+            return Invalid(DatumMappingDiagnostics.s_contract, converterSource, type.ToDisplayString());
         }
 
         bool required = false;
@@ -217,7 +217,7 @@ internal sealed class DatumTypeDeclaration(INamedTypeSymbol type, INamedTypeSymb
         if (required && !constructor.GetAttributes().Any(static item =>
             item.AttributeClass?.ToDisplayString() == "System.Diagnostics.CodeAnalysis.SetsRequiredMembersAttribute"))
         {
-            return Invalid(DatumMappingDiagnostics.RequiredMembers, converterSource);
+            return Invalid(DatumMappingDiagnostics.s_requiredMembers, converterSource);
         }
 
         return new(type, converter, name!, schema, origin == 1,
@@ -321,7 +321,7 @@ internal sealed class DatumTypeDeclaration(INamedTypeSymbol type, INamedTypeSymb
             else if (!Resolves(type) || !Resolves(declaration.Converter))
             {
                 invalidRangeBounds.Add(type);
-                context.Report(DatumMappingDiagnostics.GlobalIdentity, declaration.ConverterLocation ?? usage ??
+                context.Report(DatumMappingDiagnostics.s_globalIdentity, declaration.ConverterLocation ?? usage ??
                     type.Locations.FirstOrDefault(static item => item.IsInSource));
                 valid = false;
             }
@@ -344,7 +344,7 @@ internal sealed class DatumTypeDeclaration(INamedTypeSymbol type, INamedTypeSymb
             {
                 if (!Resolves(range.Type))
                 {
-                    context.Report(RangeMappingDiagnostics.GlobalIdentity, usage ?? scalar.Type.Locations.FirstOrDefault(static item => item.IsInSource),
+                    context.Report(RangeMappingDiagnostics.s_globalIdentity, usage ?? scalar.Type.Locations.FirstOrDefault(static item => item.IsInSource),
                         range.Type.ToDisplayString());
                     valid = false;
                 }
@@ -359,7 +359,7 @@ internal sealed class DatumTypeDeclaration(INamedTypeSymbol type, INamedTypeSymb
                 !declarations.Any(item => SymbolEqualityComparer.Default.Equals(item.Type, requested))))
         {
             usages.TryGetValue(requested, out Location? usage);
-            context.Report(RangeMappingDiagnostics.MissingSelection, usage ??
+            context.Report(RangeMappingDiagnostics.s_missingSelection, usage ??
                 RangeTypeDeclaration.Bound(requested)!.Locations.FirstOrDefault(static item => item.IsInSource), requested.ToDisplayString());
             valid = false;
         }
@@ -494,7 +494,7 @@ internal sealed class DatumTypeDeclaration(INamedTypeSymbol type, INamedTypeSymb
                     item.AttributeClass?.ToDisplayString() is "Ankus.PgSqlTypeAttribute" or "Ankus.PgCompositeTypeAttribute");
                 if (binding is not null)
                 {
-                    context.Report(DatumMappingDiagnostics.SlotOverride,
+                    context.Report(DatumMappingDiagnostics.s_slotOverride,
                         binding.ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation() ??
                         DatumMappingDiagnostics.Slot(owner, context.CancellationToken));
                     valid = false;
@@ -502,14 +502,14 @@ internal sealed class DatumTypeDeclaration(INamedTypeSymbol type, INamedTypeSymb
 
                 if (declaration is not null && (read ? !declaration.CanRead : !borrowedArray && !declaration.CanWrite))
                 {
-                    context.Report(read ? DatumMappingDiagnostics.Reader : DatumMappingDiagnostics.Writer,
+                    context.Report(read ? DatumMappingDiagnostics.s_reader : DatumMappingDiagnostics.s_writer,
                         DatumMappingDiagnostics.Slot(owner, context.CancellationToken), declaration.Managed);
                     valid = false;
                 }
             }
             else if (ContainsMapping(slot))
             {
-                context.Report(DatumMappingDiagnostics.Container, DatumMappingDiagnostics.Slot(owner, context.CancellationToken));
+                context.Report(DatumMappingDiagnostics.s_container, DatumMappingDiagnostics.Slot(owner, context.CancellationToken));
                 valid = false;
             }
         }
@@ -534,14 +534,14 @@ internal sealed class DatumTypeDeclaration(INamedTypeSymbol type, INamedTypeSymb
         {
             if (attribute.ConstructorArguments.IsEmpty && type.DeclaringSyntaxReferences.Length == 0)
             {
-                return Invalid(DatumMappingDiagnostics.Metadata, attribute);
+                return Invalid(DatumMappingDiagnostics.s_metadata, attribute);
             }
 
             if (attribute.ConstructorArguments.Length == 2)
             {
                 if (hasDefault)
                 {
-                    return Invalid(DatumMappingDiagnostics.DuplicateDefault, attribute);
+                    return Invalid(DatumMappingDiagnostics.s_duplicateDefault, attribute);
                 }
 
                 hasDefault = true;
@@ -550,11 +550,11 @@ internal sealed class DatumTypeDeclaration(INamedTypeSymbol type, INamedTypeSymb
                 attribute.ConstructorArguments[0].Value is not INamedTypeSymbol target || !IsClosed(target) ||
                 !SymbolEqualityComparer.Default.Equals(target.OriginalDefinition, type.OriginalDefinition))
             {
-                return Invalid(DatumMappingDiagnostics.Target, attribute);
+                return Invalid(DatumMappingDiagnostics.s_target, attribute);
             }
             else if (!targets.Add(target))
             {
-                return Invalid(DatumMappingDiagnostics.DuplicateExact, attribute);
+                return Invalid(DatumMappingDiagnostics.s_duplicateExact, attribute);
             }
         }
 
@@ -564,7 +564,7 @@ internal sealed class DatumTypeDeclaration(INamedTypeSymbol type, INamedTypeSymb
         {
             if (context is { } output)
             {
-                Location? location = descriptor == DatumMappingDiagnostics.Target
+                Location? location = descriptor == DatumMappingDiagnostics.s_target
                     ? DatumMappingDiagnostics.Argument(attribute, 0, output.CancellationToken)
                     : attribute.ApplicationSyntaxReference?.GetSyntax(output.CancellationToken).GetLocation();
                 output.Report(descriptor, DatumMappingDiagnostics.CurrentLocation(location, compilation, usage));

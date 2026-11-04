@@ -201,44 +201,21 @@ public static class TemporalConvenienceFunctions
             {
                 PgTransaction.RunInSubtransaction(() =>
                 {
-                    switch (operation)
+                    _ = (object?)(operation switch
                     {
-                        case "year":
-                            _ = PgTimestamp.Create(0, 1, 1, 0, 0, 0);
-                            break;
-                        case "month":
-                            _ = PgTimestamp.Create(2024, 13, 1, 0, 0, 0);
-                            break;
-                        case "day":
-                            _ = PgTimestamp.Create(2024, 2, 30, 0, 0, 0);
-                            break;
-                        case "zone":
-                            _ = PgTimestampTz.Create(2024, 1, 1, 0, 0, 0, "Unknown/Zone");
-                            break;
-                        case "years":
-                            _ = PgInterval.FromYears(int.MaxValue);
-                            break;
-                        case "weeks":
-                            _ = PgInterval.FromWeeks(int.MinValue);
-                            break;
-                        case "seconds":
-                            _ = PgInterval.FromSeconds(double.NaN);
-                            break;
-                        case "round":
-                            _ = PgTimestamp.Parse("294276-12-31 23:59:59.999999").Round(0);
-                            break;
-                        case "round-tz":
-                            _ = PgTimestampTz.Parse("294276-12-31 23:59:59.999999+00").Round(0);
-                            break;
-                        case "format":
-                            _ = PgTimestampTz.TransactionTimestamp.ToIsoString("Unknown/Zone");
-                            break;
-                        case "format-range":
-                            _ = PgTimestampTz.Parse("294276-12-31 23:59:59.999999+00").ToIsoString("Asia/Tokyo");
-                            break;
-                        default:
-                            throw new ArgumentException("Unknown operation.", nameof(operation));
-                    }
+                        "year" => PgTimestamp.Create(0, 1, 1, 0, 0, 0),
+                        "month" => PgTimestamp.Create(2024, 13, 1, 0, 0, 0),
+                        "day" => PgTimestamp.Create(2024, 2, 30, 0, 0, 0),
+                        "zone" => PgTimestampTz.Create(2024, 1, 1, 0, 0, 0, "Unknown/Zone"),
+                        "years" => PgInterval.FromYears(int.MaxValue),
+                        "weeks" => PgInterval.FromWeeks(int.MinValue),
+                        "seconds" => PgInterval.FromSeconds(double.NaN),
+                        "round" => PgTimestamp.Parse("294276-12-31 23:59:59.999999").Round(0),
+                        "round-tz" => PgTimestampTz.Parse("294276-12-31 23:59:59.999999+00").Round(0),
+                        "format" => PgTimestampTz.TransactionTimestamp.ToIsoString("Unknown/Zone"),
+                        "format-range" => PgTimestampTz.Parse("294276-12-31 23:59:59.999999+00").ToIsoString("Asia/Tokyo"),
+                        _ => throw new ArgumentException("Unknown operation.", nameof(operation)),
+                    });
                 });
             }
             catch (PgException error)

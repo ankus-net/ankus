@@ -43,51 +43,51 @@ internal sealed record OutputPluginDeclaration(string Target, string CallbacksTy
     {
         if (method.MethodKind != MethodKind.Ordinary)
         {
-            return Report(OutputPluginDiagnostics.Kind, Location(Find(method.GetAttributes(), MarkerName)));
+            return Report(OutputPluginDiagnostics.s_kind, Location(Find(method.GetAttributes(), MarkerName)));
         }
 
         if (!method.IsStatic)
         {
-            return Report(OutputPluginDiagnostics.Static, method.Locations.FirstOrDefault());
+            return Report(OutputPluginDiagnostics.s_static, method.Locations.FirstOrDefault());
         }
 
         if (method.IsAsync || method.PartialImplementationPart?.IsAsync == true)
         {
-            return Report(OutputPluginDiagnostics.Async, Modifier(SyntaxKind.AsyncKeyword));
+            return Report(OutputPluginDiagnostics.s_async, Modifier(SyntaxKind.AsyncKeyword));
         }
 
         if (method.IsGenericMethod)
         {
-            return Report(OutputPluginDiagnostics.Generic, Syntax()?.TypeParameterList?.GetLocation());
+            return Report(OutputPluginDiagnostics.s_generic, Syntax()?.TypeParameterList?.GetLocation());
         }
 
         if (method.IsAbstract || method.IsVirtual || method.IsExtern)
         {
-            return Report(OutputPluginDiagnostics.Implementation, Modifier(method.IsAbstract ? SyntaxKind.AbstractKeyword
+            return Report(OutputPluginDiagnostics.s_implementation, Modifier(method.IsAbstract ? SyntaxKind.AbstractKeyword
                 : method.IsVirtual ? SyntaxKind.VirtualKeyword : SyntaxKind.ExternKeyword));
         }
 
         if (method.IsPartialDefinition && method.PartialImplementationPart is null)
         {
-            return Report(OutputPluginDiagnostics.Implementation, method.Locations.FirstOrDefault());
+            return Report(OutputPluginDiagnostics.s_implementation, method.Locations.FirstOrDefault());
         }
 
         if (!method.ReturnsVoid)
         {
-            return Report(OutputPluginDiagnostics.Result, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken),
+            return Report(OutputPluginDiagnostics.s_result, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken),
                 method.ReturnType.ToDisplayString());
         }
 
         if (method.Parameters.Length != 1 || method.Parameters[0].RefKind != RefKind.None ||
             CallbackTable(method.Parameters[0].Type) is not INamedTypeSymbol callbacks)
         {
-            return Report(OutputPluginDiagnostics.Parameter, method.Parameters.Length == 1
+            return Report(OutputPluginDiagnostics.s_parameter, method.Parameters.Length == 1
                 ? Syntax()?.ParameterList.Parameters.FirstOrDefault()?.GetLocation() : Syntax()?.ParameterList.GetLocation());
         }
 
         if (method.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal))
         {
-            return Report(OutputPluginDiagnostics.Accessibility, Modifier(method.DeclaredAccessibility is Accessibility.Private or
+            return Report(OutputPluginDiagnostics.s_accessibility, Modifier(method.DeclaredAccessibility is Accessibility.Private or
                 Accessibility.ProtectedAndInternal ? SyntaxKind.PrivateKeyword : SyntaxKind.ProtectedKeyword));
         }
 
@@ -96,7 +96,7 @@ internal sealed record OutputPluginDeclaration(string Target, string CallbacksTy
             if (type.IsGenericType || type.IsFileLocal ||
                 type.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal))
             {
-                return Report(OutputPluginDiagnostics.Container, type.Locations.FirstOrDefault(), type.Name);
+                return Report(OutputPluginDiagnostics.s_container, type.Locations.FirstOrDefault(), type.Name);
             }
         }
 
@@ -109,7 +109,7 @@ internal sealed record OutputPluginDeclaration(string Target, string CallbacksTy
         AttributeData? unmanaged = Find(metadata, "System.Runtime.InteropServices.UnmanagedCallersOnlyAttribute");
         if (unmanaged is not null)
         {
-            return Report(OutputPluginDiagnostics.UnmanagedOnly, Location(unmanaged));
+            return Report(OutputPluginDiagnostics.s_unmanagedOnly, Location(unmanaged));
         }
 
         AttributeData? role = metadata.Where(static attribute => attribute.AttributeClass?.ToDisplayString() != MarkerName)
@@ -117,7 +117,7 @@ internal sealed record OutputPluginDeclaration(string Target, string CallbacksTy
             .FirstOrDefault(static attribute => attribute.AttributeClass?.ContainingNamespace.ToDisplayString() == "Ankus");
         if (role is not null)
         {
-            return Report(OutputPluginDiagnostics.Role, Location(role), role.AttributeClass!.Name.Replace("Attribute", string.Empty));
+            return Report(OutputPluginDiagnostics.s_role, Location(role), role.AttributeClass!.Name.Replace("Attribute", string.Empty));
         }
 
         return new(MethodInvocation.Create(method).Target, callbacks.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),

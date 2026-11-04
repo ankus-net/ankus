@@ -58,7 +58,7 @@ internal static class OutputPluginPipeline
             }
             else
             {
-                context.Report(OutputPluginDiagnostics.Duplicate, output.Analysis.Location?.Resolve(compilation), output.Analysis.Name,
+                context.Report(OutputPluginDiagnostics.s_duplicate, output.Analysis.Location?.Resolve(compilation), output.Analysis.Name,
                     selected.Analysis.SortName);
                 valid = false;
             }

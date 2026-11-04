@@ -317,14 +317,17 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   fails with the same CS0006. With Visual Studio 18.11.2 on Windows x64, a clone
   with no `bin`, `obj` or `.vs` built all 72 projects without errors, deleting
   those four samples' `obj` outputs rebuilt them without errors, and an unchanged
-  build found all 72 up to date. The repository also applies the IDE suggestions
-  reported at information severity where the fix keeps the build valid. Roslyn's
-  release tracking reads diagnostic descriptors only from field initializers, so
-  the 294 descriptor properties stay field-backed (IDE0032 would cause RS2002);
-  IDE0066's switch expressions for four discard switches have arms of different
-  types (CS8506); and `IsExternalInit` stays in `System.Runtime.CompilerServices`,
-  where the compiler looks for it (IDE0130). Those 299 are all that Visual Studio
-  and `dotnet format style --severity info` still report. On Linux x64 the
+  build found all 72 up to date. The repository also applies every IDE suggestion
+  reported at information severity. Roslyn's release tracking reads diagnostic
+  descriptors only from field initializers, so the 294 descriptors IDE0032 found
+  behind pass-through properties are now internal fields, as
+  `SqlTypeProviderDiagnostics` already declared its own, and callers use them
+  directly. The four discard switches IDE0066 converts have arms of different
+  types, so each switch expression is cast to `object?`, which gives it a type.
+  `IsExternalInit` must stay in `System.Runtime.CompilerServices`, so it moved to
+  `src/Common/System/Runtime/CompilerServices`, a folder that matches its
+  namespace, and the generator links it, as dotnet/runtime shares its own copy.
+  `dotnet format style --severity info` now reports nothing. On Linux x64 the
   Release build has no warnings, and the complete suite passes against
   PostgreSQL 18.6: 15,383 tests, 58 of them skipped as Windows or macOS only.
 - A row, composite or query cell keeps an exact copy of text that a SQL_ASCII
