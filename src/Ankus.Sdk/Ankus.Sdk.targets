@@ -18,17 +18,19 @@
     <CustomAfterDirectoryBuildTargets>$(CustomAfterDirectoryBuildTargets);$(MSBuildThisFileDirectory)targets/Ankus.PostgresSelection.targets</CustomAfterDirectoryBuildTargets>
   </PropertyGroup>
 
+  <!-- The tools inherit a command-line PublishAot, as the solution's own build of them does, so a solution build
+       compiles each of them once. Two configurations of one project would write the same intermediate files. -->
   <ItemGroup>
     <ProjectReference Include="$(MSBuildThisFileDirectory)../Ankus.Runtime/Ankus.Runtime.csproj" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)../Ankus.Generators/Ankus.Generators.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false"
-                      GlobalPropertiesToRemove="RuntimeIdentifier;SelfContained;PublishAot" />
+                      GlobalPropertiesToRemove="RuntimeIdentifier;SelfContained" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)../Ankus.CodeFixes/Ankus.CodeFixes.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false"
-                      GlobalPropertiesToRemove="RuntimeIdentifier;SelfContained;PublishAot" />
+                      GlobalPropertiesToRemove="RuntimeIdentifier;SelfContained" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)../Ankus.Build/Ankus.Build.csproj"
                       ReferenceOutputAssembly="false" OutputItemType="_AnkusBuildToolAssembly"
-                      GlobalPropertiesToRemove="RuntimeIdentifier;SelfContained;PublishAot" />
+                      GlobalPropertiesToRemove="RuntimeIdentifier;SelfContained" />
   </ItemGroup>
 
   <Import Project="targets/Ankus.Development.targets" />
