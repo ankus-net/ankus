@@ -34,19 +34,20 @@ The repository and generated projects select SDK 10.0.400 or a later stable
 installs the latest stable 10.0 SDK. This selection must remain separate from the
 runtime included in published extensions.
 
-`eng/Ankus.Ci.cs` pins upstream 10.0.13 as shipped (dotnet/dotnet
-`4099f83977f4d29604a9aeb971fb0a7bc1d5f699`, whose `src/runtime` is dotnet/runtime
+`eng/Ankus.Ci.cs` pins upstream 10.0.14 as shipped (dotnet/dotnet
+`0427b9abbead3fa64c6655eb4290c537397131fa`, whose `src/runtime` is dotnet/runtime
 `6aa72daa24f66c01c3d7b6a32519e9d21396deec` plus the release's security changes),
-fork commit `8f71811a04631bb8cbcb75fa7ddea5a0caadf90e`, runtime and compiler-host packages
-`10.0.13-ankus.2`, and ILCompiler targets/framework packs `10.0.13`. The fork's
-last commit takes upstream's fix for dotnet/runtime#135912: on Unix x64 a GC
-suspension in a self-recursive tail call's epilogue hijacked a slot of the
-caller's frame instead of the return address. A runtime fix changes every
-extension's embedded runtime and the compiler, so it needs a new package version;
-a release skips a runtime version that nuget.org already has. The SDK
-target and per-RID package properties carry matching target runtime and host
-compiler identities. Framework runtime packs also use 10.0.13 instead of
-following the installed SDK's default patch. Check
+fork commit `081020a735c715386e1119b38deef62d71d93d77`, runtime and compiler-host packages
+`10.0.14-ankus.1`, and ILCompiler targets/framework packs `10.0.14`. 10.0.14 fixes
+the Brotli decoder in GHSA-p3jp-9v83-76w9, and NuGet audit rejects the earlier
+ILCompiler and Native AOT packs. The fork keeps upstream's fix for
+dotnet/runtime#135912, which 10.0.14 still lacks: on Unix x64 a GC suspension in a
+self-recursive tail call's epilogue hijacked a slot of the caller's frame instead
+of the return address. A runtime fix changes every extension's embedded runtime
+and the compiler, so it needs a new package version; a release skips a runtime
+version that nuget.org already has. The SDK target and per-RID package properties
+carry matching target runtime and host compiler identities. Framework runtime
+packs also use 10.0.14 instead of following the installed SDK's default patch. Check
 `PROGRESS.md` for completed platform evidence and recheck upstream servicing
 before each release.
 

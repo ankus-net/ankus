@@ -44,13 +44,15 @@ Repository `global.json` selects stable SDK **10.0.400** with
 target is **net10.0**. Installing another SDK does not silently change an
 extension's selected compiler, target framework or embedded runtime.
 
-Extensions embed runtime and compiler host **10.0.13-ankus.2**, built from runtime
-fork commit `8f71811a04631bb8cbcb75fa7ddea5a0caadf90e` on branch
-`ankus/runtime-10.0.13` and paired with the 10.0.13 Native AOT framework and
-compiler targets. It keeps PostgreSQL's signals on the backend thread, and on
-Unix x64 it finds the return address of a thread stopped in a self-recursive
-tail call's epilogue (see the active work below). It replaces
-**10.0.13-ankus.1** (`72c3927a21db0faa1205127265bda90fdf2874dd`), whose complete
+Extensions embed runtime and compiler host **10.0.14-ankus.1**, built from runtime
+fork commit `081020a735c715386e1119b38deef62d71d93d77` on branch
+`ankus/runtime-10.0.14` and paired with the 10.0.14 Native AOT framework and
+compiler targets. It carries 10.0.14's fix for GHSA-p3jp-9v83-76w9, keeps
+PostgreSQL's signals on the backend thread, and on Unix x64 it finds the return
+address of a thread stopped in a self-recursive tail call's epilogue (see the
+active work below). It replaces **10.0.13-ankus.2**
+(`8f71811a04631bb8cbcb75fa7ddea5a0caadf90e`) and **10.0.13-ankus.1**
+(`72c3927a21db0faa1205127265bda90fdf2874dd`), whose complete
 suites passed for every supported PostgreSQL major on Linux x64, macOS ARM64,
 Windows x64 and Intel macOS; see
 [current acceptance](#current-complete-acceptance-evidence).
@@ -268,6 +270,26 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- Both Native AOT lines move to the releases that fix GHSA-p3jp-9v83-76w9, the
+  Brotli decoder out-of-bounds write (#173): NuGet audit reported NU1903 for
+  ILCompiler 10.0.13 and 11.0.0-rc.2 and failed restores that treat warnings as
+  errors. Each fork merges a commit whose tree is the `src/runtime` Microsoft
+  shipped, as for 10.0.13. The 10.0.14 VMR (`0427b9abbead3fa64c6655eb4290c537397131fa`)
+  still takes dotnet/runtime `6aa72daa24f66c01c3d7b6a32519e9d21396deec` and
+  changes 15 files against shipped 10.0.13; `ankus/runtime-10.0.14` merges it
+  without conflicts and ends at `081020a735c715386e1119b38deef62d71d93d77`, which
+  also moves the fork probes from the 10.0.12 packs audit now rejects to 10.0.14.
+  The RC3 VMR (`5254d8bcf59917edc1e1abc33bdf2442b77b1c70`) takes the same
+  dotnet/runtime commit as RC2, `474ed963699fc29809015392738a15231aaae2de`, and
+  `ankus/runtime-11.0-rc3` merges it without conflicts, ending at
+  `26bd8cd2491758464345629aa1a5a4789ddd85f7` with the probes on the RC3 packs and
+  SDK. The upstream tail-call epilogue fix and the patched Pkcs build tasks stay,
+  since neither release has them. Packages are `10.0.14-ankus.1` with compiler
+  10.0.14 and `11.0.0-rc.3.26522.148-ankus.1` with compiler
+  11.0.0-rc.3.26522.148, and `net11.0` projects pin SDK 11.0.100-rc.3.26522.148.
+  On debian-dev, Linux x64, `runtime-build` and `runtime-pack` pass for both
+  lines with every host-shutdown, signal-mask and host-signals check, and the
+  RC3 fork's own probe suite passes all 30 steps.
 - A row, composite or query cell keeps an exact copy of text that a SQL_ASCII
   database holds as bytes that are not valid UTF-8. Every cell read converted
   text to UTF-8 with `pg_server_to_any`, which raises for such bytes, so
