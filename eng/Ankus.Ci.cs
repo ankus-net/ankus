@@ -1571,6 +1571,7 @@ static void RunRuntimeTests(string repositoryRoot)
 {
     ConfigureRunAsAccount(repositoryRoot);
     using WindowsSuiteSlot? slot = WindowsSuiteSlot.Acquire();
+    using DiskSpaceWatch? diskSpace = DiskSpaceWatch.Start(repositoryRoot);
     string integrationTestModule = $"tests/Ankus.IntegrationTests/bin/Release/{ExtensionTestFramework()}/Ankus.IntegrationTests.dll";
     Task integrationTests = Task.Run(() => RunTestModule(repositoryRoot, integrationTestModule));
     Task unitTests = Task.Run(() => RunUnitTestModules(repositoryRoot));
@@ -2334,4 +2335,151 @@ internal static partial class AutomationPatterns
     /// </summary>
     [GeneratedRegex("computerName=\"[^\"]*\"", RegexOptions.CultureInvariant)]
     internal static partial Regex TrxComputerName();
+}
+
+/// <summary>
+/// Reports what fills a self-hosted Unix runner's disk while its suites run. The macOS runners ran out of space during
+/// two suites that otherwise need under 10 GB, and the space had returned before anything could be inspected.
+/// </summary>
+internal sealed class DiskSpaceWatch : IDisposable
+{
+    private static readonly long[] s_thresholds = [20L << 30, 10L << 30, 4L << 30];
+    private readonly CancellationTokenSource _stop = new();
+    private readonly Task _watch;
+
+    private DiskSpaceWatch(string volume, string[] directories) => _watch = Task.Run(() => WatchAsync(volume, directories, _stop.Token));
+
+    /// <summary>
+    /// Starts watching the volume of the repository on a self-hosted Linux or macOS runner.
+    /// </summary>
+    /// <param name="repositoryRoot">The checkout whose volume the suites write to.</param>
+    /// <returns>The running watch, or null elsewhere.</returns>
+    internal static DiskSpaceWatch? Start(string repositoryRoot)
+    {
+        if (OperatingSystem.IsWindows() || Environment.GetEnvironmentVariable("RUNNER_ENVIRONMENT") != "self-hosted")
+        {
+            return null;
+        }
+
+        string[] directories = [.. new[]
+            {
+                Environment.GetEnvironmentVariable("RUNNER_TEMP"),
+                Path.GetTempPath(),
+                Path.Join(repositoryRoot, "artifacts"),
+                Environment.GetEnvironmentVariable("NUGET_PACKAGES"),
+            }
+            .OfType<string>().Where(Directory.Exists).Distinct(StringComparer.Ordinal)];
+        // DriveInfo reads a mount point, so watch the one that contains the checkout.
+        string checkout = Path.GetFullPath(repositoryRoot);
+        string volume = DriveInfo.GetDrives().Select(static drive => drive.RootDirectory.FullName)
+            .Where(root => checkout.StartsWith(root, StringComparison.Ordinal))
+            .MaxBy(static root => root.Length) ?? "/";
+        return new(volume, directories);
+    }
+
+    private static async Task WatchAsync(string volume, string[] directories, CancellationToken cancellationToken)
+    {
+        int reported = 0;
+        try
+        {
+            while (reported < s_thresholds.Length && !cancellationToken.IsCancellationRequested)
+            {
+                long free = new DriveInfo(volume).AvailableFreeSpace;
+                if (free < s_thresholds[reported])
+                {
+                    Report(free, directories);
+                    while (reported < s_thresholds.Length && free < s_thresholds[reported])
+                    {
+                        reported++;
+                    }
+                }
+
+                // Disposal cancels the wait, and the loop condition then ends the watch.
+                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            }
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // The report only diagnoses a failure, so it never becomes one.
+            Console.WriteLine($"Stopped watching free disk space: {exception.Message}");
+        }
+    }
+
+    private static void Report(long free, string[] directories)
+    {
+        Console.WriteLine($"Free disk space fell to {free >> 20} MiB. Largest entries:");
+        List<(long Size, string Line)> entries = [];
+        foreach (string directory in directories)
+        {
+            string[] children;
+            try
+            {
+                children = [.. Directory.EnumerateFileSystemEntries(directory)];
+            }
+            catch (IOException)
+            {
+                continue;
+            }
+
+            if (children.Length != 0)
+            {
+                entries.AddRange(Lines("du", ["-sk", .. children]).Select(static line => (Size: Leading(line), Line: line)));
+            }
+        }
+
+        foreach ((long size, string line) in entries.OrderByDescending(static entry => entry.Size).Take(12))
+        {
+            Console.WriteLine($"  {size >> 10} MiB {line[(line.IndexOf('\t', StringComparison.Ordinal) + 1)..]}");
+        }
+
+        // Deleted files that a process still holds keep their space until it exits.
+        Console.WriteLine("Largest deleted files still open:");
+        // .NET maps executable memory through memfd files on Linux, which lsof lists as deleted but which use no disk.
+        foreach (string line in Lines("lsof", ["-nP", "+L1"]).Skip(1)
+            .Where(static line => !line.Contains("/memfd:", StringComparison.Ordinal))
+            .OrderByDescending(static line => Column(line, 6)).Take(8))
+        {
+            Console.WriteLine("  " + line);
+        }
+    }
+
+    // du and lsof exit nonzero when an entry vanishes between listing and reading it, so partial output still counts.
+    private static string[] Lines(string program, IReadOnlyList<string> arguments)
+    {
+        var start = new ProcessStartInfo(program) { RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false };
+        foreach (string argument in arguments)
+        {
+            start.ArgumentList.Add(argument);
+        }
+
+        try
+        {
+            using Process process = Process.Start(start)!;
+            Task<string> error = process.StandardError.ReadToEndAsync();
+            string output = process.StandardOutput.ReadToEnd();
+            process.WaitForExit();
+            _ = error.Result;
+            return output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        }
+        catch (Exception exception) when (exception is System.ComponentModel.Win32Exception or InvalidOperationException)
+        {
+            return [$"{program} could not run: {exception.Message}"];
+        }
+    }
+
+    private static long Leading(string line) => long.TryParse(line.AsSpan(0, Math.Max(0, line.IndexOf('\t', StringComparison.Ordinal))), out long size) ? size : 0;
+
+    private static long Column(string line, int index)
+    {
+        string[] columns = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return columns.Length > index && long.TryParse(columns[index], out long value) ? value : 0;
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        _stop.Cancel();
+        _watch.GetAwaiter().GetResult();
+        _stop.Dispose();
+    }
 }
