@@ -314,17 +314,48 @@ public sealed partial class SpiInterpolationAnalyzerTests
     }
 
     /// <summary>
-    /// Bounds repeated local-helper interpretation and fails closed on the affected command.
+    /// Bounds local-helper interpretation that reaches a new state on every call and fails closed on the affected command.
     /// </summary>
     [TestMethod]
     public async Task RepeatedLocalHelperCallsRespectTheAnalysisBudget()
     {
         string helpers = string.Join(' ', Enumerable.Range(0, 16).Select(index =>
-            index == 15 ? "void Step15() { sql = value; }" :
+            index == 15 ? "void Step15() { sql += \" \"; }" :
                 FormattableString.Invariant($"void Step{index}() {{ Step{index + 1}(); Step{index + 1}(); }}")));
         Diagnostic error = Assert.ContainsSingle(await Analyze("string sql = \"SELECT 1\"; " + helpers + " Step0(); Spi.Execute(sql);"));
         Assert.AreEqual("ANKUS044", error.Id);
         Assert.AreEqual("sql", error.Location.SourceTree!.GetText(context.CancellationToken).ToString(error.Location.SourceSpan));
+    }
+
+    /// <summary>
+    /// Reuses a local helper's analysis when it is called again from an equivalent state, so repeated calls keep
+    /// constant commands valid within the analysis budget.
+    /// </summary>
+    [TestMethod]
+    public async Task RepeatedLocalHelperCallsFromEquivalentStatesKeepConstantCommandsValid()
+    {
+        string helpers = string.Join(' ', Enumerable.Range(0, 16).Select(index =>
+            index == 15 ? "void Step15() { sql = \"SELECT 2\"; }" :
+                FormattableString.Invariant($"void Step{index}() {{ Step{index + 1}(); Step{index + 1}(); }}")));
+        Assert.IsEmpty(await Analyze("string sql = \"SELECT 1\"; " + helpers + " Step0(); Spi.Execute(sql);"));
+    }
+
+    /// <summary>
+    /// Keeps constant commands valid beside a loop whose callback selects one of many callbacks and invokes it within
+    /// the analysis budget.
+    /// </summary>
+    [TestMethod]
+    public async Task ManySelectedCallbacksKeepConstantCommandsValid()
+    {
+        string arms = string.Concat(Enumerable.Range(0, 24).Select(static index =>
+            FormattableString.Invariant($"{index} => () => Other.Touch({index}), ")));
+        string body = "Spi.Connect(active => { active.Execute(\"CREATE TEMP TABLE t(value integer)\"); " +
+            "active.Execute(\"INSERT INTO t VALUES (1)\"); int failures = 0; int finalized = 0; " +
+            "for (int index = 0; index < 50; index++) { try { Other.Run(() => { System.Action call = number switch { " + arms +
+            "_ => throw new System.ArgumentException(\"Unknown.\") }; call(); }); } " +
+            "catch (System.InvalidOperationException) { failures++; } catch (System.ArgumentException) { failures++; } " +
+            "finally { finalized++; } } return active.ExecuteScalar<long>(\"SELECT count(*) FROM t\") + failures + finalized; })";
+        Assert.IsEmpty(await Analyze(body, FlowHelpers));
     }
 
     /// <summary>
@@ -335,6 +366,8 @@ public sealed partial class SpiInterpolationAnalyzerTests
         {
             internal static void Maybe(System.Action callback) { }
             internal static void Mutate(System.Text.StringBuilder builder) { }
+            internal static void Run(System.Action callback) => callback();
+            internal static int Touch(int value) => value;
         }
         """;
 }

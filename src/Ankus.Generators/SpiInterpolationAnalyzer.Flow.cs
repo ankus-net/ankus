@@ -34,6 +34,7 @@ public sealed partial class SpiInterpolationAnalyzer
         private readonly HashSet<ISymbol> _exposed = new(SymbolEqualityComparer.Default);
         private readonly HashSet<CaptureId> _referenceCaptures = [];
         private readonly HashSet<ControlFlowGraph> _active = [];
+        private readonly Dictionary<ControlFlowGraph, List<CallbackRun>> _runs = [];
         private ControlFlowGraph _graph = null!;
         private int _analysisSteps;
         private bool _budgetExceeded;
@@ -441,9 +442,10 @@ public sealed partial class SpiInterpolationAnalyzer
             }
 
             PathState?[] incoming = new PathState?[graph.Blocks.Length];
-            Queue<int> work = new();
+            // Taking the lowest pending block first runs a join after all of its forward predecessors have merged into it.
+            SortedSet<int> work = [];
             incoming[first] = PathState.Of(initial.Clone());
-            work.Enqueue(first);
+            work.Add(first);
             FlowState? output = null;
             while (work.Count != 0)
             {
@@ -455,7 +457,8 @@ public sealed partial class SpiInterpolationAnalyzer
                     return Conservative(initial);
                 }
 
-                int ordinal = work.Dequeue();
+                int ordinal = work.Min;
+                work.Remove(ordinal);
                 BasicBlock block = graph.Blocks[ordinal];
                 PathState paths = incoming[ordinal]!.Clone();
                 foreach (IOperation operation in block.Operations)
@@ -556,7 +559,7 @@ public sealed partial class SpiInterpolationAnalyzer
                 if (incoming[ordinal] is null || !merged.Equivalent(incoming[ordinal]!))
                 {
                     incoming[ordinal] = merged;
-                    work.Enqueue(ordinal);
+                    work.Add(ordinal);
                 }
             }
 
@@ -1188,7 +1191,7 @@ public sealed partial class SpiInterpolationAnalyzer
                 }
             }
 
-            FlowState result = Solve(function, 0, function.Blocks.Length - 1, initial);
+            FlowState result = Reuse(function, initial) ?? Run(function, initial);
             _active.Remove(function);
             foreach (KeyValuePair<ISymbol, Value> pair in result.Locals)
             {
@@ -1215,6 +1218,52 @@ public sealed partial class SpiInterpolationAnalyzer
             }
 
             return result.Returned ?? Value.Raw();
+        }
+
+        /// <summary>
+        /// Finds an earlier analysis of the same function from an equivalent state under the same callers.
+        /// </summary>
+        /// <param name="function">The callback or local function graph.</param>
+        /// <param name="initial">The state the function starts from, with its parameters bound.</param>
+        /// <returns>A copy of the earlier result, or <see langword="null"/> when no earlier analysis matches.</returns>
+        /// <remarks>
+        /// Loop iterations and exception handlers reach the same callback states again. A run depends only on its
+        /// starting state, the functions under analysis, the known reference captures and whether commands are being
+        /// reported, and everything it records merges idempotently, so a repeated run adds nothing.
+        /// </remarks>
+        private FlowState? Reuse(ControlFlowGraph function, FlowState initial)
+            => _runs.TryGetValue(function, out List<CallbackRun>? runs)
+                ? runs.FirstOrDefault(run => run.Report == _report && run.ReferenceCaptures == _referenceCaptures.Count &&
+                    _active.SetEquals(run.Active) && run.Initial.Equivalent(initial))?.Result.Clone()
+                : null;
+
+        /// <summary>
+        /// Analyzes a function from a state and keeps the result for an equivalent later state.
+        /// </summary>
+        /// <param name="function">The callback or local function graph.</param>
+        /// <param name="initial">The state the function starts from, with its parameters bound.</param>
+        /// <returns>The function's exit state.</returns>
+        /// <remarks>
+        /// A run that exhausts the budget, or that discovers a new reference capture, which changes how later
+        /// operations read, is not kept.
+        /// </remarks>
+        private FlowState Run(ControlFlowGraph function, FlowState initial)
+        {
+            int referenceCaptures = _referenceCaptures.Count;
+            ControlFlowGraph[] active = [.. _active];
+            FlowState result = Solve(function, 0, function.Blocks.Length - 1, initial);
+            if (!_budgetExceeded && referenceCaptures == _referenceCaptures.Count)
+            {
+                if (!_runs.TryGetValue(function, out List<CallbackRun>? runs))
+                {
+                    runs = [];
+                    _runs.Add(function, runs);
+                }
+
+                runs.Add(new CallbackRun(initial, active, referenceCaptures, _report, result.Clone()));
+            }
+
+            return result;
         }
 
         private Value Format(List<(IArgumentOperation Argument, Value Value)> arguments, FlowState state)
@@ -1863,6 +1912,42 @@ public sealed partial class SpiInterpolationAnalyzer
                         ? [.. left.Elements.Zip(right.Elements, static (first, second) => Merge(first, second))] : default,
                     [.. left.Functions.Concat(right.Functions).Distinct().OrderBy(static site => site)]);
             }
+        }
+
+        /// <summary>
+        /// Records one analysis of a function from a state, for reuse from an equivalent state.
+        /// </summary>
+        /// <param name="initial">The state the function started from.</param>
+        /// <param name="active">The functions under analysis when it ran, the function itself included.</param>
+        /// <param name="referenceCaptures">The number of reference captures known when it ran.</param>
+        /// <param name="report">Whether commands were being reported when it ran.</param>
+        /// <param name="result">The function's exit state.</param>
+        private sealed class CallbackRun(FlowState initial, ControlFlowGraph[] active, int referenceCaptures, bool report, FlowState result)
+        {
+            /// <summary>
+            /// Gets the state the function started from.
+            /// </summary>
+            internal FlowState Initial { get; } = initial;
+
+            /// <summary>
+            /// Gets the functions under analysis when it ran, the function itself included.
+            /// </summary>
+            internal ControlFlowGraph[] Active { get; } = active;
+
+            /// <summary>
+            /// Gets the number of reference captures known when it ran.
+            /// </summary>
+            internal int ReferenceCaptures { get; } = referenceCaptures;
+
+            /// <summary>
+            /// Gets whether commands were being reported when it ran.
+            /// </summary>
+            internal bool Report { get; } = report;
+
+            /// <summary>
+            /// Gets the function's exit state.
+            /// </summary>
+            internal FlowState Result { get; } = result;
         }
 
         /// <summary>
