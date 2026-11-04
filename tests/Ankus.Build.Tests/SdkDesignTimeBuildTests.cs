@@ -121,7 +121,7 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                 new XElement("ItemGroup", dependencies.Select(name => new XElement("ProjectReference",
                     new XAttribute("Include", Path.Join(name, name + ".csproj")),
                     new XAttribute("ReferenceOutputAssembly", name == "Ankus.Runtime" ? "true" : "false"),
-                    new XAttribute("GlobalPropertiesToRemove", "RuntimeIdentifier;SelfContained;PublishAot")))),
+                    new XAttribute("GlobalPropertiesToRemove", "RuntimeIdentifier;SelfContained")))),
                 new XElement("Import", new XAttribute("Project", Path.Join(AppContext.BaseDirectory, "Sdk", "Ankus.Development.targets"))),
                 new XElement("Import", new XAttribute("Project", Path.Join(AppContext.BaseDirectory, "Sdk", "Ankus.Bindings.targets"))))).Save(project);
             string source = Path.Join(directory, "Probe.cs");

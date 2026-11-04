@@ -270,6 +270,15 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- The repository SDK's references to Ankus.Generators, Ankus.CodeFixes and
+  Ankus.Build inherit a command-line `PublishAot`. They removed it before, so
+  CI's `dotnet build Ankus.slnx -p:PublishAot=false` built each of them in two
+  configurations at once, and main's quality job failed when one copied
+  `obj/Release/netstandard2.0/Ankus.Generators.dll` while the other was writing
+  it. The binlog of that build now shows one evaluation of every `src` project.
+  `SdkToolReferenceTests` builds the copied targets in such a solution, failing
+  with Ankus.Build in two configurations before the change; Ankus.Build.Tests
+  passed 1,414 tests on Linux x64 (9 skipped).
 - Both Native AOT lines move to the releases that fix GHSA-p3jp-9v83-76w9, the
   Brotli decoder out-of-bounds write (#173): NuGet audit reported NU1903 for
   ILCompiler 10.0.13 and 11.0.0-rc.2 and failed restores that treat warnings as

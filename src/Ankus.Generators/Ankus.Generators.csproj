@@ -15,7 +15,7 @@
     <Compile Include="../Ankus.Runtime/CompilerServices/SpiSqlTokenLayout.cs" Link="CompilerServices/SpiSqlTokenLayout.cs" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
     <ProjectReference Include="../Ankus.CodeFixes/Ankus.CodeFixes.csproj" ReferenceOutputAssembly="false" PrivateAssets="all"
-                      GlobalPropertiesToRemove="RuntimeIdentifier;SelfContained;PublishAot" />
+                      GlobalPropertiesToRemove="RuntimeIdentifier;SelfContained" />
   </ItemGroup>
   <ItemGroup>
     <None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
