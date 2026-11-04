@@ -1,5 +1,6 @@
 <Project Sdk="MSTest.Sdk">
   <ItemGroup>
+    <Compile Include="../Common/VisualStudioDeveloperEnvironment.cs" Link="Common/VisualStudioDeveloperEnvironment.cs" />
     <AssemblyMetadata Include="AnkusTestSdkVersion" Value="$(NETCoreSdkVersion)" />
     <AssemblyMetadata Include="AnkusTestSdkDirectory" Value="$(MSBuildToolsPath)" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />

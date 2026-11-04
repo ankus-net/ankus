@@ -32,9 +32,13 @@ alignment operator. Standalone probes use LLVM's `llvm-objcopy.exe`
 after compilation to separate backend header implementations
 from probe code. References from probe code to removed definitions or missing
 dependencies still fail. Put LLVM's `bin` directory on
-`PATH`. A Visual Studio Developer Command Prompt supplies headers and libraries.
-Install the Visual Studio Clang tools or LLVM for the independent
-standard C fixture and the header-type collector.
+`PATH`. Install the Visual Studio Clang tools or LLVM for the independent
+standard C fixture and the header-type collector. When a test process has no
+x64 developer environment, the build and integration test assemblies import the
+one CI uses, from the newest Visual Studio 2022 17.9 or later with the C++ x64
+tools, before any test runs. `dotnet test` therefore works from any shell and
+from Visual Studio's Test Explorer. They leave out `Platform`, which the
+developer script sets and which MSBuild would read as the solution platform.
 
 Windows CI configures the Visual Studio developer environment once and sets
 `IlcUseEnvironmentalTools=true` for child builds. Native AOT uses its selected

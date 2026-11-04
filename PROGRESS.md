@@ -270,6 +270,14 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- `dotnet test` and Visual Studio's Test Explorer run the Windows native tests
+  without a developer prompt. Ankus.Build.Tests and Ankus.IntegrationTests
+  import the x64 environment CI's `windows-toolchain` command selects, through
+  vswhere and `vcvarsall.bat x64`, whenever the process lacks one, and leave out
+  `Platform` as CI does. Test Explorer had reported 243 failures. From a 32-bit
+  Windows PowerShell with no developer environment, `dotnet test` at the
+  repository root now passes all six test assemblies on Windows x64: 15,386
+  tests, 54 skipped as Linux or macOS only.
 - Workflows install .NET through `.github/actions/setup-dotnet`, which puts a
   self-hosted runner's SDKs in a `dotnet` folder beside its checkout. The
   runners on each host shared one install directory, and the 0.2.23 release's

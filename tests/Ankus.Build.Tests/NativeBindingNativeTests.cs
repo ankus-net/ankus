@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Ankus.Tests;
 
 namespace Ankus.Build.Tests;
 
@@ -9,6 +10,14 @@ namespace Ankus.Build.Tests;
 [TestClass]
 public sealed partial class NativeBindingNativeTests(TestContext context)
 {
+    /// <summary>
+    /// Gives native compilation the x64 developer environment CI configures before any test in the assembly runs, so
+    /// these tests run from any shell and from Visual Studio's Test Explorer.
+    /// </summary>
+    /// <param name="assemblyContext">The assembly context.</param>
+    [AssemblyInitialize]
+    public static void InitializeAssembly(TestContext assemblyContext) => VisualStudioDeveloperEnvironment.Configure(assemblyContext);
+
     /// <summary>
     /// The emitted program measures anonymous unions, array elements and flexible tail padding through actual C paths.
     /// </summary>
