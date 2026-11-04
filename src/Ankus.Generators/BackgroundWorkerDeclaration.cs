@@ -44,69 +44,69 @@ internal sealed record BackgroundWorkerDeclaration(string Target, string EntryPo
     {
         if (method.MethodKind != MethodKind.Ordinary)
         {
-            return Report(WorkerDeclarationDiagnostics.Kind, Attribute("Ankus.PgBackgroundWorkerAttribute"));
+            return Report(WorkerDeclarationDiagnostics.s_kind, Attribute("Ankus.PgBackgroundWorkerAttribute"));
         }
 
         if (!method.IsStatic)
         {
-            return Report(WorkerDeclarationDiagnostics.Static, method.Locations.FirstOrDefault());
+            return Report(WorkerDeclarationDiagnostics.s_static, method.Locations.FirstOrDefault());
         }
 
         if (method.IsAsync || method.PartialImplementationPart?.IsAsync == true)
         {
-            return Report(WorkerDeclarationDiagnostics.Async, Modifier(SyntaxKind.AsyncKeyword));
+            return Report(WorkerDeclarationDiagnostics.s_async, Modifier(SyntaxKind.AsyncKeyword));
         }
 
         if (method.IsGenericMethod)
         {
-            return Report(WorkerDeclarationDiagnostics.Generic, Syntax()?.TypeParameterList?.GetLocation());
+            return Report(WorkerDeclarationDiagnostics.s_generic, Syntax()?.TypeParameterList?.GetLocation());
         }
 
         if (method.IsAbstract)
         {
-            return Report(WorkerDeclarationDiagnostics.Abstract, Modifier(SyntaxKind.AbstractKeyword));
+            return Report(WorkerDeclarationDiagnostics.s_abstract, Modifier(SyntaxKind.AbstractKeyword));
         }
 
         if (method.IsVirtual)
         {
-            return Report(WorkerDeclarationDiagnostics.Virtual, Modifier(SyntaxKind.VirtualKeyword));
+            return Report(WorkerDeclarationDiagnostics.s_virtual, Modifier(SyntaxKind.VirtualKeyword));
         }
 
         if (method.IsExtern)
         {
-            return Report(WorkerDeclarationDiagnostics.Extern, Modifier(SyntaxKind.ExternKeyword));
+            return Report(WorkerDeclarationDiagnostics.s_extern, Modifier(SyntaxKind.ExternKeyword));
         }
 
         if (!method.ReturnsVoid)
         {
-            return Report(WorkerDeclarationDiagnostics.Result, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken),
+            return Report(WorkerDeclarationDiagnostics.s_result, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken),
                 method.ReturnType.ToDisplayString());
         }
 
         if (method.Parameters.Length != 1)
         {
-            return Report(WorkerDeclarationDiagnostics.ParameterCount, Syntax()?.ParameterList.GetLocation());
+            return Report(WorkerDeclarationDiagnostics.s_parameterCount, Syntax()?.ParameterList.GetLocation());
         }
 
         IParameterSymbol parameter = method.Parameters[0];
         if (parameter.RefKind != RefKind.None)
         {
-            return Report(WorkerDeclarationDiagnostics.ParameterRefKind, ParameterSyntax()?.GetLocation(), parameter.Name);
+            return Report(WorkerDeclarationDiagnostics.s_parameterRefKind, ParameterSyntax()?.GetLocation(), parameter.Name);
         }
 
         if (parameter.Type.SpecialType != SpecialType.System_UIntPtr)
         {
-            return Report(WorkerDeclarationDiagnostics.ParameterType, ParameterSyntax()?.Type?.GetLocation(), parameter.Type.ToDisplayString());
+            return Report(WorkerDeclarationDiagnostics.s_parameterType, ParameterSyntax()?.Type?.GetLocation(), parameter.Type.ToDisplayString());
         }
 
         if (method.IsPartialDefinition && method.PartialImplementationPart is null)
         {
-            return Report(WorkerDeclarationDiagnostics.Implementation, method.Locations.FirstOrDefault());
+            return Report(WorkerDeclarationDiagnostics.s_implementation, method.Locations.FirstOrDefault());
         }
 
         if (method.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal))
         {
-            return Report(WorkerDeclarationDiagnostics.Accessibility, Modifier(method.DeclaredAccessibility is Accessibility.Private or
+            return Report(WorkerDeclarationDiagnostics.s_accessibility, Modifier(method.DeclaredAccessibility is Accessibility.Private or
                 Accessibility.ProtectedAndInternal ? SyntaxKind.PrivateKeyword : SyntaxKind.ProtectedKeyword));
         }
 
@@ -114,17 +114,17 @@ internal sealed record BackgroundWorkerDeclaration(string Target, string EntryPo
         {
             if (type.IsGenericType)
             {
-                return Report(WorkerDeclarationDiagnostics.GenericContainer, type.Locations.FirstOrDefault(), type.Name);
+                return Report(WorkerDeclarationDiagnostics.s_genericContainer, type.Locations.FirstOrDefault(), type.Name);
             }
 
             if (type.IsFileLocal)
             {
-                return Report(WorkerDeclarationDiagnostics.FileContainer, type.Locations.FirstOrDefault(), type.Name);
+                return Report(WorkerDeclarationDiagnostics.s_fileContainer, type.Locations.FirstOrDefault(), type.Name);
             }
 
             if (type.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal))
             {
-                return Report(WorkerDeclarationDiagnostics.ContainerAccessibility, type.Locations.FirstOrDefault(), type.Name);
+                return Report(WorkerDeclarationDiagnostics.s_containerAccessibility, type.Locations.FirstOrDefault(), type.Name);
             }
         }
 
@@ -132,20 +132,20 @@ internal sealed record BackgroundWorkerDeclaration(string Target, string EntryPo
         AttributeData? conditional = Find(metadata, "System.Diagnostics.ConditionalAttribute");
         if (conditional is not null)
         {
-            return Report(WorkerDeclarationDiagnostics.Conditional, Location(conditional));
+            return Report(WorkerDeclarationDiagnostics.s_conditional, Location(conditional));
         }
 
         AttributeData? unmanaged = Find(metadata, "System.Runtime.InteropServices.UnmanagedCallersOnlyAttribute");
         if (unmanaged is not null)
         {
-            return Report(WorkerDeclarationDiagnostics.UnmanagedOnly, Location(unmanaged));
+            return Report(WorkerDeclarationDiagnostics.s_unmanagedOnly, Location(unmanaged));
         }
 
         AttributeData? phase = metadata.FirstOrDefault(static attribute => attribute.AttributeClass?.ToDisplayString() is
             "Ankus.PgInitializeAttribute" or "Ankus.PgModuleLoadAttribute");
         if (phase is not null)
         {
-            return Report(WorkerDeclarationDiagnostics.InitializationPhase, Location(phase), AttributeName(phase));
+            return Report(WorkerDeclarationDiagnostics.s_initializationPhase, Location(phase), AttributeName(phase));
         }
 
         AttributeData? role = metadata.FirstOrDefault(static attribute => attribute.AttributeClass?.ToDisplayString() is
@@ -153,21 +153,21 @@ internal sealed record BackgroundWorkerDeclaration(string Target, string EntryPo
             "Ankus.PgOperatorAttribute" or "Ankus.PgCastAttribute");
         if (role is not null)
         {
-            return Report(WorkerDeclarationDiagnostics.SqlRole, Location(role), AttributeName(role));
+            return Report(WorkerDeclarationDiagnostics.s_sqlRole, Location(role), AttributeName(role));
         }
 
         AttributeData? result = method.GetReturnTypeAttributes().FirstOrDefault(static attribute =>
             attribute.AttributeClass?.ContainingNamespace.ToDisplayString() == "Ankus");
         if (result is not null)
         {
-            return Report(WorkerDeclarationDiagnostics.ResultMetadata, Location(result), AttributeName(result));
+            return Report(WorkerDeclarationDiagnostics.s_resultMetadata, Location(result), AttributeName(result));
         }
 
         AttributeData? argument = parameter.GetAttributes().FirstOrDefault(static attribute =>
             attribute.AttributeClass?.ContainingNamespace.ToDisplayString() == "Ankus");
         if (argument is not null)
         {
-            return Report(WorkerDeclarationDiagnostics.ParameterMetadata, Location(argument), AttributeName(argument));
+            return Report(WorkerDeclarationDiagnostics.s_parameterMetadata, Location(argument), AttributeName(argument));
         }
 
         AttributeData marker = metadata.First(static attribute => attribute.AttributeClass?.ToDisplayString() == "Ankus.PgBackgroundWorkerAttribute");
@@ -175,17 +175,17 @@ internal sealed record BackgroundWorkerDeclaration(string Target, string EntryPo
         Location? exportLocation = FunctionDeclarationDiagnostics.Option(marker, "EntryPoint", context.CancellationToken) ?? method.Locations.FirstOrDefault();
         if (entry.Length > 95)
         {
-            return Report(WorkerDeclarationDiagnostics.ExportLength, exportLocation, entry);
+            return Report(WorkerDeclarationDiagnostics.s_exportLength, exportLocation, entry);
         }
 
         if (s_reserved.Contains(entry) || entry.StartsWith("ankus_", StringComparison.Ordinal) || entry.StartsWith("pg_finfo_", StringComparison.Ordinal))
         {
-            return Report(WorkerDeclarationDiagnostics.ReservedExport, exportLocation, entry);
+            return Report(WorkerDeclarationDiagnostics.s_reservedExport, exportLocation, entry);
         }
 
         if (entry.Length == 0 || !IsLetter(entry[0]) || entry.Any(static value => !IsLetter(value) && value is not (>= '0' and <= '9') && value != '_'))
         {
-            return Report(WorkerDeclarationDiagnostics.InvalidExport, exportLocation, entry);
+            return Report(WorkerDeclarationDiagnostics.s_invalidExport, exportLocation, entry);
         }
 
         return new(MethodInvocation.Create(method).Target, entry, PgFunctionGenerator.GetCallbackName(method, "worker"));
@@ -221,7 +221,7 @@ internal sealed record BackgroundWorkerDeclaration(string Target, string EntryPo
     /// <param name="entry">The conflicting native export.</param>
     /// <param name="context">The current production diagnostic receiver.</param>
     internal static void ReportDuplicate(Location? location, string name, string entry, GeneratorDiagnostics context)
-        => context.Report(WorkerDeclarationDiagnostics.DuplicateExport, location, name, entry);
+        => context.Report(WorkerDeclarationDiagnostics.s_duplicateExport, location, name, entry);
 
     /// <summary>
     /// Recognizes the portable ASCII letters admitted in an exported native symbol.

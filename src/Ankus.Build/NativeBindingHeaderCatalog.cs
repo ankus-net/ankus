@@ -937,18 +937,14 @@ internal sealed class NativeBindingHeaderCatalog
     /// </summary>
     private bool IsCopy(NativeCType type)
     {
-        switch (type)
+        return type switch
         {
-            case NativeCTypedef typedef when _typedefs.TryGetValue(typedef.Name, out AstTypedef? declaration) &&
-                !s_blocklistedTypes.Contains(typedef.Name):
-                return IsCopy(declaration.Type);
-            case NativeCTag { Kind: not NativeCTagKind.Enum } tag:
-                return IsRecordCopy(Resolve(tag));
-            case NativeCArray array:
-                return array.Count is not (null or 0) && IsCopy(array.Element);
-            default:
-                return true;
-        }
+            NativeCTypedef typedef when _typedefs.TryGetValue(typedef.Name, out AstTypedef? declaration) &&
+                            !s_blocklistedTypes.Contains(typedef.Name) => IsCopy(declaration.Type),
+            NativeCTag { Kind: not NativeCTagKind.Enum } tag => IsRecordCopy(Resolve(tag)),
+            NativeCArray array => array.Count is not (null or 0) && IsCopy(array.Element),
+            _ => true,
+        };
     }
 
     private bool IsRecordCopy(string id)

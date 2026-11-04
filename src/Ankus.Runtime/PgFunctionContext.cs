@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Ankus;
 
@@ -14,8 +15,6 @@ namespace Ankus;
 /// </remarks>
 public sealed class PgFunctionContext
 {
-    private readonly PgFunctionStateScope? _state;
-
     /// <summary>
     /// Creates an immutable snapshot after native argument copies have completed.
     /// </summary>
@@ -30,7 +29,7 @@ public sealed class PgFunctionContext
         ResultTypeOid = resultTypeOid;
         CollationOid = collationOid;
         Arguments = Array.AsReadOnly(arguments);
-        _state = state;
+        State = state;
     }
 
     /// <summary>
@@ -84,5 +83,6 @@ public sealed class PgFunctionContext
     /// <summary>
     /// Gets the native cache binding after rejecting manually constructed metadata-only snapshots.
     /// </summary>
-    private PgFunctionStateScope State => _state ?? throw new InvalidOperationException("The function context has no native state owner.");
+    [AllowNull]
+    private PgFunctionStateScope State => field ?? throw new InvalidOperationException("The function context has no native state owner.");
 }

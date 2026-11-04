@@ -44,7 +44,7 @@ public sealed class BenchmarkHistoryReportTests
     public void DriftNamesEachBroadDifference()
     {
         BenchmarkHistoryRun baseline = Run("bench", 1, "first", 10, settings: "{}");
-        Assert.AreSequenceEqual(Array.Empty<string>(), BenchmarkHistoryReport.Drift(baseline, baseline with { GroupId = 2 }));
+        Assert.AreSequenceEqual([], BenchmarkHistoryReport.Drift(baseline, baseline with { GroupId = 2 }));
         Assert.AreSequenceEqual(s_everyCategory,
             BenchmarkHistoryReport.Drift(baseline, baseline with
             {
@@ -54,7 +54,7 @@ public sealed class BenchmarkHistoryReportTests
                 RuntimeIdentifier = "win-x64",
                 Settings = """{"work_mem": {"unit": "kB", "setting": "65536"}}""",
             }));
-        Assert.AreSequenceEqual(Array.Empty<string>(), BenchmarkHistoryReport.Drift(baseline with { Settings = null },
+        Assert.AreSequenceEqual([], BenchmarkHistoryReport.Drift(baseline with { Settings = null },
             baseline with { GroupId = 2, Settings = """{"work_mem": {"unit": "kB", "setting": "65536"}}""" }));
     }
 

@@ -19,7 +19,6 @@ public sealed class PgInternal
     private static Dictionary<(nint Provider, nuint Address), ManagedState>? s_states;
 
     private readonly ManagedState? _state;
-    private readonly PgDatum _datum;
 
     /// <summary>
     /// Wraps a present internal datum, recovering managed ownership when it belongs to this extension.
@@ -35,7 +34,7 @@ public sealed class PgInternal
 
         nuint address = datum.DangerousGetBits();
         s_states?.TryGetValue((NativeMemoryContext.Provider, address), out _state);
-        _datum = _state?.Datum ?? datum;
+        Datum = _state?.Datum ?? datum;
     }
 
     /// <summary>
@@ -43,7 +42,7 @@ public sealed class PgInternal
     /// </summary>
     private PgInternal(PgDatum datum, ManagedState state)
     {
-        _datum = datum;
+        Datum = datum;
         _state = state;
     }
 
@@ -55,7 +54,7 @@ public sealed class PgInternal
         get
         {
             _state?.Validate();
-            return _datum;
+            return field;
         }
     }
 

@@ -44,7 +44,7 @@ internal static class SchemaPipeline
         SchemaDeclaration? declaration = SqlText.IsIdentifier(name) && (!create || !name!.StartsWith("pg_", StringComparison.Ordinal))
             ? new(name!, create) : null;
         GeneratorProblem? problem = declaration is null
-            ? new(SqlText.IsIdentifier(name) ? FunctionDeclarationDiagnostics.ReservedSchema : FunctionDeclarationDiagnostics.Schema,
+            ? new(SqlText.IsIdentifier(name) ? FunctionDeclarationDiagnostics.s_reservedSchema : FunctionDeclarationDiagnostics.s_schema,
                 GeneratorLocation.Create(FunctionDeclarationDiagnostics.ConstructorArgument(attribute, cancellationToken), context.SemanticModel.Compilation),
                 new([]))
             : null;

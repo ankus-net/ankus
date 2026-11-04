@@ -28,7 +28,10 @@ public partial class AssemblyAccessValue(int count)
     /// <param name="extra">The unused check-hook payload.</param>
     /// <returns>The independently observable hook result.</returns>
     protected internal static string ShowLimit(int current, PgGucExtra? extra)
-        => "limit=" + current.ToString(CultureInfo.InvariantCulture);
+    {
+        _ = extra;
+        return "limit=" + current.ToString(CultureInfo.InvariantCulture);
+    }
 
     /// <summary>
     /// Reads the generated setting from an assembly-visible function.

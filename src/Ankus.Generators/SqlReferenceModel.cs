@@ -69,11 +69,10 @@ internal sealed record SqlReferenceModel(SqlReferenceModel.Declaration Source, s
             return (null, new(SqlReferenceProblemKind.TargetType, Location: typeLocation));
         }
 
-        string? member = attribute.ConstructorArguments[1].Value as string;
         TypedConstant parameters = attribute.NamedArguments.FirstOrDefault(static argument => argument.Key == "ParameterTypes").Value;
         bool selectedParameters = parameters.Kind == TypedConstantKind.Array && !parameters.IsNull;
         GeneratorLocation? ParameterTypes() => Detach(FunctionDeclarationDiagnostics.Option(attribute, "ParameterTypes", cancellationToken), compilation);
-        if (member is null)
+        if (attribute.ConstructorArguments[1].Value is not string member)
         {
             return selectedParameters ? (null, new(SqlReferenceProblemKind.ParameterTypesMethod, Location: ParameterTypes()))
                 : (Declaration.Create(type), null);

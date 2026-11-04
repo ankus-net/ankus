@@ -30,12 +30,12 @@ public unsafe partial struct NativeValue
             throw new PgException("22P03", "Invalid native-layout custom-type value.");
         }
 
-        if (_integer == 0 || _temporalInfinity is not (0 or 1))
+        if (Integral == 0 || _temporalInfinity is not (0 or 1))
         {
             throw new InvalidOperationException("Invalid native varlena input envelope.");
         }
 
-        return new PgVarlena<T>((nint)_integer, (nint)_data, _temporalInfinity != 0,
+        return new PgVarlena<T>((nint)Integral, (nint)_data, _temporalInfinity != 0,
             PgMemoryContext.Current, NativeMemoryContext.BorrowScope);
     }
 
@@ -75,7 +75,7 @@ public unsafe partial struct NativeValue
     /// </summary>
     internal readonly ReadOnlySpan<byte> ReadCustomPayload(uint oid)
     {
-        if (!IsCustomType || _isNull != 0 || unchecked((uint)_auxiliary2) != oid || oid == 0 ||
+        if (!IsCustomType || IsNull != 0 || unchecked((uint)_auxiliary2) != oid || oid == 0 ||
             _length < 0 || _length != 0 && _data == null)
         {
             throw new InvalidOperationException("Invalid custom PostgreSQL type payload or type identity.");

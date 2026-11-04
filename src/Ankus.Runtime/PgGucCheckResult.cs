@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Ankus;
 
@@ -8,10 +9,6 @@ namespace Ankus;
 /// <typeparam name="T">The declared setting type.</typeparam>
 public sealed class PgGucCheckResult<T>
 {
-    private readonly T? _value;
-    private readonly PgGucExtra? _extra;
-    private readonly PgGucCheckError? _error;
-
     /// <summary>
     /// Accepts the value, which may differ from the proposed value, with optional immutable extra data.
     /// </summary>
@@ -19,8 +16,8 @@ public sealed class PgGucCheckResult<T>
     /// <param name="extra">The owned extra bytes, or null when absent.</param>
     public PgGucCheckResult(T value, PgGucExtra? extra = null)
     {
-        _value = value;
-        _extra = extra;
+        Value = value;
+        Extra = extra;
         IsAccepted = true;
     }
 
@@ -31,7 +28,7 @@ public sealed class PgGucCheckResult<T>
     public PgGucCheckResult(PgGucCheckError error)
     {
         ArgumentNullException.ThrowIfNull(error);
-        _error = error;
+        Error = error;
     }
 
     /// <summary>
@@ -42,15 +39,16 @@ public sealed class PgGucCheckResult<T>
     /// <summary>
     /// Gets the accepted value; rejected results throw InvalidOperationException.
     /// </summary>
-    public T Value => IsAccepted ? _value! : throw new InvalidOperationException("A rejected configuration check has no accepted value.");
+    [AllowNull]
+    public T Value => IsAccepted ? field! : throw new InvalidOperationException("A rejected configuration check has no accepted value.");
 
     /// <summary>
     /// Gets the accepted extra bytes, possibly null; rejected results throw InvalidOperationException.
     /// </summary>
-    public PgGucExtra? Extra => IsAccepted ? _extra : throw new InvalidOperationException("A rejected configuration check has no accepted extra data.");
+    public PgGucExtra? Extra => IsAccepted ? field : throw new InvalidOperationException("A rejected configuration check has no accepted extra data.");
 
     /// <summary>
     /// Gets rejection diagnostics; accepted results throw InvalidOperationException.
     /// </summary>
-    public PgGucCheckError Error => !IsAccepted ? _error! : throw new InvalidOperationException("An accepted configuration check has no rejection diagnostics.");
+    public PgGucCheckError Error => !IsAccepted ? field! : throw new InvalidOperationException("An accepted configuration check has no rejection diagnostics.");
 }

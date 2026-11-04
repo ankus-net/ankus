@@ -13,8 +13,6 @@ namespace Ankus;
 [JsonConverter(typeof(PgJsonbConverter))]
 public readonly record struct PgJsonb
 {
-    private readonly string? _text;
-
     /// <summary>
     /// Creates a syntactically valid JSON value. PostgreSQL applies its additional jsonb constraints at the native boundary.
     /// </summary>
@@ -22,13 +20,13 @@ public readonly record struct PgJsonb
     public PgJsonb(string text)
     {
         PgJsonText.Validate(text);
-        _text = text;
+        Text = text;
     }
 
     /// <summary>
     /// Gets the JSON text. Values read from PostgreSQL use PostgreSQL's normalized jsonb output format.
     /// </summary>
-    public string Text => _text ?? "null";
+    public string Text => field ?? "null";
 
     /// <summary>
     /// Parses an independently owned document. The caller must dispose it after use.

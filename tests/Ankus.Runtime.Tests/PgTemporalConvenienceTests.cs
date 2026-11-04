@@ -46,7 +46,7 @@ public sealed class PgTemporalConvenienceTests
         Assert.AreEqual(new PgInterval(0, int.MaxValue, 0), PgInterval.FromDays(int.MaxValue));
         PgInterval absolute = new PgInterval(-1, 2, -3).Abs();
         Assert.AreEqual((1, -2, 3L), (absolute.Months, absolute.Days, absolute.Microseconds));
-        Assert.AreEqual(default(PgInterval), default(PgInterval).Abs());
+        Assert.AreEqual(default, default(PgInterval).Abs());
         Assert.AreEqual(PgInterval.PositiveInfinity, PgInterval.NegativeInfinity.Abs());
         Assert.ThrowsExactly<OverflowException>(() => new PgInterval(int.MinValue, 0, 0).Abs());
         Assert.ThrowsExactly<OverflowException>(() => new PgInterval(0, int.MinValue, 0).Abs());
@@ -94,7 +94,7 @@ public sealed class PgTemporalConvenienceTests
         Assert.AreEqual("\"-Infinity\"", JsonSerializer.Serialize(PgNumeric.NegativeInfinity, DetachedScalarContext.Default.PgNumeric));
         Assert.ThrowsExactly<InvalidOperationException>(() => JsonSerializer.Deserialize("123.45", DetachedScalarContext.Default.PgNumeric));
         Assert.ThrowsExactly<InvalidOperationException>(() => JsonSerializer.Deserialize("\"2000-01-01\"", DetachedScalarContext.Default.PgDate));
-        Assert.ThrowsExactly<InvalidOperationException>(() => JsonSerializer.Serialize(default(PgDate), DetachedScalarContext.Default.PgDate));
+        Assert.ThrowsExactly<InvalidOperationException>(() => JsonSerializer.Serialize(default, DetachedScalarContext.Default.PgDate));
         Assert.ThrowsExactly<JsonException>(() => JsonSerializer.Deserialize("null", DetachedScalarContext.Default.PgNumeric));
         Assert.ThrowsExactly<JsonException>(() => JsonSerializer.Deserialize("[]", DetachedScalarContext.Default.PgDate));
         Assert.ThrowsExactly<JsonException>(() => JsonSerializer.Deserialize("\"1\\u0000\"", DetachedScalarContext.Default.PgNumeric));

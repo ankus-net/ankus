@@ -178,9 +178,13 @@ public sealed class PostgresExtensionTest : IAsyncDisposable
 
         properties["Configuration"] = options.Configuration;
         properties["RuntimeIdentifier"] = RuntimeInformation.RuntimeIdentifier;
-        SetBooleanProperty(properties, "SelfContained", true, options);
-        SetBooleanProperty(properties, "AnkusIncludeTests", options.IncludeTests, options);
-        SetBooleanProperty(properties, "AnkusReuseSchema", options.ReuseSchema, options);
+        string? conflict = SetBooleanProperty(properties, "SelfContained", true) ??
+            SetBooleanProperty(properties, "AnkusIncludeTests", options.IncludeTests) ??
+            SetBooleanProperty(properties, "AnkusReuseSchema", options.ReuseSchema);
+        if (conflict is not null)
+        {
+            throw new ArgumentException(conflict, nameof(options));
+        }
 
         return StartCoreAsync(options, properties, [.. options.PostgreSqlConfiguration], cancellationToken);
     }
@@ -464,16 +468,16 @@ public sealed class PostgresExtensionTest : IAsyncDisposable
             .ThenBy(static pair => pair.Key, StringComparer.Ordinal)
             .Select(static pair => "-p:" + pair.Key + "=" + EscapeProperty(pair.Value));
 
-    private static void SetBooleanProperty(Dictionary<string, string> properties, string name, bool value,
-        PostgresExtensionTestOptions options)
+    private static string? SetBooleanProperty(Dictionary<string, string> properties, string name, bool value)
     {
         string required = value ? "true" : "false";
         if (properties.TryGetValue(name, out string? selected) &&
             (!bool.TryParse(selected, out bool parsed) || parsed != value))
         {
-            throw new ArgumentException($"BuildProperties must select {name}={required}.", nameof(options));
+            return $"BuildProperties must select {name}={required}.";
         }
 
         properties[name] = required;
+        return null;
     }
 }

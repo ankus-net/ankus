@@ -29,25 +29,15 @@ public static partial class NativeRawCallFunctions
     /// <param name="family">The selected native input routine.</param>
     private static void InvokeValueFailure(string family)
     {
-        switch (family)
+        Action call = family switch
         {
-            case "numeric":
-                _ = PgNumeric.Parse("not a number");
-                break;
-            case "temporal":
-                _ = PgDate.Parse("not a date");
-                break;
-            case "network":
-                _ = PgInet.Parse("256.0.0.1");
-                break;
-            case "geometry":
-                _ = PgPoint.Parse("not a point");
-                break;
-            case "range":
-                _ = PgRange.Parse<int>("[5,2)");
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(family));
-        }
+            "numeric" => () => PgNumeric.Parse("not a number"),
+            "temporal" => () => PgDate.Parse("not a date"),
+            "network" => () => PgInet.Parse("256.0.0.1"),
+            "geometry" => () => PgPoint.Parse("not a point"),
+            "range" => () => PgRange.Parse<int>("[5,2)"),
+            _ => throw new ArgumentOutOfRangeException(nameof(family)),
+        };
+        call();
     }
 }

@@ -41,30 +41,30 @@ internal sealed record EnumDeclaration(string Name, string? Schema, string Manag
 
         if (type.TypeKind != TypeKind.Enum)
         {
-            return Invalid(EnumDeclarationDiagnostics.Kind, Location(attribute));
+            return Invalid(EnumDeclarationDiagnostics.s_kind, Location(attribute));
         }
 
         AttributeData? flags = type.GetAttributes().FirstOrDefault(static item => item.AttributeClass?.ToDisplayString() == "System.FlagsAttribute");
         if (flags is not null)
         {
-            return Invalid(EnumDeclarationDiagnostics.Flags, Location(flags));
+            return Invalid(EnumDeclarationDiagnostics.s_flags, Location(flags));
         }
 
         foreach (INamedTypeSymbol container in TypeNesting.SelfAndContainers(type))
         {
             if (container.Arity != 0)
             {
-                return Invalid(EnumDeclarationDiagnostics.GenericContainer, container.Locations.FirstOrDefault(), container.Name);
+                return Invalid(EnumDeclarationDiagnostics.s_genericContainer, container.Locations.FirstOrDefault(), container.Name);
             }
 
             if (container.IsFileLocal)
             {
-                return Invalid(EnumDeclarationDiagnostics.FileContainer, container.Locations.FirstOrDefault(), container.Name);
+                return Invalid(EnumDeclarationDiagnostics.s_fileContainer, container.Locations.FirstOrDefault(), container.Name);
             }
 
             if (container.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal))
             {
-                return Invalid(EnumDeclarationDiagnostics.Accessibility, container.Locations.FirstOrDefault(), container.Name);
+                return Invalid(EnumDeclarationDiagnostics.s_accessibility, container.Locations.FirstOrDefault(), container.Name);
             }
         }
 
@@ -92,14 +92,14 @@ internal sealed record EnumDeclaration(string Name, string? Schema, string Manag
                 schemaAttribute = schema;
                 if (schemaName is null)
                 {
-                    return Invalid(EnumDeclarationDiagnostics.InheritedSchema, FunctionDeclarationDiagnostics.ConstructorArgument(schema, cancellationToken));
+                    return Invalid(EnumDeclarationDiagnostics.s_inheritedSchema, FunctionDeclarationDiagnostics.ConstructorArgument(schema, cancellationToken));
                 }
             }
         }
 
         if (!SqlText.IsIdentifier(name))
         {
-            return Invalid(EnumDeclarationDiagnostics.Name, FunctionDeclarationDiagnostics.Option(attribute, "Name", cancellationToken));
+            return Invalid(EnumDeclarationDiagnostics.s_name, FunctionDeclarationDiagnostics.Option(attribute, "Name", cancellationToken));
         }
 
         if (schemaName is not null && !SqlText.IsIdentifier(schemaName))
@@ -107,7 +107,7 @@ internal sealed record EnumDeclaration(string Name, string? Schema, string Manag
             Location? location = schemaAttribute == attribute
                 ? FunctionDeclarationDiagnostics.Option(attribute, "Schema", cancellationToken)
                 : FunctionDeclarationDiagnostics.ConstructorArgument(schemaAttribute!, cancellationToken);
-            return Invalid(EnumDeclarationDiagnostics.Schema, location);
+            return Invalid(EnumDeclarationDiagnostics.s_schema, location);
         }
 
         var values = new HashSet<object>();
@@ -132,27 +132,27 @@ internal sealed record EnumDeclaration(string Name, string? Schema, string Manag
                 FunctionDeclarationDiagnostics.ConstructorArgument(labelAttribute, cancellationToken);
             if (label is null)
             {
-                return Invalid(EnumDeclarationDiagnostics.NullLabel, labelLocation, field.Name);
+                return Invalid(EnumDeclarationDiagnostics.s_nullLabel, labelLocation, field.Name);
             }
 
             if (!SqlText.IsText(label))
             {
-                return Invalid(EnumDeclarationDiagnostics.LabelText, labelLocation, field.Name);
+                return Invalid(EnumDeclarationDiagnostics.s_labelText, labelLocation, field.Name);
             }
 
             if (Encoding.UTF8.GetByteCount(label) > 63)
             {
-                return Invalid(EnumDeclarationDiagnostics.LabelLength, labelLocation, field.Name);
+                return Invalid(EnumDeclarationDiagnostics.s_labelLength, labelLocation, field.Name);
             }
 
             if (!labels.Add(label))
             {
-                return Invalid(EnumDeclarationDiagnostics.DuplicateLabel, labelLocation, field.Name);
+                return Invalid(EnumDeclarationDiagnostics.s_duplicateLabel, labelLocation, field.Name);
             }
 
             if (!values.Add(field.ConstantValue!))
             {
-                return Invalid(EnumDeclarationDiagnostics.NumericAlias, field.Locations.FirstOrDefault(), field.Name);
+                return Invalid(EnumDeclarationDiagnostics.s_numericAlias, field.Locations.FirstOrDefault(), field.Name);
             }
 
             members.Add(new(field.Name, field.ConstantValue!, label));

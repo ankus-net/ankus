@@ -49,7 +49,7 @@ internal static class CustomScanPipeline
 
             if (names.TryGetValue(model.Name, out string? owner))
             {
-                context.Report(CustomScanDiagnostics.Duplicate, analysis.Location?.Resolve(compilation), model.Name, owner);
+                context.Report(CustomScanDiagnostics.s_duplicate, analysis.Location?.Resolve(compilation), model.Name, owner);
                 continue;
             }
 

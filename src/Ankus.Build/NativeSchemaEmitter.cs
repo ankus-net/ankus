@@ -1,8 +1,8 @@
 using System.Buffers.Binary;
-using Ankus.PgConfig;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using Ankus.PgConfig;
 
 namespace Ankus.Build;
 

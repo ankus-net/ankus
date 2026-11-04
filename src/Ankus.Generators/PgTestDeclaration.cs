@@ -38,32 +38,32 @@ internal sealed record PgTestDeclaration(PgTestCatalogModel.Owner Owner, PgTestC
 
         if (!method.IsStatic)
         {
-            return Invalid(PgTestDeclarationDiagnostics.Static, method.Locations.FirstOrDefault());
+            return Invalid(PgTestDeclarationDiagnostics.s_static, method.Locations.FirstOrDefault());
         }
 
         if (method.IsAsync)
         {
-            return Invalid(PgTestDeclarationDiagnostics.Synchronous, Modifier(SyntaxKind.AsyncKeyword));
+            return Invalid(PgTestDeclarationDiagnostics.s_synchronous, Modifier(SyntaxKind.AsyncKeyword));
         }
 
         if (method.IsGenericMethod)
         {
-            return Invalid(PgTestDeclarationDiagnostics.GenericMethod, method.Locations.FirstOrDefault());
+            return Invalid(PgTestDeclarationDiagnostics.s_genericMethod, method.Locations.FirstOrDefault());
         }
 
         if (method.IsAbstract)
         {
-            return Invalid(PgTestDeclarationDiagnostics.Abstract, Modifier(SyntaxKind.AbstractKeyword));
+            return Invalid(PgTestDeclarationDiagnostics.s_abstract, Modifier(SyntaxKind.AbstractKeyword));
         }
 
         if (!method.ReturnsVoid)
         {
-            return Invalid(PgTestDeclarationDiagnostics.Result, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken));
+            return Invalid(PgTestDeclarationDiagnostics.s_result, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken));
         }
 
         if (method.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal))
         {
-            return Invalid(PgTestDeclarationDiagnostics.Accessibility, method.Locations.FirstOrDefault());
+            return Invalid(PgTestDeclarationDiagnostics.s_accessibility, method.Locations.FirstOrDefault());
         }
 
         FunctionParameter[] parameters = FunctionParameter.Create(method);
@@ -73,12 +73,12 @@ internal sealed record PgTestDeclaration(PgTestCatalogModel.Owner Owner, PgTestC
             IParameterSymbol symbol = method.Parameters[index];
             if (!parameter.IsInjected)
             {
-                return Invalid(PgTestDeclarationDiagnostics.SqlArgument, symbol.Locations.FirstOrDefault(), symbol.Name);
+                return Invalid(PgTestDeclarationDiagnostics.s_sqlArgument, symbol.Locations.FirstOrDefault(), symbol.Name);
             }
 
             if (parameter.RefKind != RefKind.None)
             {
-                return Invalid(PgTestDeclarationDiagnostics.ReferenceArgument, symbol.Locations.FirstOrDefault(), symbol.Name);
+                return Invalid(PgTestDeclarationDiagnostics.s_referenceArgument, symbol.Locations.FirstOrDefault(), symbol.Name);
             }
         }
 
@@ -88,7 +88,7 @@ internal sealed record PgTestDeclaration(PgTestCatalogModel.Owner Owner, PgTestC
                 "Ankus.PgCastAttribute" or "Ankus.PgTriggerAttribute" or "Ankus.PgEventTriggerAttribute" or
                 "Ankus.PgInitializeAttribute" or "Ankus.PgModuleLoadAttribute" or "Ankus.PgBackgroundWorkerAttribute")
             {
-                return Invalid(PgTestDeclarationDiagnostics.ConflictingRole,
+                return Invalid(PgTestDeclarationDiagnostics.s_conflictingRole,
                     attribute.ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation(), attribute.AttributeClass.Name);
             }
         }
@@ -97,22 +97,22 @@ internal sealed record PgTestDeclaration(PgTestCatalogModel.Owner Owner, PgTestC
         {
             if (type.TypeKind != TypeKind.Class)
             {
-                return Invalid(PgTestDeclarationDiagnostics.ContainerKind, type.Locations.FirstOrDefault(), type.Name);
+                return Invalid(PgTestDeclarationDiagnostics.s_containerKind, type.Locations.FirstOrDefault(), type.Name);
             }
 
             if (type.Arity != 0)
             {
-                return Invalid(PgTestDeclarationDiagnostics.GenericContainer, type.Locations.FirstOrDefault(), type.Name);
+                return Invalid(PgTestDeclarationDiagnostics.s_genericContainer, type.Locations.FirstOrDefault(), type.Name);
             }
 
             if (type.IsFileLocal)
             {
-                return Invalid(PgTestDeclarationDiagnostics.FileContainer, type.Locations.FirstOrDefault(), type.Name);
+                return Invalid(PgTestDeclarationDiagnostics.s_fileContainer, type.Locations.FirstOrDefault(), type.Name);
             }
 
             if (type.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal))
             {
-                return Invalid(PgTestDeclarationDiagnostics.ContainerAccessibility, type.Locations.FirstOrDefault(), type.Name);
+                return Invalid(PgTestDeclarationDiagnostics.s_containerAccessibility, type.Locations.FirstOrDefault(), type.Name);
             }
 
             SyntaxNode? incomplete = type.DeclaringSyntaxReferences.Select(reference => reference.GetSyntax(context.CancellationToken))
@@ -120,14 +120,14 @@ internal sealed record PgTestDeclaration(PgTestCatalogModel.Owner Owner, PgTestC
                     !syntax.Modifiers.Any(SyntaxKind.PartialKeyword));
             if (incomplete is not null)
             {
-                return Invalid(PgTestDeclarationDiagnostics.PartialContainer,
+                return Invalid(PgTestDeclarationDiagnostics.s_partialContainer,
                     (incomplete as TypeDeclarationSyntax)?.Identifier.GetLocation() ?? incomplete.GetLocation(), type.Name);
             }
         }
 
         if (method.ContainingType.Name == "PostgresTests")
         {
-            return Invalid(PgTestDeclarationDiagnostics.ReservedOwner, method.ContainingType.Locations.FirstOrDefault());
+            return Invalid(PgTestDeclarationDiagnostics.s_reservedOwner, method.ContainingType.Locations.FirstOrDefault());
         }
 
         for (INamedTypeSymbol? type = method.ContainingType; type is not null; type = type.BaseType)
@@ -138,7 +138,7 @@ internal sealed record PgTestDeclaration(PgTestCatalogModel.Owner Owner, PgTestC
                 Location? location = SymbolEqualityComparer.Default.Equals(conflict.ContainingAssembly, method.ContainingAssembly)
                     ? conflict.Locations.FirstOrDefault(static value => value.IsInSource)
                     : method.Locations.FirstOrDefault(static value => value.IsInSource);
-                return Invalid(PgTestDeclarationDiagnostics.ReservedMember, location, type.Name);
+                return Invalid(PgTestDeclarationDiagnostics.s_reservedMember, location, type.Name);
             }
         }
 
@@ -147,17 +147,17 @@ internal sealed record PgTestDeclaration(PgTestCatalogModel.Owner Owner, PgTestC
         string? ignored = test.NamedArguments.FirstOrDefault(static argument => argument.Key == "IgnoreReason").Value.Value as string;
         if (expected is not null && !SqlText.IsText(expected))
         {
-            return Invalid(PgTestDeclarationDiagnostics.ExpectedError, FunctionDeclarationDiagnostics.Option(test, "ExpectedError", context.CancellationToken));
+            return Invalid(PgTestDeclarationDiagnostics.s_expectedError, FunctionDeclarationDiagnostics.Option(test, "ExpectedError", context.CancellationToken));
         }
 
         if (ignored is not null && !SqlText.IsText(ignored))
         {
-            return Invalid(PgTestDeclarationDiagnostics.IgnoreText, FunctionDeclarationDiagnostics.Option(test, "IgnoreReason", context.CancellationToken));
+            return Invalid(PgTestDeclarationDiagnostics.s_ignoreText, FunctionDeclarationDiagnostics.Option(test, "IgnoreReason", context.CancellationToken));
         }
 
         if (ignored is not null && string.IsNullOrWhiteSpace(ignored))
         {
-            return Invalid(PgTestDeclarationDiagnostics.IgnoreReason, FunctionDeclarationDiagnostics.Option(test, "IgnoreReason", context.CancellationToken));
+            return Invalid(PgTestDeclarationDiagnostics.s_ignoreReason, FunctionDeclarationDiagnostics.Option(test, "IgnoreReason", context.CancellationToken));
         }
 
         string name = method.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);

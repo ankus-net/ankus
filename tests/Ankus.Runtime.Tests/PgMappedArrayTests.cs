@@ -964,8 +964,10 @@ public sealed unsafe class PgMappedArrayTests
         internal Script()
         {
             Install(this);
-            Memory = new MemoryContextTestFixture();
-            Memory.Handler = RespondMemory;
+            Memory = new MemoryContextTestFixture
+            {
+                Handler = RespondMemory
+            };
             _scope = MemoryContextTestFixture.Enter();
             _previousBackend = NativeBackend.Enter((nint)(delegate* unmanaged[Cdecl]<NativeSpiRequest*, NativeSpiResult*, NativeCallError*, int>)&Invoke);
         }

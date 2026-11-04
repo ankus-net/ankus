@@ -20,11 +20,6 @@ internal sealed class PgNumericStorage(byte[] buffer, int rawLength)
     private readonly byte[] _buffer = buffer;
 
     /// <summary>
-    /// Caches formatting on demand without making text the stored numeric representation.
-    /// </summary>
-    private string? _text;
-
-    /// <summary>
     /// Gets the length of the opaque native datum, or zero for a portable-only value.
     /// </summary>
     internal int RawLength { get; } = rawLength;
@@ -83,7 +78,7 @@ internal sealed class PgNumericStorage(byte[] buffer, int rawLength)
     /// <summary>
     /// Gets canonical PostgreSQL output without accessing a backend or its memory contexts.
     /// </summary>
-    internal string Text => LazyInitializer.EnsureInitialized(ref _text, Render);
+    internal string Text => LazyInitializer.EnsureInitialized(ref field, Render);
 
     /// <summary>
     /// Copies a borrowed numeric payload before its native lifetime ends.

@@ -126,7 +126,7 @@ public unsafe partial struct NativeValue
 
     private readonly ReadOnlySpan<byte> GeometryData(int length)
     {
-        if (_isNull != 0 || _data == null || _length != length)
+        if (IsNull != 0 || _data == null || _length != length)
         {
             throw new InvalidOperationException("Invalid geometry transport length or NULL value.");
         }

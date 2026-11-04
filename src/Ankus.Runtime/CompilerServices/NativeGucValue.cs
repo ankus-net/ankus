@@ -9,12 +9,12 @@ public unsafe partial struct NativeValue
     /// </summary>
     internal readonly long ReadGucScalar()
     {
-        if (_isNull != 0 || _data != null || _length != 0 || _auxiliary1 != 0 || _auxiliary2 != 0 || _temporalInfinity != 0)
+        if (IsNull != 0 || _data != null || _length != 0 || _auxiliary1 != 0 || _auxiliary2 != 0 || _temporalInfinity != 0)
         {
             throw new InvalidOperationException("Invalid native scalar configuration transport.");
         }
 
-        return _integer;
+        return Integral;
     }
 
     /// <summary>
@@ -22,13 +22,13 @@ public unsafe partial struct NativeValue
     /// </summary>
     internal readonly ReadOnlySpan<byte> ReadGucBuffer(out bool isNull)
     {
-        if (_isNull > 1 || _integer != 0 || _auxiliary1 != 0 || _auxiliary2 != 0 || _temporalInfinity != 0 || _length < 0 ||
-            (_isNull == 1 ? _data != null || _length != 0 : _data == null))
+        if (IsNull > 1 || Integral != 0 || _auxiliary1 != 0 || _auxiliary2 != 0 || _temporalInfinity != 0 || _length < 0 ||
+            (IsNull == 1 ? _data != null || _length != 0 : _data == null))
         {
             throw new InvalidOperationException("Invalid native configuration buffer transport.");
         }
 
-        isNull = _isNull == 1;
+        isNull = IsNull == 1;
         return new ReadOnlySpan<byte>(_data, _length);
     }
 }

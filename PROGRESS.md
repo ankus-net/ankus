@@ -299,6 +299,47 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   On debian-dev, Linux x64, `runtime-build` and `runtime-pack` pass for both
   lines with every host-shutdown, signal-mask and host-signals check, and the
   RC3 fork's own probe suite passes all 30 steps.
+- A first Visual Studio build of a fresh clone failed with CS0006 in
+  `Ankus.Examples.Hello.Tests` and `Ankus.IntegrationTests`, which could not find
+  the Hello, Arrays, Notify and PglzInspect reference assemblies in `obj`. Before
+  binding generation, an editor's design-time build compiles Ankus.Build, the
+  runtime, the generators and the code fixes, and it passed Visual Studio's
+  `BuildingInsideVisualStudio` on to them. Under that property MSBuild only asks
+  project references for their paths, so Ankus.PgConfig, which Ankus.Build
+  references, never built, and each extension's design-time build failed with
+  CS0006 for its reference assembly. Visual Studio's up-to-date check takes a
+  project's outputs from its design-time build, so after that failure it could
+  count a sample that was never compiled as up to date and only copy its runtime
+  files. The dependency build now removes the property, so the tools build their
+  own references once, in the same configuration.
+  `FreshEditorLoadPreparesDependenciesAndCompilerOptions` gives the build tool a
+  project reference and loads once as Visual Studio does; before the fix that row
+  fails with the same CS0006. With Visual Studio 18.11.2 on Windows x64, a clone
+  with no `bin`, `obj` or `.vs` built all 72 projects without errors, deleting
+  those four samples' `obj` outputs rebuilt them without errors, and an unchanged
+  build found all 72 up to date. The repository also applies every IDE suggestion
+  reported at information severity. Roslyn's release tracking reads diagnostic
+  descriptors only from field initializers, so the 294 descriptors IDE0032 found
+  behind pass-through properties are now internal fields, as
+  `SqlTypeProviderDiagnostics` already declared its own, and callers use them
+  directly. The four discard switches IDE0066 converts have arms of different
+  types, so each switch expression selects an `Action` that makes the call, and
+  the method then invokes it. That form exhausted ANKUS044's analysis budget in
+  `ParityTemporalRecovery`, which selects one of 23 callbacks inside a loop, so
+  every command in the method was reported. The flow analysis took blocks in
+  the order they were queued, so the switch's join ran again after each arm and
+  analyzed the callbacks chosen so far each time; it now takes the lowest
+  pending block, and a callback called again from an equivalent state reuses
+  its earlier result. A 24-arm generator test took more than 10,000 steps
+  before and takes 1,353 now. Local helpers that reach a new state on every
+  call still exhaust the budget and fail closed.
+  `IsExternalInit` must stay in `System.Runtime.CompilerServices`, so it moved to
+  `src/Common/System/Runtime/CompilerServices`, a folder that matches its
+  namespace, and the generator links it, as dotnet/runtime shares its own copy.
+  `dotnet format style --severity info` now reports nothing, and the Release
+  build has no warnings. CI run 41805513744 passed all 15,386 tests on Linux x64
+  with PostgreSQL 18 (58 skipped), macOS ARM64 with PostgreSQL 18 (71 skipped)
+  and Windows x64 with PostgreSQL 17 (54 skipped).
 - A row, composite or query cell keeps an exact copy of text that a SQL_ASCII
   database holds as bytes that are not valid UTF-8. Every cell read converted
   text to UTF-8 with `pg_server_to_any`, which raises for such bytes, so

@@ -6,7 +6,7 @@
         ('Moomba', 15, 'Labrador');
     """, Requires = ["spi_srf.schema"])]
 
-namespace Ankus.Examples.SpiQueries;
+namespace Ankus.Examples.Spi;
 
 /// <summary>
 /// Ports pgrx's SPI table functions using named C# tuples.
@@ -20,7 +20,7 @@ public static class DogDaycareFunctions
     /// <returns>Owned names, ages, breeds and ages multiplied by seven.</returns>
     [PgFunction]
     public static IEnumerable<(string? DogName, int DogAge, string? DogBreed, int HumanAge)> CalculateHumanYears()
-        => Spi.Connect(static session => session.Select("SELECT dog_name, dog_age, dog_breed FROM spi_srf.dog_daycare")
+        => Ankus.Spi.Connect(static session => session.Select("SELECT dog_name, dog_age, dog_breed FROM spi_srf.dog_daycare")
             .Select(static row =>
             {
                 int age = row.Get<int>("dog_age");
@@ -34,6 +34,6 @@ public static class DogDaycareFunctions
     /// <returns>Owned matching rows with their original SQL NULL values.</returns>
     [PgFunction]
     public static IEnumerable<(string? DogName, int? DogAge, string? DogBreed)> FilterByBreed(string breed)
-        => Spi.Connect(session => session.Select(Spi.Sql($"SELECT dog_name, dog_age, dog_breed FROM spi_srf.dog_daycare WHERE dog_breed = {breed}"))
+        => Ankus.Spi.Connect(session => session.Select(Ankus.Spi.Sql($"SELECT dog_name, dog_age, dog_breed FROM spi_srf.dog_daycare WHERE dog_breed = {breed}"))
             .Select(static row => (row.Get<string?>("dog_name"), row.Get<int?>("dog_age"), row.Get<string?>("dog_breed"))).ToArray());
 }

@@ -8,7 +8,6 @@ namespace Ankus;
 /// </summary>
 public readonly struct SpiCommand
 {
-    private readonly string? _commandText;
     private readonly SpiParameter[]? _parameters;
 
     /// <summary>
@@ -18,7 +17,7 @@ public readonly struct SpiCommand
     /// <param name="parameters">The owned, statically typed positional bindings.</param>
     internal SpiCommand(string commandText, SpiParameter[] parameters)
     {
-        _commandText = commandText;
+        CommandText = commandText;
         _parameters = parameters;
     }
 
@@ -26,7 +25,7 @@ public readonly struct SpiCommand
     /// Gets SQL text that refers to each bound parameter value through a positional placeholder.
     /// </summary>
     /// <exception cref="InvalidOperationException">The command was not created with Spi.Sql.</exception>
-    public string CommandText => _commandText ?? throw new InvalidOperationException("Create the SQL command with Spi.Sql before executing it.");
+    public string CommandText => field ?? throw new InvalidOperationException("Create the SQL command with Spi.Sql before executing it.");
 
     /// <summary>
     /// Gets the ordered typed bindings. Mutable managed values and native owners follow SpiParameter's lifetime rules.

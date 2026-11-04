@@ -589,7 +589,7 @@ public static class VarlenaOwnershipFunctions
         using var first = new PgVarlena<Bytes125>();
         using var second = new PgVarlena<Bytes126>();
         using var third = new PgVarlena<Bytes127>();
-        bool Short(void* pointer) => (*(byte*)pointer & (BitConverter.IsLittleEndian ? 1 : 128)) != 0;
+        static bool Short(void* pointer) => (*(byte*)pointer & (BitConverter.IsLittleEndian ? 1 : 128)) != 0;
         Bytes125 a = first.Value;
         Bytes126 b = second.Value;
         Bytes127 c = third.Value;

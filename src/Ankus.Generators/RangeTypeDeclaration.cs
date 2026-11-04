@@ -27,7 +27,7 @@ internal static class RangeTypeDeclaration
             item.AttributeClass?.ToDisplayString() == "Ankus.PgRangeTypeAttribute")];
         if (attributes.Length != 0 && (!type.IsValueType || type.IsRefLikeType || !DatumTypeDeclaration.IsMapped(type)))
         {
-            return Invalid(RangeMappingDiagnostics.Carrier, type.Locations.FirstOrDefault(static item => item.IsInSource));
+            return Invalid(RangeMappingDiagnostics.s_carrier, type.Locations.FirstOrDefault(static item => item.IsInSource));
         }
 
         var targets = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
@@ -36,14 +36,14 @@ internal static class RangeTypeDeclaration
         {
             if (attribute.ConstructorArguments.IsEmpty && type.DeclaringSyntaxReferences.Length == 0)
             {
-                return Invalid(RangeMappingDiagnostics.Metadata, attribute.ApplicationSyntaxReference?.GetSyntax(context?.CancellationToken ?? default).GetLocation());
+                return Invalid(RangeMappingDiagnostics.s_metadata, attribute.ApplicationSyntaxReference?.GetSyntax(context?.CancellationToken ?? default).GetLocation());
             }
 
             if (attribute.ConstructorArguments.Length == 1)
             {
                 if (hasDefault)
                 {
-                    return Invalid(RangeMappingDiagnostics.DuplicateDefault, attribute.ApplicationSyntaxReference?.GetSyntax(context?.CancellationToken ?? default).GetLocation());
+                    return Invalid(RangeMappingDiagnostics.s_duplicateDefault, attribute.ApplicationSyntaxReference?.GetSyntax(context?.CancellationToken ?? default).GetLocation());
                 }
 
                 hasDefault = true;
@@ -52,11 +52,11 @@ internal static class RangeTypeDeclaration
                 attribute.ConstructorArguments[0].Value is not INamedTypeSymbol target || !DatumTypeDeclaration.IsClosed(target) ||
                 !SymbolEqualityComparer.Default.Equals(target.OriginalDefinition, type.OriginalDefinition))
             {
-                return Invalid(RangeMappingDiagnostics.Target, DatumMappingDiagnostics.Argument(attribute, 0, context?.CancellationToken ?? default));
+                return Invalid(RangeMappingDiagnostics.s_target, DatumMappingDiagnostics.Argument(attribute, 0, context?.CancellationToken ?? default));
             }
             else if (!targets.Add(target))
             {
-                return Invalid(RangeMappingDiagnostics.DuplicateExact, attribute.ApplicationSyntaxReference?.GetSyntax(context?.CancellationToken ?? default).GetLocation());
+                return Invalid(RangeMappingDiagnostics.s_duplicateExact, attribute.ApplicationSyntaxReference?.GetSyntax(context?.CancellationToken ?? default).GetLocation());
             }
         }
 
@@ -105,34 +105,34 @@ internal static class RangeTypeDeclaration
         CancellationToken cancellationToken = context?.CancellationToken ?? default;
         if (compilation is not null && !MappedIdentityMetadata.TryRead(scalar.Type, attribute, compilation, cancellationToken, out name, out schema))
         {
-            return Invalid(RangeMappingDiagnostics.Metadata, usage);
+            return Invalid(RangeMappingDiagnostics.s_metadata, usage);
         }
 
         if (!SqlText.IsIdentifier(name))
         {
-            return Invalid(RangeMappingDiagnostics.Name, DatumMappingDiagnostics.Argument(attribute, attribute.ConstructorArguments.Length - 1, cancellationToken));
+            return Invalid(RangeMappingDiagnostics.s_name, DatumMappingDiagnostics.Argument(attribute, attribute.ConstructorArguments.Length - 1, cancellationToken));
         }
 
         if (schema is not null && !SqlText.IsIdentifier(schema))
         {
-            return Invalid(RangeMappingDiagnostics.Schema, FunctionDeclarationDiagnostics.Option(attribute, "Schema", cancellationToken));
+            return Invalid(RangeMappingDiagnostics.s_schema, FunctionDeclarationDiagnostics.Option(attribute, "Schema", cancellationToken));
         }
 
         int origin = AttributeValues.Get(attribute, "Origin", 0);
         if (origin is not (0 or 1))
         {
-            return Invalid(RangeMappingDiagnostics.Origin, FunctionDeclarationDiagnostics.Option(attribute, "Origin", cancellationToken));
+            return Invalid(RangeMappingDiagnostics.s_origin, FunctionDeclarationDiagnostics.Option(attribute, "Origin", cancellationToken));
         }
 
         if (origin == 1 && schema is null)
         {
-            return Invalid(RangeMappingDiagnostics.ExternalSchema, FunctionDeclarationDiagnostics.Option(attribute, "Origin", cancellationToken));
+            return Invalid(RangeMappingDiagnostics.s_externalSchema, FunctionDeclarationDiagnostics.Option(attribute, "Origin", cancellationToken));
         }
 
         INamedTypeSymbol? definition = attribute.AttributeClass!.ContainingAssembly.GetTypeByMetadataName("Ankus.PgRange`1");
         if (definition is null)
         {
-            return Invalid(RangeMappingDiagnostics.RuntimeType, attribute.ApplicationSyntaxReference?.GetSyntax(cancellationToken).GetLocation());
+            return Invalid(RangeMappingDiagnostics.s_runtimeType, attribute.ApplicationSyntaxReference?.GetSyntax(cancellationToken).GetLocation());
         }
 
         range = new(definition.Construct(scalar.Type), scalar.Converter, name!, schema, origin == 1,

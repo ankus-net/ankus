@@ -76,7 +76,7 @@ public static class SharedMemoryFunctions
     public static IEnumerable<Pgtest> VecDrain()
     {
         using PgLwLockExclusiveGuard<PgtestVec> guard = s_vec.Exclusive();
-        return guard.Mutate(static (ref PgtestVec vec) => vec.Items().Drain());
+        return guard.Mutate(static (ref vec) => vec.Items().Drain());
     }
 
     /// <summary>
@@ -89,7 +89,7 @@ public static class SharedMemoryFunctions
         bool added;
         using (PgLwLockExclusiveGuard<PgtestVec> guard = s_vec.Exclusive())
         {
-            added = guard.Mutate((ref PgtestVec vec) => vec.Items().TryAdd(value));
+            added = guard.Mutate((ref vec) => vec.Items().TryAdd(value));
         }
 
         if (!added)
@@ -106,7 +106,7 @@ public static class SharedMemoryFunctions
     public static Pgtest? VecPop()
     {
         using PgLwLockExclusiveGuard<PgtestVec> guard = s_vec.Exclusive();
-        return guard.Mutate(static (ref PgtestVec vec) => vec.Items().TryPop(out Pgtest value) ? value : (Pgtest?)null);
+        return guard.Mutate(static (ref vec) => vec.Items().TryPop(out Pgtest value) ? value : (Pgtest?)null);
     }
 
     /// <summary>
@@ -141,7 +141,7 @@ public static class SharedMemoryFunctions
     public static IEnumerable<Pgtest> DequeDrain()
     {
         using PgLwLockExclusiveGuard<PgtestDeque> guard = s_deque.Exclusive();
-        return guard.Mutate(static (ref PgtestDeque deque) => deque.Items().Drain());
+        return guard.Mutate(static (ref deque) => deque.Items().Drain());
     }
 
     /// <summary>
@@ -166,7 +166,7 @@ public static class SharedMemoryFunctions
     public static Pgtest? DequePopBack()
     {
         using PgLwLockExclusiveGuard<PgtestDeque> guard = s_deque.Exclusive();
-        return guard.Mutate(static (ref PgtestDeque deque) => deque.Items().TryPopBack(out Pgtest value) ? value : (Pgtest?)null);
+        return guard.Mutate(static (ref deque) => deque.Items().TryPopBack(out Pgtest value) ? value : (Pgtest?)null);
     }
 
     /// <summary>
@@ -177,7 +177,7 @@ public static class SharedMemoryFunctions
     public static Pgtest? DequePopFront()
     {
         using PgLwLockExclusiveGuard<PgtestDeque> guard = s_deque.Exclusive();
-        return guard.Mutate(static (ref PgtestDeque deque) => deque.Items().TryPopFront(out Pgtest value) ? value : (Pgtest?)null);
+        return guard.Mutate(static (ref deque) => deque.Items().TryPopFront(out Pgtest value) ? value : (Pgtest?)null);
     }
 
     /// <summary>
@@ -189,7 +189,7 @@ public static class SharedMemoryFunctions
     public static void HashInsert(int key, int value)
     {
         using PgLwLockExclusiveGuard<PgtestHash> guard = s_hash.Exclusive();
-        _ = guard.Mutate((ref PgtestHash hash) => hash.Items().Set(key, value));
+        _ = guard.Mutate((ref hash) => hash.Items().Set(key, value));
     }
 
     /// <summary>
@@ -273,7 +273,7 @@ public static class SharedMemoryFunctions
         bool added;
         using (PgLwLockExclusiveGuard<PgtestDeque> guard = s_deque.Exclusive())
         {
-            added = guard.Mutate((ref PgtestDeque deque) => front ? deque.Items().TryPushFront(value) : deque.Items().TryPushBack(value));
+            added = guard.Mutate((ref deque) => front ? deque.Items().TryPushFront(value) : deque.Items().TryPushBack(value));
         }
 
         if (!added)

@@ -12,9 +12,6 @@ namespace Ankus.CompilerServices;
 public static unsafe partial class NativeBackend
 {
     [ThreadStatic]
-    private static nint s_execute;
-
-    [ThreadStatic]
     private static int s_callbackDepth;
 
     [ThreadStatic]
@@ -26,12 +23,17 @@ public static unsafe partial class NativeBackend
     /// <summary>
     /// Gets the stable guarded entry point for owned resource release from a later memory cleanup callback.
     /// </summary>
-    internal static nint CleanupBinding => s_execute;
+    [field: ThreadStatic]
+    internal static nint CleanupBinding
+    {
+        get;
+        private set;
+    }
 
     /// <summary>
     /// Gets whether a SQL callback's backend binding is active on this thread.
     /// </summary>
-    internal static bool HasBinding => s_execute != 0;
+    internal static bool HasBinding => CleanupBinding != 0;
 
     /// <summary>
     /// Gets whether the current thread is the backend thread inside a native callback scope, where PostgreSQL calls are permitted.
@@ -51,8 +53,8 @@ public static unsafe partial class NativeBackend
     [NativeUnsafeAccess]
     public static nint Enter(nint execute, bool abortCleanup = false)
     {
-        nint previous = s_execute;
-        s_execute = execute;
+        nint previous = CleanupBinding;
+        CleanupBinding = execute;
         s_callbackDepth++;
         if (abortCleanup)
         {
@@ -74,7 +76,7 @@ public static unsafe partial class NativeBackend
     [NativeUnsafeAccess]
     public static void Exit(nint previous, bool abortCleanup = false)
     {
-        s_execute = previous;
+        CleanupBinding = previous;
         s_callbackDepth--;
         if (abortCleanup)
         {
@@ -92,7 +94,7 @@ public static unsafe partial class NativeBackend
     {
         ArgumentNullException.ThrowIfNull(action);
         CheckAccess();
-        var session = new SpiSession(s_execute, s_callbackDepth);
+        var session = new SpiSession(CleanupBinding, s_callbackDepth);
         SpiSession? previous = s_session;
         var request = new NativeSpiRequest { _operation = SpiOperation.OpenSession };
         NativeSpiResult result = default;
@@ -210,7 +212,7 @@ public static unsafe partial class NativeBackend
             arguments[index]._typeOid = types[index];
         }
 
-        var statement = new SpiPreparedStatement(commandText, types, s_execute, session);
+        var statement = new SpiPreparedStatement(commandText, types, CleanupBinding, session);
         fixed (byte* text = sql)
         fixed (NativeSpiParameter* values = arguments)
         {
@@ -260,7 +262,7 @@ public static unsafe partial class NativeBackend
     /// <param name="owner">The required native binding, or zero for any active binding.</param>
     internal static void CheckDisposalAccess(nint owner = 0)
     {
-        if (s_execute == 0 || (owner != 0 && s_execute != owner))
+        if (CleanupBinding == 0 || (owner != 0 && CleanupBinding != owner))
         {
             throw new InvalidOperationException("PostgreSQL APIs can only be used on the active PostgreSQL backend thread.");
         }
@@ -809,7 +811,7 @@ public static unsafe partial class NativeBackend
     private static SpiCursor CreateCursor(NativeSpiRequest request, ReadOnlySpan<SpiParameter> parameters)
     {
         CheckAccess();
-        var cursor = new SpiCursor(s_execute);
+        var cursor = new SpiCursor(CleanupBinding);
         NativeSpiResult result = default;
         try
         {
@@ -912,7 +914,7 @@ public static unsafe partial class NativeBackend
         }
 
         request->_recoverInput = NativeInputRecovery.IsActive ? (byte)1 : (byte)0;
-        var execute = (delegate* unmanaged[Cdecl]<NativeSpiRequest*, NativeSpiResult*, NativeCallError*, int>)s_execute;
+        var execute = (delegate* unmanaged[Cdecl]<NativeSpiRequest*, NativeSpiResult*, NativeCallError*, int>)CleanupBinding;
         NativeCallError error;
         NativeCallError* transport = &error;
         transport->Clear();

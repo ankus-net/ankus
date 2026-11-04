@@ -23,8 +23,8 @@ public static class TryCatchFunctions
     [PgFunction]
     public static int IsValidNumber(int i)
     {
-        bool finished = false;
         int result;
+        bool finished;
         try
         {
             if (i < 42)

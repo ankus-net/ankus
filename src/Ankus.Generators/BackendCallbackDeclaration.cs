@@ -28,7 +28,7 @@ internal static class BackendCallbackDeclaration
             attribute.AttributeClass?.ToDisplayString() is "Ankus.PgOperatorAttribute" or "Ankus.PgCastAttribute");
         if (conflict is not null)
         {
-            return Report(CallbackDeclarationDiagnostics.RoleConflict,
+            return Report(CallbackDeclarationDiagnostics.s_roleConflict,
                 conflict.ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation(),
                 marker.Replace("Attribute", string.Empty),
                 conflict.AttributeClass!.Name.Replace("Attribute", string.Empty));
@@ -36,35 +36,35 @@ internal static class BackendCallbackDeclaration
 
         if (!method.IsStatic)
         {
-            return Report(CallbackDeclarationDiagnostics.Static, method.Locations.FirstOrDefault());
+            return Report(CallbackDeclarationDiagnostics.s_static, method.Locations.FirstOrDefault());
         }
 
         if (method.IsAsync)
         {
-            return Report(CallbackDeclarationDiagnostics.Async, Modifier(method, SyntaxKind.AsyncKeyword, context.CancellationToken));
+            return Report(CallbackDeclarationDiagnostics.s_async, Modifier(method, SyntaxKind.AsyncKeyword, context.CancellationToken));
         }
 
         if (method.IsGenericMethod)
         {
-            return Report(CallbackDeclarationDiagnostics.Generic,
+            return Report(CallbackDeclarationDiagnostics.s_generic,
                 (method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(context.CancellationToken) as MethodDeclarationSyntax)?.TypeParameterList?.GetLocation());
         }
 
         if (method.IsAbstract)
         {
-            return Report(CallbackDeclarationDiagnostics.Abstract, Modifier(method, SyntaxKind.AbstractKeyword, context.CancellationToken));
+            return Report(CallbackDeclarationDiagnostics.s_abstract, Modifier(method, SyntaxKind.AbstractKeyword, context.CancellationToken));
         }
 
         if (method.ReturnsByRef || method.ReturnsByRefReadonly)
         {
-            return Report(CallbackDeclarationDiagnostics.RefResult, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken));
+            return Report(CallbackDeclarationDiagnostics.s_refResult, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken));
         }
 
         if (method.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal))
         {
             SyntaxKind access = method.DeclaredAccessibility is Accessibility.Private or Accessibility.ProtectedAndInternal
                 ? SyntaxKind.PrivateKeyword : SyntaxKind.ProtectedKeyword;
-            return Report(CallbackDeclarationDiagnostics.Accessibility, Modifier(method, access, context.CancellationToken));
+            return Report(CallbackDeclarationDiagnostics.s_accessibility, Modifier(method, access, context.CancellationToken));
         }
 
         string expectedResult = tupleResult ? "PgHeapTuple (nullable when skipping rows)" : "void";
@@ -72,17 +72,17 @@ internal static class BackendCallbackDeclaration
             ? method.ReturnType.WithNullableAnnotation(NullableAnnotation.NotAnnotated).ToDisplayString() != "Ankus.PgHeapTuple"
             : !method.ReturnsVoid)
         {
-            DiagnosticDescriptor descriptor = CallbackDeclarationDiagnostics.Result;
+            DiagnosticDescriptor descriptor = CallbackDeclarationDiagnostics.s_result;
             if (method.ReturnType is INamedTypeSymbol result)
             {
                 string space = result.ContainingNamespace.ToDisplayString();
                 if (space == "System.Threading.Tasks" && result.Name is "Task" or "ValueTask")
                 {
-                    descriptor = CallbackDeclarationDiagnostics.TaskResult;
+                    descriptor = CallbackDeclarationDiagnostics.s_taskResult;
                 }
                 else if (space == "System.Collections.Generic" && result.Name == "IAsyncEnumerable")
                 {
-                    descriptor = CallbackDeclarationDiagnostics.AsyncEnumerableResult;
+                    descriptor = CallbackDeclarationDiagnostics.s_asyncEnumerableResult;
                 }
             }
 
@@ -91,7 +91,7 @@ internal static class BackendCallbackDeclaration
 
         if (method.Parameters.Length != 1)
         {
-            return Report(CallbackDeclarationDiagnostics.ParameterCount,
+            return Report(CallbackDeclarationDiagnostics.s_parameterCount,
                 (method.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(context.CancellationToken) as MethodDeclarationSyntax)?.ParameterList.GetLocation(), contextType);
         }
 
@@ -101,13 +101,13 @@ internal static class BackendCallbackDeclaration
         {
             SyntaxToken token = parameterSyntax?.Modifiers.FirstOrDefault(static value => value.IsKind(SyntaxKind.RefKeyword) ||
                 value.IsKind(SyntaxKind.InKeyword) || value.IsKind(SyntaxKind.OutKeyword)) ?? default;
-            return Report(CallbackDeclarationDiagnostics.ParameterReference, token.RawKind != 0 ? token.GetLocation() : parameter.Locations.FirstOrDefault(), contextType);
+            return Report(CallbackDeclarationDiagnostics.s_parameterReference, token.RawKind != 0 ? token.GetLocation() : parameter.Locations.FirstOrDefault(), contextType);
         }
 
         if (parameter.IsParams)
         {
             SyntaxToken token = parameterSyntax?.Modifiers.FirstOrDefault(static value => value.IsKind(SyntaxKind.ParamsKeyword)) ?? default;
-            return Report(CallbackDeclarationDiagnostics.ParameterParams, token.RawKind != 0 ? token.GetLocation() : parameter.Locations.FirstOrDefault(), contextType);
+            return Report(CallbackDeclarationDiagnostics.s_parameterParams, token.RawKind != 0 ? token.GetLocation() : parameter.Locations.FirstOrDefault(), contextType);
         }
 
         if (parameter.IsOptional)
@@ -115,34 +115,34 @@ internal static class BackendCallbackDeclaration
             Location? optional = parameterSyntax?.Default?.GetLocation() ?? parameter.GetAttributes()
                 .FirstOrDefault(static attribute => attribute.AttributeClass?.ToDisplayString() == "System.Runtime.InteropServices.OptionalAttribute")?
                 .ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation();
-            return Report(CallbackDeclarationDiagnostics.ParameterOptional, optional ?? parameter.Locations.FirstOrDefault(), contextType);
+            return Report(CallbackDeclarationDiagnostics.s_parameterOptional, optional ?? parameter.Locations.FirstOrDefault(), contextType);
         }
 
         if (parameter.NullableAnnotation == NullableAnnotation.Annotated)
         {
-            return Report(CallbackDeclarationDiagnostics.ParameterNullable, parameterSyntax?.Type?.GetLocation(), contextType);
+            return Report(CallbackDeclarationDiagnostics.s_parameterNullable, parameterSyntax?.Type?.GetLocation(), contextType);
         }
 
         if (parameter.Type.ToDisplayString() != "Ankus." + contextType)
         {
-            return Report(CallbackDeclarationDiagnostics.ParameterType, parameterSyntax?.Type?.GetLocation(), contextType, parameter.Type.ToDisplayString());
+            return Report(CallbackDeclarationDiagnostics.s_parameterType, parameterSyntax?.Type?.GetLocation(), contextType, parameter.Type.ToDisplayString());
         }
 
         for (INamedTypeSymbol? type = method.ContainingType; type is not null; type = type.ContainingType)
         {
             if (type.IsGenericType)
             {
-                return Report(CallbackDeclarationDiagnostics.GenericContainer, type.Locations.FirstOrDefault(), type.Name);
+                return Report(CallbackDeclarationDiagnostics.s_genericContainer, type.Locations.FirstOrDefault(), type.Name);
             }
 
             if (type.IsFileLocal)
             {
-                return Report(CallbackDeclarationDiagnostics.FileContainer, type.Locations.FirstOrDefault(), type.Name);
+                return Report(CallbackDeclarationDiagnostics.s_fileContainer, type.Locations.FirstOrDefault(), type.Name);
             }
 
             if (type.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal))
             {
-                return Report(CallbackDeclarationDiagnostics.ContainerAccessibility, type.Locations.FirstOrDefault(), type.Name);
+                return Report(CallbackDeclarationDiagnostics.s_containerAccessibility, type.Locations.FirstOrDefault(), type.Name);
             }
         }
 
@@ -151,7 +151,7 @@ internal static class BackendCallbackDeclaration
                 "Ankus.PgColumnNamesAttribute" or "Ankus.PgParameterAttribute");
         if (valueMetadata is not null)
         {
-            return Report(CallbackDeclarationDiagnostics.ValueMetadata,
+            return Report(CallbackDeclarationDiagnostics.s_valueMetadata,
                 valueMetadata.ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation(),
                 valueMetadata.AttributeClass!.Name.Replace("Attribute", string.Empty));
         }
@@ -159,12 +159,12 @@ internal static class BackendCallbackDeclaration
         AttributeData? function = method.GetAttributes().FirstOrDefault(static attribute => attribute.AttributeClass?.ToDisplayString() == "Ankus.PgFunctionAttribute");
         if (function?.NamedArguments.Any(static argument => argument.Key == "Rows") == true)
         {
-            return Report(CallbackDeclarationDiagnostics.Rows, FunctionDeclarationDiagnostics.Option(function, "Rows", context.CancellationToken));
+            return Report(CallbackDeclarationDiagnostics.s_rows, FunctionDeclarationDiagnostics.Option(function, "Rows", context.CancellationToken));
         }
 
         if (function?.NamedArguments.Any(static argument => argument.Key == "SetMode") == true)
         {
-            return Report(CallbackDeclarationDiagnostics.SetMode, FunctionDeclarationDiagnostics.Option(function, "SetMode", context.CancellationToken));
+            return Report(CallbackDeclarationDiagnostics.s_setMode, FunctionDeclarationDiagnostics.Option(function, "SetMode", context.CancellationToken));
         }
 
         return true;

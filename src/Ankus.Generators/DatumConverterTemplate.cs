@@ -59,8 +59,8 @@ internal static class DatumConverterTemplate
             .Select(Construct).Distinct<INamedTypeSymbol>(SymbolEqualityComparer.IncludeNullability)];
         error = candidates.Length switch
         {
-            0 => DatumMappingDiagnostics.Inference,
-            > 1 => DatumMappingDiagnostics.AmbiguousInference,
+            0 => DatumMappingDiagnostics.s_inference,
+            > 1 => DatumMappingDiagnostics.s_ambiguousInference,
             _ => null,
         };
         return candidates.Length == 1 ? candidates[0] : null;
@@ -160,7 +160,7 @@ internal static class DatumConverterTemplate
 
             int index = Array.FindIndex(aliases, alias => alias.Span.Contains(diagnostic.Location.SourceSpan));
             DatumTypeDeclaration declaration = inferred[Math.Max(0, index)];
-            context.Report(DatumMappingDiagnostics.Constraint, declaration.ConverterLocation, declaration.Converter.ToDisplayString(), diagnostic.Id);
+            context.Report(DatumMappingDiagnostics.s_constraint, declaration.ConverterLocation, declaration.Converter.ToDisplayString(), diagnostic.Id);
             valid = false;
         }
 

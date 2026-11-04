@@ -26,7 +26,7 @@ public static class RuntimeGucFunctions
     /// </summary>
     internal static void DefineAtLoad()
     {
-        string Name(string suffix) => Prefix + "." + suffix;
+        static string Name(string suffix) => Prefix + "." + suffix;
         s_enabled = PgGucRegistry.DefineBool(Name("enabled"), true, "Run-time Boolean", "Defined after the name is computed.");
         s_limit = PgGucRegistry.DefineInt(Name("limit"), 10, "Run-time integer", minimum: 1, maximum: 4096, unit: PgGucUnit.Kilobytes);
         s_ratio = PgGucRegistry.DefineReal(Name("ratio"), 0.25, "Run-time real", minimum: 0, maximum: 1);

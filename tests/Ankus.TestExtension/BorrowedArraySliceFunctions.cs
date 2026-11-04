@@ -24,25 +24,17 @@ public static partial class BorrowedArrayFunctions
     [PgFunction]
     public static bool ArraySliceAddress(PgArrayView value, long address)
     {
-        switch ((PgBuiltInOid)value.ElementTypeOid)
+        return (PgBuiltInOid)value.ElementTypeOid switch
         {
-            case PgBuiltInOid.CharOid:
-                return SliceAddress(value.DangerousGetSpan<sbyte>(), address);
-            case PgBuiltInOid.Int2Oid:
-                return SliceAddress(value.DangerousGetSpan<short>(), address);
-            case PgBuiltInOid.Int4Oid:
-                return SliceAddress(value.DangerousGetSpan<int>(), address);
-            case PgBuiltInOid.Int8Oid:
-                return SliceAddress(value.DangerousGetSpan<long>(), address);
-            case PgBuiltInOid.Float4Oid:
-                return SliceAddress(value.DangerousGetSpan<float>(), address);
-            case PgBuiltInOid.Float8Oid:
-                return SliceAddress(value.DangerousGetSpan<double>(), address);
-            case PgBuiltInOid.UuidOid:
-                return SliceAddress(value.DangerousGetUuidBytes(), address);
-            default:
-                throw new InvalidOperationException("Unexpected native slice witness type.");
-        }
+            PgBuiltInOid.CharOid => SliceAddress(value.DangerousGetSpan<sbyte>(), address),
+            PgBuiltInOid.Int2Oid => SliceAddress(value.DangerousGetSpan<short>(), address),
+            PgBuiltInOid.Int4Oid => SliceAddress(value.DangerousGetSpan<int>(), address),
+            PgBuiltInOid.Int8Oid => SliceAddress(value.DangerousGetSpan<long>(), address),
+            PgBuiltInOid.Float4Oid => SliceAddress(value.DangerousGetSpan<float>(), address),
+            PgBuiltInOid.Float8Oid => SliceAddress(value.DangerousGetSpan<double>(), address),
+            PgBuiltInOid.UuidOid => SliceAddress(value.DangerousGetUuidBytes(), address),
+            _ => throw new InvalidOperationException("Unexpected native slice witness type."),
+        };
     }
 
     /// <summary>

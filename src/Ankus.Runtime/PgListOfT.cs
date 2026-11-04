@@ -629,7 +629,6 @@ public sealed class PgList<T> : IList<T>, IReadOnlyList<T>, IDisposable where T 
         private int _index = -1;
         private bool _finished;
         private bool _disposed;
-        private T _current;
 
         /// <summary>
         /// Gets the last copied value while positioned on a live, unchanged list.
@@ -645,8 +644,10 @@ public sealed class PgList<T> : IList<T>, IReadOnlyList<T>, IDisposable where T 
                 }
 
                 Check();
-                return _current;
+                return field;
             }
+
+            private set;
         }
 
         /// <summary>
@@ -674,7 +675,7 @@ public sealed class PgList<T> : IList<T>, IReadOnlyList<T>, IDisposable where T 
             int next = _index + 1;
             if (next < list.Count)
             {
-                _current = list[next];
+                Current = list[next];
                 _index = next;
                 return true;
             }

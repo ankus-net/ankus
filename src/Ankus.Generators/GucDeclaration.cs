@@ -177,7 +177,7 @@ internal sealed class GucDeclaration
         AttributeData[] attributes = [.. property.GetAttributes().Where(IsGucAttribute)];
         if (attributes.Length != 1)
         {
-            return Invalid(GucDeclarationDiagnostics.AttributeCount,
+            return Invalid(GucDeclarationDiagnostics.s_attributeCount,
                 attributes.Skip(1).FirstOrDefault()?.ApplicationSyntaxReference?.GetSyntax(cancellationToken).GetLocation());
         }
 
@@ -185,39 +185,39 @@ internal sealed class GucDeclaration
         BasePropertyDeclarationSyntax? syntax = property.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(cancellationToken) as BasePropertyDeclarationSyntax;
         if (property.IsIndexer)
         {
-            return Invalid(GucDeclarationDiagnostics.Indexer);
+            return Invalid(GucDeclarationDiagnostics.s_indexer);
         }
 
         if (!property.IsStatic)
         {
-            return Invalid(GucDeclarationDiagnostics.Static);
+            return Invalid(GucDeclarationDiagnostics.s_static);
         }
 
         if (property.RefKind != RefKind.None)
         {
-            return Invalid(GucDeclarationDiagnostics.Reference, syntax?.Type.GetLocation());
+            return Invalid(GucDeclarationDiagnostics.s_reference, syntax?.Type.GetLocation());
         }
 
         if (property.GetMethod is null || property.SetMethod is not null)
         {
-            return Invalid(GucDeclarationDiagnostics.Accessors,
+            return Invalid(GucDeclarationDiagnostics.s_accessors,
                 syntax?.AccessorList?.Accessors.FirstOrDefault(static accessor => accessor.IsKind(SyntaxKind.SetAccessorDeclaration) ||
                     accessor.IsKind(SyntaxKind.InitAccessorDeclaration))?.Keyword.GetLocation());
         }
 
         if (!property.IsPartialDefinition)
         {
-            return Invalid(GucDeclarationDiagnostics.Partial);
+            return Invalid(GucDeclarationDiagnostics.s_partial);
         }
 
         if (property.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal))
         {
-            return Invalid(GucDeclarationDiagnostics.Access);
+            return Invalid(GucDeclarationDiagnostics.s_access);
         }
 
         if (property.PartialImplementationPart is not null)
         {
-            return Invalid(GucDeclarationDiagnostics.Implementation, property.PartialImplementationPart.Locations.FirstOrDefault());
+            return Invalid(GucDeclarationDiagnostics.s_implementation, property.PartialImplementationPart.Locations.FirstOrDefault());
         }
 
         for (INamedTypeSymbol? type = property.ContainingType; type is not null; type = type.ContainingType)
@@ -225,51 +225,51 @@ internal sealed class GucDeclaration
             Location? location = type.Locations.FirstOrDefault(static item => item.IsInSource);
             if (type.TypeKind != TypeKind.Class)
             {
-                return Invalid(GucDeclarationDiagnostics.ContainerKind, location);
+                return Invalid(GucDeclarationDiagnostics.s_containerKind, location);
             }
 
             if (type.IsGenericType)
             {
-                return Invalid(GucDeclarationDiagnostics.GenericContainer, location);
+                return Invalid(GucDeclarationDiagnostics.s_genericContainer, location);
             }
 
             if (type.IsFileLocal)
             {
-                return Invalid(GucDeclarationDiagnostics.FileContainer, location);
+                return Invalid(GucDeclarationDiagnostics.s_fileContainer, location);
             }
 
             if (type.DeclaredAccessibility is not (Accessibility.Public or Accessibility.Internal or Accessibility.ProtectedOrInternal))
             {
-                return Invalid(GucDeclarationDiagnostics.ContainerAccess, location);
+                return Invalid(GucDeclarationDiagnostics.s_containerAccess, location);
             }
 
             foreach (SyntaxReference reference in type.DeclaringSyntaxReferences)
             {
                 if (reference.GetSyntax(cancellationToken) is not TypeDeclarationSyntax declaration)
                 {
-                    return Invalid(GucDeclarationDiagnostics.ContainerPartial, location);
+                    return Invalid(GucDeclarationDiagnostics.s_containerPartial, location);
                 }
 
                 if (!declaration.Modifiers.Any(SyntaxKind.PartialKeyword))
                 {
-                    return Invalid(GucDeclarationDiagnostics.ContainerPartial, declaration.Identifier.GetLocation());
+                    return Invalid(GucDeclarationDiagnostics.s_containerPartial, declaration.Identifier.GetLocation());
                 }
             }
         }
 
         if (attribute.ConstructorArguments.Length != 3)
         {
-            return Invalid(GucDeclarationDiagnostics.AttributeCount, attribute.ApplicationSyntaxReference?.GetSyntax(cancellationToken).GetLocation());
+            return Invalid(GucDeclarationDiagnostics.s_attributeCount, attribute.ApplicationSyntaxReference?.GetSyntax(cancellationToken).GetLocation());
         }
 
         if (attribute.ConstructorArguments[0].Value is not string name || !IsName(name))
         {
-            return Invalid(GucDeclarationDiagnostics.Name, Argument(0));
+            return Invalid(GucDeclarationDiagnostics.s_name, Argument(0));
         }
 
         if (attribute.ConstructorArguments[2].Value is not string description || !SqlText.IsText(description))
         {
-            return Invalid(GucDeclarationDiagnostics.Description, Argument(2));
+            return Invalid(GucDeclarationDiagnostics.s_description, Argument(2));
         }
 
         int kind = attribute.AttributeClass!.Name switch
@@ -290,7 +290,7 @@ internal sealed class GucDeclaration
         };
         if (kind == 4 ? property.Type.TypeKind != TypeKind.Enum : property.Type.SpecialType != expected)
         {
-            return Invalid(GucDeclarationDiagnostics.Type, syntax?.Type.GetLocation(), attribute.AttributeClass.Name);
+            return Invalid(GucDeclarationDiagnostics.s_type, syntax?.Type.GetLocation(), attribute.AttributeClass.Name);
         }
 
         var result = new GucDeclaration
@@ -307,32 +307,32 @@ internal sealed class GucDeclaration
         };
         if (result.LongDescription is not null && !SqlText.IsText(result.LongDescription))
         {
-            return Invalid(GucDeclarationDiagnostics.LongDescription, Option("LongDescription"));
+            return Invalid(GucDeclarationDiagnostics.s_longDescription, Option("LongDescription"));
         }
 
         if (result.Context is < 0 or > 6)
         {
-            return Invalid(GucDeclarationDiagnostics.Context, Option("Context"));
+            return Invalid(GucDeclarationDiagnostics.s_context, Option("Context"));
         }
 
         if (result.Flags < 0 || (result.Flags & ~1023) != 0)
         {
-            return Invalid(GucDeclarationDiagnostics.Flags, Option("Flags"));
+            return Invalid(GucDeclarationDiagnostics.s_flags, Option("Flags"));
         }
 
         if (result.Unit is < 0 or > 8)
         {
-            return Invalid(GucDeclarationDiagnostics.Unit, Option("Unit"));
+            return Invalid(GucDeclarationDiagnostics.s_unit, Option("Unit"));
         }
 
         if ((result.Flags & 32) != 0 && kind != 3)
         {
-            return Invalid(GucDeclarationDiagnostics.NameFlag, Option("Flags"));
+            return Invalid(GucDeclarationDiagnostics.s_nameFlag, Option("Flags"));
         }
 
         if (result.Unit != 0 && kind is not (1 or 2))
         {
-            return Invalid(GucDeclarationDiagnostics.UnitKind, Option("Unit"));
+            return Invalid(GucDeclarationDiagnostics.s_unitKind, Option("Unit"));
         }
 
         switch (kind)
@@ -342,12 +342,12 @@ internal sealed class GucDeclaration
                 int maximum = AttributeValues.Get(attribute, "Maximum", int.MaxValue);
                 if (minimum > maximum)
                 {
-                    return Invalid(GucDeclarationDiagnostics.IntegerBounds, Option("Minimum") ?? Option("Maximum"));
+                    return Invalid(GucDeclarationDiagnostics.s_integerBounds, Option("Minimum") ?? Option("Maximum"));
                 }
 
                 if (result.Default is not int integer || integer < minimum || integer > maximum)
                 {
-                    return Invalid(GucDeclarationDiagnostics.IntegerDefault, Argument(1));
+                    return Invalid(GucDeclarationDiagnostics.s_integerDefault, Argument(1));
                 }
 
                 result.Minimum = minimum;
@@ -358,13 +358,13 @@ internal sealed class GucDeclaration
                 double upper = AttributeValues.Get(attribute, "Maximum", double.MaxValue);
                 if (double.IsNaN(lower) || double.IsNaN(upper) || lower > upper)
                 {
-                    return Invalid(GucDeclarationDiagnostics.RealBounds,
+                    return Invalid(GucDeclarationDiagnostics.s_realBounds,
                         double.IsNaN(upper) ? Option("Maximum") : Option("Minimum") ?? Option("Maximum"));
                 }
 
                 if (result.Default is not double real || double.IsNaN(real) || real < lower || real > upper)
                 {
-                    return Invalid(GucDeclarationDiagnostics.RealDefault, Argument(1));
+                    return Invalid(GucDeclarationDiagnostics.s_realDefault, Argument(1));
                 }
 
                 result.Minimum = lower;
@@ -373,19 +373,19 @@ internal sealed class GucDeclaration
             case 3:
                 if (result.Default is string text && !SqlText.IsText(text))
                 {
-                    return Invalid(GucDeclarationDiagnostics.StringDefault, Argument(1));
+                    return Invalid(GucDeclarationDiagnostics.s_stringDefault, Argument(1));
                 }
 
                 if (result.Default is null && property.NullableAnnotation != NullableAnnotation.Annotated)
                 {
-                    return Invalid(GucDeclarationDiagnostics.NullableDefault, syntax?.Type.GetLocation());
+                    return Invalid(GucDeclarationDiagnostics.s_nullableDefault, syntax?.Type.GetLocation());
                 }
 
                 break;
             case 4:
                 if (!SymbolEqualityComparer.Default.Equals(attribute.ConstructorArguments[1].Type, property.Type))
                 {
-                    return Invalid(GucDeclarationDiagnostics.EnumDefault, Argument(1));
+                    return Invalid(GucDeclarationDiagnostics.s_enumDefault, Argument(1));
                 }
 
                 if (!result.ReadEnum(attribute, compilation, context))
@@ -415,9 +415,9 @@ internal sealed class GucDeclaration
             {
                 DiagnosticDescriptor descriptor = role switch
                 {
-                    "Check" => GucDeclarationDiagnostics.Check,
-                    "Assign" => GucDeclarationDiagnostics.Assign,
-                    _ => GucDeclarationDiagnostics.Show,
+                    "Check" => GucDeclarationDiagnostics.s_check,
+                    "Assign" => GucDeclarationDiagnostics.s_assign,
+                    _ => GucDeclarationDiagnostics.s_show,
                 };
                 return Invalid(descriptor, Option(role), result.ManagedType, problem);
             }
@@ -510,13 +510,13 @@ internal sealed class GucDeclaration
 
             if (name is null || !SqlText.IsText(name))
             {
-                context.Report(GucDeclarationDiagnostics.EnumLabel, location);
+                context.Report(GucDeclarationDiagnostics.s_enumLabel, location);
                 return false;
             }
 
             if (!names.Add(Fold(name)))
             {
-                context.Report(GucDeclarationDiagnostics.DuplicateLabel, location);
+                context.Report(GucDeclarationDiagnostics.s_duplicateLabel, location);
                 return false;
             }
 
@@ -531,7 +531,7 @@ internal sealed class GucDeclaration
 
         if (Default is null || !values.TryGetValue(Default, out int boot))
         {
-            context.Report(GucDeclarationDiagnostics.EnumDefault, DatumMappingDiagnostics.Argument(attribute, 1, context.CancellationToken));
+            context.Report(GucDeclarationDiagnostics.s_enumDefault, DatumMappingDiagnostics.Argument(attribute, 1, context.CancellationToken));
             return false;
         }
 

@@ -572,9 +572,9 @@ internal static class ExactAttributeStrings
         private static Dictionary<string, TypeDefinitionHandle> Create(MetadataReader reader, CancellationToken cancellationToken)
         {
             Dictionary<string, TypeDefinitionHandle> types = new(StringComparer.Ordinal);
-            Dictionary<TypeDefinitionHandle, string> identities = new();
+            Dictionary<TypeDefinitionHandle, string> identities = [];
             Stack<TypeDefinitionHandle> ancestors = new();
-            HashSet<TypeDefinitionHandle> active = new();
+            HashSet<TypeDefinitionHandle> active = [];
             foreach (TypeDefinitionHandle handle in reader.TypeDefinitions)
             {
                 cancellationToken.ThrowIfCancellationRequested();

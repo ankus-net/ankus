@@ -39,7 +39,7 @@ public readonly partial record struct PgInterval
     {
         if (!IsFinite)
         {
-            return _infinity > 0 ? "infinity" : "-infinity";
+            return Infinity > 0 ? "infinity" : "-infinity";
         }
 
         if (Months == 0 && Days == 0 && Microseconds == 0)

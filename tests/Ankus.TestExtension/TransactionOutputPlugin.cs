@@ -73,19 +73,32 @@ public static unsafe partial class TransactionOutputPlugin
     /// <summary>
     /// Writes what the startup callback found.
     /// </summary>
-    private static void BeginTransaction(LogicalDecodingContext* context, ReorderBufferTXN* transaction) => Write(context, s_startup);
+    private static void BeginTransaction(LogicalDecodingContext* context, ReorderBufferTXN* transaction)
+    {
+        _ = transaction;
+        Write(context, s_startup);
+    }
 
     /// <summary>
     /// Writes one line per change.
     /// </summary>
     private static void Change(LogicalDecodingContext* context, ReorderBufferTXN* transaction, RelationData* relation,
-        ReorderBufferChange* change) => Write(context, "change");
+        ReorderBufferChange* change)
+    {
+        _ = transaction;
+        _ = relation;
+        _ = change;
+        Write(context, "change");
+    }
 
     /// <summary>
     /// Writes nothing at commit.
     /// </summary>
     private static void CommitTransaction(LogicalDecodingContext* context, ReorderBufferTXN* transaction, ulong commitLsn)
     {
+        _ = context;
+        _ = transaction;
+        _ = commitLsn;
     }
 
     /// <summary>

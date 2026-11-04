@@ -27,7 +27,7 @@ public sealed class PgFunctionArgumentTests
         Assert.AreEqual(20U, PgFunctionArgument.Default<long>().TypeOid);
         Assert.AreEqual(98765U, PgFunctionArgument.Default(98765).TypeOid);
         Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => PgFunctionArgument.Default(0));
-        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => PgFunctionArgument.Create(default(SpiParameter)));
+        Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => PgFunctionArgument.Create(default));
     }
 
     /// <summary>

@@ -18,24 +18,20 @@ namespace Ankus.CompilerServices;
 [InterpolatedStringHandler]
 public readonly ref struct SpiSqlInterpolatedStringHandler(int literalLength, int formattedCount)
 {
-    private readonly StringBuilder? _command = new(literalLength);
-    private readonly List<SpiParameter>? _parameters = new(formattedCount);
-    private readonly List<int>? _positions = new(formattedCount);
-
     /// <summary>
     /// Gets the initialized SQL builder, rejecting a default handler before any backend operation.
     /// </summary>
-    private StringBuilder Command => _command ?? throw new InvalidOperationException("The SQL interpolation handler is not initialized.");
+    private StringBuilder Command { get => field ?? throw new InvalidOperationException("The SQL interpolation handler is not initialized."); } = new(literalLength);
 
     /// <summary>
     /// Gets the initialized declared bindings.
     /// </summary>
-    private List<SpiParameter> Parameters => _parameters ?? throw new InvalidOperationException("The SQL interpolation handler is not initialized.");
+    private List<SpiParameter> Parameters { get => field ?? throw new InvalidOperationException("The SQL interpolation handler is not initialized."); } = new(formattedCount);
 
     /// <summary>
     /// Gets the dollar-token positions owned by this interpolation builder.
     /// </summary>
-    private List<int> Positions => _positions ?? throw new InvalidOperationException("The SQL interpolation handler is not initialized.");
+    private List<int> Positions { get => field ?? throw new InvalidOperationException("The SQL interpolation handler is not initialized."); } = new(formattedCount);
 
     /// <summary>
     /// Appends literal SQL without changing its quoting or statement structure.

@@ -123,22 +123,22 @@ internal sealed record FunctionDeclaration
         double cost = Value(attribute, "Cost", 1d);
         if (volatility is < 0 or > 2)
         {
-            return Invalid(FunctionDeclarationDiagnostics.ExecutionOption, Option("Volatility"), "Volatility", "PgVolatility");
+            return Invalid(FunctionDeclarationDiagnostics.s_executionOption, Option("Volatility"), "Volatility", "PgVolatility");
         }
 
         if (parallel is < 0 or > 2)
         {
-            return Invalid(FunctionDeclarationDiagnostics.ExecutionOption, Option("ParallelSafety"), "ParallelSafety", "PgParallelSafety");
+            return Invalid(FunctionDeclarationDiagnostics.s_executionOption, Option("ParallelSafety"), "ParallelSafety", "PgParallelSafety");
         }
 
         if (nullInput is < 0 or > 2)
         {
-            return Invalid(FunctionDeclarationDiagnostics.ExecutionOption, Option("NullInput"), "NullInput", "PgNullInput");
+            return Invalid(FunctionDeclarationDiagnostics.s_executionOption, Option("NullInput"), "NullInput", "PgNullInput");
         }
 
         if (!IsPositiveSingle(cost))
         {
-            return Invalid(FunctionDeclarationDiagnostics.Cost, Option("Cost"));
+            return Invalid(FunctionDeclarationDiagnostics.s_cost, Option("Cost"));
         }
 
         FunctionParameter[] sqlParameters = contextParameter ? [] :
@@ -146,13 +146,13 @@ internal sealed record FunctionDeclaration
         if (!contextParameter && (set?.Columns.Any(static column => column.IsSqlInternal) ?? FunctionType.CreateResult(method)?.IsSqlInternal == true) &&
             !sqlParameters.Any(static parameter => parameter.Type?.IsSqlInternal == true))
         {
-            return Invalid(FunctionDeclarationDiagnostics.InternalResult, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken));
+            return Invalid(FunctionDeclarationDiagnostics.s_internalResult, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken));
         }
 
         if (!contextParameter && (set?.Columns.Any(static column => column.IsSqlPolymorphic) ?? FunctionType.CreateResult(method)?.IsSqlPolymorphic == true) &&
             !sqlParameters.Any(static parameter => parameter.Type?.IsSqlPolymorphic == true))
         {
-            return Invalid(FunctionDeclarationDiagnostics.PolymorphicResult, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken));
+            return Invalid(FunctionDeclarationDiagnostics.s_polymorphicResult, FunctionDeclarationDiagnostics.Result(method, context.CancellationToken));
         }
 
         bool allNullable = sqlNullability?.All(static nullable => nullable) ??
@@ -161,7 +161,7 @@ internal sealed record FunctionDeclaration
             (!contextParameter && sqlParameters.All(static parameter => !parameter.Type!.Nullable));
         if (nullInput == 2 && !allNullable)
         {
-            return Invalid(FunctionDeclarationDiagnostics.NullInput, Option("NullInput"));
+            return Invalid(FunctionDeclarationDiagnostics.s_nullInput, Option("NullInput"));
         }
 
         string? schema = Value(attribute, "Schema", schemaFallback);
@@ -176,7 +176,7 @@ internal sealed record FunctionDeclaration
                 schema = schemaAttribute.ConstructorArguments.FirstOrDefault().Value as string;
                 if (schema is null)
                 {
-                    return Invalid(FunctionDeclarationDiagnostics.Schema,
+                    return Invalid(FunctionDeclarationDiagnostics.s_schema,
                         FunctionDeclarationDiagnostics.ConstructorArgument(schemaAttribute, context.CancellationToken));
                 }
             }
@@ -184,7 +184,7 @@ internal sealed record FunctionDeclaration
 
         if (schema is not null && !SqlText.IsIdentifier(schema))
         {
-            return Invalid(FunctionDeclarationDiagnostics.Schema, inheritedSchema is null ? Option("Schema") :
+            return Invalid(FunctionDeclarationDiagnostics.s_schema, inheritedSchema is null ? Option("Schema") :
                 FunctionDeclarationDiagnostics.ConstructorArgument(inheritedSchema, context.CancellationToken));
         }
 
@@ -213,19 +213,19 @@ internal sealed record FunctionDeclaration
             int mode = Value(attribute, "SetMode", 0);
             if (!IsPositiveSingle(rows))
             {
-                return Invalid(FunctionDeclarationDiagnostics.Rows, Option("Rows"));
+                return Invalid(FunctionDeclarationDiagnostics.s_rows, Option("Rows"));
             }
 
             if (mode is < 0 or > 2)
             {
-                return Invalid(FunctionDeclarationDiagnostics.SetMode, Option("SetMode"));
+                return Invalid(FunctionDeclarationDiagnostics.s_setMode, Option("SetMode"));
             }
 
             options.Add("ROWS " + rows.ToString("R", CultureInfo.InvariantCulture));
         }
         else if (attribute?.NamedArguments.FirstOrDefault(static argument => argument.Key is "Rows" or "SetMode").Key is string option)
         {
-            return Invalid(FunctionDeclarationDiagnostics.ScalarSetOption, Option(option), option);
+            return Invalid(FunctionDeclarationDiagnostics.s_scalarSetOption, Option(option), option);
         }
 
         string? support = Value<string?>(attribute, "SupportFunction", null);
@@ -234,7 +234,7 @@ internal sealed record FunctionDeclaration
             string[] parts = support.Split('.');
             if (parts.Length is < 1 or > 2 || parts.Any(static part => !SqlText.IsIdentifier(part)))
             {
-                return Invalid(FunctionDeclarationDiagnostics.SupportFunction, Option("SupportFunction"));
+                return Invalid(FunctionDeclarationDiagnostics.s_supportFunction, Option("SupportFunction"));
             }
 
             options.Add("SUPPORT " + string.Join(".", parts.Select(SqlText.Identifier)));
@@ -251,7 +251,7 @@ internal sealed record FunctionDeclaration
             int invalidEntry = Array.FindIndex(path, static entry => !SqlText.IsIdentifier(entry));
             if (invalidEntry >= 0)
             {
-                return Invalid(FunctionDeclarationDiagnostics.SearchPath,
+                return Invalid(FunctionDeclarationDiagnostics.s_searchPath,
                     FunctionDeclarationDiagnostics.OptionElement(attribute, "SearchPath", invalidEntry, context.CancellationToken));
             }
 
@@ -281,7 +281,7 @@ internal sealed record FunctionDeclaration
             {
                 if (!model.SqlOptions.IsEmpty)
                 {
-                    return Invalid(FunctionDeclarationDiagnostics.InjectedParameter,
+                    return Invalid(FunctionDeclarationDiagnostics.s_injectedParameter,
                         parameterAttribute?.ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation(), model.Name);
                 }
 
@@ -295,26 +295,26 @@ internal sealed record FunctionDeclaration
                     ? parameterAttributes[1].ApplicationSyntaxReference?.GetSyntax(context.CancellationToken).GetLocation()
                     : FunctionDeclarationDiagnostics.Option(parameterAttribute, model.SqlOptions[0].Element is not null ? "Element" : "Variadic",
                         context.CancellationToken);
-                return Invalid(FunctionDeclarationDiagnostics.ParameterOptions, location, model.Name);
+                return Invalid(FunctionDeclarationDiagnostics.s_parameterOptions, location, model.Name);
             }
 
             SqlParameterOptions? parameterOptions = model.SqlOptions.IsEmpty ? null : model.SqlOptions[0];
             string parameterName = parameterOptions?.Name ?? SqlText.SnakeCase(model.Name);
             if (!SqlText.IsIdentifier(parameterName))
             {
-                return Invalid(FunctionDeclarationDiagnostics.ParameterName, ParameterOption("Name"), model.Name);
+                return Invalid(FunctionDeclarationDiagnostics.s_parameterName, ParameterOption("Name"), model.Name);
             }
 
             if (!parameterNames.Add(parameterName))
             {
-                return Invalid(FunctionDeclarationDiagnostics.DuplicateParameterName, ParameterOption("Name"), parameterName);
+                return Invalid(FunctionDeclarationDiagnostics.s_duplicateParameterName, ParameterOption("Name"), parameterName);
             }
 
             string? expression = parameterOptions?.Default;
             if (expression is not null && (string.IsNullOrWhiteSpace(expression) || !SqlText.IsText(expression) ||
                 !SqlText.IsCompleteExpression(expression)))
             {
-                return Invalid(FunctionDeclarationDiagnostics.SqlDefault, ParameterOption("Default"));
+                return Invalid(FunctionDeclarationDiagnostics.s_sqlDefault, ParameterOption("Default"));
             }
 
             if (expression is null && model.HasExplicitDefaultValue)
@@ -324,13 +324,13 @@ internal sealed record FunctionDeclaration
                 {
                     Location? location = (parameter.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax(context.CancellationToken)
                         as ParameterSyntax)?.Default?.Value.GetLocation() ?? parameter.Locations.FirstOrDefault();
-                    return Invalid(FunctionDeclarationDiagnostics.OptionalDefault, location, model.Name);
+                    return Invalid(FunctionDeclarationDiagnostics.s_optionalDefault, location, model.Name);
                 }
             }
 
             if (defaultSeen && expression is null)
             {
-                return Invalid(FunctionDeclarationDiagnostics.MissingDefault, parameter.Locations.FirstOrDefault(), model.Name);
+                return Invalid(FunctionDeclarationDiagnostics.s_missingDefault, parameter.Locations.FirstOrDefault(), model.Name);
             }
 
             defaultSeen |= expression is not null;

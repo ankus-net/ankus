@@ -1,7 +1,10 @@
 <Project>
   <!-- Editors do not build project references. Repository tools and the runtime
        must exist before binding generation can supply the compiler references.
-       The packaged SDK already contains its tools and uses NuGet references. -->
+       The packaged SDK already contains its tools and uses NuGet references.
+       When a design-time build fails, Visual Studio's up-to-date check lacks some of
+       the project's outputs and can count a project that was never compiled as up to
+       date. -->
   <Target Name="_BuildAnkusDesignTimeDependencies" BeforeTargets="ResolveReferences"
           Condition="'$(DesignTimeBuild)' == 'true'"
           DependsOnTargets="_FindAnkusDesignTimeDependencies;_BuildStaleAnkusDesignTimeDependencies" />
@@ -16,7 +19,10 @@
     <PropertyGroup>
       <_AnkusDesignTimeProperties>DesignTimeBuild=false;BuildProjectReferences=true;BuildingProject=true;SkipCompilerExecution=false</_AnkusDesignTimeProperties>
       <_AnkusDesignTimeProperties>$(_AnkusDesignTimeProperties);CustomAfterMicrosoftCommonTargets=$(MSBuildThisFileDirectory)Ankus.EditorDependency.targets</_AnkusDesignTimeProperties>
-      <_AnkusDesignTimeRemovedProperties>TargetFramework;NonExistentFile;ProvideCommandLineArgs;ContinueOnError</_AnkusDesignTimeRemovedProperties>
+      <!-- Under BuildingInsideVisualStudio, MSBuild asks project references only for their paths, so the
+           tools' own references, such as Ankus.PgConfig, would never build. Without it they build as on the
+           command line and inherit this configuration, so each builds once. -->
+      <_AnkusDesignTimeRemovedProperties>TargetFramework;NonExistentFile;ProvideCommandLineArgs;ContinueOnError;BuildingInsideVisualStudio</_AnkusDesignTimeRemovedProperties>
       <_AnkusDesignTimeStamp>$(MSBuildProjectDirectory)/$(IntermediateOutputPath)ankus-design-time-dependencies.stamp</_AnkusDesignTimeStamp>
     </PropertyGroup>
     <MSBuild Projects="@(_AnkusDesignTimeDependency)" Targets="GetTargetPath" BuildInParallel="true"

@@ -47,24 +47,19 @@ public readonly partial record struct PgNumeric : IComparable<PgNumeric>,
     private static readonly PgNumericStorage s_negativeInfinity = PgNumericStorage.FromCanonicalText("-Infinity");
 
     /// <summary>
-    /// Owns binary numeric storage independently of PostgreSQL memory contexts.
-    /// </summary>
-    private readonly PgNumericStorage? _storage;
-
-    /// <summary>
     /// Encodes managed-origin canonical text into portable binary digits.
     /// </summary>
-    private PgNumeric(string text) => _storage = PgNumericStorage.FromCanonicalText(text);
+    private PgNumeric(string text) => Storage = PgNumericStorage.FromCanonicalText(text);
 
     /// <summary>
     /// Wraps immutable owned binary storage.
     /// </summary>
-    private PgNumeric(PgNumericStorage storage) => _storage = storage;
+    private PgNumeric(PgNumericStorage storage) => Storage = storage;
 
     /// <summary>
     /// Gets binary storage, treating the default struct as scale-zero zero.
     /// </summary>
-    internal PgNumericStorage Storage => _storage ?? s_zero;
+    internal PgNumericStorage Storage => field ?? s_zero;
 
     /// <summary>
     /// Gets the owned, culture-independent PostgreSQL output text, retaining display scale.

@@ -30,7 +30,17 @@ public unsafe partial struct NativeValue
     /// </summary>
     internal readonly bool IsEnum => _auxiliary1 == -3 && _data != null;
 
-    private long _integer;
+    /// <summary>
+    /// Gets or sets the integer, Boolean, OID, floating-point bits, or opaque numeric datum length.
+    /// </summary>
+    /// <remarks>
+    /// Its storage is the first field of the native transport, so it is declared before the other fields.
+    /// </remarks>
+    public long Integral
+    {
+        readonly get;
+        set;
+    }
 
     /// <summary>
     /// The first transport discriminator, such as the value's kind or an array, range or tuple flag.
@@ -57,7 +67,17 @@ public unsafe partial struct NativeValue
     /// </summary>
     internal int _length;
 
-    private byte _isNull;
+    /// <summary>
+    /// Gets or sets whether the value represents SQL NULL, using a one-byte C flag.
+    /// </summary>
+    /// <remarks>
+    /// Its storage follows the payload length in the native transport, so it is declared between those fields.
+    /// </remarks>
+    public byte IsNull
+    {
+        readonly get;
+        set;
+    }
 
     /// <summary>
     /// Frees the payload with the allocator that produced it, or null when the value owns no allocation.
@@ -65,52 +85,34 @@ public unsafe partial struct NativeValue
     internal delegate* unmanaged[Cdecl]<void*, void> _release;
 
     /// <summary>
-    /// Gets or sets the integer, Boolean, OID, floating-point bits, or opaque numeric datum length.
-    /// </summary>
-    public long Integral
-    {
-        readonly get => _integer;
-        set => _integer = value;
-    }
-
-    /// <summary>
-    /// Gets or sets whether the value represents SQL NULL, using a one-byte C flag.
-    /// </summary>
-    public byte IsNull
-    {
-        readonly get => _isNull;
-        set => _isNull = value;
-    }
-
-    /// <summary>
     /// Reads a validated PostgreSQL date from the scalar transport.
     /// </summary>
     /// <returns>The date.</returns>
-    public readonly PgDate ReadDate() => new(checked((int)_integer));
+    public readonly PgDate ReadDate() => new(checked((int)Integral));
 
     /// <summary>
     /// Reads a validated PostgreSQL time from the scalar transport.
     /// </summary>
     /// <returns>The time.</returns>
-    public readonly PgTime ReadTime() => new(_integer);
+    public readonly PgTime ReadTime() => new(Integral);
 
     /// <summary>
     /// Reads a time and the transport's east-of-UTC offset without depending on native struct padding.
     /// </summary>
     /// <returns>The time with a fixed offset.</returns>
-    public readonly PgTimeTz ReadTimeTz() => new(new PgTime(_integer), _auxiliary1);
+    public readonly PgTimeTz ReadTimeTz() => new(new PgTime(Integral), _auxiliary1);
 
     /// <summary>
     /// Reads a timezone-free PostgreSQL timestamp.
     /// </summary>
     /// <returns>The timestamp.</returns>
-    public readonly PgTimestamp ReadTimestamp() => new(_integer);
+    public readonly PgTimestamp ReadTimestamp() => new(Integral);
 
     /// <summary>
     /// Reads a PostgreSQL UTC timestamp.
     /// </summary>
     /// <returns>The timestamp.</returns>
-    public readonly PgTimestampTz ReadTimestampTz() => new(_integer);
+    public readonly PgTimestampTz ReadTimestampTz() => new(Integral);
 
     /// <summary>
     /// Reads independent interval components without native padding or normalization.
@@ -119,7 +121,7 @@ public unsafe partial struct NativeValue
     public readonly PgInterval ReadInterval() => _temporalInfinity switch
     {
         -1 => PgInterval.NegativeInfinity,
-        0 => new(_auxiliary2, _auxiliary1, _integer),
+        0 => new(_auxiliary2, _auxiliary1, Integral),
         1 => PgInterval.PositiveInfinity,
         _ => throw new InvalidOperationException("Invalid interval infinity discriminator."),
     };
@@ -128,21 +130,21 @@ public unsafe partial struct NativeValue
     /// Reads a PostgreSQL transaction ID from the scalar transport.
     /// </summary>
     /// <returns>The transaction ID.</returns>
-    public readonly PgTransactionId ReadTransactionId() => new(checked((uint)_integer));
+    public readonly PgTransactionId ReadTransactionId() => new(checked((uint)Integral));
 
     /// <summary>
     /// Writes a PostgreSQL date without allocating a buffer.
     /// </summary>
     /// <param name="value">The date.</param>
     /// <returns>The scalar transport.</returns>
-    public static NativeValue FromDate(PgDate value) => new() { _integer = value.DaysSinceEpoch };
+    public static NativeValue FromDate(PgDate value) => new() { Integral = value.DaysSinceEpoch };
 
     /// <summary>
     /// Writes a PostgreSQL time without allocating a buffer.
     /// </summary>
     /// <param name="value">The time.</param>
     /// <returns>The scalar transport.</returns>
-    public static NativeValue FromTime(PgTime value) => new() { _integer = value.Microseconds };
+    public static NativeValue FromTime(PgTime value) => new() { Integral = value.Microseconds };
 
     /// <summary>
     /// Writes a time and east-of-UTC offset as independent transport fields.
@@ -152,7 +154,7 @@ public unsafe partial struct NativeValue
     public static NativeValue FromTimeTz(PgTimeTz value)
         => new()
         {
-            _integer = value.Time.Microseconds,
+            Integral = value.Time.Microseconds,
             _auxiliary1 = value.OffsetSeconds
         };
 
@@ -161,14 +163,14 @@ public unsafe partial struct NativeValue
     /// </summary>
     /// <param name="value">The timestamp.</param>
     /// <returns>The scalar transport.</returns>
-    public static NativeValue FromTimestamp(PgTimestamp value) => new() { _integer = value.MicrosecondsSinceEpoch };
+    public static NativeValue FromTimestamp(PgTimestamp value) => new() { Integral = value.MicrosecondsSinceEpoch };
 
     /// <summary>
     /// Writes a UTC timestamp without allocating a buffer.
     /// </summary>
     /// <param name="value">The timestamp.</param>
     /// <returns>The scalar transport.</returns>
-    public static NativeValue FromTimestampTz(PgTimestampTz value) => new() { _integer = value.MicrosecondsSinceEpoch };
+    public static NativeValue FromTimestampTz(PgTimestampTz value) => new() { Integral = value.MicrosecondsSinceEpoch };
 
     /// <summary>
     /// Writes an interval's exact components without copying a platform-specific struct.
@@ -178,7 +180,7 @@ public unsafe partial struct NativeValue
     public static NativeValue FromInterval(PgInterval value)
         => new()
         {
-            _integer = value.Microseconds,
+            Integral = value.Microseconds,
             _auxiliary1 = value.Days,
             _auxiliary2 = value.Months,
             _temporalInfinity = value.Infinity,
@@ -192,8 +194,8 @@ public unsafe partial struct NativeValue
     public static NativeValue FromTransactionId(PgTransactionId value)
         => new()
         {
-            _integer = value.Value,
-            _isNull = value.IsValid ? (byte)0 : (byte)1
+            Integral = value.Value,
+            IsNull = value.IsValid ? (byte)0 : (byte)1
         };
 
     /// <summary>
@@ -258,12 +260,12 @@ public unsafe partial struct NativeValue
     /// <returns>The full-range numeric.</returns>
     public readonly PgNumeric ReadNumeric()
     {
-        if (_isNull != 0 || _auxiliary1 != -8 || _data == null || _length < 8 || _integer < 0 || _integer > _length)
+        if (IsNull != 0 || _auxiliary1 != -8 || _data == null || _length < 8 || Integral < 0 || Integral > _length)
         {
             throw new InvalidOperationException("Invalid native numeric transport.");
         }
 
-        return PgNumeric.FromBinary(new ReadOnlySpan<byte>(_data, _length), checked((int)_integer));
+        return PgNumeric.FromBinary(new ReadOnlySpan<byte>(_data, _length), checked((int)Integral));
     }
 
     /// <summary>
@@ -274,7 +276,7 @@ public unsafe partial struct NativeValue
     public static NativeValue FromNumeric(PgNumeric value)
     {
         NativeValue result = FromBytes(value.Storage.Buffer);
-        result._integer = value.Storage.RawLength;
+        result.Integral = value.Storage.RawLength;
         result._auxiliary1 = -8;
         return result;
     }

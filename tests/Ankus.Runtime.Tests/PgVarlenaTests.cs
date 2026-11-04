@@ -1036,12 +1036,10 @@ public sealed unsafe class PgVarlenaTests
     /// </summary>
     private sealed class StorageBlock(int size, int offset) : IDisposable
     {
-        private readonly nint _pointer = Allocate(size);
-
         /// <summary>
         /// Gets the live header address.
         /// </summary>
-        internal nint Pointer => _pointer;
+        internal nint Pointer { get; } = Allocate(size);
 
         /// <summary>
         /// Gets the independently selected header width.
@@ -1051,7 +1049,7 @@ public sealed unsafe class PgVarlenaTests
         /// <summary>
         /// Gets the complete test buffer, including spare header capacity.
         /// </summary>
-        internal Span<byte> Bytes => new((void*)_pointer, size + 4);
+        internal Span<byte> Bytes => new((void*)Pointer, size + 4);
 
         /// <summary>
         /// Gets the independent four-byte test payload.
@@ -1064,7 +1062,7 @@ public sealed unsafe class PgVarlenaTests
         internal void SetNumber(int value) => BitConverter.GetBytes(value).CopyTo(Bytes[Offset..]);
 
         /// <inheritdoc />
-        public void Dispose() => NativeMemory.Free((void*)_pointer);
+        public void Dispose() => NativeMemory.Free((void*)Pointer);
 
         /// <summary>
         /// Initializes header and unused capacity with a sentinel distinct from a default payload.
