@@ -270,6 +270,14 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- Ankus.IntegrationTests removes `TESTINGPLATFORM_EXPERIMENTAL_VSTEST_RUNSETTINGS`
+  and `TESTINGPLATFORM_VSTESTBRIDGE_RUNSETTINGS_FILE` once its run starts.
+  Visual Studio's Test Explorer passes its runsettings in them, and the suite's
+  consumer `dotnet test` runs inherited its results directory, so their TRX
+  reports landed in the solution's TestResults folder and 21 tests found none
+  beside their projects. With that variable naming another results directory,
+  the consumer report tests failed 9 of 9 before the change and pass 9 of 9 on
+  Linux x64 with PostgreSQL 18.
 - Repository extensions run Ankus.Build from a copy its build stages in a folder
   named for that build (`bin/<configuration>/net10.0-tool/<build>`), instead of
   from its output folder. Visual Studio starts a design-time build for every
