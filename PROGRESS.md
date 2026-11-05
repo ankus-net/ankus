@@ -270,6 +270,16 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- Extension projects set `EmitCompilerGeneratedFiles`, so builds write their
+  generated sources to disk. Visual Studio's CodeLens opens a reference at the
+  file path of its document, and Roslyn gives a generated document a path under
+  the compiler's generated-files folder, so a reference into
+  `ExtensionDispatchers.g.cs` named a file that did not exist and double-clicking
+  it did nothing. With Visual Studio's MSBuild and Roslyn's MSBuildWorkspace, the
+  Enums sample's `AdvanceDelivery` reference resolves to
+  `obj/.../generated/Ankus.Generators/Ankus.Generators.PgFunctionGenerator/ExtensionDispatchers.g.cs`,
+  which now exists; before the change it resolved beside the assembly, where no
+  file was written.
 - Ankus.IntegrationTests removes `TESTINGPLATFORM_EXPERIMENTAL_VSTEST_RUNSETTINGS`
   and `TESTINGPLATFORM_VSTESTBRIDGE_RUNSETTINGS_FILE` once its run starts.
   Visual Studio's Test Explorer passes its runsettings in them, and the suite's
