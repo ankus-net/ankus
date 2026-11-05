@@ -26,7 +26,7 @@ internal static class TestDotnetSdk
                 version = Version,
                 rollForward = "disable",
                 allowPrerelease = true,
-                paths = new[] { Path.GetFullPath(Path.Join(ReadMetadata("AnkusTestSdkDirectory"), "..", "..")) },
+                paths = new[] { Path.GetFullPath(ReadMetadata("AnkusTestDotnetRoot")) },
             },
         }), cancellationToken);
 

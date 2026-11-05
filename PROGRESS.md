@@ -270,6 +270,19 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- Repository extensions run Ankus.Build from a copy its build stages in a folder
+  named for that build (`bin/<configuration>/net10.0-tool/<build>`), instead of
+  from its output folder. Visual Studio starts a design-time build for every
+  extension when it opens the solution, and their binding commands held
+  `Ankus.Build.dll` and `Ankus.PgConfig.dll`, so Clean Solution warned MSB3061
+  for both. With Visual Studio's MSBuild, cleaning Ankus.Build while the staged
+  tool is open now removes its output without warnings, and holding the output
+  folder's copy instead reproduces MSB3061. The editor test asserts every binding
+  command ran from the staged copy and that one stage remains, and fails against
+  the previous targets. Ankus.Build.Tests also records the .NET installation
+  through `NetCoreRoot`: built by Visual Studio, `MSBuildToolsPath` named
+  Visual Studio's MSBuild folder, so its temporary projects pinned an SDK search
+  path without SDKs and failed in Test Explorer.
 - `dotnet test` and Visual Studio's Test Explorer run the Windows native tests
   without a developer prompt. Ankus.Build.Tests and Ankus.IntegrationTests
   import the x64 environment CI's `windows-toolchain` command selects, through

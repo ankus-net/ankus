@@ -250,6 +250,12 @@ analyzer assemblies before resolving native bindings. This also works before
 the first ordinary build. The editor receives the project's nullable settings
 and generated binding references without publishing the extension. The packaged
 SDK already includes the helper and restores its runtime and analyzers from NuGet.
+Each build of the helper also copies its output to a folder named for that
+build, beside the output folder, such as `bin/Debug/net10.0-tool/<build>`, and
+extensions run the copy. Visual Studio starts design-time builds for every
+extension as it opens the solution, and their helper processes then hold no file
+that Clean or Build of the helper replaces. Later builds remove copies no process
+still uses.
 
 To run a subset:
 

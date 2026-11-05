@@ -74,13 +74,12 @@
 
   <!-- Measures the selected installation's bindings on this machine and archives them with its headers, so other
        machines can build for this runtime (`ankus target export`). -->
-  <Target Name="AnkusExportTargetInfo" DependsOnTargets="_ResolveAnkusPostgresSelection;ResolveReferences;_PrepareAnkusBindingToolchain">
+  <Target Name="AnkusExportTargetInfo" DependsOnTargets="_ResolveAnkusPostgresSelection;ResolveReferences;_ResolveAnkusBuildTool;_PrepareAnkusBindingToolchain">
     <Error Condition="'$(AnkusTargetInfo)' != ''"
            Text="Export target information from the target machine's own pg_config with AnkusTargetInfo unset." />
     <Error Condition="'$(PublishAot)' != 'true' or '$(RuntimeIdentifier)' == ''"
            Text="Exporting target information requires PublishAot and a RuntimeIdentifier." />
     <PropertyGroup>
-      <_AnkusBuildTool Condition="'@(_AnkusBuildToolAssembly)' != ''">@(_AnkusBuildToolAssembly->'%(FullPath)')</_AnkusBuildTool>
       <_AnkusTargetInfoOutput>$(AnkusTargetInfoOutput)</_AnkusTargetInfoOutput>
       <_AnkusTargetInfoOutput Condition="'$(_AnkusTargetInfoOutput)' == ''">ankus-target.pg$(AnkusPostgresMajor).$(RuntimeIdentifier).zip</_AnkusTargetInfoOutput>
       <_AnkusTargetInfoOutput>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(_AnkusTargetInfoOutput)'))</_AnkusTargetInfoOutput>
@@ -130,10 +129,24 @@
     </ItemGroup>
   </Target>
 
-  <Target Name="_ResolveAnkusBindings" BeforeTargets="FindReferenceAssembliesForReferences"
-          DependsOnTargets="$(AnkusResolveBindingsDependsOn)">
+  <!-- Repository builds reference Ankus.Build and run the copy its build staged for this exact output (see
+       Ankus.Build.Staging.targets), so tool processes, including those of the design-time builds editors start, never
+       hold the files Clean and Build of the tool replace. The packaged SDK runs its own tools and has no reference. -->
+  <Target Name="_ResolveAnkusBuildTool" Condition="'@(_AnkusBuildToolAssembly)' != ''">
     <PropertyGroup>
-      <_AnkusBuildTool Condition="'@(_AnkusBuildToolAssembly)' != ''">@(_AnkusBuildToolAssembly->'%(FullPath)')</_AnkusBuildTool>
+      <_AnkusReferencedBuildTool>@(_AnkusBuildToolAssembly->'%(FullPath)')</_AnkusReferencedBuildTool>
+      <_AnkusBuildTool>$(_AnkusReferencedBuildTool)</_AnkusBuildTool>
+      <_AnkusReferencedBuildToolDirectory>$([System.IO.Path]::GetDirectoryName('$(_AnkusReferencedBuildTool)'))</_AnkusReferencedBuildToolDirectory>
+      <_AnkusReferencedBuildToolName>$([System.IO.Path]::GetFileName('$(_AnkusReferencedBuildTool)'))</_AnkusReferencedBuildToolName>
+      <_AnkusReferencedBuildToolBuilt Condition="Exists('$(_AnkusReferencedBuildTool)')">$([System.IO.File]::GetLastWriteTime('$(_AnkusReferencedBuildTool)').Ticks)</_AnkusReferencedBuildToolBuilt>
+      <_AnkusStagedBuildTool Condition="'$(_AnkusReferencedBuildToolBuilt)' != ''">$([MSBuild]::NormalizePath('$(_AnkusReferencedBuildToolDirectory)-tool', '$(_AnkusReferencedBuildToolBuilt)', '$(_AnkusReferencedBuildToolName)'))</_AnkusStagedBuildTool>
+      <_AnkusBuildTool Condition="'$(_AnkusStagedBuildTool)' != '' and Exists('$(_AnkusStagedBuildTool)')">$(_AnkusStagedBuildTool)</_AnkusBuildTool>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="_ResolveAnkusBindings" BeforeTargets="FindReferenceAssembliesForReferences"
+          DependsOnTargets="$(AnkusResolveBindingsDependsOn);_ResolveAnkusBuildTool">
+    <PropertyGroup>
       <_AnkusBindingsOutput>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)', 'ankus-bindings'))</_AnkusBindingsOutput>
       <_AnkusBindingsDirectory>$(_AnkusBindingsOutput)/</_AnkusBindingsDirectory>
       <_AnkusBindingsCompiler>@(_AnkusBindingToolchain->'%(Compiler)')</_AnkusBindingsCompiler>
