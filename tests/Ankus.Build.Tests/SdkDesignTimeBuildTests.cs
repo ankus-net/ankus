@@ -223,7 +223,8 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                 // Editors run the copy the tool's build staged, so a process they start never holds the files that
                 // Clean and Build of the tool replace. Only the stage of the latest tool build remains.
                 string stages = Path.Join(directory, "Ankus.Build", "bin", configuration, "net10.0-tool");
-                foreach (string command in (string[])["binding-sources", "binding-compile"])
+                string[] commands = ["binding-sources", "binding-compile"];
+                foreach (string command in commands)
                 {
                     string ran = (await File.ReadAllTextAsync(Path.Join(directory, "obj", configuration, "net10.0", "ankus-bindings",
                         "tool-" + command), context.CancellationToken)).Trim();
