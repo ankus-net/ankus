@@ -22,6 +22,12 @@ public sealed class NativeAotExtensionTests(TestContext context)
         // Extensions and native fixtures build with the x64 developer environment CI configures, from any shell.
         VisualStudioDeveloperEnvironment.Configure(context);
 
+        // Visual Studio's Test Explorer passes its runsettings, results directory included, to the test process in
+        // these variables. The suite's consumer test runs inherited them and wrote their reports to that directory
+        // instead of beside their projects. MSTest has read them for this run by now.
+        Environment.SetEnvironmentVariable("TESTINGPLATFORM_EXPERIMENTAL_VSTEST_RUNSETTINGS", null);
+        Environment.SetEnvironmentVariable("TESTINGPLATFORM_VSTESTBRIDGE_RUNSETTINGS_FILE", null);
+
         // As PostgreSQL's own harness does on slow machines, give pg_ctl waits without an explicit limit the suite's
         // startup budget, unless the caller chose one.
         if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PGCTLTIMEOUT")))
