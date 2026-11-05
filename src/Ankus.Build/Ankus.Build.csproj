@@ -9,4 +9,5 @@
     <EmbeddedResource Include="Bindings/*.json;Bindings/*.h" />
     <None Update="Bindings/LICENSE.pgrx" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
+  <Import Project="Ankus.Build.Staging.targets" />
 </Project>

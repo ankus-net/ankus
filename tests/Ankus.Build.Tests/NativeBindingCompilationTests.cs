@@ -457,7 +457,7 @@ public sealed class NativeBindingCompilationTests(TestContext context)
         await TestDotnetSdk.ConfigureAsync(root, context.CancellationToken);
         string project = Path.Join(root, "Settings.csproj");
         await File.WriteAllTextAsync(project, "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework></PropertyGroup></Project>", context.CancellationToken);
-        string properties = await NativeBindingLayoutCommand.RunProcessAsync("dotnet", ["msbuild", project, "-nologo",
+        string properties = await NativeBindingLayoutCommand.RunProcessAsync("dotnet", ["msbuild", project, "-nologo", "-nodeReuse:false",
             "-restore", "-target:ResolveReferences", "-verbosity:quiet", "-getProperty:NETCoreSdkVersion,MSBuildToolsPath,ProjectAssetsFile", .. restoreArguments ?? []], root, context.CancellationToken);
         using JsonDocument document = JsonDocument.Parse(properties);
         JsonElement values = document.RootElement.GetProperty("Properties");

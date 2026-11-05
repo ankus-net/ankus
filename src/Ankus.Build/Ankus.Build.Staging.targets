@@ -1,0 +1,28 @@
+<Project>
+  <!-- Repository extensions run this tool in every build, including the design-time builds Visual Studio starts as
+       soon as it opens the solution. Run from the output directory, those processes held the files that Clean and
+       Build of this project replace, and Clean reported them locked. Each build therefore also stages the output in a
+       directory named for the build, beside the output directory, which no later build overwrites and Clean leaves
+       alone. Ankus.Bindings.targets derives the same name from the built assembly and runs the staged copy. -->
+  <Target Name="_StageAnkusBuildTool" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true' and Exists('$(TargetPath)')">
+    <PropertyGroup>
+      <_AnkusBuildToolOutput>$([System.IO.Path]::GetDirectoryName('$(TargetPath)'))</_AnkusBuildToolOutput>
+      <_AnkusBuildToolStages>$(_AnkusBuildToolOutput)-tool</_AnkusBuildToolStages>
+      <_AnkusBuildToolBuilt>$([System.IO.File]::GetLastWriteTime('$(TargetPath)').Ticks)</_AnkusBuildToolBuilt>
+      <_AnkusBuildToolStage>$([MSBuild]::NormalizeDirectory('$(_AnkusBuildToolStages)', '$(_AnkusBuildToolBuilt)'))</_AnkusBuildToolStage>
+    </PropertyGroup>
+    <ItemGroup>
+      <_AnkusBuildToolFile Include="$(_AnkusBuildToolOutput)/**/*" />
+      <_AnkusBuildToolStaleStage Include="$([System.IO.Directory]::GetDirectories('$(_AnkusBuildToolStages)'))"
+                                 Condition="Exists('$(_AnkusBuildToolStages)')" />
+      <_AnkusBuildToolStaleStage Remove="$(_AnkusBuildToolStage.TrimEnd('\').TrimEnd('/'))" />
+    </ItemGroup>
+    <!-- The assembly goes last, so a stage whose assembly exists is complete. -->
+    <Copy SourceFiles="@(_AnkusBuildToolFile)" Condition="'%(Filename)%(Extension)' != '$(TargetFileName)'"
+          DestinationFiles="@(_AnkusBuildToolFile->'$(_AnkusBuildToolStage)%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(_AnkusBuildToolStage)" SkipUnchangedFiles="true" />
+    <!-- A stage that an earlier tool process still runs from stays until a later build finds it unused. -->
+    <RemoveDir Directories="@(_AnkusBuildToolStaleStage)" ContinueOnError="true" />
+  </Target>
+</Project>

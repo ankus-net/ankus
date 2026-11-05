@@ -56,7 +56,7 @@ public sealed class SdkUpgradeScriptsTests(TestContext context)
                     new XElement(itemName, new XAttribute("Update", files[0]), new XElement("AuthorNote", "retained")),
                     new XElement(itemName, new XAttribute("Include", files[^1]))))).Save(project);
             string output = await NativeBindingLayoutCommand.RunProcessAsync("dotnet",
-                ["msbuild", project, "-nologo", "-getItem:" + itemName], directory, context.CancellationToken);
+                ["msbuild", project, "-nologo", "-nodeReuse:false", "-getItem:" + itemName], directory, context.CancellationToken);
             using JsonDocument document = JsonDocument.Parse(output);
             JsonElement items = document.RootElement.GetProperty("Items").GetProperty(itemName);
             Assert.AreSequenceEqual<string>(defaults ? [files[0], files[^1]] : [files[^1]],
@@ -68,7 +68,7 @@ public sealed class SdkUpgradeScriptsTests(TestContext context)
         }
         finally
         {
-            Directory.Delete(directory, recursive: true);
+            await NativeBuildDirectory.DeleteAsync(directory);
         }
     }
 }

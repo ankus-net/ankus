@@ -99,6 +99,10 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                         ? new XElement("ItemGroup", new XElement("ProjectReference",
                             new XAttribute("Include", Path.Join("..", "Ankus.PgConfig", "Ankus.PgConfig.csproj"))))
                         : null,
+                    // The tool stages each build as the real one does, so editors never run it from its output directory.
+                    name == "Ankus.Build"
+                        ? new XElement("Import", new XAttribute("Project", Path.Join(AppContext.BaseDirectory, "AnkusBuild", "Ankus.Build.Staging.targets")))
+                        : null,
                     new XElement("Target", new XAttribute("Name", "RejectEditorOnlyCompilation"),
                         new XAttribute("BeforeTargets", "CoreCompile"),
                         new XElement("Error", new XAttribute("Condition", "'$(DesignTimeBuild)' == 'true' or '$(SkipCompilerExecution)' == 'true'"),
@@ -126,6 +130,7 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                                 string file = args[0] == "binding-sources" ? "native-binding.assembly-name" : "native-binding.assembly-path";
                                 string value = args[0] == "binding-sources" ? "Ankus.Generators" : System.Environment.GetEnvironmentVariable("ANKUS_TEST_BINDING_ASSEMBLY");
                                 System.IO.File.WriteAllText(System.IO.Path.Join(output, file), value);
+                                System.IO.File.WriteAllText(System.IO.Path.Join(output, "tool-" + args[0]), typeof(Program).Assembly.Location);
                             }
                         }
                         """, context.CancellationToken);
@@ -142,6 +147,8 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                 new XElement("ItemGroup", dependencies.Select(name => new XElement("ProjectReference",
                     new XAttribute("Include", Path.Join(name, name + ".csproj")),
                     new XAttribute("ReferenceOutputAssembly", name == "Ankus.Runtime" ? "true" : "false"),
+                    // As in Ankus.Sdk.targets, the tool's reference names the assembly the bindings targets run.
+                    name == "Ankus.Build" ? new XAttribute("OutputItemType", "_AnkusBuildToolAssembly") : null,
                     new XAttribute("GlobalPropertiesToRemove", "RuntimeIdentifier;SelfContained")))),
                 new XElement("Import", new XAttribute("Project", Path.Join(AppContext.BaseDirectory, "Sdk", "Ankus.Development.targets"))),
                 new XElement("Import", new XAttribute("Project", Path.Join(AppContext.BaseDirectory, "Sdk", "Ankus.Bindings.targets"))))).Save(project);
@@ -153,7 +160,7 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
             new XDocument(new XElement("Project", new XElement("PropertyGroup",
                 new XElement("DefaultItemExcludes", "$(DefaultItemExcludes);Ankus.*/**")))).Save(Path.Join(directory, "Directory.Build.props"));
             await NativeBindingLayoutCommand.RunProcessAsync("dotnet",
-                ["restore", project, "-nologo", "-verbosity:quiet", "-bl:" + Path.Join(directory, "restore-{}.binlog")],
+                ["restore", project, "-nologo", "-nodeReuse:false", "-verbosity:quiet", "-bl:" + Path.Join(directory, "restore-{}.binlog")],
                 directory, context.CancellationToken);
             foreach (string name in dependencies)
             {
@@ -213,6 +220,20 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                 Assert.AreEqual(string.Join('\n', Enumerable.Repeat(configuration, load == 0 ? 1 : load)),
                     string.Join('\n', await File.ReadAllLinesAsync(nestedBuilds, context.CancellationToken)),
                     $"Load {load} built the tool's own reference unexpectedly.");
+                // Editors run the copy the tool's build staged, so a process they start never holds the files that
+                // Clean and Build of the tool replace. Only the stage of the latest tool build remains.
+                string stages = Path.Join(directory, "Ankus.Build", "bin", configuration, "net10.0-tool");
+                string[] commands = ["binding-sources", "binding-compile"];
+                foreach (string command in commands)
+                {
+                    string ran = (await File.ReadAllTextAsync(Path.Join(directory, "obj", configuration, "net10.0", "ankus-bindings",
+                        "tool-" + command), context.CancellationToken)).Trim();
+                    string stage = Path.GetDirectoryName(ran)!;
+                    Assert.AreEqual("net10.0-tool", Path.GetFileName(Path.GetDirectoryName(stage)), $"Load {load} ran {command} from {ran}.");
+                    Assert.IsTrue(File.Exists(Path.Join(stage, "Ankus.PgConfig.dll")), "The staged tool must carry its own references.");
+                }
+
+                Assert.HasCount(1, Directory.GetDirectories(stages), $"Load {load} left an earlier tool stage.");
             }
 
             // Editors list a design-time build's high-importance messages, warnings and errors as problems. Minimal
