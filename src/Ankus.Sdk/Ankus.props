@@ -19,6 +19,9 @@
          SDK marks it with the runtime identifier's, and Visual Studio warns (MSB3270) when an AnyCPU test project
          references the extension. -->
     <PlatformTarget Condition="'$(PlatformTarget)' == ''">AnyCPU</PlatformTarget>
+    <!-- Visual Studio's CodeLens opens a reference by its file path, and a source-generated document, such as the
+         dispatchers that call an extension's functions, has a file at that path only when the build emits it. -->
+    <EmitCompilerGeneratedFiles Condition="'$(EmitCompilerGeneratedFiles)' == ''">true</EmitCompilerGeneratedFiles>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <IsPackable>false</IsPackable>
     <AnkusReuseSchema Condition="'$(AnkusReuseSchema)' == ''">false</AnkusReuseSchema>
