@@ -272,7 +272,8 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 - A self-hosted runner's suites now stop when free disk space falls below
   4 GiB, after the watch reports the volumes, including macOS's swap volume,
-  the checkout, the temporary folders and the home folder's total. On the macOS
+  the checkout, the temporary folders, the home folder's total, and the suite's
+  largest processes by resident memory beside one total for all others. On the macOS
   runner, #187's suite used about 55 GB more than usual within a few minutes,
   outside the runner temp, NuGet and `artifacts` folders the watch measured,
   and the full disk kept the runner from writing its job log, so the job's
