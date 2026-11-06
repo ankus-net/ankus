@@ -299,7 +299,10 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   held by another process, and passed 7 of 7 after it. `devenv /build` also
   built a fresh clone and three Clean then Build cycles without errors. The
   editor load test asserts that design-time builds write none of the build's
-  folders and fails against the previous targets.
+  folders and fails against the previous targets. For extensions built with the
+  packaged SDK, a design-time build started with a build of the same extension
+  failed 3 of 10 times on Windows x64 with 0.2.23, on `native-records.json` held
+  by another process, and 0 of 10 with 0.2.24's bindings targets.
 - Extension projects set `EmitCompilerGeneratedFiles`, so builds write their
   generated sources to disk. Visual Studio's CodeLens opens a reference at the
   file path of its document, and Roslyn gives a generated document a path under
