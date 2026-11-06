@@ -54,7 +54,9 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
     /// <summary>
     /// A fresh editor load builds its tools and their own project references and preserves the consumer's nullable
     /// settings. Later loads build the tools again only when a source has changed or an output is missing, so an
-    /// unchanged repository loads without build messages, which editors list as problems.
+    /// unchanged repository loads without build messages, which editors list as problems. Visual Studio starts these
+    /// loads while it builds the solution, so the tools, their references and the bindings use folders of their own,
+    /// and the editor's analyzers, build tool and binding runtime come from them.
     /// </summary>
     /// <remarks>
     /// Visual Studio sets <c>BuildingInsideVisualStudio</c>, under which MSBuild only asks project references for their
@@ -131,6 +133,10 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                                 string value = args[0] == "binding-sources" ? "Ankus.Generators" : System.Environment.GetEnvironmentVariable("ANKUS_TEST_BINDING_ASSEMBLY");
                                 System.IO.File.WriteAllText(System.IO.Path.Join(output, file), value);
                                 System.IO.File.WriteAllText(System.IO.Path.Join(output, "tool-" + args[0]), typeof(Program).Assembly.Location);
+                                if (args[0] == "binding-compile")
+                                {
+                                    System.IO.File.WriteAllText(System.IO.Path.Join(output, "binding-runtime"), args[2]);
+                                }
                             }
                         }
                         """, context.CancellationToken);
@@ -143,12 +149,15 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                     new XElement("AnkusPostgresMajor", "18"),
                     new XElement("_AnkusBuildTool", Path.Join(directory, "Ankus.Build", "bin", "$(Configuration)", "net10.0", "Ankus.Build.dll")),
                     new XElement("_AnkusNativeEnvironment", "ANKUS_TEST_BINDING_ASSEMBLY=" +
-                        Path.Join(directory, "Ankus.Generators", "bin", "$(Configuration)", "netstandard2.0", "Ankus.Generators.dll"))),
+                        Path.Join(directory, "Ankus.Generators", "bin", "ankus-editor", "$(Configuration)", "netstandard2.0", "Ankus.Generators.dll"))),
                 new XElement("ItemGroup", dependencies.Select(name => new XElement("ProjectReference",
                     new XAttribute("Include", Path.Join(name, name + ".csproj")),
                     new XAttribute("ReferenceOutputAssembly", name == "Ankus.Runtime" ? "true" : "false"),
-                    // As in Ankus.Sdk.targets, the tool's reference names the assembly the bindings targets run.
-                    name == "Ankus.Build" ? new XAttribute("OutputItemType", "_AnkusBuildToolAssembly") : null,
+                    // As in Ankus.Sdk.targets, the tool's reference names the assembly the bindings targets run, the
+                    // generators and code fixes are analyzers, and editors resolve all three from their own builds.
+                    name == "Ankus.Build" ? new XAttribute("OutputItemType", "_AnkusBuildToolAssembly")
+                        : name == "Ankus.Runtime" ? null : new XAttribute("OutputItemType", "Analyzer"),
+                    name == "Ankus.Runtime" ? null : new XAttribute("AdditionalProperties", "$(_AnkusEditorDependencyProperties)"),
                     new XAttribute("GlobalPropertiesToRemove", "RuntimeIdentifier;SelfContained")))),
                 new XElement("Import", new XAttribute("Project", Path.Join(AppContext.BaseDirectory, "Sdk", "Ankus.Development.targets"))),
                 new XElement("Import", new XAttribute("Project", Path.Join(AppContext.BaseDirectory, "Sdk", "Ankus.Bindings.targets"))))).Save(project);
@@ -180,7 +189,7 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                 else if (load == 3)
                 {
                     // So does a missing output.
-                    File.Delete(Path.Join(directory, "Ankus.Build", "bin", configuration, "net10.0", "Ankus.Build.dll"));
+                    File.Delete(Path.Join(directory, "Ankus.Build", "bin", "ankus-editor", configuration, "net10.0", "Ankus.Build.dll"));
                 }
 
                 string output = await NativeBindingLayoutCommand.RunProcessAsync("dotnet",
@@ -203,14 +212,37 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                 foreach (string name in dependencies)
                 {
                     string framework = name is "Ankus.Generators" or "Ankus.CodeFixes" ? "netstandard2.0" : "net10.0";
-                    Assert.IsTrue(File.Exists(Path.Join(directory, name, "bin", configuration, framework, name + ".dll")),
+                    Assert.IsTrue(File.Exists(Path.Join(directory, name, "bin", "ankus-editor", configuration, framework, name + ".dll")),
                         "The editor must receive a real dependency built for its own framework: " + name);
                 }
 
+                // A build of the solution writes these folders, so the editor's builds must write none of them.
+                foreach (string name in dependencies.Append("Ankus.PgConfig"))
+                {
+                    Assert.IsFalse(Directory.Exists(Path.Join(directory, name, "bin", configuration)), $"Load {load} wrote {name}'s build output.");
+                    Assert.IsFalse(Directory.Exists(Path.Join(directory, name, "obj", configuration)), $"Load {load} wrote {name}'s build intermediates.");
+                }
+
+                Assert.IsFalse(Directory.Exists(Path.Join(directory, "obj", configuration, "net10.0", "ankus-bindings")),
+                    $"Load {load} wrote the bindings of the extension's build.");
+                // The bindings compile against the editor's runtime build. The runtime's reference keeps the runtime
+                // project's own reference assembly path, by which the editor maps it to that project and compiles against it.
+                string runtimeReference = Path.Join(directory, "Ankus.Runtime", "obj", configuration, "net10.0", "ref", "Ankus.Runtime.dll");
+                string runtimeBuild = Path.Join(directory, "Ankus.Runtime", "bin", "ankus-editor", configuration, "net10.0", "Ankus.Runtime.dll");
+                Assert.AreEqual(runtimeBuild, (await File.ReadAllTextAsync(Path.Join(directory, "obj", configuration, "net10.0",
+                    "ankus-editor-bindings", "binding-runtime"), context.CancellationToken)).Trim(), $"Load {load} compiled the bindings against another runtime.");
+                Assert.AreEqual(runtimeReference, Assert.ContainsSingle(parsed.MetadataReferences.Select(static reference => reference.Reference)
+                    .Where(static path => Path.GetFileName(path) == "Ankus.Runtime.dll")));
+                string[] analyzers = [.. parsed.AnalyzerReferences.Select(static reference => reference.FilePath)
+                    .Where(static path => Path.GetFileName(path).StartsWith("Ankus.", StringComparison.Ordinal)).Order(StringComparer.Ordinal)];
+                Assert.AreEqual(Path.Join(directory, "Ankus.CodeFixes", "bin", "ankus-editor", configuration, "netstandard2.0", "Ankus.CodeFixes.dll") + "\n" +
+                    Path.Join(directory, "Ankus.Generators", "bin", "ankus-editor", configuration, "netstandard2.0", "Ankus.Generators.dll"),
+                    string.Join('\n', analyzers), $"Load {load} gave the editor other analyzers.");
                 CSharpCompilation compilation = CSharpCompilation.Create("EditorProof",
                     [CSharpSyntaxTree.ParseText(await File.ReadAllTextAsync(source, context.CancellationToken), parsed.ParseOptions, source,
                         cancellationToken: context.CancellationToken)],
-                    parsed.MetadataReferences.Select(reference => MetadataReference.CreateFromFile(reference.Reference)), parsed.CompilationOptions);
+                    parsed.MetadataReferences.Select(reference => MetadataReference.CreateFromFile(
+                        reference.Reference == runtimeReference ? runtimeBuild : reference.Reference)), parsed.CompilationOptions);
                 Assert.IsEmpty(compilation.GetDiagnostics(context.CancellationToken).Where(static diagnostic => diagnostic.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning));
                 Assert.IsFalse(File.Exists(Path.Join(directory, "bin", configuration, "net10.0", "Extension.dll")),
                     "The editor must compile dependencies without building the extension itself.");
@@ -222,11 +254,11 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
                     $"Load {load} built the tool's own reference unexpectedly.");
                 // Editors run the copy the tool's build staged, so a process they start never holds the files that
                 // Clean and Build of the tool replace. Only the stage of the latest tool build remains.
-                string stages = Path.Join(directory, "Ankus.Build", "bin", configuration, "net10.0-tool");
+                string stages = Path.Join(directory, "Ankus.Build", "bin", "ankus-editor", configuration, "net10.0-tool");
                 string[] commands = ["binding-sources", "binding-compile"];
                 foreach (string command in commands)
                 {
-                    string ran = (await File.ReadAllTextAsync(Path.Join(directory, "obj", configuration, "net10.0", "ankus-bindings",
+                    string ran = (await File.ReadAllTextAsync(Path.Join(directory, "obj", configuration, "net10.0", "ankus-editor-bindings",
                         "tool-" + command), context.CancellationToken)).Trim();
                     string stage = Path.GetDirectoryName(ran)!;
                     Assert.AreEqual("net10.0-tool", Path.GetFileName(Path.GetDirectoryName(stage)), $"Load {load} ran {command} from {ran}.");

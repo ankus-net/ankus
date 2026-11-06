@@ -3,6 +3,9 @@
        after Directory.Build.targets. Consume them only inside targets. -->
   <PropertyGroup>
     <AnkusResolveBindingsDependsOn>_ResolveAnkusPostgresSelection;$(AnkusResolveBindingsDependsOn);ResolveReferences;_PrepareAnkusBindingToolchain</AnkusResolveBindingsDependsOn>
+    <!-- Editors start design-time builds while the project builds, so each keeps its bindings in a folder of its own. -->
+    <_AnkusBindingsFolder>ankus-bindings</_AnkusBindingsFolder>
+    <_AnkusBindingsFolder Condition="'$(DesignTimeBuild)' == 'true'">ankus-editor-bindings</_AnkusBindingsFolder>
   </PropertyGroup>
 
   <!-- A pg_config path is authoritative when the project did not explicitly select a major.
@@ -147,7 +150,7 @@
   <Target Name="_ResolveAnkusBindings" BeforeTargets="FindReferenceAssembliesForReferences"
           DependsOnTargets="$(AnkusResolveBindingsDependsOn);_ResolveAnkusBuildTool">
     <PropertyGroup>
-      <_AnkusBindingsOutput>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)', 'ankus-bindings'))</_AnkusBindingsOutput>
+      <_AnkusBindingsOutput>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)', '$(_AnkusBindingsFolder)'))</_AnkusBindingsOutput>
       <_AnkusBindingsDirectory>$(_AnkusBindingsOutput)/</_AnkusBindingsDirectory>
       <_AnkusBindingsCompiler>@(_AnkusBindingToolchain->'%(Compiler)')</_AnkusBindingsCompiler>
       <_AnkusBindingsLibraries>@(_AnkusBindingToolchain->'%(LibraryDirectories)')</_AnkusBindingsLibraries>
@@ -160,7 +163,8 @@
       <_AnkusBindingsCommand>$(_AnkusBindingsCommand) &quot;$(_AnkusBindingCacheDirectory)&quot;</_AnkusBindingsCommand>
     </PropertyGroup>
     <ItemGroup>
-      <_AnkusBindingRuntime Include="@(ReferencePath)" Condition="'%(Filename)' == 'Ankus.Runtime'" />
+      <_AnkusBindingRuntime Include="@(_AnkusDesignTimeBindingRuntime)" />
+      <_AnkusBindingRuntime Include="@(ReferencePath)" Condition="'@(_AnkusDesignTimeBindingRuntime)' == '' and '%(ReferencePath.Filename)' == 'Ankus.Runtime'" />
     </ItemGroup>
     <Error Condition="'@(_AnkusBindingRuntime)' == ''" Text="Native bindings require the resolved Ankus.Runtime assembly." />
     <Exec Command="$(_AnkusBindingsCommand)" EnvironmentVariables="$(_AnkusNativeEnvironment)" StandardOutputImportance="$(_AnkusToolOutputImportance)" />
@@ -203,10 +207,12 @@
     <OnError ExecuteTargets="_RecordAnkusBindingFiles" />
   </Target>
 
-  <!-- ProjectReference consumers also need the companion when requesting existing outputs. -->
+  <!-- ProjectReference consumers also need the companion when requesting existing outputs. An editor reads its own
+       design-time bindings first and otherwise those of the last build. -->
   <Target Name="_ReadAnkusBindingReference" AfterTargets="GetTargetPathWithTargetPlatformMoniker">
     <PropertyGroup>
-      <_AnkusBindingReferenceFile>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)', 'ankus-bindings', 'native-binding.assembly-path'))</_AnkusBindingReferenceFile>
+      <_AnkusBindingReferenceFile>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)', '$(_AnkusBindingsFolder)', 'native-binding.assembly-path'))</_AnkusBindingReferenceFile>
+      <_AnkusBindingReferenceFile Condition="!Exists('$(_AnkusBindingReferenceFile)')">$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)', 'ankus-bindings', 'native-binding.assembly-path'))</_AnkusBindingReferenceFile>
     </PropertyGroup>
     <ReadLinesFromFile File="$(_AnkusBindingReferenceFile)" Condition="Exists('$(_AnkusBindingReferenceFile)')">
       <Output TaskParameter="Lines" ItemName="_AnkusExistingBindingReference" />

@@ -257,6 +257,15 @@ extension as it opens the solution, and their helper processes then hold no file
 that Clean or Build of the helper replaces. Later builds remove copies no process
 still uses.
 
+Visual Studio also starts design-time builds while it builds the solution, such
+as after a Clean, and they build these projects with other settings. Their
+builds therefore go to `bin/ankus-editor` and `obj/ankus-editor` in each
+project, and an extension's design-time build keeps its bindings in
+`ankus-editor-bindings` beside the build's `ankus-bindings`. The editor's
+analyzers, helper and binding runtime come from those folders. Its runtime
+reference keeps the runtime project's own path, which the editor maps to the
+project.
+
 To run a subset:
 
 ```console
