@@ -2338,16 +2338,22 @@ internal static partial class AutomationPatterns
 }
 
 /// <summary>
-/// Reports what fills a self-hosted Unix runner's disk while its suites run. The macOS runners ran out of space during
-/// two suites that otherwise need under 10 GB, and the space had returned before anything could be inspected.
+/// Reports what fills a self-hosted Unix runner's disk while its suites run, and stops them before it is full. The macOS
+/// runners ran out of space during suites that otherwise need under 10 GB. The space returned once they ended, and the
+/// full disk had kept the runner from writing the job log that held the reports.
 /// </summary>
 internal sealed class DiskSpaceWatch : IDisposable
 {
-    private static readonly long[] s_thresholds = [20L << 30, 10L << 30, 4L << 30];
+    private static readonly long[] s_thresholds = [20L << 30, 10L << 30];
+    // Below this the suites stop, which leaves the runner space to write and upload the job log.
+    private const long StopThreshold = 4L << 30;
+    private static readonly Lock s_output = new();
     private readonly CancellationTokenSource _stop = new();
+    private readonly List<Task> _reports = [];
     private readonly Task _watch;
 
-    private DiskSpaceWatch(string volume, string[] directories) => _watch = Task.Run(() => WatchAsync(volume, directories, _stop.Token));
+    private DiskSpaceWatch(string volume, string[] volumes, string[] directories, string[] totals)
+        => _watch = Task.Run(() => WatchAsync(volume, volumes, directories, totals, _stop.Token));
 
     /// <summary>
     /// Starts watching the volume of the repository on a self-hosted Linux or macOS runner.
@@ -2365,29 +2371,57 @@ internal sealed class DiskSpaceWatch : IDisposable
             {
                 Environment.GetEnvironmentVariable("RUNNER_TEMP"),
                 Path.GetTempPath(),
+                repositoryRoot,
                 Path.Join(repositoryRoot, "artifacts"),
                 Environment.GetEnvironmentVariable("NUGET_PACKAGES"),
             }
             .OfType<string>().Where(Directory.Exists).Distinct(StringComparer.Ordinal)];
+        // Tools that ignore TMPDIR write to /tmp or to macOS's per-user temporary folder, and other processes write to
+        // the home folder. Each is measured whole: the job log is public, and the names inside a home folder are not.
+        string[] totals = [.. new[]
+            {
+                "/tmp",
+                OperatingSystem.IsMacOS() ? Lines("getconf", ["DARWIN_USER_TEMP_DIR"]).FirstOrDefault()?.Trim() : null,
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            }
+            .OfType<string>().Where(Directory.Exists).Except(directories, StringComparer.Ordinal).Distinct(StringComparer.Ordinal)];
         // DriveInfo reads a mount point, so watch the one that contains the checkout.
         string checkout = Path.GetFullPath(repositoryRoot);
         string volume = DriveInfo.GetDrives().Select(static drive => drive.RootDirectory.FullName)
             .Where(root => checkout.StartsWith(root, StringComparison.Ordinal))
             .MaxBy(static root => root.Length) ?? "/";
-        return new(volume, directories);
+        // macOS swaps to its own volume, which shares the disk with the data volume.
+        string[] volumes = [.. new[] { volume, "/System/Volumes/Data", "/System/Volumes/VM", "/tmp" }.Where(Directory.Exists).Distinct(StringComparer.Ordinal)];
+        return new(volume, volumes, directories, totals);
     }
 
-    private static async Task WatchAsync(string volume, string[] directories, CancellationToken cancellationToken)
+    private async Task WatchAsync(string volume, string[] volumes, string[] directories, string[] totals, CancellationToken cancellationToken)
     {
         int reported = 0;
         try
         {
-            while (reported < s_thresholds.Length && !cancellationToken.IsCancellationRequested)
+            while (!cancellationToken.IsCancellationRequested)
             {
                 long free = new DriveInfo(volume).AvailableFreeSpace;
-                if (free < s_thresholds[reported])
+                if (free < StopThreshold)
                 {
-                    Report(free, directories);
+                    // Deleted files that a stopped process held are gone once it exits, so they are listed first.
+                    lock (s_output)
+                    {
+                        Console.WriteLine($"Free disk space fell to {free >> 20} MiB.");
+                        ReportVolumes(volumes);
+                        ReportDeletedFiles();
+                        StopSuites(free);
+                        ReportLargest(directories, totals);
+                    }
+
+                    break;
+                }
+
+                if (reported < s_thresholds.Length && free < s_thresholds[reported])
+                {
+                    // A report can take minutes on a large home folder, and the watch must still stop the suites.
+                    _reports.Add(Task.Run(() => Report(free, volumes, directories, totals), CancellationToken.None));
                     while (reported < s_thresholds.Length && free < s_thresholds[reported])
                     {
                         reported++;
@@ -2405,9 +2439,30 @@ internal sealed class DiskSpaceWatch : IDisposable
         }
     }
 
-    private static void Report(long free, string[] directories)
+    private static void Report(long free, string[] volumes, string[] directories, string[] totals)
     {
-        Console.WriteLine($"Free disk space fell to {free >> 20} MiB. Largest entries:");
+        lock (s_output)
+        {
+            Console.WriteLine($"Free disk space fell to {free >> 20} MiB.");
+            ReportVolumes(volumes);
+            ReportLargest(directories, totals);
+            ReportDeletedFiles();
+        }
+    }
+
+    private static void ReportVolumes(string[] volumes)
+    {
+        Console.WriteLine("Volumes:");
+        // Mount points on one volume, such as /tmp beside the checkout, repeat its line.
+        foreach (string line in Lines("df", ["-k", .. volumes]).Distinct(StringComparer.Ordinal))
+        {
+            Console.WriteLine("  " + line);
+        }
+    }
+
+    private static void ReportLargest(string[] directories, string[] totals)
+    {
+        Console.WriteLine("Largest entries:");
         List<(long Size, string Line)> entries = [];
         foreach (string directory in directories)
         {
@@ -2416,7 +2471,7 @@ internal sealed class DiskSpaceWatch : IDisposable
             {
                 children = [.. Directory.EnumerateFileSystemEntries(directory)];
             }
-            catch (IOException)
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
                 continue;
             }
@@ -2427,12 +2482,20 @@ internal sealed class DiskSpaceWatch : IDisposable
             }
         }
 
-        foreach ((long size, string line) in entries.OrderByDescending(static entry => entry.Size).Take(12))
+        foreach ((long size, string line) in entries.OrderByDescending(static entry => entry.Size).Take(16))
         {
             Console.WriteLine($"  {size >> 10} MiB {line[(line.IndexOf('\t', StringComparison.Ordinal) + 1)..]}");
         }
 
-        // Deleted files that a process still holds keep their space until it exits.
+        foreach (string line in totals.Length == 0 ? [] : Lines("du", ["-sk", .. totals]))
+        {
+            Console.WriteLine($"  {Leading(line) >> 10} MiB in all of {line[(line.IndexOf('\t', StringComparison.Ordinal) + 1)..]}");
+        }
+    }
+
+    // Deleted files that a process still holds keep their space until it exits.
+    private static void ReportDeletedFiles()
+    {
         Console.WriteLine("Largest deleted files still open:");
         // .NET maps executable memory through memfd files on Linux, which lsof lists as deleted but which use no disk.
         foreach (string line in Lines("lsof", ["-nP", "+L1"]).Skip(1)
@@ -2440,6 +2503,38 @@ internal sealed class DiskSpaceWatch : IDisposable
             .OrderByDescending(static line => Column(line, 6)).Take(8))
         {
             Console.WriteLine("  " + line);
+        }
+    }
+
+    // A full disk also fails the runner's own log, which then holds none of the reports, so the suites end first. Their
+    // processes are this one's descendants; the runner cleanup stops the PostgreSQL servers they leave.
+    private static void StopSuites(long free)
+    {
+        Console.WriteLine($"::error::Free disk space fell to {free >> 20} MiB, so the suites were stopped to leave the runner space for its log.");
+        Dictionary<int, List<int>> children = [];
+        foreach (string line in Lines("ps", ["-A", "-o", "pid=,ppid="]))
+        {
+            string[] columns = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (columns.Length == 2 && int.TryParse(columns[0], out int pid) && int.TryParse(columns[1], out int parent))
+            {
+                (children.TryGetValue(parent, out List<int>? siblings) ? siblings : children[parent] = []).Add(pid);
+            }
+        }
+
+        List<string> descendants = [];
+        Queue<int> pending = new([Environment.ProcessId]);
+        while (pending.TryDequeue(out int pid))
+        {
+            foreach (int child in children.GetValueOrDefault(pid) ?? [])
+            {
+                descendants.Add(child.ToString(CultureInfo.InvariantCulture));
+                pending.Enqueue(child);
+            }
+        }
+
+        if (descendants.Count != 0)
+        {
+            _ = Lines("kill", ["-KILL", .. descendants]);
         }
     }
 
@@ -2480,6 +2575,8 @@ internal sealed class DiskSpaceWatch : IDisposable
     {
         _stop.Cancel();
         _watch.GetAwaiter().GetResult();
+        // A report still measuring after the suites end is cut short rather than holding the job.
+        _ = Task.WaitAll([.. _reports], TimeSpan.FromMinutes(2));
         _stop.Dispose();
     }
 }

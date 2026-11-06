@@ -270,6 +270,15 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- A self-hosted runner's suites now stop when free disk space falls below
+  4 GiB, after the watch reports the volumes, including macOS's swap volume,
+  the checkout, the temporary folders and the home folder's total. On the macOS
+  runner, #187's suite used about 55 GB more than usual within a few minutes,
+  outside the runner temp, NuGet and `artifacts` folders the watch measured,
+  and the full disk kept the runner from writing its job log, so the job's
+  reports survived only in the runner's own page files. With thresholds set
+  above the free space, the watch stopped a child process and printed every
+  report on Linux x64 and macOS ARM64.
 - Visual Studio starts design-time builds while it builds the solution, such
   as after Clean. An extension's design-time build and its real build both wrote
   `obj/.../ankus-bindings`, and the repository's design-time builds of
