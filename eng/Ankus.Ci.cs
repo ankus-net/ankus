@@ -2556,12 +2556,11 @@ internal sealed class DiskSpaceWatch : IDisposable
         Queue<int> pending = new([Environment.ProcessId]);
         while (pending.TryDequeue(out int pid))
         {
+            // A process has one parent, so the walk meets each process once.
             foreach (int child in children.GetValueOrDefault(pid) ?? [])
             {
-                if (descendants.Add(child))
-                {
-                    pending.Enqueue(child);
-                }
+                descendants.Add(child);
+                pending.Enqueue(child);
             }
         }
 
