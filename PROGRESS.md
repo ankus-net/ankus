@@ -270,6 +270,27 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- Visual Studio starts design-time builds while it builds the solution, such
+  as after Clean. An extension's design-time build and its real build both wrote
+  `obj/.../ankus-bindings`, and the repository's design-time builds of
+  Ankus.Build, the runtime, the generators and the code fixes used other global
+  properties than the solution build but the same `bin` and `obj` folders. Clean
+  then Build failed with CS2012 on `Ankus.CodeFixes.dll` in a developer's
+  Visual Studio, where 47 of 53 extensions' design-time stamps had been deleted
+  and not written again. A fresh clone built with Visual Studio 18.12's
+  `devenv /build` failed on the Triggers sample's `native-records.json`, held by
+  another process. Design-time builds now keep their bindings in
+  `ankus-editor-bindings`, and the tools they build go to `bin/ankus-editor` and
+  `obj/ankus-editor`. The editor's analyzers, build tool and binding runtime come
+  from there, and the runtime reference keeps the runtime project's path, which
+  the editor maps to the project. With Visual Studio 18.12's MSBuild on Windows
+  x64, a solution build started together with design-time builds of every
+  sample after Clean failed in 2 of 3 cycles before the change, with CS2012 on
+  `Ankus.Generators.dll` and the SharedMemory sample's `native-records.json`
+  held by another process, and passed 7 of 7 after it. `devenv /build` also
+  built a fresh clone and three Clean then Build cycles without errors. The
+  editor load test asserts that design-time builds write none of the build's
+  folders and fails against the previous targets.
 - Extension projects set `EmitCompilerGeneratedFiles`, so builds write their
   generated sources to disk. Visual Studio's CodeLens opens a reference at the
   file path of its document, and Roslyn gives a generated document a path under

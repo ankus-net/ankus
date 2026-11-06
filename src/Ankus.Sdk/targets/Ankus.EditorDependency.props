@@ -1,0 +1,12 @@
+<Project>
+  <!-- Imported through CustomAfterDirectoryBuildProps only when an editor's design-time build compiles the SDK's own
+       projects. Those builds use other global properties than the solution's, and Visual Studio starts them while it
+       builds the solution, so they keep their own output and intermediate folders and never write a file that build
+       writes. Package assets stay where restore wrote them. -->
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>obj\ankus-editor\</BaseIntermediateOutputPath>
+    <MSBuildProjectExtensionsPath>obj\</MSBuildProjectExtensionsPath>
+    <BaseOutputPath>bin\ankus-editor\</BaseOutputPath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);bin\**;obj\**</DefaultItemExcludes>
+  </PropertyGroup>
+</Project>

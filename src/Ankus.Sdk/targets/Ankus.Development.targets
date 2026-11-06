@@ -4,7 +4,13 @@
        The packaged SDK already contains its tools and uses NuGet references.
        When a design-time build fails, Visual Studio's up-to-date check lacks some of
        the project's outputs and can count a project that was never compiled as up to
-       date. -->
+       date. Visual Studio starts these builds while it builds the solution too, so the tools they build keep
+       their own output folders (Ankus.EditorDependency.props), and the editor's analyzers, build tool and binding
+       runtime come from there. The runtime's reference keeps its own path, which the editor maps to the project. -->
+  <PropertyGroup>
+    <_AnkusEditorDependencyProperties Condition="'$(DesignTimeBuild)' == 'true'">CustomAfterDirectoryBuildProps=$(MSBuildThisFileDirectory)Ankus.EditorDependency.props</_AnkusEditorDependencyProperties>
+  </PropertyGroup>
+
   <Target Name="_BuildAnkusDesignTimeDependencies" BeforeTargets="ResolveReferences"
           Condition="'$(DesignTimeBuild)' == 'true'"
           DependsOnTargets="_FindAnkusDesignTimeDependencies;_BuildStaleAnkusDesignTimeDependencies" />
@@ -19,6 +25,7 @@
     <PropertyGroup>
       <_AnkusDesignTimeProperties>DesignTimeBuild=false;BuildProjectReferences=true;BuildingProject=true;SkipCompilerExecution=false</_AnkusDesignTimeProperties>
       <_AnkusDesignTimeProperties>$(_AnkusDesignTimeProperties);CustomAfterMicrosoftCommonTargets=$(MSBuildThisFileDirectory)Ankus.EditorDependency.targets</_AnkusDesignTimeProperties>
+      <_AnkusDesignTimeProperties>$(_AnkusDesignTimeProperties);$(_AnkusEditorDependencyProperties)</_AnkusDesignTimeProperties>
       <!-- Under BuildingInsideVisualStudio, MSBuild asks project references only for their paths, so the
            tools' own references, such as Ankus.PgConfig, would never build. Without it they build as on the
            command line and inherit this configuration, so each builds once. -->
@@ -30,6 +37,7 @@
       <Output TaskParameter="TargetOutputs" ItemName="_AnkusDesignTimeOutput" />
     </MSBuild>
     <ItemGroup>
+      <_AnkusDesignTimeBindingRuntime Include="@(_AnkusDesignTimeOutput)" Condition="'%(Filename)' == 'Ankus.Runtime'" />
       <!-- The dependencies sit beside the projects they reference, as in the repository's src directory, so their
            shared parent holds every source that can change them. -->
       <_AnkusDesignTimeRoot Include="@(_AnkusDesignTimeDependency->'%(RootDir)%(Directory)..')" />
