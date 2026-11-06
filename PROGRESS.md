@@ -21,8 +21,8 @@ through 0.1.7, 0.2.0 on 2026-10-17, 0.2.1 and 0.2.2 on 2026-10-18, 0.2.3 on
 0.2.7 and 0.2.8 on 2026-10-24, 0.2.9 on 2026-10-25, 0.2.10 and 0.2.11 on
 2026-10-26, 0.2.12 on 2026-10-27, 0.2.13, 0.2.14 and 0.2.15 on 2026-10-28,
 0.2.16 and 0.2.17 on 2026-10-29, 0.2.18 on 2026-10-30, 0.2.19 and 0.2.20 on
-2026-11-01, 0.2.21 on 2026-11-02, 0.2.22 on 2026-11-03, and 0.2.23 on
-2026-11-04 (see remaining-work item 8).
+2026-11-01, 0.2.21 on 2026-11-02, 0.2.22 on 2026-11-03, 0.2.23 on
+2026-11-04, and 0.2.24 on 2026-11-06 (see remaining-work item 8).
 
 The upstream inventory is pinned to pgrx **0.19.3**, commit
 `fc91c63ebad11784647b50ee7e265c1fd9c9924f`. The refresh covers every release
@@ -1130,6 +1130,21 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   were pushed and listed on nuget.org. On the MacBook, with `/usr/bin/clang`
   first on `PATH`, `Ankus.Tool` 0.2.2 from nuget.org created a solution whose
   7 tests passed.
+- 0.2.24 is released (release run 42163399869 on 07908815, after CI, CodeQL,
+  Docs and the secret scan passed on that commit). It carries #186, which keeps
+  Visual Studio's design-time builds out of the folders of the build beside
+  them, and #185, which writes extensions' generated sources to disk for
+  CodeLens. #187's first macOS suite failed when the runner's disk filled;
+  10-second samples of the rerun showed swap on macOS's VM volume grow from
+  2 GB to 15 GB and back within three minutes, and #188 now stops a suite below
+  4 GiB free. The disk and swap stayed above 56 GB free and at 3 GB during
+  main's suite and the release's runtime builds on the same Mac. nuget.org
+  listed every package within 6 minutes of publishing. On Windows x64 with
+  PostgreSQL 18, its own package folder and HTTP cache, a design-time build
+  started with a build of the same extension failed 0 of 10 times with
+  `Ankus.Sdk` 0.2.24 from nuget.org, which writes `ankus-editor-bindings` and
+  `ExtensionDispatchers.g.cs` under `obj`, against 3 of 10 with 0.2.23, which
+  writes neither.
 - 0.2.23 is released (release run 41786569653 on 00c41b7f, after CI, CodeQL,
   Docs and the secret scan passed on that commit; CI's quality job passed on
   rerun, and #177 fixes the race that failed it). It carries #175, which moves
