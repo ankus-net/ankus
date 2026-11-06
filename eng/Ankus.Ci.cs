@@ -2410,6 +2410,7 @@ internal sealed class DiskSpaceWatch : IDisposable
                     {
                         Console.WriteLine($"Free disk space fell to {free >> 20} MiB.");
                         ReportVolumes(volumes);
+                        ReportProcesses();
                         ReportDeletedFiles();
                         StopSuites(free);
                         ReportLargest(directories, totals);
@@ -2445,6 +2446,7 @@ internal sealed class DiskSpaceWatch : IDisposable
         {
             Console.WriteLine($"Free disk space fell to {free >> 20} MiB.");
             ReportVolumes(volumes);
+            ReportProcesses();
             ReportLargest(directories, totals);
             ReportDeletedFiles();
         }
@@ -2493,6 +2495,22 @@ internal sealed class DiskSpaceWatch : IDisposable
         }
     }
 
+    // On macOS, memory that does not fit grows swap files on a volume that shares the disk, so a suite's largest
+    // processes are listed. Other processes on the machine are summed without names, since the job log is public.
+    private static void ReportProcesses()
+    {
+        Console.WriteLine("Largest suite processes by resident memory:");
+        HashSet<int> suite = Descendants(out Dictionary<int, (long Resident, string Command)> processes);
+        foreach ((int pid, (long resident, string command)) in processes.Where(process => suite.Contains(process.Key))
+            .OrderByDescending(static process => process.Value.Resident).Take(8))
+        {
+            Console.WriteLine($"  {resident >> 10} MiB {pid} {command}");
+        }
+
+        long others = processes.Where(process => !suite.Contains(process.Key)).Sum(static process => process.Value.Resident);
+        Console.WriteLine($"  {others >> 10} MiB in all other processes");
+    }
+
     // Deleted files that a process still holds keep their space until it exits.
     private static void ReportDeletedFiles()
     {
@@ -2511,31 +2529,42 @@ internal sealed class DiskSpaceWatch : IDisposable
     private static void StopSuites(long free)
     {
         Console.WriteLine($"::error::Free disk space fell to {free >> 20} MiB, so the suites were stopped to leave the runner space for its log.");
-        Dictionary<int, List<int>> children = [];
-        foreach (string line in Lines("ps", ["-A", "-o", "pid=,ppid="]))
+        string[] descendants = [.. Descendants(out _).Select(static pid => pid.ToString(CultureInfo.InvariantCulture))];
+        if (descendants.Length != 0)
         {
-            string[] columns = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            if (columns.Length == 2 && int.TryParse(columns[0], out int pid) && int.TryParse(columns[1], out int parent))
+            _ = Lines("kill", ["-KILL", .. descendants]);
+        }
+    }
+
+    // The suites' processes are this one's descendants. Resident sizes are in KiB, as ps reports them.
+    private static HashSet<int> Descendants(out Dictionary<int, (long Resident, string Command)> processes)
+    {
+        processes = [];
+        Dictionary<int, List<int>> children = [];
+        foreach (string line in Lines("ps", ["-A", "-o", "pid=,ppid=,rss=,comm="]))
+        {
+            string[] columns = line.Split(' ', 4, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (columns.Length == 4 && int.TryParse(columns[0], out int pid) && int.TryParse(columns[1], out int parent) &&
+                long.TryParse(columns[2], out long resident))
             {
+                processes[pid] = (resident, columns[3]);
                 (children.TryGetValue(parent, out List<int>? siblings) ? siblings : children[parent] = []).Add(pid);
             }
         }
 
-        List<string> descendants = [];
+        HashSet<int> descendants = [];
         Queue<int> pending = new([Environment.ProcessId]);
         while (pending.TryDequeue(out int pid))
         {
+            // A process has one parent, so the walk meets each process once.
             foreach (int child in children.GetValueOrDefault(pid) ?? [])
             {
-                descendants.Add(child.ToString(CultureInfo.InvariantCulture));
+                descendants.Add(child);
                 pending.Enqueue(child);
             }
         }
 
-        if (descendants.Count != 0)
-        {
-            _ = Lines("kill", ["-KILL", .. descendants]);
-        }
+        return descendants;
     }
 
     // du and lsof exit nonzero when an entry vanishes between listing and reading it, so partial output still counts.
