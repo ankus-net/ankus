@@ -270,6 +270,23 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- `ankus init` on Windows x64 builds a release from source with meson when EDB
+  has no archive for it, as for PostgreSQL 19rc1, and that build had no ICU,
+  while EDB's builds of 13 through 18 and the Linux and macOS builds link it.
+  An extension test that created an ICU collation failed only on Windows 19,
+  with 0A000 "ICU is not supported in this build". The source build now
+  downloads ICU 78.3's official Win64 MSVC build, checks it against a SHA-256
+  pinned in Ankus, passes it to meson through `ICU_ROOT` with `-Dicu=enabled`,
+  and copies `icuuc78`, `icuin78` and `icudt78` beside the programs, with ICU's
+  license in `share\icu`. A Windows installation without `icuuc`, which only an
+  earlier Ankus source build can be, is moved aside and built again; a server
+  running from it fails the move and leaves it whole. On Windows x64 with
+  Visual Studio 18's compiler, `ankus init --pg19 download` built 19rc1 in a new
+  home; its server initialized with the ICU locale provider, imported 909 ICU
+  collations, and compared `'abc' = 'ABC'` as true under a nondeterministic ICU
+  collation. After its ICU libraries were removed, the next `ankus init` built
+  it again with them, and a later run with `--pg18 download` reused both
+  installations. The PgConfig tests passed on Linux x64 and Windows x64.
 - A self-hosted runner's suites now stop when free disk space falls below
   4 GiB, after the watch reports the volumes, including macOS's swap volume,
   the checkout, the temporary folders, the home folder's total, and the suite's

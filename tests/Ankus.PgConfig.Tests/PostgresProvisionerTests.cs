@@ -110,10 +110,79 @@ public sealed class PostgresProvisionerTests(TestContext context)
     [TestMethod]
     public void WindowsSourceBuildsMatchUnixBuildChoices()
     {
-        Assert.AreSequenceEqual(["setup", "b", "s", "--prefix=p", "--vsenv", "--buildtype=debugoptimized", "-Dcassert=true",
+        Assert.AreSequenceEqual(["setup", "b", "s", "--prefix=p", "--vsenv", "--buildtype=debugoptimized", "-Dicu=enabled", "-Dcassert=true",
             "-Dc_args=-DRANDOMIZE_ALLOCATED_MEMORY=1"], PostgresProvisioner.GetMesonSetupArguments("s", "b", "p", new PostgresProvisionOptions()));
-        Assert.AreSequenceEqual(["setup", "b", "s", "--prefix=p", "--vsenv", "--buildtype=debugoptimized", "-Dcassert=false"],
+        Assert.AreSequenceEqual(["setup", "b", "s", "--prefix=p", "--vsenv", "--buildtype=debugoptimized", "-Dicu=enabled", "-Dcassert=false"],
             PostgresProvisioner.GetMesonSetupArguments("s", "b", "p", new PostgresProvisionOptions { Release = true }));
+    }
+
+    /// <summary>
+    /// A Windows source build carries the ICU libraries its server loads beside its programs, with ICU's license, as
+    /// EDB's binaries do, and an installation is recognized as having ICU only once they are there.
+    /// </summary>
+    [TestMethod]
+    public void WindowsSourceBuildsCarryTheIcuLibrariesTheServerLoads()
+    {
+        string root = Path.Join(Path.GetTempPath(), "ankus-icu-test-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            string icu = Path.Join(root, "icu");
+            string prefix = Path.Join(root, "install");
+            Directory.CreateDirectory(Path.Join(icu, "bin64"));
+            Directory.CreateDirectory(Path.Join(prefix, "bin"));
+            foreach (string library in new[] { "icuuc78", "icuin78", "icudt78", "icuio78", "icutu78" })
+            {
+                File.WriteAllText(Path.Join(icu, "bin64", library + ".dll"), library);
+            }
+
+            File.WriteAllText(Path.Join(icu, "LICENSE"), "UNICODE LICENSE V3");
+            Assert.IsFalse(PostgresProvisioner.HasWindowsIcu(prefix));
+            PostgresProvisioner.InstallWindowsIcu(icu, prefix);
+            string[] installed = [.. Directory.GetFiles(Path.Join(prefix, "bin")).Select(static path => Path.GetFileName(path)).Order(StringComparer.Ordinal)];
+            Assert.AreSequenceEqual(["icudt78.dll", "icuin78.dll", "icuuc78.dll"], installed);
+            Assert.AreEqual("icuuc78", File.ReadAllText(Path.Join(prefix, "bin", "icuuc78.dll")));
+            Assert.AreEqual("UNICODE LICENSE V3", File.ReadAllText(Path.Join(prefix, "share", "icu", "LICENSE")));
+            Assert.IsTrue(PostgresProvisioner.HasWindowsIcu(prefix));
+            Assert.IsFalse(PostgresProvisioner.HasWindowsIcu(Path.Join(root, "missing")));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// An installation that is built again is moved aside before it is deleted, so a program still running from it
+    /// leaves it whole, with an error that says what to do.
+    /// </summary>
+    [TestMethod]
+    public void RebuiltInstallationsAreRemovedOnlyWhenNothingRunsFromThem()
+    {
+        string root = Path.Join(Path.GetTempPath(), "ankus-retire-test-" + Guid.NewGuid().ToString("N"));
+        var version = new PostgresVersion(19, 0, PostgresReleaseStage.ReleaseCandidate, 1);
+        try
+        {
+            string destination = Path.Join(root, "19rc1-identity");
+            Directory.CreateDirectory(Path.Join(destination, "bin"));
+            File.WriteAllText(Path.Join(destination, "bin", "postgres.exe"), "server");
+            if (OperatingSystem.IsWindows())
+            {
+                using (new FileStream(Path.Join(destination, "bin", "postgres.exe"), FileMode.Open, FileAccess.Read, FileShare.Read))
+                {
+                    IOException error = Assert.ThrowsExactly<IOException>(() => PostgresProvisioner.RetireInstallation(destination, version));
+                    Assert.StartsWith($"PostgreSQL 19rc1 at {destination} needs to be built again with ICU, but it is in use.", error.Message);
+                }
+
+                Assert.AreEqual("server", File.ReadAllText(Path.Join(destination, "bin", "postgres.exe")));
+            }
+
+            PostgresProvisioner.RetireInstallation(destination, version);
+            Assert.IsEmpty(Directory.GetFileSystemEntries(root));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 
     /// <summary>

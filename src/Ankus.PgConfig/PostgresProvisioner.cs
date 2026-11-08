@@ -27,8 +27,10 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
 
     /// <summary>
     /// Downloads the latest releases, builds Unix sources or extracts Windows x64 binaries, and validates each installation.
-    /// A Windows release without EDB binaries is built from source with meson and Visual Studio's compiler.
-    /// Existing completed installations with matching build options are reused. Registration is a separate atomic operation.
+    /// A Windows release without EDB binaries is built from source with meson and Visual Studio's compiler, linking ICU's
+    /// official Windows build as EDB's binaries link ICU. Existing completed installations with matching build options
+    /// are reused, except a Windows source build without ICU from an earlier Ankus, which is built again. Registration is
+    /// a separate atomic operation.
     /// </summary>
     /// <param name="majors">The PostgreSQL majors to install, from 13 through 19.</param>
     /// <param name="options">Source build options.</param>
@@ -78,9 +80,15 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
                     throw new IOException($"Refusing to replace an existing PostgreSQL directory: {destination}");
                 }
 
-                installations.Add(await ValidateInstallationAsync(destination, version, cancellationToken).ConfigureAwait(false));
-                progress?.Report($"Using PostgreSQL {version}: {destination}");
-                continue;
+                if (!OperatingSystem.IsWindows() || HasWindowsIcu(destination))
+                {
+                    installations.Add(await ValidateInstallationAsync(destination, version, cancellationToken).ConfigureAwait(false));
+                    progress?.Report($"Using PostgreSQL {version}: {destination}");
+                    continue;
+                }
+
+                progress?.Report($"PostgreSQL {version} at {destination} was built without ICU; building it again.");
+                RetireInstallation(destination, version);
             }
 
             string scratch = Path.Join(root, ".build-" + Guid.NewGuid().ToString("N"));
@@ -111,7 +119,10 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
                     {
                         // Windows installations find their files relative to their programs, so they move as built.
                         staged = Path.Join(scratch, "install");
-                        await BuildWindowsAsync(distribution, staged, destination, options, cancellationToken).ConfigureAwait(false);
+                        string icu = Path.Join(scratch, "icu");
+                        progress?.Report($"Downloading ICU {PostgresDistributionClient.WindowsIcuVersion}.");
+                        await _distributions.DownloadWindowsIcuAsync(icu, cancellationToken, progress).ConfigureAwait(false);
+                        await BuildWindowsAsync(distribution, staged, destination, icu, options, cancellationToken).ConfigureAwait(false);
                     }
                     else
                     {
@@ -235,19 +246,81 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
 
     /// <summary>
     /// Builds a Windows source tree with meson, which sets up Visual Studio's compiler environment itself, and installs
-    /// it into <paramref name="prefix"/>.
+    /// it into <paramref name="prefix"/>. Meson finds the ICU in <paramref name="icu"/> through CMake's <c>ICU_ROOT</c>,
+    /// and the installation carries ICU's libraries and license beside its programs, as EDB's binaries do.
     /// </summary>
-    private static async Task BuildWindowsAsync(string source, string prefix, string destination, PostgresProvisionOptions options,
+    private static async Task BuildWindowsAsync(string source, string prefix, string destination, string icu, PostgresProvisionOptions options,
         CancellationToken cancellationToken)
     {
         string meson = ExecutableLocator.Find("meson") ?? throw new InvalidOperationException("meson is not on PATH.");
         string build = Path.Join(source, "build");
         string log = destination + ".build.log";
         File.Delete(log);
-        await RunAsync(meson, GetMesonSetupArguments(source, build, prefix, options), source, "", null, cancellationToken, log).ConfigureAwait(false);
+        await RunAsync(meson, GetMesonSetupArguments(source, build, prefix, options), source, "", null, cancellationToken, log, icu).ConfigureAwait(false);
         await RunAsync(meson, ["compile", "-C", build, "-j", options.Jobs.ToString(CultureInfo.InvariantCulture)], source, "", null,
-            cancellationToken, log).ConfigureAwait(false);
-        await RunAsync(meson, ["install", "-C", build, "--quiet"], source, "", null, cancellationToken, log).ConfigureAwait(false);
+            cancellationToken, log, icu).ConfigureAwait(false);
+        await RunAsync(meson, ["install", "-C", build, "--quiet"], source, "", null, cancellationToken, log, icu).ConfigureAwait(false);
+        InstallWindowsIcu(icu, prefix);
+    }
+
+    /// <summary>
+    /// Copies the ICU libraries PostgreSQL loads, <c>icuuc</c>, <c>icuin</c> and <c>icudt</c>, into an installation's
+    /// <c>bin</c> directory, and ICU's license into <c>share\icu</c>.
+    /// </summary>
+    /// <param name="icu">The extracted ICU Windows build, with its <c>bin64</c> directory.</param>
+    /// <param name="prefix">The installation directory.</param>
+    internal static void InstallWindowsIcu(string icu, string prefix)
+    {
+        string major = PostgresDistributionClient.WindowsIcuVersion.Split('.')[0];
+        string bin = Path.Join(prefix, "bin");
+        foreach (string library in WindowsIcuLibraries)
+        {
+            File.Copy(Path.Join(icu, "bin64", library + major + ".dll"), Path.Join(bin, library + major + ".dll"), overwrite: false);
+        }
+
+        string licenses = Path.Join(prefix, "share", "icu");
+        Directory.CreateDirectory(licenses);
+        File.Copy(Path.Join(icu, "LICENSE"), Path.Join(licenses, "LICENSE"), overwrite: false);
+    }
+
+    /// <summary>
+    /// The ICU libraries a PostgreSQL server built with ICU loads, without their version suffix.
+    /// </summary>
+    internal static IReadOnlyList<string> WindowsIcuLibraries { get; } = ["icuuc", "icuin", "icudt"];
+
+    /// <summary>
+    /// Reports whether a Windows installation carries ICU's common library, as every EDB build and every Ankus source
+    /// build with ICU does.
+    /// </summary>
+    /// <param name="installation">The installation directory.</param>
+    /// <returns>Whether its <c>bin</c> directory has an <c>icuuc</c> library.</returns>
+    internal static bool HasWindowsIcu(string installation)
+    {
+        string bin = Path.Join(installation, "bin");
+        return Directory.Exists(bin) && Directory.EnumerateFiles(bin, "icuuc*.dll").Any();
+    }
+
+    /// <summary>
+    /// Removes an Ankus installation that is built again, moving it aside first so that a server still running from it
+    /// fails the move and leaves the installation whole.
+    /// </summary>
+    /// <param name="destination">The installation directory.</param>
+    /// <param name="version">Its release, for the error.</param>
+    /// <exception cref="IOException">A program in the installation is running.</exception>
+    internal static void RetireInstallation(string destination, PostgresVersion version)
+    {
+        string retired = destination + "." + Guid.NewGuid().ToString("N") + ".replaced";
+        try
+        {
+            Directory.Move(destination, retired);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            throw new IOException($"PostgreSQL {version} at {destination} needs to be built again with ICU, but it is in use. " +
+                "Stop the servers running from it and run this again.", error);
+        }
+
+        Directory.Delete(retired, recursive: true);
     }
 
     /// <summary>
@@ -276,7 +349,7 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
     }
 
     /// <summary>
-    /// Builds meson's setup arguments for a Windows source build: debug information, and for development builds the
+    /// Builds meson's setup arguments for a Windows source build: debug information, ICU, and for development builds the
     /// assertions and allocated-memory randomization of a Unix build.
     /// </summary>
     /// <param name="source">The source tree.</param>
@@ -285,7 +358,7 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
     /// <param name="options">The build options.</param>
     /// <returns>The arguments in order.</returns>
     internal static string[] GetMesonSetupArguments(string source, string build, string prefix, PostgresProvisionOptions options)
-        => ["setup", build, source, "--prefix=" + prefix, "--vsenv", "--buildtype=debugoptimized",
+        => ["setup", build, source, "--prefix=" + prefix, "--vsenv", "--buildtype=debugoptimized", "-Dicu=enabled",
             "-Dcassert=" + (options.Release ? "false" : "true"),
             .. options.Release ? Array.Empty<string>() : ["-Dc_args=-DRANDOMIZE_ALLOCATED_MEMORY=1"]];
 
@@ -350,7 +423,7 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
         => [$"--prefix={destination}", "--enable-debug", .. options.Release ? Array.Empty<string>() : ["--enable-cassert"], .. options.ConfigureFlags];
 
     private static async Task<string> RunAsync(string executable, string[] arguments, string directory,
-        string preprocessorFlags, string? pkgConfigPath, CancellationToken cancellationToken, string? log = null)
+        string preprocessorFlags, string? pkgConfigPath, CancellationToken cancellationToken, string? log = null, string? icuRoot = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var start = new ProcessStartInfo(executable)
@@ -374,6 +447,11 @@ public sealed class PostgresProvisioner(HttpClient client, string? homeDirectory
 
         start.Environment["CPPFLAGS"] = preprocessorFlags;
         start.Environment["PKG_CONFIG_PATH"] = pkgConfigPath;
+        if (icuRoot is not null)
+        {
+            start.Environment["ICU_ROOT"] = icuRoot;
+        }
+
         if (!OperatingSystem.IsWindows() && Environment.GetEnvironmentVariable("PKG_CONFIG") is null && ExecutableLocator.Find("pkg-config") is null &&
             FindPkgConfig(["/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin"]) is string pkgConfig)
         {
