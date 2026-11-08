@@ -124,6 +124,62 @@ public sealed class PostgresDistributionClientTests(TestContext context)
     }
 
     /// <summary>
+    /// Windows source builds link ICU's official Windows x64 MSVC build from ICU's own release page.
+    /// </summary>
+    [TestMethod]
+    public void ConstructsTheWindowsIcuUrl()
+    {
+        Assert.AreEqual("https://github.com/unicode-org/icu/releases/download/release-78.3/icu4c-78.3-Win64-MSVC2022.zip",
+            PostgresDistributionClient.WindowsIcuArchive.AbsoluteUri);
+    }
+
+    /// <summary>
+    /// A pinned ZIP, such as ICU's Windows build, has no root directory to strip: it is extracted whole when its
+    /// SHA-256 matches the pinned one, and a mismatch publishes nothing.
+    /// </summary>
+    [TestMethod]
+    public async Task PinnedArchivesExtractWholeOnlyWhenTheirChecksumMatches()
+    {
+        byte[] payload = [7, 0, 255];
+        byte[] archive = Archive(true, "bin64/icuuc78.dll", payload);
+        using var handler = new DistributionHandler(archive);
+        using var client = new HttpClient(handler);
+        var distributions = new PostgresDistributionClient(client);
+        var uri = new Uri("https://icu.invalid/icu.zip");
+        string destination = Path.Join(_root, "icu");
+        await distributions.DownloadPinnedZipAsync(uri, Convert.ToHexStringLower(SHA256.HashData(archive)), "ICU 78.3", destination,
+            context.CancellationToken);
+        Assert.AreSequenceEqual(payload, await File.ReadAllBytesAsync(Path.Join(destination, "bin64", "icuuc78.dll"), context.CancellationToken));
+        Assert.AreEqual(destination, Assert.ContainsSingle(Directory.GetFileSystemEntries(_root)));
+
+        string rejected = Path.Join(_root, "rejected");
+        InvalidDataException error = await Assert.ThrowsExactlyAsync<InvalidDataException>(() =>
+            distributions.DownloadPinnedZipAsync(uri, new string('0', 64), "ICU 78.3", rejected, context.CancellationToken));
+        Assert.AreEqual("ICU 78.3 archive SHA-256 verification failed for https://icu.invalid/icu.zip.", error.Message);
+        Assert.AreEqual(destination, Assert.ContainsSingle(Directory.GetFileSystemEntries(_root)));
+    }
+
+    /// <summary>
+    /// A pinned archive's paths can't leave the destination either, although none of its directories is stripped.
+    /// </summary>
+    /// <param name="name">The invalid member path.</param>
+    [TestMethod]
+    [DataRow("../outside")]
+    [DataRow("bin64/../../outside")]
+    [DataRow("C:/outside")]
+    [DataRow("bin64\\..\\outside")]
+    public async Task PinnedArchivesRejectUnsafePaths(string name)
+    {
+        byte[] archive = Archive(true, name, [1]);
+        using var handler = new DistributionHandler(archive);
+        using var client = new HttpClient(handler);
+        await Assert.ThrowsExactlyAsync<InvalidDataException>(() => new PostgresDistributionClient(client).DownloadPinnedZipAsync(
+            new Uri("https://icu.invalid/icu.zip"), Convert.ToHexStringLower(SHA256.HashData(archive)), "ICU 78.3",
+            Path.Join(_root, "icu"), context.CancellationToken));
+        Assert.IsEmpty(Directory.GetFileSystemEntries(_root));
+    }
+
+    /// <summary>
     /// Rejects archive paths that could escape the owned destination or change their meaning on Windows.
     /// </summary>
     /// <param name="suffix">The invalid member path.</param>

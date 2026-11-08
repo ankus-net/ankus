@@ -307,6 +307,12 @@ release, as for some betas and release candidates, Ankus downloads the source
 and builds it with meson and Visual Studio's C++ compiler, with the same debug
 information and assertions as a Unix build. That build needs meson, Strawberry
 Perl and winflexbison on `PATH`; without them, register an existing build.
+It links ICU, as EDB's builds do, so ICU collations work on every major. Ankus
+downloads ICU's official Windows build, checks it against a SHA-256 pinned in
+Ankus, and copies ICU's libraries beside the server's programs and its license
+into `share\icu`. Meson finds ICU through CMake, which Visual Studio's C++
+workload installs. A Windows source build that an earlier Ankus made without
+ICU is built again; stop any server running from it first.
 When a major has no stable release yet, source downloads select its newest beta
 or release candidate.
 

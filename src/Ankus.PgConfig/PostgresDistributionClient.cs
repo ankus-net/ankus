@@ -14,7 +14,8 @@ using System.Threading.Tasks;
 namespace Ankus.PgConfig;
 
 /// <summary>
-/// Retrieves PostgreSQL distributions from the upstream source archive or EDB's Windows archive.
+/// Retrieves PostgreSQL distributions from the upstream source archive or EDB's Windows archive, and the ICU build
+/// that Windows source builds link.
 /// </summary>
 /// <param name="client">The caller-owned HTTP client.</param>
 /// <param name="delay">Waits between download attempts; tests replace the real delay.</param>
@@ -25,9 +26,21 @@ internal sealed partial class PostgresDistributionClient(HttpClient client, Func
     /// </summary>
     internal const int DownloadAttempts = 4;
 
+    /// <summary>
+    /// The ICU release that Windows source builds link, as EDB's Windows binaries link ICU.
+    /// </summary>
+    internal const string WindowsIcuVersion = "78.3";
+
+    private const string WindowsIcuSha256 = "446b671f9437227daa79e221d4521d75793f9ecd65ac44c06e34dd848f201ac2";
     private const long DownloadLimit = 2L * 1024 * 1024 * 1024;
     private const long ExpandedLimit = 8L * 1024 * 1024 * 1024;
     private static readonly Uri s_sourceIndex = new("https://ftp.postgresql.org/pub/source/");
+
+    /// <summary>
+    /// Gets the address of ICU's official Windows x64 MSVC build of <see cref="WindowsIcuVersion"/>.
+    /// </summary>
+    internal static Uri WindowsIcuArchive { get; } =
+        new($"https://github.com/unicode-org/icu/releases/download/release-{WindowsIcuVersion}/icu4c-{WindowsIcuVersion}-Win64-MSVC2022.zip");
 
     /// <summary>
     /// Discovers the newest published release in each requested major, preferring stable releases.
@@ -86,47 +99,120 @@ internal sealed partial class PostgresDistributionClient(HttpClient client, Func
         {
             Uri uri = GetArchiveUri(version, windowsBinaries);
             string archive = Path.Join(scratch, "archive");
-            for (int attempt = 1; ; attempt++)
-            {
-                try
-                {
-                    await DownloadArchiveAsync(uri, archive, version, windowsBinaries, cancellationToken).ConfigureAwait(false);
-                    break;
-                }
-                catch (Exception error) when (attempt < DownloadAttempts && IsTransient(error, cancellationToken))
-                {
-                    TimeSpan wait = TimeSpan.FromSeconds(1 << (attempt - 1));
-                    progress?.Report(string.Create(CultureInfo.InvariantCulture,
-                        $"Warning: PostgreSQL {version} download attempt {attempt}/{DownloadAttempts} failed; retrying in {wait.TotalSeconds}s: {Summarize(error)}"));
-                    File.Delete(archive);
-                    await (delay ?? Task.Delay)(wait, cancellationToken).ConfigureAwait(false);
-                }
-            }
-
+            string name = $"PostgreSQL {version}";
+            await DownloadWithRetriesAsync(uri, archive, name,
+                windowsBinaries ? $"EDB has no available PostgreSQL {version} Windows x64 archive." : null, cancellationToken, progress).ConfigureAwait(false);
             if (!windowsBinaries)
             {
                 await VerifyChecksumAsync(uri, archive, cancellationToken).ConfigureAwait(false);
             }
 
-            string extracted = Path.Join(scratch, "extracted");
-            Directory.CreateDirectory(extracted);
-            try
-            {
-                await ExtractAsync(archive, extracted, windowsBinaries ? "pgsql" : $"postgresql-{version}",
-                    windowsBinaries, cancellationToken).ConfigureAwait(false);
-            }
-            catch (EndOfStreamException error)
-            {
-                throw new InvalidDataException("The PostgreSQL archive is truncated.", error);
-            }
-
-            cancellationToken.ThrowIfCancellationRequested();
-            Directory.Move(extracted, target);
+            await ExtractNewAsync(archive, scratch, target, name, windowsBinaries ? "pgsql" : $"postgresql-{version}",
+                windowsBinaries, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
             Directory.Delete(scratch, recursive: true);
         }
+    }
+
+    /// <summary>
+    /// Downloads ICU's official Windows x64 MSVC binaries, checks them against their pinned SHA-256 and extracts them
+    /// into a new directory, removing incomplete work on failure.
+    /// </summary>
+    internal Task DownloadWindowsIcuAsync(string destination, CancellationToken cancellationToken, IProgress<string>? progress = null)
+        => DownloadPinnedZipAsync(WindowsIcuArchive, WindowsIcuSha256, $"ICU {WindowsIcuVersion}", destination, cancellationToken, progress);
+
+    /// <summary>
+    /// Downloads a ZIP archive whose SHA-256 is known in advance and extracts all of it into a new directory.
+    /// </summary>
+    /// <param name="uri">The archive's address.</param>
+    /// <param name="sha256">The archive's SHA-256 in hexadecimal.</param>
+    /// <param name="name">The archive's name in messages, such as <c>ICU 78.3</c>.</param>
+    /// <param name="destination">The directory to create.</param>
+    /// <param name="cancellationToken">Cancels the download.</param>
+    /// <param name="progress">Receives retry warnings.</param>
+    internal async Task DownloadPinnedZipAsync(Uri uri, string sha256, string name, string destination,
+        CancellationToken cancellationToken, IProgress<string>? progress = null)
+    {
+        string target = Path.GetFullPath(destination);
+        if (Path.Exists(target))
+        {
+            throw new IOException($"The {name} download destination already exists: {target}");
+        }
+
+        string scratch = target + "." + Guid.NewGuid().ToString("N") + ".download";
+        Directory.CreateDirectory(scratch);
+        try
+        {
+            string archive = Path.Join(scratch, "archive");
+            await DownloadWithRetriesAsync(uri, archive, name, null, cancellationToken, progress).ConfigureAwait(false);
+            await using (var input = new FileStream(archive, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                byte[] actual = await SHA256.HashDataAsync(input, cancellationToken).ConfigureAwait(false);
+                if (!CryptographicOperations.FixedTimeEquals(Convert.FromHexString(sha256), actual))
+                {
+                    throw new InvalidDataException($"{name} archive SHA-256 verification failed for {uri}.");
+                }
+            }
+
+            await ExtractNewAsync(archive, scratch, target, name, null, zip: true, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            Directory.Delete(scratch, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Downloads an archive, trying again after 1, 2 and 4 seconds with a one-line warning before each retry.
+    /// </summary>
+    /// <param name="uri">The archive's address.</param>
+    /// <param name="archive">The file to write.</param>
+    /// <param name="name">The archive's name in warnings.</param>
+    /// <param name="unavailable">The message for a missing archive, which is not retried, or null to retry it.</param>
+    /// <param name="cancellationToken">Cancels the download and its waits.</param>
+    /// <param name="progress">Receives retry warnings.</param>
+    private async Task DownloadWithRetriesAsync(Uri uri, string archive, string name, string? unavailable,
+        CancellationToken cancellationToken, IProgress<string>? progress)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                await DownloadArchiveAsync(uri, archive, name, unavailable, cancellationToken).ConfigureAwait(false);
+                return;
+            }
+            catch (Exception error) when (attempt < DownloadAttempts && IsTransient(error, cancellationToken))
+            {
+                TimeSpan wait = TimeSpan.FromSeconds(1 << (attempt - 1));
+                progress?.Report(string.Create(CultureInfo.InvariantCulture,
+                    $"Warning: {name} download attempt {attempt}/{DownloadAttempts} failed; retrying in {wait.TotalSeconds}s: {Summarize(error)}"));
+                File.Delete(archive);
+                await (delay ?? Task.Delay)(wait, cancellationToken).ConfigureAwait(false);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Extracts an archive into a directory beside the download and moves it to <paramref name="target"/> once complete.
+    /// </summary>
+    private static async Task ExtractNewAsync(string archive, string scratch, string target, string name, string? root, bool zip,
+        CancellationToken cancellationToken)
+    {
+        string extracted = Path.Join(scratch, "extracted");
+        Directory.CreateDirectory(extracted);
+        try
+        {
+            await ExtractAsync(archive, extracted, name, root, zip, cancellationToken).ConfigureAwait(false);
+        }
+        catch (EndOfStreamException error)
+        {
+            throw new InvalidDataException($"The {name} archive is truncated.", error);
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        Directory.Move(extracted, target);
     }
 
     /// <summary>
@@ -142,20 +228,19 @@ internal sealed partial class PostgresDistributionClient(HttpClient client, Func
         return first.Length == 0 ? "unknown download error" : first;
     }
 
-    private async Task DownloadArchiveAsync(Uri uri, string archive, PostgresVersion version, bool windowsBinaries,
-        CancellationToken cancellationToken)
+    private async Task DownloadArchiveAsync(Uri uri, string archive, string name, string? unavailable, CancellationToken cancellationToken)
     {
         using HttpResponseMessage response = await client.GetAsync(uri,
             HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-        if (windowsBinaries && response.StatusCode is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.Forbidden)
+        if (unavailable is not null && response.StatusCode is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.Forbidden)
         {
-            throw new PostgresArchiveUnavailableException($"EDB has no available PostgreSQL {version} Windows x64 archive.");
+            throw new PostgresArchiveUnavailableException(unavailable);
         }
 
         response.EnsureSuccessStatusCode();
         await using Stream body = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         await using var output = new FileStream(archive, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-        await CopyBoundedAsync(body, output, DownloadLimit, cancellationToken).ConfigureAwait(false);
+        await CopyBoundedAsync(body, output, DownloadLimit, name, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -205,7 +290,7 @@ internal sealed partial class PostgresDistributionClient(HttpClient client, Func
         }
     }
 
-    private static async Task ExtractAsync(string archive, string destination, string root, bool zip,
+    private static async Task ExtractAsync(string archive, string destination, string name, string? root, bool zip,
         CancellationToken cancellationToken)
     {
         await using var input = new FileStream(archive, FileMode.Open, FileAccess.Read, FileShare.Read);
@@ -219,21 +304,21 @@ internal sealed partial class PostgresDistributionClient(HttpClient client, Func
                 cancellationToken.ThrowIfCancellationRequested();
                 if (((entry.ExternalAttributes >> 16) & 0xF000) is not (0 or 0x8000 or 0x4000))
                 {
-                    throw new InvalidDataException($"Unsupported PostgreSQL archive entry: {entry.FullName}");
+                    throw new InvalidDataException($"Unsupported {name} archive entry: {entry.FullName}");
                 }
 
-                string path = GetEntryPath(destination, root, entry.FullName);
+                string path = GetEntryPath(destination, name, root, entry.FullName);
                 if (entry.FullName.EndsWith('/'))
                 {
                     Directory.CreateDirectory(path);
                     continue;
                 }
 
-                remaining = RequireSpace(entry.Length, remaining, ref files);
+                remaining = RequireSpace(entry.Length, remaining, name, ref files);
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                 await using Stream body = await entry.OpenAsync(cancellationToken).ConfigureAwait(false);
                 await using var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-                await CopyBoundedAsync(body, output, entry.Length, cancellationToken).ConfigureAwait(false);
+                await CopyBoundedAsync(body, output, entry.Length, name, cancellationToken).ConfigureAwait(false);
             }
         }
         else
@@ -248,7 +333,7 @@ internal sealed partial class PostgresDistributionClient(HttpClient client, Func
                     continue;
                 }
 
-                string path = GetEntryPath(destination, root, entry.Name);
+                string path = GetEntryPath(destination, name, root, entry.Name);
                 if (entry.EntryType == TarEntryType.Directory)
                 {
                     Directory.CreateDirectory(path);
@@ -257,10 +342,10 @@ internal sealed partial class PostgresDistributionClient(HttpClient client, Func
 
                 if (entry.EntryType is not (TarEntryType.RegularFile or TarEntryType.V7RegularFile))
                 {
-                    throw new InvalidDataException($"Unsupported PostgreSQL archive entry: {entry.Name}");
+                    throw new InvalidDataException($"Unsupported {name} archive entry: {entry.Name}");
                 }
 
-                remaining = RequireSpace(entry.Length, remaining, ref files);
+                remaining = RequireSpace(entry.Length, remaining, name, ref files);
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                 await entry.ExtractToFileAsync(path, overwrite: false, cancellationToken).ConfigureAwait(false);
             }
@@ -268,33 +353,37 @@ internal sealed partial class PostgresDistributionClient(HttpClient client, Func
 
         if (files == 0)
         {
-            throw new InvalidDataException("The PostgreSQL archive contains no files.");
+            throw new InvalidDataException($"The {name} archive contains no files.");
         }
     }
 
-    private static long RequireSpace(long length, long remaining, ref int files)
+    private static long RequireSpace(long length, long remaining, string name, ref int files)
     {
         if (length < 0 || length > remaining || ++files > 100_000)
         {
-            throw new InvalidDataException("The PostgreSQL archive exceeds the extraction limit.");
+            throw new InvalidDataException($"The {name} archive exceeds the extraction limit.");
         }
 
         return remaining - length;
     }
 
-    private static string GetEntryPath(string destination, string root, string name)
+    /// <summary>
+    /// Maps an archive member to a path inside <paramref name="destination"/>, removing the expected
+    /// <paramref name="root"/> directory, or keeping the whole path when the archive has none.
+    /// </summary>
+    private static string GetEntryPath(string destination, string name, string? root, string member)
     {
-        string[] parts = name.TrimEnd('/').Split('/');
-        if (parts[0] != root || parts.Any(static part => part.Length == 0 || part is "." or ".." ||
+        string[] parts = member.TrimEnd('/').Split('/');
+        if ((root is not null && parts[0] != root) || parts.Any(static part => part.Length == 0 || part is "." or ".." ||
             part.IndexOfAny(['\\', ':', '\0']) >= 0 || part.EndsWith(' ') || part.EndsWith('.')))
         {
-            throw new InvalidDataException($"Invalid PostgreSQL archive path: {name}");
+            throw new InvalidDataException($"Invalid {name} archive path: {member}");
         }
 
-        return Path.Join([destination, .. parts.Skip(1)]);
+        return Path.Join([destination, .. root is null ? parts : parts.Skip(1)]);
     }
 
-    private static async Task CopyBoundedAsync(Stream input, Stream output, long limit, CancellationToken cancellationToken)
+    private static async Task CopyBoundedAsync(Stream input, Stream output, long limit, string name, CancellationToken cancellationToken)
     {
         byte[] buffer = new byte[81920];
         int count;
@@ -303,7 +392,7 @@ internal sealed partial class PostgresDistributionClient(HttpClient client, Func
             limit -= count;
             if (limit < 0)
             {
-                throw new InvalidDataException("The PostgreSQL download exceeds its size limit.");
+                throw new InvalidDataException($"The {name} download exceeds its size limit.");
             }
 
             await output.WriteAsync(buffer.AsMemory(0, count), cancellationToken).ConfigureAwait(false);
