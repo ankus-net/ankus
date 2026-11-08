@@ -22,7 +22,8 @@ through 0.1.7, 0.2.0 on 2026-10-17, 0.2.1 and 0.2.2 on 2026-10-18, 0.2.3 on
 2026-10-26, 0.2.12 on 2026-10-27, 0.2.13, 0.2.14 and 0.2.15 on 2026-10-28,
 0.2.16 and 0.2.17 on 2026-10-29, 0.2.18 on 2026-10-30, 0.2.19 and 0.2.20 on
 2026-11-01, 0.2.21 on 2026-11-02, 0.2.22 on 2026-11-03, 0.2.23 on
-2026-11-04, and 0.2.24 on 2026-11-06 (see remaining-work item 8).
+2026-11-04, 0.2.24 on 2026-11-06, and 0.2.25 on 2026-11-08 (see remaining-work
+item 8).
 
 The upstream inventory is pinned to pgrx **0.19.3**, commit
 `fc91c63ebad11784647b50ee7e265c1fd9c9924f`. The refresh covers every release
@@ -1163,6 +1164,14 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   `Ankus.Sdk` 0.2.24 from nuget.org, which writes `ankus-editor-bindings` and
   `ExtensionDispatchers.g.cs` under `obj`, against 3 of 10 with 0.2.23, which
   writes neither.
+- 0.2.25 is released (release run 42506077261 on 57e91bdc, after CI, CodeQL,
+  Docs and the secret scan passed on that commit). It carries #191, which links
+  ICU into the Windows source builds `ankus init` makes when EDB has no archive
+  for a release. nuget.org listed every package within 20 minutes of
+  publishing. On Windows x64, `Ankus.Tool` 0.2.25 from nuget.org, with its own
+  tool path and package folder, reported 57e91bdc, built PostgreSQL 19rc1 from
+  source with ICU 78.3, and its server compared `'abc' = 'ABC'` as true under a
+  nondeterministic ICU collation.
 - 0.2.23 is released (release run 41786569653 on 00c41b7f, after CI, CodeQL,
   Docs and the secret scan passed on that commit; CI's quality job passed on
   rerun, and #177 fixes the race that failed it). It carries #175, which moves
