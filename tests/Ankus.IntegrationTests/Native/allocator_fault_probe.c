@@ -734,3 +734,31 @@ ankus_test_list_fault(PG_FUNCTION_ARGS)
         "list context deletion retained native registry storage");
     PG_RETURN_TEXT_P(cstring_to_text(report));
 }
+
+/*
+ * Quotes text whose explicit length ends before bytes that are not zero, as a managed array followed by other heap
+ * data is, and returns what the bridge produced. Mode 1 quotes an identifier, 2 a qualified identifier and 3 a literal.
+ */
+PGDLLEXPORT Datum ankus_test_quote_unterminated(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(ankus_test_quote_unterminated);
+PGDLLEXPORT Datum
+ankus_test_quote_unterminated(PG_FUNCTION_ARGS)
+{
+    int mode = PG_GETARG_INT32(0);
+    static const char first[] = { 't', 'b', 'l', 'X', 'Y', 'Z', '\0' };
+    static const char second[] = { 's', 'c', 'h', 'Q', 'R', 'S', '\0' };
+    fault_require(mode >= 1 && mode <= 3, "unknown quoting mode");
+    AnkusMemoryRequest request = {0};
+    AnkusMemoryResult result = {0};
+    request.flags = mode;
+    request.pointer = (intptr_t) first;
+    request.length = 3;
+    if (mode == 2)
+    {
+        request.data = (intptr_t) second;
+        request.value = 3;
+    }
+
+    ankus_memory_quote(&request, &result);
+    PG_RETURN_TEXT_P(cstring_to_text_with_len((const char *) result.data, (int) result.length));
+}

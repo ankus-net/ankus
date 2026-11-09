@@ -271,6 +271,20 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- `Spi.QuoteIdentifier`, `QuoteQualifiedIdentifier` and `QuoteLiteral` called
+  outside a SQL callback, as in a background worker between transactions, go
+  through the memory bridge, which received the UTF-8 text with a length and no
+  terminator. In a UTF-8 or SQL_ASCII database `pg_any_to_server` returns its
+  input unchanged, and `quote_identifier` and `quote_literal_cstr` then read to
+  the next zero byte, past the managed array. A worker extension's exchange
+  messages of about 85 KB or more, which .NET places on the large object heap,
+  arrived with a stray `\001` byte after their JSON on PostgreSQL 18.6, in up
+  to six calls in a row. The bridge now copies each piece of text into a
+  terminated buffer before converting it. A native probe compiled with the
+  emitted bridge passes three bytes followed by other letters and returned
+  `"tblXYZ"`, `"schQRS"."tblXYZ"` and `'tblXYZ'` before the change, and
+  `tbl`, `sch.tbl` and `'tbl'` after it, with the other Spi helper tests passing
+  on PostgreSQL 18.6.
 - `ankus init` on Windows x64 builds a release from source with meson when EDB
   has no archive for it, as for PostgreSQL 19rc1, and that build had no ICU,
   while EDB's builds of 13 through 18 and the Linux and macOS builds link it.

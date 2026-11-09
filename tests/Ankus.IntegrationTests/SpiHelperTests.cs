@@ -60,6 +60,26 @@ public sealed class SpiHelperTests(TestContext context)
             }, context.CancellationToken);
 
     /// <summary>
+    /// Outside a SQL callback, as in a background worker, quoting goes through the memory bridge with an explicit length
+    /// and no terminator. The bytes after the text are not zero, as after a large managed array, and none of them may
+    /// reach the quoted result.
+    /// </summary>
+    /// <param name="mode">One for an identifier, two for a qualified identifier and three for a literal.</param>
+    /// <param name="expected">The quoted text of exactly the bytes the request names.</param>
+    [TestMethod]
+    [DataRow(1, "tbl")]
+    [DataRow(2, "sch.tbl")]
+    [DataRow(3, "'tbl'")]
+    public Task BridgeQuotingReadsOnlyTheBytesItIsGiven(int mode, string expected)
+        => PostgresFixture.Cluster.RunInTransactionAsync(nameof(BridgeQuotingReadsOnlyTheBytesItIsGiven),
+            async (connection, transaction, token) =>
+            {
+                await using var command = new NpgsqlCommand("SELECT tests.quote_unterminated($1)", connection, transaction);
+                command.Parameters.AddWithValue(mode);
+                Assert.AreEqual(expected, await command.ExecuteScalarAsync(token));
+            }, context.CancellationToken);
+
+    /// <summary>
     /// Verifies exact escaping, native setting availability and recovery without allowing values to change SQL structure.
     /// </summary>
     /// <param name="value">The arbitrary literal value.</param>
