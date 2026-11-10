@@ -286,7 +286,83 @@ internal static partial class FrameworkUpgrade
             document.Replace(start, length, "\"" + JsonEncodedText.Encode(updated) + "\"");
         }
 
+        PlanReleasedDotnetSdk(document);
         return true;
+    }
+
+    /// <summary>
+    /// Moves a .NET SDK pin from a .NET 11 release candidate, which <c>ankus new --framework net11.0</c> wrote before
+    /// .NET 11 shipped, to the released SDK, and stops allowing prerelease SDKs. Any other SDK pin stays as it is.
+    /// </summary>
+    /// <param name="document">The global.json that selects the solution's SDK.</param>
+    private static void PlanReleasedDotnetSdk(UpgradeDocument document)
+    {
+        if (ReadDotnetSdk(document.Text) is not { } sdk || !sdk.Version.Value.StartsWith(ReleasedDotnet11Sdk + "-", StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        document.Replace(sdk.Version.Start, sdk.Version.Length, "\"" + ReleasedDotnet11Sdk + "\"");
+        if (sdk.AllowPrerelease is { Value: true } allow)
+        {
+            document.Replace(allow.Start, allow.Length, "false");
+        }
+    }
+
+    /// <summary>
+    /// Gets the first released .NET 11 SDK, which a solution created on a .NET 11 release candidate moves to.
+    /// </summary>
+    private const string ReleasedDotnet11Sdk = "11.0.100";
+
+    /// <summary>
+    /// Finds the <c>sdk</c> section's <c>version</c> and <c>allowPrerelease</c> values in a global.json.
+    /// </summary>
+    /// <param name="text">The global.json text.</param>
+    /// <returns>Each value with its character position and length, or null when the file pins no SDK version.</returns>
+    private static ((int Start, int Length, string Value) Version, (int Start, int Length, bool Value)? AllowPrerelease)? ReadDotnetSdk(string text)
+    {
+        byte[] utf8 = Encoding.UTF8.GetBytes(text);
+        var reader = new Utf8JsonReader(utf8, new JsonReaderOptions { AllowTrailingCommas = true, CommentHandling = JsonCommentHandling.Skip });
+        (int Start, int Length, string Value)? version = null;
+        (int Start, int Length, bool Value)? allowPrerelease = null;
+        while (reader.Read())
+        {
+            if (reader.TokenType != JsonTokenType.PropertyName || reader.CurrentDepth != 1 || !reader.ValueTextEquals("sdk"))
+            {
+                continue;
+            }
+
+            if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject)
+            {
+                return null;
+            }
+
+            while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+            {
+                bool isVersion = reader.ValueTextEquals("version");
+                bool isAllowPrerelease = reader.ValueTextEquals("allowPrerelease");
+                reader.Read();
+                int offset = checked((int)reader.TokenStartIndex);
+                int start = Encoding.UTF8.GetCharCount(utf8.AsSpan(0, offset));
+                int length = Encoding.UTF8.GetCharCount(utf8.AsSpan(offset, checked((int)reader.BytesConsumed) - offset));
+                if (isVersion && reader.TokenType == JsonTokenType.String)
+                {
+                    version = (start, length, reader.GetString()!);
+                }
+                else if (isAllowPrerelease && reader.TokenType is JsonTokenType.True or JsonTokenType.False)
+                {
+                    allowPrerelease = (start, length, reader.TokenType == JsonTokenType.True);
+                }
+                else
+                {
+                    reader.Skip();
+                }
+            }
+
+            break;
+        }
+
+        return version is { } found ? (found, allowPrerelease) : null;
     }
 
     /// <summary>

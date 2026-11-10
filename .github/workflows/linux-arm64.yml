@@ -24,7 +24,7 @@ env:
   # The SDK's telemetry can deadlock a build against MSBuild's logging; see NativeAotExtensionTests.
   DOTNET_CLI_TELEMETRY_OPTOUT: '1'
   # The .NET 11 SDK that builds net11.0 extensions and the net11.0 fork probes.
-  ANKUS_DOTNET11_SDK: 11.0.100-rc.3.26522.148
+  ANKUS_DOTNET11_SDK: 11.0.100
 
 jobs:
   runtime:

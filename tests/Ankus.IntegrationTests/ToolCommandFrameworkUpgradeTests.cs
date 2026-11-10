@@ -1030,6 +1030,37 @@ public sealed partial class ToolCommandTests
     }
 
     /// <summary>
+    /// A solution created on a .NET 11 release candidate moves its SDK pin to the released SDK and stops allowing
+    /// prerelease SDKs. Any other SDK pin, and every other character of the file, stays as it was.
+    /// </summary>
+    /// <param name="sdk">The original SDK version.</param>
+    /// <param name="prerelease">The original allowPrerelease value.</param>
+    /// <param name="expectedSdk">The SDK version after the upgrade.</param>
+    /// <param name="expectedPrerelease">The allowPrerelease value after the upgrade.</param>
+    [TestMethod]
+    [DataRow("11.0.100-rc.3.26522.148", "true", "11.0.100", "false")]
+    [DataRow("11.0.100-rc.2.26504.105", "false", "11.0.100", "false")]
+    [DataRow("10.0.400", "false", "10.0.400", "false")]
+    [DataRow("12.0.100-preview.1.26101.1", "true", "12.0.100-preview.1.26101.1", "true")]
+    public async Task UpgradeMovesReleaseCandidateSdkPins(string sdk, string prerelease, string expectedSdk, string expectedPrerelease)
+    {
+        CancellationToken token = context.CancellationToken;
+        string root = CreateDirectory();
+        string project = await WriteUpgradeProjectAsync(root, "0.1.0", token);
+        string original = await File.ReadAllTextAsync(project, token);
+        await File.WriteAllTextAsync(project, original.Replace("Microsoft.NET.Sdk", "Ankus.Sdk", StringComparison.Ordinal), token);
+        string global = Path.Join(root, "global.json");
+        await File.WriteAllTextAsync(global, GlobalJson(sdk, prerelease, "0.1.0"), token);
+        ProcessResult result = await InvokeAsync(["upgrade", "--project", project, "--to", "0.2.0"], token);
+        Assert.AreEqual(0, result.ExitCode, result.StandardOutput + result.StandardError);
+        Assert.AreEqual(GlobalJson(expectedSdk, expectedPrerelease, "0.2.0"), await File.ReadAllTextAsync(global, token));
+
+        static string GlobalJson(string sdk, string prerelease, string ankus) =>
+            "{\r\n  // Selected by ankus new\r\n  \"sdk\": {\r\n    \"version\": \"" + sdk + "\",\r\n    \"rollForward\": \"latestFeature\",\r\n" +
+            "    \"allowPrerelease\": " + prerelease + "\r\n  },\r\n  \"msbuild-sdks\": {\r\n    \"Ankus.Sdk\": \"" + ankus + "\"\r\n  }\r\n}\r\n";
+    }
+
+    /// <summary>
     /// A native sharing violation on a later replacement rolls back files that were already upgraded.
     /// </summary>
     [TestMethod]

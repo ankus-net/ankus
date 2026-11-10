@@ -4,7 +4,7 @@ description: Choose a .NET version and keep the runtime embedded in your extensi
 ---
 
 Ankus targets .NET 10 LTS by default. Extensions can also target .NET 11
-(`net11.0`), which Ankus currently builds on the .NET 11 release candidate; see
+(`net11.0`), which Ankus builds on the .NET 11.0.0 release; see
 [.NET 11 status](#net-11-status) for what has been validated.
 
 ## Version policy
@@ -21,9 +21,9 @@ latest servicing release of that Ankus line. Adding .NET 11 will not remove
 
 As checked on October 14, 2026, Microsoft's policy provides three years for
 LTS releases and two years for STS releases, with current patches required.
-.NET 10 support ends November 14, 2028. .NET 11 is currently at RC3, with general
-availability expected in November 2026. Microsoft's go-live status for its
-release candidates does not establish Ankus support. See the [.NET support policy](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core)
+.NET 10 support ends November 14, 2028. .NET 11 shipped on November 10, 2026, as
+an STS release with two years of support. A .NET release alone does not
+establish Ankus support. See the [.NET support policy](https://dotnet.microsoft.com/en-us/platform/support/policy/dotnet-core)
 for current dates.
 
 Ankus releases use their own version numbers independently of .NET. There is
@@ -47,15 +47,14 @@ Generated projects select stable .NET 10 SDKs with `rollForward: latestFeature`
 and `allowPrerelease: false`. A .NET 11 SDK can coexist for other projects without
 changing that selection. Installing a newer SDK does not retarget your extension
 or update its embedded runtime. `ankus new --framework net11.0` (or the same
-template option) instead targets `net11.0` and pins SDK 11.0.100-rc.3.26522.148
-with prerelease SDKs allowed, since .NET 11 has not shipped yet. See
+template option) instead targets `net11.0` and selects SDK 11.0.100 or a later
+stable .NET 11 SDK the same way. See
 [.NET SDK selection](https://learn.microsoft.com/en-us/dotnet/core/tools/global-json).
 
-SDK 11 RC2 targeting `net10.0` passes the complete test suite against
-PostgreSQL 18.6 on Linux x64, using the .NET 10 compiler and embedded runtime.
-SDK 11 can publish Native AOT without a full build, but in RC2 that path loses
-an extension's documentation file, so Ankus keeps `UseOptimizedPublish` off
-unless your project turns it on.
+An SDK 11 build of a `net10.0` extension uses the .NET 10 compiler and embedded
+runtime. SDK 11 can publish Native AOT without a full build; Ankus keeps
+`UseOptimizedPublish` off unless your project turns it on, so an extension
+publishes through its full build on every SDK.
 
 Ankus selects the matching runtime and compiler from your `TargetFramework`;
 extension authors do not build a runtime fork or override compiler internals. The command-line tool,
@@ -68,17 +67,16 @@ installed .NET runtime.
 ## .NET 11 status
 
 The `net11.0` runtime carries every Ankus runtime change, adapted where .NET 11
-reorganized the collector, thread pool and diagnostics. On RC2 it passed the
-runtime's own fork probes on Linux x64, Linux ARM64, macOS ARM64, Windows x64 and
-Intel macOS, and with every repository extension and the framework-template
-consumers targeting `net11.0`, the complete Ankus test suite passed on every
-supported PostgreSQL major, 13 through 19, on those platforms. It now builds on
-RC3, which fixes the Brotli decoder in GHSA-p3jp-9v83-76w9, and passes the fork
-probes on Linux x64.
+reorganized the collector, thread pool and diagnostics. On the release candidates
+it passed the runtime's own fork probes and, with every repository extension and
+the framework-template consumers targeting `net11.0`, the complete Ankus test
+suite on every supported PostgreSQL major, 13 through 19, on Linux x64, Linux
+ARM64, macOS ARM64, Windows x64 and Intel macOS. It now builds on the shipped
+.NET 11.0.0 runtime.
 
-Before `net11.0` is listed as supported, it must pass again on the .NET 11
-release that replaces the release candidate. Until then, treat
-`net11.0` extensions as previews and keep production extensions on `net10.0`.
+Before `net11.0` is listed as supported, that validation must pass again on
+11.0.0. Until then, treat `net11.0` extensions as previews and keep production
+extensions on `net10.0`.
 
 ## Runtime servicing and deployment
 
