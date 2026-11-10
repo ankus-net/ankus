@@ -284,7 +284,9 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   emitted bridge passes three bytes followed by other letters and returned
   `"tblXYZ"`, `"schQRS"."tblXYZ"` and `'tblXYZ'` before the change, and
   `tbl`, `sch.tbl` and `'tbl'` after it, with the other Spi helper tests passing
-  on PostgreSQL 18.6.
+  on PostgreSQL 18.6. The PostgreSQL versions run (42725928712) passed on
+  Linux x64 for 13 through 19, and the platform versions run (42725867259)
+  on macOS ARM64 and Windows x64 for every major, on 538f2ac1.
 - `ankus init` on Windows x64 builds a release from source with meson when EDB
   has no archive for it, as for PostgreSQL 19rc1, and that build had no ICU,
   while EDB's builds of 13 through 18 and the Linux and macOS builds link it.
