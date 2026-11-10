@@ -41,6 +41,8 @@ internal static class AllocatorFaultFixtureCompiler
         AS '{{ModuleFileName}}', 'ankus_test_list_fault' LANGUAGE c STRICT;
         CREATE FUNCTION tests.worker_allocation_fault(integer, text) RETURNS text
         AS '{{ModuleFileName}}', 'ankus_test_worker_allocation_fault' LANGUAGE c STRICT;
+        CREATE FUNCTION tests.quote_unterminated(integer) RETURNS text
+        AS '{{ModuleFileName}}', 'ankus_test_quote_unterminated' LANGUAGE c STRICT;
         {{CompletionReportingSql}}
         """;
 

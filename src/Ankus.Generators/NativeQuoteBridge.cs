@@ -10,12 +10,23 @@ internal static class NativeQuoteBridge
     /// Implements operation 46: flags 1 quotes an identifier, 2 a qualified identifier and 3 a literal.
     /// </summary>
     /// <remarks>
-    /// Text crosses as UTF-8 with explicit lengths and is converted to and from the database encoding. Allocations go
-    /// to a context reset on each call, because outside a transaction the current context lives for the whole process.
+    /// Text crosses as UTF-8 with explicit lengths and no terminator, so each piece is copied into a terminated buffer
+    /// before conversion: pg_any_to_server returns its input unchanged when the database encoding needs no conversion,
+    /// and the quoting functions read up to a terminator. Allocations go to a context reset on each call, because
+    /// outside a transaction the current context lives for the whole process.
     /// </remarks>
     internal const string Source = """
 
         static MemoryContext ankus_quote_context = NULL;
+
+        static char *
+        ankus_quote_text(intptr_t pointer, int length)
+        {
+            char *text = palloc((Size) length + 1);
+            memcpy(text, (const char *) pointer, (Size) length);
+            text[length] = '\0';
+            return pg_any_to_server(text, length, PG_UTF8);
+        }
 
         static void
         ankus_memory_quote(AnkusMemoryRequest *request, AnkusMemoryResult *result)
@@ -31,12 +42,12 @@ internal static class NativeQuoteBridge
                 ankus_quote_context = AllocSetContextCreate(TopMemoryContext, "Ankus quoting", ALLOCSET_SMALL_SIZES);
             MemoryContextReset(ankus_quote_context);
             previous = MemoryContextSwitchTo(ankus_quote_context);
-            first = pg_any_to_server((const char *) request->pointer, (int) request->length, PG_UTF8);
+            first = ankus_quote_text(request->pointer, (int) request->length);
             if (request->flags == 1)
                 quoted = quote_identifier(first);
             else if (request->flags == 2)
                 quoted = quote_qualified_identifier(request->data == 0 ? NULL :
-                    pg_any_to_server((const char *) request->data, (int) request->value, PG_UTF8), first);
+                    ankus_quote_text(request->data, (int) request->value), first);
             else
                 quoted = quote_literal_cstr(first);
             utf8 = pg_server_to_any(quoted, strlen(quoted), PG_UTF8);
