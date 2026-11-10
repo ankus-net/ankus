@@ -22,8 +22,8 @@ through 0.1.7, 0.2.0 on 2026-10-17, 0.2.1 and 0.2.2 on 2026-10-18, 0.2.3 on
 2026-10-26, 0.2.12 on 2026-10-27, 0.2.13, 0.2.14 and 0.2.15 on 2026-10-28,
 0.2.16 and 0.2.17 on 2026-10-29, 0.2.18 on 2026-10-30, 0.2.19 and 0.2.20 on
 2026-11-01, 0.2.21 on 2026-11-02, 0.2.22 on 2026-11-03, 0.2.23 on
-2026-11-04, 0.2.24 on 2026-11-06, and 0.2.25 on 2026-11-08 (see remaining-work
-item 8).
+2026-11-04, 0.2.24 on 2026-11-06, 0.2.25 on 2026-11-08, and 0.2.26 on
+2026-11-10 (see remaining-work item 8).
 
 The upstream inventory is pinned to pgrx **0.19.3**, commit
 `fc91c63ebad11784647b50ee7e265c1fd9c9924f`. The refresh covers every release
@@ -1188,6 +1188,15 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   tool path and package folder, reported 57e91bdc, built PostgreSQL 19rc1 from
   source with ICU 78.3, and its server compared `'abc' = 'ABC'` as true under a
   nondeterministic ICU collation.
+- 0.2.26 is released (release run 42743014590 on 5f6c4aa8, after CI, CodeQL,
+  Docs, the secret scan and both PostgreSQL versions runs passed). It carries
+  #194, which keeps Spi quoting outside a SQL callback to the bytes it is
+  given. nuget.org listed every package within 8 minutes of publishing. On
+  Linux x64 with PostgreSQL 18, a background worker made from the 0.2.26
+  template, with its own tool path and package folder, quoted 1,200 strings of
+  about 100 KB beside large-object-heap arrays filled with 0x01 between
+  transactions. With `Ankus.Sdk` 0.2.26 from nuget.org every quoted length was
+  exact and its 9 tests passed; the same project on 0.2.25 got 82 wrong lengths.
 - 0.2.23 is released (release run 41786569653 on 00c41b7f, after CI, CodeQL,
   Docs and the secret scan passed on that commit; CI's quality job passed on
   rerun, and #177 fixes the race that failed it). It carries #175, which moves
