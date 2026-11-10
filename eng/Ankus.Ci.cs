@@ -2282,8 +2282,7 @@ internal sealed record RuntimeLine(string TargetFramework, string Base, string C
     internal static IReadOnlyList<RuntimeLine> All { get; } =
     [
         Default,
-        new("net11.0", "v11.0.0-rc.3.26522.148", "26bd8cd2491758464345629aa1a5a4789ddd85f7",
-            "11.0.0-rc.3.26522.148-ankus.1", "11.0.0-rc.3.26522.148"),
+        new("net11.0", "v11.0.0", "ffd1737fe5b45265f51b699419ca8fe793795779", "11.0.0-ankus.1", "11.0.0"),
     ];
 
     /// <summary>

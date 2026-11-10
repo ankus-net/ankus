@@ -58,15 +58,15 @@ internal static partial class ProjectScaffolder
     internal static string[] TargetFrameworks { get; } = ["net10.0", "net11.0"];
 
     /// <summary>
-    /// Selects the SDK a new solution pins for its target framework. A .NET 11 solution allows the release
-    /// candidate SDK until .NET 11 ships.
+    /// Selects the SDK a new solution pins for its target framework. Each takes a later stable feature band or patch
+    /// of the same major and no preview.
     /// </summary>
     /// <param name="targetFramework">The solution's target framework.</param>
     /// <returns>The global.json SDK version and whether it allows prerelease SDKs.</returns>
     internal static (string Version, bool AllowPrerelease) SelectSdk(string targetFramework) => targetFramework switch
     {
         "net10.0" => ("10.0.400", false),
-        "net11.0" => ("11.0.100-rc.3.26522.148", true),
+        "net11.0" => ("11.0.100", false),
         _ => throw new ArgumentException("The target framework must be net10.0 or net11.0.", nameof(targetFramework)),
     };
 

@@ -18,7 +18,7 @@ public sealed class SdkRuntimeLineTests(TestContext context)
     /// <param name="compiler">The expected upstream compiler version.</param>
     [TestMethod]
     [DataRow("net10.0", "10.0.14-ankus.1", "10.0.14")]
-    [DataRow("net11.0", "11.0.0-rc.3.26522.148-ankus.1", "11.0.0-rc.3.26522.148")]
+    [DataRow("net11.0", "11.0.0-ankus.1", "11.0.0")]
     public async Task TargetFrameworkSelectsItsRuntimeLine(string targetFramework, string runtime, string compiler)
     {
         string output = await EvaluateAsync(

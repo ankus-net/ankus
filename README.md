@@ -225,9 +225,10 @@ Extension projects use the `Ankus.Sdk` NuGet project SDK:
 The SDK includes matching Native AOT compiler, runtime and source-generator
 packages plus the native build helper, all restored from nuget.org.
 
-Ankus targets .NET 10 LTS. `net11.0` is a preview on .NET 11 RC2 until .NET 11
-ships. See [.NET support](https://ankus.net/reference/dotnet-support/)
-for version selection, servicing, and rebuilding deployed extensions.
+Ankus targets .NET 10 LTS. `net11.0` builds on .NET 11.0.0 and stays a preview
+until it passes Ankus's validation on every platform and PostgreSQL major. See
+[.NET support](https://ankus.net/reference/dotnet-support/) for version
+selection, servicing, and rebuilding deployed extensions.
 
 See [development and testing](docs/contributing/development.md) for prerequisites,
 PostgreSQL discovery, and the integration harness.

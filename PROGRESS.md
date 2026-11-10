@@ -271,6 +271,25 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- .NET 11.0.0 shipped on 2026-11-10 with SDK 11.0.100. The `net11.0` line moves
+  from RC3 to it: the fork branch `ankus/runtime-11.0.0` imports dotnet/dotnet
+  `297acf93`'s shipped `src/runtime` as a commit on dotnet/runtime `deae2e32`
+  and merges it over the RC3 port, ending at `ffd1737f`. The five conflicts
+  were all upstream changes between RC3 and 11.0.0 (two version files, a QUIC test
+  project, a shared-memory method and the managed HPKE check), and the build
+  tasks keep the patched Pkcs package. Runtime and compiler-host packages
+  become `11.0.0-ankus.1` with ILCompiler and framework packs `11.0.0`, and new
+  `net11.0` solutions pin SDK 11.0.100 with no prerelease SDKs.
+  `ankus upgrade` moves a solution's 11.0.100 release-candidate SDK pin to
+  11.0.100 and turns `allowPrerelease` off; other SDK pins stay as they are.
+  SDK 11.0.100 keeps an extension's documentation file in an optimized Native
+  AOT publish, which RC2 lost, but Ankus keeps `UseOptimizedPublish` off. On
+  Linux x64 with SDK 11.0.100, the fork builds and every fork probe passes on its
+  first run: the eight retained-service and two descendant checks, workstation
+  and server active-GC (fixed and dynamic heap counts), all diagnostics checks,
+  host shutdown, signal masks and host signals. `net11.0` stays a preview until
+  the runtime builds for every release platform and the complete suite on every
+  PostgreSQL major pass on 11.0.0.
 - `Spi.QuoteIdentifier`, `QuoteQualifiedIdentifier` and `QuoteLiteral` called
   outside a SQL callback, as in a background worker between transactions, go
   through the memory bridge, which received the UTF-8 text with a length and no

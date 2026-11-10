@@ -22,8 +22,8 @@ support these options. MSTest is the default; each framework runs through
 ordinary `dotnet test` with Microsoft.Testing.Platform.
 
 `--framework net11.0` targets .NET 11 instead of the default `net10.0`. The
-extension then embeds Ankus's .NET 11 Native AOT runtime, and `global.json` pins
-the .NET 11 release-candidate SDK until .NET 11 ships. The .NET templates accept
+extension then embeds Ankus's .NET 11 Native AOT runtime, and `global.json`
+selects SDK 11.0.100 or a later stable .NET 11 SDK. The .NET templates accept
 the same option. See [.NET support](/reference/dotnet-support/) for what has been
 validated on .NET 11.
 
@@ -223,7 +223,9 @@ packages are released together, so the command moves them all to the newest
 version that every one of them lists; while a new release is still appearing on
 a package source, it says so and keeps the previous release. It preserves
 unrelated dependencies, .NET SDK selection, target frameworks, comments and file
-encoding. Ankus Native AOT runtime packages
+encoding. The one SDK change it makes is to a `net11.0` solution created before
+.NET 11 shipped: its `global.json` moves from the release-candidate SDK to
+11.0.100 and stops allowing prerelease SDKs. Ankus Native AOT runtime packages
 have their own servicing versions and are not part of this update set.
 LF, CRLF and CR line endings are preserved.
 

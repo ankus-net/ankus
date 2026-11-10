@@ -123,6 +123,19 @@ design-time build test's data rows, which see RC2's preview notice (NETSDK1057);
 a release SDK does not print it. That test now ignores the notice, which the SDK
 prints for every project on a preview.
 
+The `net11.0` line builds on .NET 11.0.0 as shipped (dotnet/dotnet
+`297acf930fb0f5c07fd4e51d78e521b4ad2e5d1f`, whose `src/runtime` is dotnet/runtime
+`deae2e32bf0e018e09d64597b7c59b62b73bb3ce` plus the release's version changes),
+fork commit `ffd1737fe5b45265f51b699419ca8fe793795779` on
+`ankus/runtime-11.0.0`, runtime and compiler-host packages `11.0.0-ankus.1`, and
+ILCompiler and framework packs `11.0.0`. The fork branch imports the shipped
+`src/runtime` as a commit on the dotnet/runtime commit and merges it over the
+RC3 port; the five conflicts were upstream changes between RC3 and 11.0.0, and
+the build tasks keep the patched Pkcs package. Generated `net11.0` solutions pin
+SDK 11.0.100 with `latestFeature` and no prerelease SDKs. SDK 11.0.100 no longer
+loses the documentation file in an optimized Native AOT publish, but Ankus keeps
+`UseOptimizedPublish` off so extensions publish through the full build.
+
 The `net11.0` target is implemented. `Ankus.NativeAot.Lines.props` maps each
 target framework to its runtime package, compiler host and upstream compiler
 versions, and the runtime and compiler package projects pack one line per

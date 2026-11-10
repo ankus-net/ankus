@@ -25,7 +25,7 @@ env:
   GIT_CONFIG_KEY_0: core.longpaths
   GIT_CONFIG_VALUE_0: 'true'
   # The .NET 11 SDK that the net11.0 runtime line's fork probes build with.
-  ANKUS_DOTNET11_SDK: 11.0.100-rc.3.26522.148
+  ANKUS_DOTNET11_SDK: 11.0.100
 
 jobs:
   metadata:
