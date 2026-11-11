@@ -282,7 +282,13 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   denial of service in CVE-2026-109475, which covers 10.0.14, and NativeAOT
   interface dispatch templates, thread-static alignment and EventPipe writers.
   `Ankus.Runtime`'s System.Formats.Cbor dependency moves to 10.0.15 for
-  CVE-2026-118747, so consumer restores no longer report the advisory.
+  CVE-2026-118747, so consumer restores no longer report the advisory. All 39
+  fork probe cases pass on the 10.0.15 branch on Linux x64: the retained-service
+  and descendant checks, active-GC with workstation and server collectors
+  (fixed and dynamic heap counts), host shutdown, signal masks, host signals,
+  independent debug headers and every diagnostics script. CI passed on Linux
+  x64, Windows x64 and macOS ARM64, and the PostgreSQL versions run
+  (42953343630) on `2a8b5312` for Linux x64 13 through 19.
 - `FreshEditorLoadPreparesDependenciesAndCompilerOptions` failed both rows on
   Intel macOS in every run since it was added (the scheduled additional
   platforms run 42825232895 on all seven majors with `net10.0`, and the
@@ -325,9 +331,26 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   Linux x64 with SDK 11.0.100, the fork builds and every fork probe passes on its
   first run: the eight retained-service and two descendant checks, workstation
   and server active-GC (fixed and dynamic heap counts), all diagnostics checks,
-  host shutdown, signal masks and host signals. `net11.0` stays a preview until
-  the runtime builds for every release platform and the complete suite on every
-  PostgreSQL major pass on 11.0.0.
+  host shutdown, signal masks and host signals. With every repository extension
+  targeting `net11.0` and SDK 11.0.100, the complete suite passed on `17b1cd41`
+  in the .NET versions runs for Linux x64 13 through 19 (42928344764,
+  42928353733, 42928362429, 42928370812, 42928380167, 42927089481,
+  42928389760), Windows x64 13 through 19 (42928398818 on its second attempt,
+  42928408398, 42928417191, 42928425478, 42927089481, 42928434136,
+  42928443121), macOS ARM64 13 through 18 (42932066050, 42935185637,
+  42938181399, 42940944388, 42943973809, 42927089481) and Linux ARM64 18
+  (42930020133). Intel macOS 18 and 13 (42936862728, 42948782136) passed every
+  integration test and failed only the two editor-test rows that #200 fixed. A
+  `net11.0` extension built with SDK 11.0.100 using C# 15 union types, closed
+  records, collection expression arguments and runtime async
+  (`<Features>runtime-async=on</Features>`) loaded in PostgreSQL 18.6 and
+  returned the expected values. SDK 11 builds in a long-lived MSBuild server
+  by default, which the repository's tests turn off with
+  `MSBUILDDISABLENODEREUSE`. On Linux one server process served three publishes
+  of an extension that switched `AnkusPgConfigPath` from 18 to 17 and back
+  through the environment and changed its source between them, and each output
+  loaded in its own PostgreSQL 18.6 or 17.11 server. `net11.0` stays a preview
+  until macOS ARM64 19 and Intel macOS on every major pass on 11.0.0.
 - `Spi.QuoteIdentifier`, `QuoteQualifiedIdentifier` and `QuoteLiteral` called
   outside a SQL callback, as in a background worker between transactions, go
   through the memory bridge, which received the UTF-8 text with a length and no
