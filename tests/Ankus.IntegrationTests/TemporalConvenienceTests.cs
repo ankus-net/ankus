@@ -264,6 +264,24 @@ public sealed class TemporalConvenienceTests(TestContext context)
         }, context.CancellationToken);
 
     /// <summary>
+    /// A statement the test cluster logs as slow keeps its result when a bind parameter has no text form, since the
+    /// cluster leaves parameters out of that log line. PostgreSQL 13 can't format an interval whose hours exceed 32 bits.
+    /// </summary>
+    [TestMethod]
+    public Task SlowStatementLogsLeaveParametersOut()
+        => PostgresFixture.Cluster.RunInTransactionAsync(nameof(SlowStatementLogsLeaveParametersOut), async (connection, transaction, token) =>
+        {
+            await using (var configure = new NpgsqlCommand("SET LOCAL log_min_duration_statement = 0", connection, transaction))
+            {
+                await configure.ExecuteNonQueryAsync(token);
+            }
+
+            await using var command = new NpgsqlCommand("SELECT datatype.interval_sign($1::interval)", connection, transaction);
+            command.Parameters.AddWithValue(NpgsqlDbType.Interval, new NpgsqlInterval(int.MaxValue, int.MaxValue, long.MaxValue));
+            Assert.AreEqual(1, await command.ExecuteScalarAsync(token));
+        }, context.CancellationToken);
+
+    /// <summary>
     /// Checks constructor, rounding and formatting failures preserve managed finally, active plans and writes.
     /// </summary>
     /// <param name="operation">The invalid operation.</param>

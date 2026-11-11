@@ -364,6 +364,11 @@ PostgreSQL crash recovery still works, because the operating system keeps the
 written WAL; only durability across an operating system crash is given up. Add
 `fsync = on` to `PostgreSqlConfiguration` to test behavior that depends on it.
 
+The server log records statements that take longer than a second, without their
+parameter values. PostgreSQL formats parameters as text for that log line, and a
+value whose text form fails, such as an interval with more than 2^31 hours on
+PostgreSQL 13, would otherwise turn the statement into an error.
+
 Set `UseValgrind` on the fixture or cluster options, or run `ankus test
 --valgrind`, to run the server under Valgrind's Memcheck on Linux or macOS.
 
