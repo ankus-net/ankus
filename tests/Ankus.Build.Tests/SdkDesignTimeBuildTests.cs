@@ -70,7 +70,10 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
     [DataRow("Release", "annotations", false)]
     public async Task FreshEditorLoadPreparesDependenciesAndCompilerOptions(string configuration, string nullable, bool visualStudio)
     {
-        string directory = Directory.CreateTempSubdirectory("ankus-sdk-editor-").FullName;
+        // Restore records a referenced project by its real path while MSBuild loads it by the path it was given, so under
+        // a symbolic link the build tool's deps.json omits its own project reference. macOS reaches its temporary
+        // directory through the /var link.
+        string directory = ResolveLinks(Directory.CreateTempSubdirectory("ankus-sdk-editor-").FullName);
         try
         {
             string? sdk = Assert.ContainsSingle(typeof(SdkDesignTimeBuildTests).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
@@ -286,6 +289,24 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
         {
             Directory.Delete(directory, recursive: true);
         }
+    }
+
+    /// <summary>
+    /// Resolves the symbolic links in every component of an existing directory's path.
+    /// </summary>
+    /// <param name="path">The directory.</param>
+    /// <returns>The same directory reached without symbolic links.</returns>
+    private static string ResolveLinks(string path)
+    {
+        string full = Path.GetFullPath(path);
+        string root = Path.GetPathRoot(full)!;
+        return full[root.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries).Aggregate(root,
+            static (resolved, part) =>
+            {
+                string next = Path.Join(resolved, part);
+                FileSystemInfo? target = new DirectoryInfo(next).ResolveLinkTarget(returnFinalTarget: true);
+                return target is null ? next : ResolveLinks(target.FullName);
+            });
     }
 
     /// <summary>

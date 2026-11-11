@@ -403,6 +403,9 @@ public sealed class PostgresTestCluster : IAsyncDisposable
         configuration.AppendLine("fsync = off");
         configuration.AppendLine("log_min_messages = info");
         configuration.AppendLine("log_min_duration_statement = 1000");
+        // A slow statement's log line would otherwise format its bind parameters as text, and an output function that
+        // can't (PostgreSQL 13's for an interval whose hours exceed 32 bits) turns the statement itself into an error.
+        configuration.AppendLine("log_parameter_max_length = 0");
         foreach (string setting in _options.PostgreSqlConfiguration)
         {
             configuration.AppendLine(setting);
