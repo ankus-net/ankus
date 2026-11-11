@@ -173,7 +173,7 @@ after restoring it, use `dotnet ankus` for extension commands.
 The .NET templates accept the same `--test-framework xunit` or
 `--test-framework nunit` option, including worker templates. Both creation paths
 also accept `--framework net11.0` to target .NET 11; see
-[.NET support](https://ankus.net/reference/dotnet-support/) for its status.
+[.NET support](https://ankus.net/reference/dotnet-support/).
 
 Use `ankus test --pg 17` for another registered PostgreSQL major, or
 `ankus test --all` for every registered version. Pass ordinary test filters and
@@ -225,8 +225,8 @@ Extension projects use the `Ankus.Sdk` NuGet project SDK:
 The SDK includes matching Native AOT compiler, runtime and source-generator
 packages plus the native build helper, all restored from nuget.org.
 
-Ankus targets .NET 10 LTS. `net11.0` builds on .NET 11.0.0 and stays a preview
-until it passes Ankus's validation on every platform and PostgreSQL major. See
+Ankus targets .NET 10 LTS by default and also supports .NET 11 (`net11.0`) on
+the .NET 11.0.0 release. See
 [.NET support](https://ankus.net/reference/dotnet-support/) for version
 selection, servicing, and rebuilding deployed extensions.
 

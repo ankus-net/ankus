@@ -10,8 +10,9 @@ captured on the target.
 
 ## Prerequisites
 
-- .NET 10 SDK. See [.NET support](/reference/dotnet-support/) for supported
-  targets and runtime servicing.
+- .NET 10 SDK, or for `net11.0` extensions the .NET 11 SDK with the .NET 10
+  runtime, which Ankus's tools run on. See [.NET support](/reference/dotnet-support/)
+  for supported targets and runtime servicing.
 - The [.NET Native AOT toolchain](https://learn.microsoft.com/dotnet/core/deploying/native-aot/).
 - LLVM Clang 20 or later and its matching `libclang` library. Ankus uses it to
   read native declarations from your PostgreSQL headers. It uses the first

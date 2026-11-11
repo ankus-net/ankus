@@ -4,7 +4,7 @@ description: Choose a .NET version and keep the runtime embedded in your extensi
 ---
 
 Ankus targets .NET 10 LTS by default. Extensions can also target .NET 11
-(`net11.0`), which Ankus builds on the .NET 11.0.0 release; see
+(`net11.0`), which Ankus supports on the .NET 11.0.0 release; see
 [.NET 11 status](#net-11-status) for what has been validated.
 
 ## Version policy
@@ -67,16 +67,18 @@ installed .NET runtime.
 ## .NET 11 status
 
 The `net11.0` runtime carries every Ankus runtime change, adapted where .NET 11
-reorganized the collector, thread pool and diagnostics. On the release candidates
-it passed the runtime's own fork probes and, with every repository extension and
-the framework-template consumers targeting `net11.0`, the complete Ankus test
-suite on every supported PostgreSQL major, 13 through 19, on Linux x64, Linux
-ARM64, macOS ARM64, Windows x64 and Intel macOS. It now builds on the shipped
-.NET 11.0.0 runtime.
+reorganized the collector, thread pool and diagnostics. On .NET 11.0.0 it passes
+the runtime's own fork probes and, with every repository extension and the
+framework-template consumers targeting `net11.0`, the complete Ankus test suite
+on every supported PostgreSQL major, 13 through 19, on Linux x64, macOS ARM64,
+Windows x64 and Intel macOS, and on PostgreSQL 18 on Linux ARM64.
 
-Before `net11.0` is listed as supported, that validation must pass again on
-11.0.0. Until then, treat `net11.0` extensions as previews and keep production
-extensions on `net10.0`.
+A `net11.0` extension can use C# 15, including union types, closed hierarchies
+and collection expression arguments, and runtime async, which you turn on with
+`<Features>runtime-async=on</Features>`. PostgreSQL calls a function on its
+backend thread and waits for the result, so code that resumes after an `await`
+on a thread-pool thread must not use PostgreSQL APIs or Ankus values that belong
+to the backend thread.
 
 ## Runtime servicing and deployment
 

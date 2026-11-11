@@ -125,7 +125,7 @@ version jobs instead of four, and the rerun passed.
 | Runtime line | Evidence and remaining requirements |
 | --- | --- |
 | .NET 10 LTS | Patched runtime **10.0.13-ankus.1** passes complete suites for every supported PostgreSQL major on Linux x64, macOS ARM64, Windows x64 and Intel macOS. A release rehearsal on the commit to be released remains before 0.1.0. |
-| .NET 11 STS | Required. The `net11.0` line (fork `9692d0ff7ad` on RC2) is selected by `Ankus.Sdk`, offered by `ankus new --framework net11.0`, and built by CI and releases. Its runtime passes the fork probes on all five RIDs, and the complete suite with every repository extension on `net11.0` passes for PostgreSQL 13–19 on Linux x64, macOS ARM64, Windows x64 and Intel macOS, and for 18 on Linux ARM64. The rebase onto the .NET 11 release remains. |
+| .NET 11 STS | Supported since 0.2.27. The `net11.0` line (fork `ffd1737f` on .NET 11.0.0, packages `11.0.0-ankus.1`) is selected by `Ankus.Sdk`, offered by `ankus new --framework net11.0`, and built by CI and releases. On 11.0.0 its runtime passes the fork probes on Linux x64, and the complete suite with every repository extension on `net11.0` passes for PostgreSQL 13–19 on Linux x64, macOS ARM64, Windows x64 and Intel macOS, and for 18 on Linux ARM64. |
 | Later LTS/STS releases | Repeat explicit compiler/runtime/RID and packed-consumer acceptance, following upstream support lifecycles and servicing supported majors. |
 
 See the [public support policy](docs/src/content/docs/reference/dotnet-support.md)
@@ -351,8 +351,11 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   `MSBUILDDISABLENODEREUSE`. On Linux one server process served three publishes
   of an extension that switched `AnkusPgConfigPath` from 18 to 17 and back
   through the environment and changed its source between them, and each output
-  loaded in its own PostgreSQL 18.6 or 17.11 server. `net11.0` stays a preview
-  until Intel macOS passes on 13 through 17 and 19.
+  loaded in its own PostgreSQL 18.6 or 17.11 server. Intel macOS then passed
+  13 on `503112cf` (42975653333) and 14, 15, 16, 17 and 19 on `71496040`
+  (42987247175, 43000114844, 43013193586, 43026531207, 43041497269), each with
+  every build and integration test run (1,414 and 5,636) and none failed, so
+  `net11.0` is supported on .NET 11.0.0.
 - `Spi.QuoteIdentifier`, `QuoteQualifiedIdentifier` and `QuoteLiteral` called
   outside a SQL callback, as in a background worker between transactions, go
   through the memory bridge, which received the UTF-8 text with a length and no
@@ -3465,7 +3468,7 @@ review's findings are fixed or kept by documented design.
 4. Measured hot paths are done: a trimming row trigger costs about the same as PL/pgSQL (0.72 µs against 0.72 µs per row on one host, 0.55 µs against 0.52 µs on another), as the [guard-tier evidence](docs/contributing/evidence/guard-tiers.md#row-triggers) shows. Keep the in-backend baseline, and measure again when boundary code changes, preserving recovery and ownership guarantees.
 5. Keep samples and guides current with API changes, and recheck changed guides before release. Test discovery for MSTest, xUnit and NUnit consumers and samples for all 37 pgrx examples are complete.
 6. Keep the [logical replication toolkit](#beyond-pgrx-logical-replication-toolkit) current as a pglogical port exercises it; every planned capability is done.
-7. Support .NET 11 as an extension target (required, in progress). The runtime fork's changes over 10.0.13 are ported onto .NET 11 RC2 on branch `ankus/runtime-11.0-rc2`, now at fork commit `5b9c21283a5`, and every fork probe passes on Linux x64; rebase onto GA when it ships. `Ankus.Sdk` selects the `net11.0` line, `ankus new` and the templates take `--framework net11.0`, and CI and releases build both lines. The complete suite passes on every PostgreSQL major on Linux x64, macOS ARM64, Windows x64 and Intel macOS. Remaining: the rebase onto the .NET 11 release in November, which ships as a servicing update.
+7. Support .NET 11 as an extension target (done). The runtime fork's changes are ported onto the .NET 11.0.0 release on branch `ankus/runtime-11.0.0` at fork commit `ffd1737f`, and every fork probe passes on Linux x64. `Ankus.Sdk` selects the `net11.0` line, `ankus new` and the templates take `--framework net11.0`, and CI and releases build both lines. 0.2.27 ships it, and the complete suite passes on every PostgreSQL major on Linux x64, macOS ARM64, Windows x64 and Intel macOS on 11.0.0.
 8. 0.1.0 through 0.2.2 are released; 0.1.1 reports build tool failures as build errors, 0.1.2 and 0.1.3 fix `ankus upgrade` and PostgreSQL discovery for the first outside install, 0.1.4 finds a Clang 20 or later when the one on `PATH` is older, 0.1.5 links Windows binding probes with MSVC's linker, 0.1.6 records each development cluster's log path in `.ankus-log`, 0.1.7 finds MacPorts' LLVM, 0.2.0 adds `PgSettings`, the benchmark rollback modes and the fixes for issues #5 through #13 and #18, 0.2.1 builds in Visual Studio, and 0.2.2 searches for Clang 20 in every build tool command. For 0.1.0, release run 38804273089 on e71e226 built, verified and published all 27 packages to nuget.org through the trusted publishing policy: the seven 0.1.0 packages and the patched runtime and compiler for five runtime identifiers on both lines (`10.0.13-ankus.1` and the `11.0.0-rc.2.26504.105-ankus.1` preview). From nuget.org alone, `Ankus.Tool` 0.1.0 creates a solution whose 7 tests pass against PostgreSQL 18, the templates do the same and publish an extension, and a fresh clone of the repository publishes a sample without staging a runtime.
 
 Continue independent work while CI runs. Before every commit and push, check and
