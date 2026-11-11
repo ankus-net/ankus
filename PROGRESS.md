@@ -283,6 +283,21 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   interface dispatch templates, thread-static alignment and EventPipe writers.
   `Ankus.Runtime`'s System.Formats.Cbor dependency moves to 10.0.15 for
   CVE-2026-118747, so consumer restores no longer report the advisory.
+- `FreshEditorLoadPreparesDependenciesAndCompilerOptions` failed both rows on
+  Intel macOS in every run since it was added (the scheduled additional
+  platforms run 42825232895 on all seven majors with `net10.0`, and the
+  `net11.0` run 42936862728): the stub build tool exited 134 with
+  `FileNotFoundException` for its own project reference. That runner's
+  temporary directory is under `/var/folders`, which macOS reaches through the
+  `/var` symbolic link; the MacBook runners use a directory without links.
+  Restore records a referenced project by its real path while MSBuild loads it
+  by the path it was given, so the referenced library is missing from the
+  executable's `deps.json`. A plain SDK solution (top project, executable,
+  library) reproduces this on Linux under a symlinked `TMPDIR`, without Ankus.
+  The test now resolves its directory's links first; under a symlinked `TMPDIR`
+  on Linux its two rows failed before and all four `SdkDesignTimeBuildTests`
+  pass after. Ankus extensions are libraries that run the packaged build tool,
+  so they do not build such a chain.
 - `Ankus.Testing` clusters log statements slower than a second, and PostgreSQL
   then formats the statement's bind parameters as text. PostgreSQL 13's
   `interval_out` raises "interval out of range" for an interval whose hours
