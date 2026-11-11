@@ -17,6 +17,7 @@
   "devDependencies": {
     "@astrojs/check": "0.9.12",
     "@astrojs/markdown-satteri": "0.4.7",
+    "@emnapi/runtime": "1.11.3",
     "@shikijs/langs": "4.6.0",
     "typescript": "6.0.3"
   }
