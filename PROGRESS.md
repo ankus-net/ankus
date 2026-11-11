@@ -22,8 +22,8 @@ through 0.1.7, 0.2.0 on 2026-10-17, 0.2.1 and 0.2.2 on 2026-10-18, 0.2.3 on
 2026-10-26, 0.2.12 on 2026-10-27, 0.2.13, 0.2.14 and 0.2.15 on 2026-10-28,
 0.2.16 and 0.2.17 on 2026-10-29, 0.2.18 on 2026-10-30, 0.2.19 and 0.2.20 on
 2026-11-01, 0.2.21 on 2026-11-02, 0.2.22 on 2026-11-03, 0.2.23 on
-2026-11-04, 0.2.24 on 2026-11-06, 0.2.25 on 2026-11-08, and 0.2.26 on
-2026-11-10 (see remaining-work item 8).
+2026-11-04, 0.2.24 on 2026-11-06, 0.2.25 on 2026-11-08, 0.2.26 on
+2026-11-10, and 0.2.27 on 2026-11-11 (see remaining-work item 8).
 
 The upstream inventory is pinned to pgrx **0.19.3**, commit
 `fc91c63ebad11784647b50ee7e265c1fd9c9924f`. The refresh covers every release
@@ -282,7 +282,7 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   denial of service in CVE-2026-109475, which covers 10.0.14, and NativeAOT
   interface dispatch templates, thread-static alignment and EventPipe writers.
   `Ankus.Runtime`'s System.Formats.Cbor dependency moves to 10.0.15 for
-  CVE-2026-118747, so consumer restores no longer report the advisory. All 39
+  CVE-2026-118747. All 39
   fork probe cases pass on the 10.0.15 branch on Linux x64: the retained-service
   and descendant checks, active-GC with workstation and server collectors
   (fixed and dynamic heap counts), host shutdown, signal masks, host signals,
@@ -339,8 +339,10 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   42928408398, 42928417191, 42928425478, 42927089481, 42928434136,
   42928443121), macOS ARM64 13 through 18 (42932066050, 42935185637,
   42938181399, 42940944388, 42943973809, 42927089481) and Linux ARM64 18
-  (42930020133). Intel macOS 18 and 13 (42936862728, 42948782136) passed every
-  integration test and failed only the two editor-test rows that #200 fixed. A
+  (42930020133). macOS ARM64 19 passed on `503112cf` (42975797002), and Intel
+  macOS 18 on `bc243267` (42962029130). Before #200, Intel macOS 18 and 13
+  (42936862728, 42948782136) passed every integration test and failed only its
+  two editor-test rows. A
   `net11.0` extension built with SDK 11.0.100 using C# 15 union types, closed
   records, collection expression arguments and runtime async
   (`<Features>runtime-async=on</Features>`) loaded in PostgreSQL 18.6 and
@@ -350,7 +352,7 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   of an extension that switched `AnkusPgConfigPath` from 18 to 17 and back
   through the environment and changed its source between them, and each output
   loaded in its own PostgreSQL 18.6 or 17.11 server. `net11.0` stays a preview
-  until macOS ARM64 19 and Intel macOS on every major pass on 11.0.0.
+  until Intel macOS passes on 13 through 17 and 19.
 - `Spi.QuoteIdentifier`, `QuoteQualifiedIdentifier` and `QuoteLiteral` called
   outside a SQL callback, as in a background worker between transactions, go
   through the memory bridge, which received the UTF-8 text with a length and no
@@ -1277,6 +1279,20 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   about 100 KB beside large-object-heap arrays filled with 0x01 between
   transactions. With `Ankus.Sdk` 0.2.26 from nuget.org every quoted length was
   exact and its 9 tests passed; the same project on 0.2.25 got 82 wrong lengths.
+- 0.2.27 is released (release run 42972588534 on 503112cf, after CI and
+  CodeQL passed on that commit). It carries #201, which moves `net10.0` to .NET
+  10.0.15 and System.Formats.Cbor to 10.0.15, #199's move of `net11.0` to .NET
+  11.0.0, and #200's test fixes. CI's Windows job on #202 first failed one
+  connection with WSAENOBUFS while the host logged Tcpip event 4231, and passed
+  on rerun. nuget.org listed every package within 25 minutes of publishing. On
+  Linux x64 with PostgreSQL 18, with its own tool paths, package folder, HTTP
+  cache and Ankus home, a 0.2.26 solution embedded ILCompiler and
+  System.Formats.Cbor 10.0.14; `ankus upgrade` from `Ankus.Tool` 0.2.27 moved
+  both to 10.0.15 and its 7 template tests passed. A new 0.2.27 `net10.0`
+  solution passed the same tests with 10.0.15, and a new `net11.0` solution
+  pinned SDK 11.0.100 without prereleases and passed them with ILCompiler
+  11.0.0. nuget.org's vulnerability data did not yet list CVE-2026-118747, so no
+  restore reported it.
 - 0.2.23 is released (release run 41786569653 on 00c41b7f, after CI, CodeQL,
   Docs and the secret scan passed on that commit; CI's quality job passed on
   rerun, and #177 fixes the race that failed it). It carries #175, which moves
