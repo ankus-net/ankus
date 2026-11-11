@@ -17,7 +17,7 @@ namespace Ankus.IntegrationTests;
 [TestClass]
 public sealed partial class ToolCommandTests(TestContext context)
 {
-    private const string NativeAotRuntimeVersion = "10.0.14-ankus.1";
+    private const string NativeAotRuntimeVersion = "10.0.15-ankus.1";
 
     private static string s_root = null!;
     private static string s_temporaryRoot = null!;
@@ -617,7 +617,7 @@ public sealed partial class ToolCommandTests(TestContext context)
         Assert.AreEqual("true", properties.GetProperty("PublishAot").GetString());
         Assert.AreEqual("true", properties.GetProperty("IsAotCompatible").GetString());
         Assert.AreEqual("Shared", properties.GetProperty("NativeLib").GetString());
-        Assert.AreEqual("10.0.14", properties.GetProperty("RuntimeFrameworkVersion").GetString());
+        Assert.AreEqual("10.0.15", properties.GetProperty("RuntimeFrameworkVersion").GetString());
         string compilerTools = Path.GetFullPath(properties.GetProperty("IlcToolsPath").GetString()!);
         Assert.StartsWith(s_environment["NUGET_PACKAGES"]!, compilerTools);
         string compiler = Path.Join(compilerTools, OperatingSystem.IsWindows() ? "ilc.exe" : "ilc");
@@ -654,12 +654,12 @@ public sealed partial class ToolCommandTests(TestContext context)
             NativeAotRuntimeVersion).GetProperty("type").GetString());
         Assert.AreEqual("package", libraries.GetProperty("Ankus.NativeAot.Compiler." + RuntimeInformation.RuntimeIdentifier + "/" +
             NativeAotRuntimeVersion).GetProperty("type").GetString());
-        Assert.AreEqual("package", libraries.GetProperty("Microsoft.DotNet.ILCompiler/10.0.14").GetProperty("type").GetString());
+        Assert.AreEqual("package", libraries.GetProperty("Microsoft.DotNet.ILCompiler/10.0.15").GetProperty("type").GetString());
         JsonElement downloads = assets.RootElement.GetProperty("project").GetProperty("frameworks").GetProperty("net10.0")
             .GetProperty("downloadDependencies");
         JsonElement nativeFramework = downloads.EnumerateArray().Single(item => item.GetProperty("name").GetString() ==
             "Microsoft.NETCore.App.Runtime.NativeAOT." + RuntimeInformation.RuntimeIdentifier);
-        Assert.AreEqual("[10.0.14, 10.0.14]", nativeFramework.GetProperty("version").GetString());
+        Assert.AreEqual("[10.0.15, 10.0.15]", nativeFramework.GetProperty("version").GetString());
         foreach (JsonProperty library in libraries.EnumerateObject())
         {
             Assert.AreEqual("package", library.Value.GetProperty("type").GetString(), library.Name);

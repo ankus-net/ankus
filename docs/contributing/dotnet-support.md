@@ -34,20 +34,23 @@ The repository and generated projects select SDK 10.0.400 or a later stable
 installs the latest stable 10.0 SDK. This selection must remain separate from the
 runtime included in published extensions.
 
-`eng/Ankus.Ci.cs` pins upstream 10.0.14 as shipped (dotnet/dotnet
-`0427b9abbead3fa64c6655eb4290c537397131fa`, whose `src/runtime` is dotnet/runtime
-`6aa72daa24f66c01c3d7b6a32519e9d21396deec` plus the release's security changes),
-fork commit `081020a735c715386e1119b38deef62d71d93d77`, runtime and compiler-host packages
-`10.0.14-ankus.1`, and ILCompiler targets/framework packs `10.0.14`. 10.0.14 fixes
-the Brotli decoder in GHSA-p3jp-9v83-76w9, and NuGet audit rejects the earlier
-ILCompiler and Native AOT packs. The fork keeps upstream's fix for
-dotnet/runtime#135912, which 10.0.14 still lacks: on Unix x64 a GC suspension in a
+`eng/Ankus.Ci.cs` pins upstream 10.0.15 as shipped (dotnet/dotnet
+`8e0f8ed2312954727f8919d7d1c2f78b483b4ee7`, whose `src/runtime` is dotnet/runtime
+`a3788b71495457354b64ca8040b6ded5ff6ca4f9` plus the release's security changes),
+fork commit `3027920964e993fc105ff65ca0a817eb3dceaca9`, runtime and compiler-host packages
+`10.0.15-ankus.1`, and ILCompiler targets/framework packs `10.0.15`. 10.0.15 fixes
+the runtime denial of service in CVE-2026-109475 (GHSA-3g4v-f5gv-c7xf), and 10.0.14
+fixed the Brotli decoder in GHSA-p3jp-9v83-76w9, for which NuGet audit rejects the
+earlier ILCompiler and Native AOT packs. `Ankus.Runtime` references
+System.Formats.Cbor 10.0.15, which fixes CVE-2026-118747 in the reader behind
+serialized types. The fork keeps upstream's fix for dotnet/runtime#135912, which
+10.0.15 still lacks: on Unix x64 a GC suspension in a
 self-recursive tail call's epilogue hijacked a slot of the caller's frame instead
 of the return address. A runtime fix changes every extension's embedded runtime
 and the compiler, so it needs a new package version; a release skips a runtime
 version that nuget.org already has. The SDK target and per-RID package properties
 carry matching target runtime and host compiler identities. Framework runtime
-packs also use 10.0.14 instead of following the installed SDK's default patch. Check
+packs also use 10.0.15 instead of following the installed SDK's default patch. Check
 `PROGRESS.md` for completed platform evidence and recheck upstream servicing
 before each release.
 
