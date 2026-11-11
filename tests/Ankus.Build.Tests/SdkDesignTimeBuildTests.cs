@@ -300,15 +300,13 @@ public sealed class SdkDesignTimeBuildTests(TestContext context)
     {
         string full = Path.GetFullPath(path);
         string root = Path.GetPathRoot(full)!;
-        string resolved = root;
-        foreach (string part in full[root.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
-        {
-            string next = Path.Join(resolved, part);
-            FileSystemInfo? target = new DirectoryInfo(next).ResolveLinkTarget(returnFinalTarget: true);
-            resolved = target is null ? next : ResolveLinks(target.FullName);
-        }
-
-        return resolved;
+        return full[root.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries).Aggregate(root,
+            static (resolved, part) =>
+            {
+                string next = Path.Join(resolved, part);
+                FileSystemInfo? target = new DirectoryInfo(next).ResolveLinkTarget(returnFinalTarget: true);
+                return target is null ? next : ResolveLinks(target.FullName);
+            });
     }
 
     /// <summary>
