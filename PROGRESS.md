@@ -271,6 +271,18 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- .NET 10.0.15 shipped on 2026-11-10 as a security release. The default
+  `net10.0` line moves from 10.0.14 to it: the fork branch
+  `ankus/runtime-10.0.15` imports dotnet/dotnet v10.0.15's shipped
+  `src/runtime` (tree `670a3dbf`, dotnet/runtime `a3788b71` plus 114 files of
+  release changes) and merges it. The four conflicts were between the two
+  shipped versions' own version files; the fork's 147-file patch set is
+  identical before and after. Runtime and compiler-host packages become
+  `10.0.15-ankus.1` with ILCompiler 10.0.15. The release fixes the runtime
+  denial of service in CVE-2026-109475, which covers 10.0.14, and NativeAOT
+  interface dispatch templates, thread-static alignment and EventPipe writers.
+  `Ankus.Runtime`'s System.Formats.Cbor dependency moves to 10.0.15 for
+  CVE-2026-118747, so consumer restores no longer report the advisory.
 - .NET 11.0.0 shipped on 2026-11-10 with SDK 11.0.100. The `net11.0` line moves
   from RC3 to it: the fork branch `ankus/runtime-11.0.0` imports dotnet/dotnet
   `297acf93`'s shipped `src/runtime` as a commit on dotnet/runtime `deae2e32`
