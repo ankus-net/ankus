@@ -288,7 +288,11 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   (fixed and dynamic heap counts), host shutdown, signal masks, host signals,
   independent debug headers and every diagnostics script. CI passed on Linux
   x64, Windows x64 and macOS ARM64, and the PostgreSQL versions run
-  (42953343630) on `2a8b5312` for Linux x64 13 through 19.
+  (42953343630) on `2a8b5312` for Linux x64 13 through 19. The platform
+  versions run (43211206976) on `615bad45` passed on macOS ARM64 and Windows
+  x64 for every major outside CI's, each job running all 1,414 build and 5,636
+  integration tests with none failed. GitHub skipped its scheduled run during
+  the 2026-11-11 Actions outage, so it was dispatched by hand.
 - `FreshEditorLoadPreparesDependenciesAndCompilerOptions` failed both rows on
   Intel macOS in every run since it was added (the scheduled additional
   platforms run 42825232895 on all seven majors with `net10.0`, and the
