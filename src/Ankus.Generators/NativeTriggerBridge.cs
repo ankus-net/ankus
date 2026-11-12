@@ -14,12 +14,16 @@ internal static class NativeTriggerBridge
         #include "nodes/bitmapset.h"
         #include "utils/rel.h"
         #include "utils/memutils.h"
+        #include "utils/portal.h"
+        #include "utils/queryenvironment.h"
+        #include "utils/tuplestore.h"
 
         typedef struct AnkusTriggerScope
         {
             TriggerData *data;
             MemoryContext context;
             int64 identity;
+            QueryEnvironment *cursor_environment;
         } AnkusTriggerScope;
 
         static AnkusTriggerScope *ankus_trigger_scope = NULL;
@@ -45,6 +49,46 @@ internal static class NativeTriggerBridge
                 }
                 PG_END_TRY();
             }
+        }
+
+        static void
+        ankus_register_transition(QueryEnvironment *environment, TriggerData *data, Tuplestorestate *table, char *name)
+        {
+            EphemeralNamedRelation relation;
+            if (table == NULL)
+                return;
+            relation = palloc(sizeof(EphemeralNamedRelationData));
+            relation->md.name = name;
+            relation->md.reliddesc = RelationGetRelid(data->tg_relation);
+            relation->md.tupdesc = NULL;
+            relation->md.enrtype = ENR_NAMED_TUPLESTORE;
+            relation->md.enrtuples = tuplestore_tuple_count(table);
+            relation->reldata = table;
+            register_ENR(environment, relation);
+        }
+
+        /* A cursor opened in a trigger callback lives until the callback exits and closes its cursors, while each
+         * SPI connection of the callback ends when its call does. Since 14.25, 15.20, 16.16,
+         * 17.12 and 18.7, SPI_finish drops every portal that shares the connection's query environment, so the
+         * cursor's portal takes the callback's own environment, with the same transition tables. Both environments
+         * live in the callback's context, which is deleted only after its cursors close. */
+        static void
+        ankus_keep_trigger_cursor(Portal portal)
+        {
+            if (ankus_trigger_scope == NULL || portal == NULL || portal->queryEnv == NULL)
+                return;
+            if (ankus_trigger_scope->cursor_environment == NULL)
+            {
+                TriggerData *data = ankus_trigger_scope->data;
+                MemoryContext previous = MemoryContextSwitchTo(ankus_trigger_scope->context);
+                QueryEnvironment *environment = create_queryEnv();
+                ankus_register_transition(environment, data, data->tg_newtable, data->tg_trigger->tgnewtable);
+                ankus_register_transition(environment, data, data->tg_oldtable, data->tg_trigger->tgoldtable);
+                MemoryContextSwitchTo(previous);
+                ankus_trigger_scope->cursor_environment = environment;
+            }
+
+            portal->queryEnv = ankus_trigger_scope->cursor_environment;
         }
 
         """;
@@ -410,6 +454,7 @@ internal static class NativeTriggerBridge
             if (ankus_next_trigger_id == PG_INT64_MAX)
                 ereport(ERROR, (errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED), errmsg("Ankus trigger identity capacity exhausted")));
             scope.data = trigger;
+            scope.cursor_environment = NULL;
             scope.context = AllocSetContextCreate(caller, "Ankus trigger callback", ALLOCSET_SMALL_SIZES);
             /* Built outside the callback scope so its failure needs no cleanup beyond the scope context. */
             PG_TRY();
