@@ -290,7 +290,8 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   only Ankus's own tracked cursors carry a trigger's environment. On a local
   18.7 build the six rows failed before the change. After it, all 123 trigger
   tests pass on 14.25, 15.20, 16.16, 17.12, 18.7 and 19rc2, and on 13.23 and 18.6,
-  which lack the fix.
+  which lack the fix. #206's CI (43318155917) passed on Linux x64, Windows x64
+  and macOS ARM64, and its CodeQL run with C analysis (43313996098) was clean.
 - .NET 10.0.15 shipped on 2026-11-10 as a security release. The default
   `net10.0` line moves from 10.0.14 to it: the fork branch
   `ankus/runtime-10.0.15` imports dotnet/dotnet v10.0.15's shipped
