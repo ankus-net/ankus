@@ -271,6 +271,26 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- PostgreSQL 14.25, 15.20, 16.16, 17.12, 18.7 and 19rc2 (released 2026-11-12)
+  fix CVE-2026-120143: SPI_finish now drops every portal whose query
+  environment is the connection's, since a trigger's transition tables live
+  only as long as that environment. Ankus gave a trigger callback's cursors the
+  callback's lifetime instead: each SPI connection's environment is allocated
+  in the callback's context, and `ankus_close_trigger_cursors` closes the
+  callback's cursors before that context is deleted. On the patched releases a
+  cursor opened by one `Spi` call was dropped when that call returned, so the
+  next `Fetch` failed with 34000. The scheduled Linux ARM64 run (43248159890),
+  whose runner installed 18.7, failed `TransitionInsertRowsMatchActualWritesAcrossOwners`
+  (cursor and plan_cursor), `EscapedTransitionCursorsExpireAndBackendRecovers` and
+  `SuspendedCursorCleanupKeepsTransitionEnvironmentUntilAllOwnersEnd` on both
+  lines. A cursor Ankus opens in a trigger callback now takes an environment of
+  the callback's own, with the same transition tables, so a connection's
+  SPI_finish no longer matches it, and it still closes when the callback exits.
+  A cursor that SQL declares can't read a transition table in any release, so
+  only Ankus's own tracked cursors carry a trigger's environment. On a local
+  18.7 build the six rows failed before the change. After it, all 123 trigger
+  tests pass on 14.25, 15.20, 16.16, 17.12, 18.7 and 19rc2, and on 13.23 and 18.6,
+  which lack the fix.
 - .NET 10.0.15 shipped on 2026-11-10 as a security release. The default
   `net10.0` line moves from 10.0.14 to it: the fork branch
   `ankus/runtime-10.0.15` imports dotnet/dotnet v10.0.15's shipped

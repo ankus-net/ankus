@@ -128,6 +128,7 @@ internal static class NativeSpiBridge
         typedef int (*AnkusExecute)(AnkusRequest *, AnkusResult *, struct AnkusError *);
 
         static int ankus_return_cursor(Portal portal, AnkusResult *result);
+        static void ankus_keep_trigger_cursor(Portal portal);
         static int ankus_cursor_operation(AnkusRequest *request, AnkusResult *result);
         static void ankus_register_session_plan(SPIPlanPtr plan);
         static void ankus_detach_session_plan(SPIPlanPtr plan);
@@ -416,6 +417,7 @@ internal static class NativeSpiBridge
                 if (request->operation == ANKUS_SPI_OPEN_PLAN_CURSOR)
                 {
                     Portal portal = SPI_cursor_open(NULL, request->plan, values, nulls, request->read_only != 0);
+                    ankus_keep_trigger_cursor(portal);
                     return ankus_return_cursor(portal, result);
                 }
 
@@ -432,6 +434,7 @@ internal static class NativeSpiBridge
             {
                 Portal portal = SPI_cursor_open_with_args(NULL, sql, request->parameter_count, types, values, nulls,
                     request->read_only != 0, 0);
+                ankus_keep_trigger_cursor(portal);
                 return ankus_return_cursor(portal, result);
             }
 
