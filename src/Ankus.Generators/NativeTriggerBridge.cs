@@ -67,8 +67,8 @@ internal static class NativeTriggerBridge
             register_ENR(environment, relation);
         }
 
-        /* A cursor opened in a trigger callback lives until the callback exits, where ankus_close_trigger_cursors
-         * closes it, while each SPI connection of the callback ends when its call does. Since 14.25, 15.20, 16.16,
+        /* A cursor opened in a trigger callback lives until the callback exits and closes its cursors, while each
+         * SPI connection of the callback ends when its call does. Since 14.25, 15.20, 16.16,
          * 17.12 and 18.7, SPI_finish drops every portal that shares the connection's query environment, so the
          * cursor's portal takes the callback's own environment, with the same transition tables. Both environments
          * live in the callback's context, which is deleted only after its cursors close. */
