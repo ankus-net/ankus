@@ -32,7 +32,7 @@ captured on the target.
 Register the installation with the Ankus tool:
 
 ```console
-dotnet tool install --global Ankus.Tool --version 0.2.28
+dotnet tool install --global Ankus.Tool --version 0.2.29
 ankus init --pg18 /path/to/postgresql/bin/pg_config
 ```
 
