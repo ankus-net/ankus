@@ -307,6 +307,13 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   `SharedPreloadWaitsForThreadsLeftRunning` leaves a 15 s thread from the
   postmaster's initializer; on `10.0.15-ankus.1` with PostgreSQL 18.7 the server
   failed to start with `host service threads did not detach` after 11.8 s.
+  #208's CI (43357503967) passed on Linux x64, Windows x64 and macOS ARM64. On
+  `f66c8d90` the PostgreSQL versions run (43360834034) passed Linux x64 13, 14,
+  15, 16, 17 and 19, Linux ARM64 (43360837605) passed both lines, where the new
+  test took 17 s, and the .NET versions run (43365018835) passed `net11.0` on
+  Linux x64, macOS ARM64 and Windows x64. Every test job ran all 1,414 build and
+  5,637 integration tests with none failed. Intel macOS builds the new runtime
+  only in the release.
 - PostgreSQL 14.25, 15.20, 16.16, 17.12, 18.7 and 19rc2 (released 2026-11-12)
   fix CVE-2026-120143: SPI_finish now drops every portal whose query
   environment is the connection's, since a trigger's transition tables live
