@@ -313,7 +313,11 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   test took 17 s, and the .NET versions run (43365018835) passed `net11.0` on
   Linux x64, macOS ARM64 and Windows x64. Every test job ran all 1,414 build and
   5,637 integration tests with none failed. Intel macOS builds the new runtime
-  only in the release.
+  only in the release. 0.2.29 shipped the change (release run 43376795381). A
+  new `ankus new` solution whose `[PgInitialize]` leaves a 15 s thread failed to
+  start PostgreSQL 18.7 on 0.2.28 with `host service threads did not detach`,
+  and on 0.2.29 from nuget.org it started and logged the wait report naming the
+  thread as `other`.
 - PostgreSQL 14.25, 15.20, 16.16, 17.12, 18.7 and 19rc2 (released 2026-11-12)
   fix CVE-2026-120143: SPI_finish now drops every portal whose query
   environment is the connection's, since a trigger's transition tables live
