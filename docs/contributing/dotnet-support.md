@@ -37,8 +37,13 @@ runtime included in published extensions.
 `eng/Ankus.Ci.cs` pins upstream 10.0.15 as shipped (dotnet/dotnet
 `8e0f8ed2312954727f8919d7d1c2f78b483b4ee7`, whose `src/runtime` is dotnet/runtime
 `a3788b71495457354b64ca8040b6ded5ff6ca4f9` plus the release's security changes),
-fork commit `3027920964e993fc105ff65ca0a817eb3dceaca9`, runtime and compiler-host packages
-`10.0.15-ankus.1`, and ILCompiler targets/framework packs `10.0.15`. 10.0.15 fixes
+fork commit `9d096fd0394ca0bcb5925b34b2c61aae2ab95924`, runtime and compiler-host packages
+`10.0.15-ankus.2`, and ILCompiler targets/framework packs `10.0.15`. The fork's
+last three commits stop fork support from failing the process when a runtime
+thread is slow to run: each wait reports what it waits for after 10 seconds and
+then every minute. They also keep a finalizer that exits during host retirement
+from allocating thread statics, and count only live threads in the fork probes.
+10.0.15 fixes
 the runtime denial of service in CVE-2026-109475 (GHSA-3g4v-f5gv-c7xf), and 10.0.14
 fixed the Brotli decoder in GHSA-p3jp-9v83-76w9, for which NuGet audit rejects the
 earlier ILCompiler and Native AOT packs. `Ankus.Runtime` references
@@ -129,9 +134,10 @@ prints for every project on a preview.
 The `net11.0` line builds on .NET 11.0.0 as shipped (dotnet/dotnet
 `297acf930fb0f5c07fd4e51d78e521b4ad2e5d1f`, whose `src/runtime` is dotnet/runtime
 `deae2e32bf0e018e09d64597b7c59b62b73bb3ce` plus the release's version changes),
-fork commit `ffd1737fe5b45265f51b699419ca8fe793795779` on
-`ankus/runtime-11.0.0`, runtime and compiler-host packages `11.0.0-ankus.1`, and
-ILCompiler and framework packs `11.0.0`. The fork branch imports the shipped
+fork commit `be3ef9cf7d5803e6a9d416aec32e4535b3a7bde4` on
+`ankus/runtime-11.0.0`, runtime and compiler-host packages `11.0.0-ankus.2`, and
+ILCompiler and framework packs `11.0.0`. Its last three commits are the 10.0.15
+line's fork-support changes. The fork branch imports the shipped
 `src/runtime` as a commit on the dotnet/runtime commit and merges it over the
 RC3 port; the five conflicts were upstream changes between RC3 and 11.0.0, and
 the build tasks keep the patched Pkcs package. Generated `net11.0` solutions pin

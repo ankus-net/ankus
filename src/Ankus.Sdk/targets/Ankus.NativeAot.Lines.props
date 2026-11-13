@@ -6,14 +6,14 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(_AnkusNativeAotLine)' == 'net10.0'">
-    <_AnkusNativeAotVersion>10.0.15-ankus.1</_AnkusNativeAotVersion>
+    <_AnkusNativeAotVersion>10.0.15-ankus.2</_AnkusNativeAotVersion>
     <_AnkusNativeAotCompilerVersion>10.0.15</_AnkusNativeAotCompilerVersion>
-    <_AnkusNativeAotCompilerHostVersion>10.0.15-ankus.1</_AnkusNativeAotCompilerHostVersion>
+    <_AnkusNativeAotCompilerHostVersion>10.0.15-ankus.2</_AnkusNativeAotCompilerHostVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(_AnkusNativeAotLine)' == 'net11.0'">
-    <_AnkusNativeAotVersion>11.0.0-ankus.1</_AnkusNativeAotVersion>
+    <_AnkusNativeAotVersion>11.0.0-ankus.2</_AnkusNativeAotVersion>
     <_AnkusNativeAotCompilerVersion>11.0.0</_AnkusNativeAotCompilerVersion>
-    <_AnkusNativeAotCompilerHostVersion>11.0.0-ankus.1</_AnkusNativeAotCompilerHostVersion>
+    <_AnkusNativeAotCompilerHostVersion>11.0.0-ankus.2</_AnkusNativeAotCompilerHostVersion>
   </PropertyGroup>
 </Project>

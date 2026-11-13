@@ -47,6 +47,7 @@ public static class PreloadFunctions
             Detail = string.Create(CultureInfo.InvariantCulture,
                 $"pid={s_initializerPid};count={s_initializations};token={s_token:D}"),
         });
+        PreloadLateThread.Start();
     }
 
     /// <summary>
