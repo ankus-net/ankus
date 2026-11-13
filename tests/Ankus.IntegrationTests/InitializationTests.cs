@@ -323,6 +323,36 @@ public sealed class InitializationTests(TestContext context)
         }
     }
 
+    /// <summary>
+    /// The postmaster waits for a thread that its initializer left running, reports the wait in the server log, and
+    /// starts once the thread ends.
+    /// </summary>
+    [TestMethod]
+    [OSCondition(OperatingSystems.Linux | OperatingSystems.OSX)]
+    public async Task SharedPreloadWaitsForThreadsLeftRunning()
+    {
+        CancellationToken token = context.CancellationToken;
+        PostgresTestClusterOptions preload = await PreloadOptionsAsync("shared_preload_libraries", "Ankus.PreloadExtension");
+        PostgresTestClusterOptions options = new()
+        {
+            Installation = preload.Installation,
+            DataDirectoryBase = preload.DataDirectoryBase,
+            LogDirectory = preload.LogDirectory,
+            PostgreSqlConfiguration = [.. preload.PostgreSqlConfiguration, "ankus_preload.late_thread_ms = 15000"],
+        };
+        await using PostgresTestCluster cluster = await PostgresTestCluster.StartAsync(options, token);
+        string startupLog = cluster.ReadServerLog();
+        Assert.Contains("Ankus managed postmaster initializer ran.", startupLog);
+        Assert.Contains("NativeAOT fork support: still waiting for host service threads to detach after ", startupLog);
+        Assert.Contains(" (other)", startupLog);
+        Assert.DoesNotContain("did not detach", startupLog);
+        await using NpgsqlConnection connection = await cluster.OpenConnectionAsync(token);
+        await using NpgsqlCommand command = new("CREATE EXTENSION ankus_preload", connection);
+        await command.ExecuteNonQueryAsync(token);
+        command.CommandText = "SELECT preload_exercise()";
+        Assert.AreEqual("42|91|191|73|17|731|1", await command.ExecuteScalarAsync(token));
+    }
+
     private async Task<PostgresTestClusterOptions> PreloadOptionsAsync(string setting, string library)
     {
         PostgresTestClusterOptions defaults = await IntegrationEnvironment.CreateOptionsAsync(context.CancellationToken);

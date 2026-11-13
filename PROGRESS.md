@@ -271,6 +271,42 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- A PostgreSQL server with a preloaded Ankus extension could exit at startup
+  under heavy CPU load with `NativeAOT fork support: host service threads did
+  not detach.` Every wait in the runtime fork's fork support, and in the
+  collector's fork retirement and resume, failed after 10,000 one-millisecond
+  polls. Each wait is for another runtime thread that needs only CPU time: on
+  each host callback the runtime starts a replacement finalizer, and leaving the
+  callback waits for it to attach. On a loaded Linux x64 host, 15,168 watched
+  starts left a new thread runnable without running for up to 1.4 s, and the
+  failing start passed 10 s. The waits now continue until the thread finishes,
+  and after 10 s and then every minute they report what they wait for and every
+  attached thread with its role. The new `delayed-threads` fork probe holds each
+  new runtime thread for 11 s; the 10.0.15 runtime before the change failed
+  both of its cases, and both pass after it. The full probe run then found a
+  second path to the same message: with server GC and fixed heaps, a finalizer
+  retired before it ran managed code allocated thread-static storage in
+  `Thread.OnThreadExit` after the collector was retired and waited for a
+  collection that never ran.
+  `ThreadStore::DetachCurrentThread` now skips the managed exit callback for a
+  thread without thread statics. The retained-services probe with
+  `DOTNET_GCHeapCount=4` failed 4 of 100 runs before both changes and passed 100
+  of 100 after. Its inventory check also failed about one run in a hundred with
+  exit 182: Linux lists a joined thread in `/proc/self/task` until `do_exit`
+  releases it, and the run that caught one read state X with `PF_EXITING`, gone
+  100 ms later. The probes now count only threads that have not entered
+  `do_exit`. Fork commits `9d096fd0` (10.0.15) and `be3ef9cf` (11.0.0) carry the
+  three changes; packages become `10.0.15-ankus.2` and `11.0.0-ankus.2`. On Linux
+  x64 every fork probe case passes on both lines (retained services and
+  descendants, server GC with fixed and dynamic heaps, active GC, host shutdown,
+  host signals, signal masks, diagnostics with `dotnet-trace report`, delayed
+  threads, and debug headers on 10.0.15), and the fixed-heap server GC case
+  passed 200 of 200 runs on each line. An extension thread still running when a
+  preload callback returns now delays startup until it ends, with the report in
+  the server log, where it used to fail startup after about 10 s.
+  `SharedPreloadWaitsForThreadsLeftRunning` leaves a 15 s thread from the
+  postmaster's initializer; on `10.0.15-ankus.1` with PostgreSQL 18.7 the server
+  failed to start with `host service threads did not detach` after 11.8 s.
 - PostgreSQL 14.25, 15.20, 16.16, 17.12, 18.7 and 19rc2 (released 2026-11-12)
   fix CVE-2026-120143: SPI_finish now drops every portal whose query
   environment is the connection's, since a trigger's transition tables live
@@ -292,6 +328,10 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   tests pass on 14.25, 15.20, 16.16, 17.12, 18.7 and 19rc2, and on 13.23 and 18.6,
   which lack the fix. #206's CI (43318155917) passed on Linux x64, Windows x64
   and macOS ARM64, and its CodeQL run with C analysis (43313996098) was clean.
+  Linux ARM64 (43322231411) passed on main on both lines with 18.7. 0.2.28
+  shipped the fix (release run 43347974324). A new `ankus new` solution whose
+  statement trigger fetches a transition cursor twice failed with 34000 on
+  0.2.27 and passed on 0.2.28 from nuget.org, against PostgreSQL 18.7.
 - .NET 10.0.15 shipped on 2026-11-10 as a security release. The default
   `net10.0` line moves from 10.0.14 to it: the fork branch
   `ankus/runtime-10.0.15` imports dotnet/dotnet v10.0.15's shipped

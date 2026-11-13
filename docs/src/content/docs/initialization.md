@@ -120,9 +120,12 @@ after startup. Extension projects use this automatically; no host setup is neede
 
 On Linux and macOS, the postmaster retires runtime service threads between managed
 callbacks so PostgreSQL can fork safely. Complete explicitly created threads before
-returning from a preload callback. Timers and queued work resume when the runtime
-reenters or a backend starts; a continuously running postmaster thread does not fit
-PostgreSQL's Unix process model.
+returning from a preload callback. Startup waits for any thread that is still
+running. After 10 seconds, and then every minute, the server log shows
+`NativeAOT fork support: still waiting for host service threads to detach` with
+each attached thread's ID and role; an extension's own thread is listed as `other`.
+Timers and queued work resume when the runtime reenters or a backend starts; a
+continuously running postmaster thread does not fit PostgreSQL's Unix process model.
 
 To share values across backends, register static `PgShared<T>`, `PgLwLock<T>` or `PgAtomic<T>` descriptors from
 `PgModuleLoad` using `PgSharedMemory.Initialize`. See
