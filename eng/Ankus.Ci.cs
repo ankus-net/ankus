@@ -661,7 +661,8 @@ static (string CCompiler, string CppCompiler, IReadOnlyDictionary<string, string
     return (cCompiler, cppCompiler, environment);
 }
 
-// Prove that a newly built fork runtime preserves native host shutdown, thread cleanup, signal masks and signal routing.
+// Prove that a newly built fork runtime preserves native host shutdown, thread cleanup, signal masks, signal routing and
+// lock initialization inside class constructors.
 // Each probe publishes from its own directory, whose global.json selects the SDK for that runtime line's framework.
 static void VerifyNativeHostBehavior(
     string repositoryRoot,
@@ -739,6 +740,31 @@ static void VerifyNativeHostBehavior(
 
     Run(cCompiler, hostSignalArguments, environment: environment);
     Run(hostSignalHost, [Path.Join(hostSignalOutput, "NativeHostSignalProbe" + (OperatingSystem.IsMacOS() ? ".dylib" : ".so"))]);
+
+    // The first contended lock can occur inside UTF8Encoding's class constructor, and reading the lock settings must not need it.
+    string lockStaticsRoot = Path.Join(repositoryRoot, "runtime", "eng", "ankus", "fork-probes", "lock-statics");
+    string lockStaticsOutput = Path.Join(output, "lock-statics");
+    Run(GetDotNetHost(),
+    [
+        "publish", Path.Join(lockStaticsRoot, "NativeLockStaticsProbe.csproj"),
+        "--configuration", "Release", "--runtime", runtimeIdentifier, "--output", lockStaticsOutput,
+        $"-p:IlcSdkPath={GetBuiltRuntimePath(repositoryRoot, platform, architecture)}{Path.DirectorySeparatorChar}",
+        $"-p:IlcToolsPath={GetBuiltCompilerPath(repositoryRoot, platform, architecture)}{Path.DirectorySeparatorChar}",
+    ], lockStaticsRoot, environment: environment);
+
+    string lockStaticsHost = Path.Join(lockStaticsOutput, "host");
+    List<string> lockStaticsArguments =
+    [
+        "-std=gnu17", "-O2", "-Wall", "-Wextra", "-Werror", Path.Join(lockStaticsRoot, "host.c"),
+        "-o", lockStaticsHost,
+    ];
+    if (OperatingSystem.IsLinux())
+    {
+        lockStaticsArguments.Add("-ldl");
+    }
+
+    Run(cCompiler, lockStaticsArguments, environment: environment);
+    Run(lockStaticsHost, [Path.Join(lockStaticsOutput, "NativeLockStaticsProbe" + (OperatingSystem.IsMacOS() ? ".dylib" : ".so"))]);
 }
 
 static void VerifyPlatform(string platform, string architecture)
@@ -2273,8 +2299,8 @@ internal sealed record RuntimeLine(string TargetFramework, string Base, string C
     /// <summary>
     /// Gets the line for net10.0, which commands use when no line is named.
     /// </summary>
-    internal static RuntimeLine Default { get; } = new("net10.0", "v10.0.15", "9d096fd0394ca0bcb5925b34b2c61aae2ab95924",
-        "10.0.15-ankus.2", "10.0.15");
+    internal static RuntimeLine Default { get; } = new("net10.0", "v10.0.15", "aaba10bb501440c11594e2f5e260e520df0e7546",
+        "10.0.15-ankus.3", "10.0.15");
 
     /// <summary>
     /// Gets every supported line.
@@ -2282,7 +2308,7 @@ internal sealed record RuntimeLine(string TargetFramework, string Base, string C
     internal static IReadOnlyList<RuntimeLine> All { get; } =
     [
         Default,
-        new("net11.0", "v11.0.0", "be3ef9cf7d5803e6a9d416aec32e4535b3a7bde4", "11.0.0-ankus.2", "11.0.0"),
+        new("net11.0", "v11.0.0", "2ea08c6c5ad6e15dd72b435cd1233799d36726c2", "11.0.0-ankus.3", "11.0.0"),
     ];
 
     /// <summary>
