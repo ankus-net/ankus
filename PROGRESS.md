@@ -312,7 +312,14 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   x64, macOS ARM64 and Windows x64. The probe passed 200 of 200 in every Linux
   and macOS runtime build of both lines, and every test job ran all 1,414 build
   and 5,637 integration tests with none failed. Intel macOS builds the new
-  runtime only in the release.
+  runtime only in the release. 0.2.30 shipped the change (release run
+  44408089019), and the probe passed 200 of 200 in its Linux x64, Linux ARM64,
+  macOS ARM64 and Intel macOS runtime builds for both lines. From nuget.org on
+  Linux x64 with PostgreSQL 18.6, new `ankus new` solutions for `net10.0` and
+  `net11.0` passed their tests on `10.0.15-ankus.3` and `11.0.0-ankus.3`, and
+  their libraries carry the new environment and configuration readers; on
+  0.2.29 the same steps used `10.0.15-ankus.2` without them. nuget.org listed
+  all 27 packages about 43 minutes after publishing.
 - Dependencies move to MSTest.Sdk 4.5.3, NuGet.Configuration and
   NuGet.Versioning 8.0.0, System.CommandLine 3.0.0, and for the docs Starlight
   0.43.1, Astro 7.4.12 and markdown-satteri 0.4.10. NuGet 8.0 comes from
