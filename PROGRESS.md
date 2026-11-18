@@ -299,7 +299,14 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   10.0.15 and 11.0.0 runtimes (fork commits `aaba10bb` and `2ea08c6c`) each
   passed 10,000 processes on debian-dev, half of them pinned to four CPUs. On macOS ARM64 the probe passed 200 of 200 even on that first fix,
   so it detects this race on Linux only. Packages become `10.0.15-ankus.3` and
-  `11.0.0-ankus.3`.
+  `11.0.0-ankus.3`. #219's CI (44364384728) passed on Linux x64, Windows x64
+  and macOS ARM64. On `93819568` the PostgreSQL versions run (44370162510)
+  passed Linux x64 13, 14, 15, 16, 17 and 19, Linux ARM64 (44370167455) passed
+  both lines, and the .NET versions run (44376597493) passed `net11.0` on Linux
+  x64, macOS ARM64 and Windows x64. The probe passed 200 of 200 in every Linux
+  and macOS runtime build of both lines, and every test job ran all 1,414 build
+  and 5,637 integration tests with none failed. Intel macOS builds the new
+  runtime only in the release.
 - Dependencies move to MSTest.Sdk 4.5.3, NuGet.Configuration and
   NuGet.Versioning 8.0.0, System.CommandLine 3.0.0, and for the docs Starlight
   0.43.1, Astro 7.4.12 and markdown-satteri 0.4.10. NuGet 8.0 comes from
