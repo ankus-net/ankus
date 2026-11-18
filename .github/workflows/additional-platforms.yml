@@ -226,7 +226,7 @@ jobs:
     if: github.repository == 'ankus-net/ankus' && github.actor == 'willibrandon' && github.triggering_actor == 'willibrandon' && github.ref == 'refs/heads/main' && inputs.jobs != 'tests'
     name: target build (osx-x64 on osx-arm64)
     runs-on: ankus-macos-arm64
-    # The first cross build took 67 seconds.
+    # The first cross build took 67 seconds. Building the host runtime on a cache miss took 2.5 minutes.
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
@@ -239,13 +239,32 @@ jobs:
         id: runtime
         run: dotnet run --file ./eng/Ankus.Ci.cs -- metadata
 
-      # The host compiler comes from the primary workflow's Apple silicon runtime build.
+      # The host compiler usually comes from the primary workflow's Apple silicon runtime build. GitHub evicts
+      # caches unused for a week or pushed out by newer entries, so a miss builds and saves it here.
       - name: Restore host native runtime
         uses: actions/cache/restore@v6
+        id: runtime-cache
         with:
           path: artifacts/nativeaot/osx-arm64
           key: nativeaot-v3-osx-arm64-dedicated-${{ steps.runtime.outputs.commit }}
-          fail-on-cache-miss: true
+
+      - uses: actions/checkout@v7
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
+        with:
+          repository: ${{ steps.runtime.outputs.repository }}
+          ref: ${{ steps.runtime.outputs.commit }}
+          path: runtime
+
+      - name: Build host native runtime
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
+        run: dotnet run --file ./eng/Ankus.Ci.cs -- runtime-build osx arm64 osx-arm64
+
+      - name: Save host native runtime
+        if: steps.runtime-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: artifacts/nativeaot/osx-arm64
+          key: ${{ steps.runtime-cache.outputs.cache-primary-key }}
 
       - uses: actions/download-artifact@v8
         with:

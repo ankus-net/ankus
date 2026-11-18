@@ -271,6 +271,16 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- The scheduled additional platforms run 44103986658 on `acbb210a` passed its
+  seven Intel macOS suites, and its cross-architecture build failed on its
+  first cache step. That job restores the Apple silicon runtime that the
+  primary workflow caches from `main` and failed on a miss. CI on `main` last
+  restored the entry on 2026-11-13. On 2026-11-17 hosted CI for four Dependabot
+  pull requests saved more than 9 GB of NuGet, binding and runtime caches, and
+  GitHub kept the repository under its 10 GB limit by evicting the least
+  recently used entries, which included every runtime cache `main` had used.
+  The job now builds and saves the host runtime on a miss, which took 2.5
+  minutes on that runner.
 - A PostgreSQL server with a preloaded Ankus extension could exit at startup
   under heavy CPU load with `NativeAOT fork support: host service threads did
   not detach.` Every wait in the runtime fork's fork support, and in the
