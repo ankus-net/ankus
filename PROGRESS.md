@@ -271,6 +271,19 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- Dependencies move to MSTest.Sdk 4.5.3, NuGet.Configuration and
+  NuGet.Versioning 8.0.0, System.CommandLine 3.0.0, and for the docs Starlight
+  0.43.1, Astro 7.4.12 and markdown-satteri 0.4.10. NuGet 8.0 comes from
+  NuGet.Client's `release/8.0.x`; for the settings, source and version APIs
+  the tool uses it only adds publish-age settings and relaxes nullable
+  annotations. System.CommandLine 3.0 adds four public members, and every
+  `ankus` command prints the same help as before. A missing argument's error
+  now names the argument. Starlight 0.43 changes its scoped-style strategy;
+  screenshots of the home, guide, CLI reference and API pages in light and dark
+  themes at desktop and phone widths match the previous build. Dependabot
+  alert 6 reported picomatch, a transitive dependency of the docs build, under
+  GHSA-fc5q-39xc-vjpf. GitHub withdrew that advisory on 2026-11-18, no
+  patched release exists, and the alert is dismissed as inaccurate.
 - The scheduled additional platforms run 44103986658 on `acbb210a` passed its
   seven Intel macOS suites, and its cross-architecture build failed on its
   first cache step. That job restores the Apple silicon runtime that the
