@@ -297,10 +297,16 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   dumps showed `TryInitializeStatics` reaching `Utf8StringMarshaller` and then
   `AppContext`'s class constructor from inside UTF8Encoding's. The corrected
   10.0.15 and 11.0.0 runtimes (fork commits `aaba10bb` and `2ea08c6c`) each
-  passed 10,000 processes on debian-dev, half of them pinned to four CPUs. On macOS ARM64 the probe passed 200 of 200 even on that first fix,
-  so it detects this race on Linux only. Packages become `10.0.15-ankus.3` and
-  `11.0.0-ankus.3`. #219's CI (44364384728) passed on Linux x64, Windows x64
-  and macOS ARM64. On `93819568` the PostgreSQL versions run (44370162510)
+  passed 10,000 processes on debian-dev, half of them pinned to four CPUs. On
+  macOS ARM64 the probe passed 200 of 200 even on that first fix, so it detects
+  this race on Linux only. Windows x64 reads the environment as UTF-16 but
+  decoded `AppContext`'s configuration the same way; the probe's Unix host does
+  not run there, so a scratch supervisor loaded the same library in fresh
+  processes on the Windows CI host. The race failed 19 of 1,000 on
+  `10.0.15-ankus.2` with fail-fast status 0xC0000602 and none of 3,000 on the
+  corrected runtime. Packages become `10.0.15-ankus.3` and `11.0.0-ankus.3`.
+  #219's CI (44364384728) passed on Linux x64, Windows x64 and macOS ARM64. On
+  `93819568` the PostgreSQL versions run (44370162510)
   passed Linux x64 13, 14, 15, 16, 17 and 19, Linux ARM64 (44370167455) passed
   both lines, and the .NET versions run (44376597493) passed `net11.0` on Linux
   x64, macOS ARM64 and Windows x64. The probe passed 200 of 200 in every Linux
