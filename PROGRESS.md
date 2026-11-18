@@ -271,6 +271,29 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- A Native AOT library could abort without a message on its first contended
+  lock. The runtime reads the lock spin settings when a lock is first contended,
+  and that can happen inside a class constructor while another thread runs a
+  different one. Reading `DOTNET_Lock_SpinCount` marshalled the name through
+  `Encoding.UTF8` on Unix, so contention inside UTF8Encoding's class constructor
+  found `Encoding.UTF8` still null; the `TypeInitializationException` then failed
+  the process, and its message could not be written through the broken encoder.
+  Dependabot's docs update hit it once in the host-signals probe on a hosted
+  Ubuntu runner (job 133828560017 of run 44020496969); across the 473 runtime
+  builds since 2026-10-13 that ran the probe, that is the only failure. Stock
+  10.0.15 Native AOT behaves the same. Fork commits `70d372ef` (10.0.15) and
+  `d990e2cd` (11.0.0) read the two settings with `getenv` on Unix and parse them
+  by hand with `Convert.ToInt16`'s and `short.Parse`'s rules, which also keeps
+  the parse from constructing `CultureInfo` when a setting is present. Compared
+  with the shared parser over 7.6 million inputs in the en-US, tr-TR and
+  invariant cultures, the hand parser gave the same result for every one. The
+  new `lock-statics` fork probe races `Encoding.UTF8` against another class
+  constructor in 200 fresh processes and runs after every Linux and macOS
+  runtime build. On Linux x64 the previous runtimes aborted 52 to 62 (10.0.15)
+  and 51 to 102 (11.0.0) of 200 processes per run; a core dump showed
+  `TryInitializeStatics` reaching `Utf8StringMarshaller` from inside
+  UTF8Encoding's class constructor. Packages become `10.0.15-ankus.3` and
+  `11.0.0-ankus.3`.
 - Dependencies move to MSTest.Sdk 4.5.3, NuGet.Configuration and
   NuGet.Versioning 8.0.0, System.CommandLine 3.0.0, and for the docs Starlight
   0.43.1, Astro 7.4.12 and markdown-satteri 0.4.10. NuGet 8.0 comes from

@@ -17,7 +17,7 @@ namespace Ankus.IntegrationTests;
 [TestClass]
 public sealed partial class ToolCommandTests(TestContext context)
 {
-    private const string NativeAotRuntimeVersion = "10.0.15-ankus.2";
+    private const string NativeAotRuntimeVersion = "10.0.15-ankus.3";
 
     private static string s_root = null!;
     private static string s_temporaryRoot = null!;
