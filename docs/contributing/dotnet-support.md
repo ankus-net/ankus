@@ -37,13 +37,13 @@ runtime included in published extensions.
 `eng/Ankus.Ci.cs` pins upstream 10.0.15 as shipped (dotnet/dotnet
 `8e0f8ed2312954727f8919d7d1c2f78b483b4ee7`, whose `src/runtime` is dotnet/runtime
 `a3788b71495457354b64ca8040b6ded5ff6ca4f9` plus the release's security changes),
-fork commit `70d372efd4a94d355b90872373f89cbd0301f754`, runtime and compiler-host packages
+fork commit `aaba10bb501440c11594e2f5e260e520df0e7546`, runtime and compiler-host packages
 `10.0.15-ankus.3`, and ILCompiler targets/framework packs `10.0.15`. The fork's
 last two commits read the lock spin settings without class construction and add
 a probe for it. Those settings are read when a lock is first contended, which can
 happen inside UTF8Encoding's class constructor, and reading them through
-`Environment` and `short.Parse` needed that constructor's result, so the process
-aborted without a message. The three commits before them stop fork support from
+`Environment`, `AppContext` and `short.Parse` needed that constructor's result, so
+the process aborted without a message. The three commits before them stop fork support from
 failing the process when a runtime thread is slow to run: each wait reports what
 it waits for after 10 seconds and then every minute. They also keep a finalizer
 that exits during host retirement from allocating thread statics, and count only
@@ -139,7 +139,7 @@ prints for every project on a preview.
 The `net11.0` line builds on .NET 11.0.0 as shipped (dotnet/dotnet
 `297acf930fb0f5c07fd4e51d78e521b4ad2e5d1f`, whose `src/runtime` is dotnet/runtime
 `deae2e32bf0e018e09d64597b7c59b62b73bb3ce` plus the release's version changes),
-fork commit `d990e2cd222ed27034cb499fbfa1758e4715fb95` on
+fork commit `2ea08c6c5ad6e15dd72b435cd1233799d36726c2` on
 `ankus/runtime-11.0.0`, runtime and compiler-host packages `11.0.0-ankus.3`, and
 ILCompiler and framework packs `11.0.0`. Its last five commits are the 10.0.15
 line's lock-statics and fork-support changes. The fork branch imports the shipped

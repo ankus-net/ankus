@@ -274,25 +274,31 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 - A Native AOT library could abort without a message on its first contended
   lock. The runtime reads the lock spin settings when a lock is first contended,
   and that can happen inside a class constructor while another thread runs a
-  different one. Reading `DOTNET_Lock_SpinCount` marshalled the name through
-  `Encoding.UTF8` on Unix, so contention inside UTF8Encoding's class constructor
-  found `Encoding.UTF8` still null; the `TypeInitializationException` then failed
-  the process, and its message could not be written through the broken encoder.
-  Dependabot's docs update hit it once in the host-signals probe on a hosted
-  Ubuntu runner (job 133828560017 of run 44020496969); across the 473 runtime
-  builds since 2026-10-13 that ran the probe, that is the only failure. Stock
-  10.0.15 Native AOT behaves the same. Fork commits `70d372ef` (10.0.15) and
-  `d990e2cd` (11.0.0) read the two settings with `getenv` on Unix and parse them
-  by hand with `Convert.ToInt16`'s and `short.Parse`'s rules, which also keeps
-  the parse from constructing `CultureInfo` when a setting is present. Compared
-  with the shared parser over 7.6 million inputs in the en-US, tr-TR and
-  invariant cultures, the hand parser gave the same result for every one. The
-  new `lock-statics` fork probe races `Encoding.UTF8` against another class
-  constructor in 200 fresh processes and runs after every Linux and macOS
-  runtime build. On Linux x64 the previous runtimes aborted 52 to 62 (10.0.15)
-  and 51 to 102 (11.0.0) of 200 processes per run; a core dump showed
-  `TryInitializeStatics` reaching `Utf8StringMarshaller` from inside
-  UTF8Encoding's class constructor. Packages become `10.0.15-ankus.3` and
+  different one. On Unix, reading `DOTNET_Lock_SpinCount` marshalled the name
+  through `Encoding.UTF8`, and the first `AppContext` access decoded the runtime
+  configuration through it, so contention inside UTF8Encoding's class
+  constructor found `Encoding.UTF8` still null. The `TypeInitializationException`
+  then failed the process, and its message could not be written through the
+  broken encoder. Dependabot's docs update hit it once in the host-signals probe
+  on a hosted Ubuntu runner (job 133828560017 of run 44020496969); across the 473
+  runtime builds since 2026-10-13 that ran the probe, that is the only failure.
+  Stock 10.0.15 Native AOT behaves the same. The fork now reads the two settings
+  with `getenv` on Unix, parses them by hand with `Convert.ToInt16`'s and
+  `short.Parse`'s rules, which also keeps the parse from constructing
+  `CultureInfo` when a setting is present, and decodes `AppContext`'s
+  configuration with `Utf8.ToUtf16`. Over 7.6 million inputs in the en-US, tr-TR
+  and invariant cultures the hand parser matched the shared one, and over 3.3
+  million byte sequences, including every code point, the decoder matched
+  `Encoding.UTF8.GetString`. The new `lock-statics` fork probe races
+  `Encoding.UTF8` against another class constructor in 200 fresh processes after
+  every Linux and macOS runtime build. On Linux x64 the previous runtimes aborted
+  52 to 62 (10.0.15) and 51 to 102 (11.0.0) of 200 processes per run, and a
+  first fix that left `AppContext` alone still aborted 120 of 200 in CI; core
+  dumps showed `TryInitializeStatics` reaching `Utf8StringMarshaller` and then
+  `AppContext`'s class constructor from inside UTF8Encoding's. The corrected
+  10.0.15 and 11.0.0 runtimes (fork commits `aaba10bb` and `2ea08c6c`) each
+  passed 10,000 processes on debian-dev, half of them pinned to four CPUs. On macOS ARM64 the probe passed 200 of 200 even on that first fix,
+  so it detects this race on Linux only. Packages become `10.0.15-ankus.3` and
   `11.0.0-ankus.3`.
 - Dependencies move to MSTest.Sdk 4.5.3, NuGet.Configuration and
   NuGet.Versioning 8.0.0, System.CommandLine 3.0.0, and for the docs Starlight
