@@ -293,7 +293,11 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   attempt can start two backends, and the Windows tests count at least one
   occurrence per attempt; the first CI run's exact counts saw two. On Linux x64
   with PostgreSQL 18.6 the startup test failed with that message before the
-  change and passed after it, and the bounded test passed.
+  change and passed after it, and the bounded test passed. #222's CI
+  (44649677415) passed on Linux x64, Windows x64 and macOS ARM64, with all four
+  new tests passing on Windows, and on `fd2d3aee` the Windows/PostgreSQL 16 job
+  of the platform versions run (44655811215) passed all 5,641 integration
+  tests.
 - A Native AOT library could abort without a message on its first contended
   lock. The runtime reads the lock spin settings when a lock is first contended,
   and that can happen inside a class constructor while another thread runs a
