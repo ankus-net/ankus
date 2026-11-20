@@ -5,7 +5,8 @@ namespace Ankus.IntegrationTests;
 
 /// <summary>
 /// Checks startup and connection recovery when a PostgreSQL process reads a <c>pg_control</c> that fails its checksum,
-/// as one started on Windows while another process rewrites the file can.
+/// as one started on Windows while another process rewrites the file can. Npgsql's default
+/// <c>GssEncryptionMode.Prefer</c> reopens once after any failure, so one attempt can start two backends.
 /// </summary>
 /// <param name="context">The per-test context.</param>
 [TestClass]
@@ -89,7 +90,7 @@ public sealed class ControlFileReadRetryTests(TestContext context)
         Assert.AreEqual(42, await command.ExecuteScalarAsync(context.CancellationToken));
         Assert.AreEqual(1, retries);
         string log = cluster.ReadServerLog();
-        Assert.AreEqual(1, CountOccurrences(log, TornRead), log);
+        Assert.IsGreaterThanOrEqualTo(1, CountOccurrences(log, TornRead), log);
         Assert.DoesNotContain("reinitializing", log);
     }
 
@@ -118,7 +119,7 @@ public sealed class ControlFileReadRetryTests(TestContext context)
 
         Assert.AreEqual(2, retries);
         string log = cluster.ReadServerLog();
-        Assert.AreEqual(3, CountOccurrences(log, TornRead), log);
+        Assert.IsGreaterThanOrEqualTo(3, CountOccurrences(log, TornRead), log);
         Assert.DoesNotContain("reinitializing", log);
         await using NpgsqlConnection connection = await cluster.OpenConnectionAsync(context.CancellationToken);
         await using var command = new NpgsqlCommand("SELECT 19 + 23", connection);

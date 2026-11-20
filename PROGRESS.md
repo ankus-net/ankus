@@ -288,7 +288,10 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   closes without a server error and the log shows a new occurrence; a `57P03`
   from a restart mid-test still fails. New tests corrupt `pg_control` before
   the first start (the postmaster's own read reports the same message) and,
-  on Windows, under a running server between connection attempts. On Linux x64
+  on Windows, under a running server between connection attempts. Npgsql's
+  default `GssEncryptionMode.Prefer` reopens once after any failure, so one
+  attempt can start two backends, and the Windows tests count at least one
+  occurrence per attempt; the first CI run's exact counts saw two. On Linux x64
   with PostgreSQL 18.6 the startup test failed with that message before the
   change and passed after it, and the bounded test passed.
 - A Native AOT library could abort without a message on its first contended
