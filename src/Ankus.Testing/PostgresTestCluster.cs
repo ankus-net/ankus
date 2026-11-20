@@ -35,6 +35,24 @@ public sealed class PostgresTestCluster : IAsyncDisposable
     private Task? _shutdownTask;
 
     /// <summary>
+    /// PostgreSQL's report when a server process reads <c>pg_control</c> while another process rewrites it. On Windows
+    /// every server process reads the file again without a lock as it starts, so it can see a partial copy.
+    /// </summary>
+    private const string TornControlFileRead = "FATAL:  incorrect checksum in control file";
+
+    /// <summary>
+    /// The connection attempts allowed when backends exit after reading a partial <c>pg_control</c>.
+    /// </summary>
+    private const int MaximumConnectionAttempts = 3;
+
+    private readonly Lock _tornControlFileReadLock = new();
+
+    /// <summary>
+    /// The partial <c>pg_control</c> reads already found in the server log.
+    /// </summary>
+    private int _tornControlFileReads;
+
+    /// <summary>
     /// Requires definitive native shutdown until pg_ctl confirms the attempted server is stopped.
     /// </summary>
     private bool _requiresShutdown;
@@ -118,6 +136,9 @@ public sealed class PostgresTestCluster : IAsyncDisposable
     /// If another process claims an automatically selected port before PostgreSQL binds it, startup retries with a new
     /// cluster and port, up to three attempts within the same startup timeout. Explicit ports are never replaced;
     /// collisions and other startup failures are reported immediately.
+    /// On Windows, PostgreSQL starts each server process by reading <c>pg_control</c> again, and a process that starts
+    /// while another rewrites the file can read a partial copy and exit with <c>incorrect checksum in control file</c>.
+    /// A startup that ends that way is retried with a new cluster under the same three-attempt limit.
     /// Failed attempts remove their data and socket directories and retain their server logs.
     /// </remarks>
     /// <param name="options">The installation and invocation settings.</param>
@@ -225,7 +246,10 @@ public sealed class PostgresTestCluster : IAsyncDisposable
                     throw;
                 }
 
-                if (options.Port is null && attempt < MaximumAttempts && cluster.HasPortCollision(log))
+                // A server process that read a partial pg_control can be an auxiliary one, whose exit restarts the server,
+                // so a startup it ended begins again with a fresh cluster.
+                if (attempt < MaximumAttempts &&
+                    ((options.Port is null && cluster.HasPortCollision(log)) || log.Contains(TornControlFileRead, StringComparison.Ordinal)))
                 {
                     timeout.Token.ThrowIfCancellationRequested();
                     continue;
@@ -240,6 +264,11 @@ public sealed class PostgresTestCluster : IAsyncDisposable
     /// <summary>
     /// Opens an unpooled connection to the test database. The caller owns the connection.
     /// </summary>
+    /// <remarks>
+    /// A backend that exits with <c>incorrect checksum in control file</c> before the connection is established, as
+    /// one that starts on Windows while another process rewrites <c>pg_control</c> can, is replaced by up to two more
+    /// attempts. Other connection failures are reported at once.
+    /// </remarks>
     /// <param name="cancellationToken">Cancels connection establishment.</param>
     /// <returns>An open connection.</returns>
     public Task<NpgsqlConnection> OpenConnectionAsync(CancellationToken cancellationToken = default)
@@ -500,16 +529,71 @@ public sealed class PostgresTestCluster : IAsyncDisposable
             CommandTimeout = 30,
             SslMode = SslMode.Disable,
         };
-        var connection = new NpgsqlConnection(builder.ConnectionString);
-        try
+        for (int attempt = 1; ; attempt++)
         {
-            await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-            return connection;
+            var connection = new NpgsqlConnection(builder.ConnectionString);
+            try
+            {
+                await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
+                return connection;
+            }
+            catch (NpgsqlException error) when (attempt < MaximumConnectionAttempts && MayBeTornControlFileRead(error))
+            {
+                await connection.DisposeAsync().ConfigureAwait(false);
+                if (!FindNewTornControlFileRead())
+                {
+                    throw;
+                }
+            }
+            catch
+            {
+                await connection.DisposeAsync().ConfigureAwait(false);
+                throw;
+            }
+
+            BeforeConnectionRetry?.Invoke();
         }
-        catch
+    }
+
+    /// <summary>
+    /// Runs before a connection attempt that replaces a backend which read a partial <c>pg_control</c>.
+    /// </summary>
+    internal Action? BeforeConnectionRetry
+    {
+        get;
+        set;
+    }
+
+    /// <summary>
+    /// Reports whether a connection failure can come from a backend that read a partial <c>pg_control</c>, which
+    /// usually exits before it can report anything to the client.
+    /// </summary>
+    private static bool MayBeTornControlFileRead(NpgsqlException error)
+        => error is not PostgresException postgres || postgres.MessageText == "incorrect checksum in control file";
+
+    /// <summary>
+    /// Reports whether the server log shows a partial <c>pg_control</c> read that no earlier check found.
+    /// </summary>
+    private bool FindNewTornControlFileRead()
+    {
+        string log = ReadServerLog();
+        int reads = 0;
+        int index = log.IndexOf(TornControlFileRead, StringComparison.Ordinal);
+        while (index >= 0)
         {
-            await connection.DisposeAsync().ConfigureAwait(false);
-            throw;
+            reads++;
+            index = log.IndexOf(TornControlFileRead, index + TornControlFileRead.Length, StringComparison.Ordinal);
+        }
+
+        lock (_tornControlFileReadLock)
+        {
+            if (reads <= _tornControlFileReads)
+            {
+                return false;
+            }
+
+            _tornControlFileReads = reads;
+            return true;
         }
     }
 

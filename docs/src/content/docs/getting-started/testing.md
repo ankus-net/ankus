@@ -393,5 +393,12 @@ within the original startup timeout, retaining each failed attempt's log and
 removing its data and sockets. Configuration errors and other startup failures
 are reported immediately; cancellation stops further attempts.
 
+On Windows, PostgreSQL starts each server process by reading `pg_control` again,
+and a process that starts while another one rewrites the file can read a partial
+copy and exit with `incorrect checksum in control file`. A startup that ends that
+way is retried with a new cluster under the same three-attempt limit. A
+connection the fixture opens is retried up to twice more when its backend exited
+that way; other connection failures are reported at once.
+
 PostgreSQL 18 and later use a per-cluster extension search path. For earlier versions,
 the fixture makes and removes an isolated copy of the installation.
