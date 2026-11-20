@@ -271,6 +271,26 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- Scheduled platform versions run 44559769049 lost one Windows/PostgreSQL 16.15
+  case before its test body ran. One second after `initdb` shut the new cluster
+  down, the server started, and its checkpointer exited with `FATAL: incorrect
+  checksum in control file` while the startup process was finishing. The
+  postmaster restarted every process, and the fixture's first connection got
+  `57P03`. On Windows each PostgreSQL server process reads `pg_control` again
+  with a plain `read()` as it starts, without `ControlFileLock` (REL_16_STABLE
+  `SubPostmasterMain`, and `launch_backend.c` on master), so a process that
+  starts while another rewrites the file can read a partial copy. The two
+  earlier Windows losses recorded below were new backends that read it during
+  a checkpoint. `PostgresTestCluster` now retries a startup whose log shows
+  that message with a fresh cluster, under the port-collision retry's limit of
+  three attempts, so tests that check the log for a restart still see a clean
+  one. A connection the fixture opens is retried up to twice more when it
+  closes without a server error and the log shows a new occurrence; a `57P03`
+  from a restart mid-test still fails. New tests corrupt `pg_control` before
+  the first start (the postmaster's own read reports the same message) and,
+  on Windows, under a running server between connection attempts. On Linux x64
+  with PostgreSQL 18.6 the startup test failed with that message before the
+  change and passed after it, and the bounded test passed.
 - A Native AOT library could abort without a message on its first contended
   lock. The runtime reads the lock spin settings when a lock is first contended,
   and that can happen inside a class constructor while another thread runs a
@@ -2339,7 +2359,8 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   `NamespaceLookupTests.TypeSearchPathAndExactSignaturesArePreserved` on
   Windows/PostgreSQL 17.11 the same way: a new backend logged the same FATAL
   during an immediate checkpoint that started 57 ms earlier and completed 6 ms
-  later. Its rerun passed.
+  later. Its rerun passed. Both were the partial `pg_control` read that
+  `PostgresTestCluster` now retries, recorded with run 44559769049 above.
 - Platform versions run 40102478124 on main at 4ae4a132 lost one
   Windows/PostgreSQL 13 case,
   `NumericTests.TemporalExtractionPreservesNumericPrecision` for the largest

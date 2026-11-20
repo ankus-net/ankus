@@ -125,6 +125,10 @@ Returns: [Task&lt;NpgsqlConnection&gt;](https://learn.microsoft.com/dotnet/api/s
 
 An open connection.
 
+A backend that exits with <code>incorrect checksum in control file</code> before the connection is established, as
+one that starts on Windows while another process rewrites <code>pg_control</code> can, is replaced by up to two more
+attempts. Other connection failures are reported at once.
+
 <a id="member-2c0fe97e7f253997"></a>
 
 ### ReadServerLog()
@@ -229,4 +233,7 @@ The ready cluster, owned by the caller.
 If another process claims an automatically selected port before PostgreSQL binds it, startup retries with a new
 cluster and port, up to three attempts within the same startup timeout. Explicit ports are never replaced;
 collisions and other startup failures are reported immediately.
+On Windows, PostgreSQL starts each server process by reading <code>pg_control</code> again, and a process that starts
+while another rewrites the file can read a partial copy and exit with <code>incorrect checksum in control file</code>.
+A startup that ends that way is retried with a new cluster under the same three-attempt limit.
 Failed attempts remove their data and socket directories and retain their server logs.
