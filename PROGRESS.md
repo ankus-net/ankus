@@ -297,7 +297,13 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   (44649677415) passed on Linux x64, Windows x64 and macOS ARM64, with all four
   new tests passing on Windows, and on `fd2d3aee` the Windows/PostgreSQL 16 job
   of the platform versions run (44655811215) passed all 5,641 integration
-  tests.
+  tests. 0.2.31 shipped the change (release run 44664475117; the runtime
+  packages were unchanged and skipped). From nuget.org on Windows x64 with
+  PostgreSQL 18, a cluster whose `pg_control` was corrupted under it failed its
+  connection after one attempt on `Ankus.Testing` 0.2.30, with two backends
+  reading the file, and after three on 0.2.31, with six; neither restarted the
+  server, and both connected once the file was repaired. nuget.org listed the
+  seven packages about 7 minutes after publishing.
 - A Native AOT library could abort without a message on its first contended
   lock. The runtime reads the lock spin settings when a lock is first contended,
   and that can happen inside a class constructor while another thread runs a
