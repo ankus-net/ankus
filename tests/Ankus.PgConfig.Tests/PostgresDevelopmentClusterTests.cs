@@ -24,8 +24,7 @@ public sealed class PostgresDevelopmentClusterTests(TestContext context)
     [DataRow(19, 28819)]
     public void DefaultConfigurationUsesIndependentLoopbackPorts(int major, int port)
     {
-        string expected = $"port = {port}\nlisten_addresses = '127.0.0.1'\nunix_socket_directories = ''\n" +
-            "log_destination = 'stderr'\nlogging_collector = off\n";
+        string expected = $"port = {port}\nlisten_addresses = '127.0.0.1'\nunix_socket_directories = ''\n";
         Assert.AreEqual(expected, PostgresDevelopmentCluster.CreateConfiguration(major, new PostgresDevelopmentOptions())
             .ReplaceLineEndings("\n"));
     }
@@ -98,8 +97,6 @@ public sealed class PostgresDevelopmentClusterTests(TestContext context)
     [DataRow("port")]
     [DataRow("LISTEN_ADDRESSES")]
     [DataRow("unix_socket_directories")]
-    [DataRow("log_destination")]
-    [DataRow("logging_collector")]
     [DataRow("event_source")]
     [DataRow("include")]
     [DataRow("include_dir")]
@@ -109,6 +106,28 @@ public sealed class PostgresDevelopmentClusterTests(TestContext context)
         ArgumentException error = Assert.ThrowsExactly<ArgumentException>(() => PostgresDevelopmentCluster.CreateConfiguration(18,
             new PostgresDevelopmentOptions { Settings = new Dictionary<string, string> { [name] = "anything" } }));
         Assert.Contains(name, error.Message);
+    }
+
+    /// <summary>
+    /// PostgreSQL's logging collector and log destinations are the caller's to choose, as with pgrx's
+    /// <c>--postgresql-conf</c>, so PostgreSQL can rotate its own log files.
+    /// </summary>
+    [TestMethod]
+    public void LoggingSettingsPassThrough()
+    {
+        string configuration = PostgresDevelopmentCluster.CreateConfiguration(18, new PostgresDevelopmentOptions
+        {
+            Settings = new Dictionary<string, string>
+            {
+                ["logging_collector"] = "on",
+                ["log_destination"] = "jsonlog",
+                ["log_rotation_size"] = "10MB",
+            },
+        }).ReplaceLineEndings("\n");
+        Assert.AreEqual(
+            "logging_collector = 'on'\nlog_destination = 'jsonlog'\nlog_rotation_size = '10MB'\n" +
+            "port = 28818\nlisten_addresses = '127.0.0.1'\nunix_socket_directories = ''\n",
+            configuration);
     }
 
     /// <summary>

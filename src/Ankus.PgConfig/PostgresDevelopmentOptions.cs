@@ -38,7 +38,8 @@ public sealed class PostgresDevelopmentOptions
 
     /// <summary>
     /// Gets PostgreSQL settings applied on this start. Values are literal configuration values, without surrounding quotes.
-    /// Data, authentication, log routing, and connection locations are managed by Ankus.
+    /// Data paths, connection locations and the Windows event source are managed by Ankus; logging settings, including
+    /// <c>logging_collector</c>, are passed to PostgreSQL.
     /// </summary>
     public IReadOnlyDictionary<string, string> Settings
     {

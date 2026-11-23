@@ -271,6 +271,17 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- Development clusters wrote `logging_collector = off` and
+  `log_destination = 'stderr'` and rejected both settings, so the single file
+  `pg_ctl -l` writes grew without limit and PostgreSQL could not rotate its
+  own logs. pgrx passes every `--postgresql-conf` setting to the server. Ankus
+  now leaves both to PostgreSQL's defaults and passes them through, so
+  `--postgresql-conf logging_collector=on` and PostgreSQL's other logging
+  settings rotate the server's logs. A new test starts a cluster that way
+  through the tool, rotates with `pg_rotate_logfile()`, and finds a logged
+  message in the file `current_logfiles` names and not in Ankus's file. On
+  Linux x64 with PostgreSQL 18.6 it passes, with the existing cluster and
+  diagnostics tests.
 - Scheduled platform versions run 44559769049 lost one Windows/PostgreSQL 16.15
   case before its test body ran. One second after `initdb` shut the new cluster
   down, the server started, and its checkpointer exited with `FATAL: incorrect

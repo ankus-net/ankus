@@ -396,7 +396,7 @@ public sealed partial class PostgresDevelopmentCluster
 
             if (name.ToLowerInvariant() is "data_directory" or "config_file" or "ident_file" or
                 "external_pid_file" or "port" or "listen_addresses" or "unix_socket_directories" or
-                "log_destination" or "logging_collector" or "event_source" or "include" or "include_dir" or "include_if_exists")
+                "event_source" or "include" or "include_dir" or "include_if_exists")
             {
                 throw new ArgumentException($"Ankus manages the PostgreSQL setting '{name}'. Use the port option to select a TCP port.", nameof(options));
             }
@@ -413,8 +413,6 @@ public sealed partial class PostgresDevelopmentCluster
         configuration.AppendLine(CultureInfo.InvariantCulture, $"port = {port}");
         configuration.AppendLine("listen_addresses = '127.0.0.1'");
         configuration.AppendLine("unix_socket_directories = ''");
-        configuration.AppendLine("log_destination = 'stderr'");
-        configuration.AppendLine("logging_collector = off");
         return configuration.ToString();
     }
 

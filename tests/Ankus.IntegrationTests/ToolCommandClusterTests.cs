@@ -187,6 +187,82 @@ public sealed partial class ToolCommandTests
         Assert.IsFalse(Directory.Exists(Path.Join(home, "clusters")));
     }
 
+    /// <summary>
+    /// <c>ankus start --postgresql-conf logging_collector=on</c> hands the server's output to PostgreSQL's logging
+    /// collector, which writes and rotates its own files, as <c>cargo pgrx start --postgresql-conf</c> allows.
+    /// </summary>
+    [RetryPortCollisionTestMethod]
+    public async Task ClusterStartsWithPostgresLogRotation()
+    {
+        CancellationToken token = context.CancellationToken;
+        string home = CreateDirectory();
+        var cluster = new PostgresDevelopmentCluster(s_installation, home);
+        using PortReservation reservation = PortReservation.Create();
+        int port = reservation.Port;
+        string[] start = ["start", "--home", home, "--pg", MajorText(), "--pg-config", s_installation.PgConfigPath,
+            "--port", port.ToString(CultureInfo.InvariantCulture), "--postgresql-conf", "logging_collector=on"];
+        reservation.Dispose();
+        try
+        {
+            ProcessResult started = await InvokeAsync(start, token).WaitAsync(TimeSpan.FromMinutes(2), token);
+            Assert.AreEqual(0, started.ExitCode, started.StandardError);
+            await using NpgsqlConnection connection = await OpenDevelopmentConnectionAsync(port, token);
+            await using var collector = new NpgsqlCommand("SHOW logging_collector", connection);
+            Assert.AreEqual("on", await collector.ExecuteScalarAsync(token));
+            await using var rotate = new NpgsqlCommand("SELECT pg_rotate_logfile()", connection);
+            Assert.IsTrue(Assert.IsInstanceOfType<bool>(await rotate.ExecuteScalarAsync(token)));
+            string marker = "ankus collector " + Guid.NewGuid().ToString("N");
+            await using var message = new NpgsqlCommand($"DO $test$ BEGIN RAISE LOG '{marker}'; END $test$", connection);
+            await message.ExecuteNonQueryAsync(token);
+            DateTime deadline = DateTime.UtcNow.AddSeconds(30);
+            while (!(await ReadCollectorLogAsync(cluster.DataDirectory, token)).Contains(marker, StringComparison.Ordinal))
+            {
+                Assert.IsLessThan(deadline, DateTime.UtcNow, "PostgreSQL's current log file never received the message.");
+                await Task.Delay(50, token);
+            }
+
+            string startupLog = (await File.ReadAllTextAsync(Path.Join(cluster.DataDirectory, ".ankus-log"), token)).Trim();
+            Assert.DoesNotContain(marker, await ReadSharedAsync(startupLog, token));
+        }
+        finally
+        {
+            await cluster.StopAsync(CancellationToken.None);
+        }
+    }
+
+    /// <summary>
+    /// Reads the stderr file PostgreSQL's logging collector names in <c>current_logfiles</c>.
+    /// </summary>
+    private static async Task<string> ReadCollectorLogAsync(string dataDirectory, CancellationToken token)
+    {
+        string current = Path.Join(dataDirectory, "current_logfiles");
+        if (!File.Exists(current))
+        {
+            return string.Empty;
+        }
+
+        foreach (string line in await File.ReadAllLinesAsync(current, token))
+        {
+            if (line.StartsWith("stderr ", StringComparison.Ordinal))
+            {
+                string path = line["stderr ".Length..];
+                return await ReadSharedAsync(Path.IsPathRooted(path) ? path : Path.Join(dataDirectory, path), token);
+            }
+        }
+
+        return string.Empty;
+    }
+
+    /// <summary>
+    /// Reads a file the server still holds open for writing, which Windows allows only with write sharing.
+    /// </summary>
+    private static async Task<string> ReadSharedAsync(string path, CancellationToken token)
+    {
+        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        using var reader = new StreamReader(stream);
+        return await reader.ReadToEndAsync(token);
+    }
+
     private static async Task<NpgsqlConnection> OpenDevelopmentConnectionAsync(int port, CancellationToken token)
     {
         var connection = new NpgsqlConnection(new NpgsqlConnectionStringBuilder
