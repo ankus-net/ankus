@@ -473,9 +473,12 @@ Each `start` also writes the path of the file the server writes to into
 `.ankus-log` in the data directory, as one line. That is the `.log` file, or on
 Windows the `.log.stderr.log` file Ankus combines with those events into the
 `.log` snapshot. Tools that follow a cluster's output, such as log tailers, can
-read the path there instead of depending on these names. Ankus keeps PostgreSQL's
-logging collector off so its commands can report the server's output, so the
-server does not write its own log files.
+read the path there instead of depending on these names. That file grows with
+every start. To have PostgreSQL write and rotate its own log files, pass
+`--postgresql-conf logging_collector=on` with any of PostgreSQL's other logging
+settings. The file above then only receives output from before the collector
+starts, and `current_logfiles` in the data directory names PostgreSQL's current
+file.
 
 Choose a different port or pass literal PostgreSQL settings when starting:
 
@@ -491,9 +494,9 @@ base. An already running server keeps its current settings and port, even when
 you change the saved base.
 `--timeout` changes the startup wait from 60 seconds, with a range of 1–600.
 
-Ankus manages data paths, loopback connection routing, and log routing,
-including `logging_collector`. Those settings and configuration include
-directives cannot be overridden through `--postgresql-conf`. `hba_file` can name
+Ankus manages data paths, loopback connection routing and, on Windows,
+`event_source`. Those settings and configuration include directives cannot be
+overridden through `--postgresql-conf`. `hba_file` can name
 your own `pg_hba.conf`; a relative path starts from the current directory. That
 file must let the `postgres` role connect from `127.0.0.1`, as Ankus does.
 Existing unowned or incompatible data directories are rejected.

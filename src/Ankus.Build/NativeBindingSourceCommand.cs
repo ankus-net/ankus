@@ -28,6 +28,8 @@ internal static class NativeBindingSourceCommand
             <AnalysisLevel>latest-recommended</AnalysisLevel>
             <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
             <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+            <!-- The companion restores only the SDK packs the consumer's own restore already audits under its policy. -->
+            <NuGetAudit>false</NuGetAudit>
             <MSTestAnalysisMode>All</MSTestAnalysisMode>
             <GenerateDocumentationFile>true</GenerateDocumentationFile>
             <EnableDefaultCompileItems>false</EnableDefaultCompileItems>

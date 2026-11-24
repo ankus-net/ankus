@@ -48,7 +48,8 @@ Value: [int?](https://learn.microsoft.com/dotnet/api/system.int32)
 ### Settings
 
 Gets PostgreSQL settings applied on this start. Values are literal configuration values, without surrounding quotes.
-Data, authentication, log routing, and connection locations are managed by Ankus.
+Data paths, connection locations and the Windows event source are managed by Ankus; logging settings, including
+<code>logging_collector</code>, are passed to PostgreSQL.
 
 ```csharp
 public IReadOnlyDictionary<string, string> Settings { get; init; }

@@ -452,6 +452,50 @@ public sealed class NativeBindingCompilationTests(TestContext context)
         }
     }
 
+    /// <summary>
+    /// A companion builds from cached packages when NuGet cannot reach a source for vulnerability data, as on a machine
+    /// without a network.
+    /// </summary>
+    [TestMethod]
+    public async Task CompiledCompanionsBuildWithoutVulnerabilityData()
+    {
+        string root = Directory.CreateTempSubdirectory("ankus-compiled-unaudited-").FullName;
+        try
+        {
+            string[] settings = await SettingsAsync(root);
+            NativeBindingRestoreSettings initial = await NativeBindingRestoreSettings.ReadAsync(settings[2], context.CancellationToken);
+            string configurationDirectory = Directory.CreateDirectory(Path.Join(root, "feed settings")).FullName;
+            string feed = Directory.CreateDirectory(Path.Join(configurationDirectory, "feed")).FullName;
+            string[] packages = [.. s_offlinePackages
+                .Select(package => Path.Join(initial.Packages, package)).Where(Directory.Exists)
+                .SelectMany(static directory => Directory.GetFiles(directory, "*.nupkg", SearchOption.AllDirectories))];
+            Assert.IsNotEmpty(packages);
+            foreach (string package in packages)
+            {
+                File.Copy(package, Path.Join(feed, Path.GetFileName(package)));
+            }
+
+            // Nothing listens on the discard port, so every vulnerability request fails at once.
+            string configurationPath = Path.Join(configurationDirectory, "unaudited.config");
+            await File.WriteAllTextAsync(configurationPath, """
+                <configuration>
+                  <packageSources><clear /><add key="offline" value="feed" /></packageSources>
+                  <auditSources><clear /><add key="unreachable" value="https://127.0.0.1:9/v3/index.json" /></auditSources>
+                </configuration>
+                """, context.CancellationToken);
+            string packagesDirectory = Path.Join(configurationDirectory, "packages");
+            settings = await SettingsAsync(root,
+                ["-property:RestoreConfigFile=" + configurationPath, "-property:RestorePackagesPath=" + packagesDirectory]);
+            string source = await SourceAsync(root, "consumer");
+            await NativeBindingCompilationCommand.RunAsync(Arguments(root, source, settings), context.CancellationToken);
+            Assert.AreEqual(41, Execute(Artifact(source)));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     private async Task<string[]> SettingsAsync(string root, string[]? restoreArguments = null)
     {
         await TestDotnetSdk.ConfigureAsync(root, context.CancellationToken);
