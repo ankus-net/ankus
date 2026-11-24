@@ -281,7 +281,13 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   audit off. A new test points `auditSources` at a closed port and builds a
   companion from a local feed; it failed with NU1900 and NU1905 before the
   change and passes after it. The third failure downloaded MSTest.Sdk for a new
-  consumer, which needs the network.
+  consumer, which needs the network. 0.2.32 shipped both changes (release run
+  45310136128). From nuget.org on Linux x64 with PostgreSQL 18.6, 0.2.31
+  rejected `ankus start --postgresql-conf logging_collector=on` and failed a new
+  extension's build with NU1905 in the binding project when its NuGet audit
+  source was unreachable; on 0.2.32 the server started with the collector on,
+  `pg_rotate_logfile()` returned true, and the same build passed. nuget.org
+  listed the seven packages about 7 minutes after publishing.
 - Development clusters wrote `logging_collector = off` and
   `log_destination = 'stderr'` and rejected both settings, so the single file
   `pg_ctl -l` writes grew without limit and PostgreSQL could not rotate its
