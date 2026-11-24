@@ -271,6 +271,17 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
 
 ## Active validation and work
 
+- A power outage on 2026-11-23 cut CI run 45292881030 for #225: the Linux and
+  Windows runners restarted mid-suite, and the MacBook lost DNS for about four
+  minutes. Two of its three macOS failures came from Ankus's generated binding
+  project, which restored with NuGet audit on and warnings as errors, so an
+  extension build failed with NU1900 whenever no source could supply
+  vulnerability data, even with every package cached. That project restores
+  only the SDK packs the consumer's own restore audits, so it now turns NuGet
+  audit off. A new test points `auditSources` at a closed port and builds a
+  companion from a local feed; it failed with NU1900 and NU1905 before the
+  change and passes after it. The third failure downloaded MSTest.Sdk for a new
+  consumer, which needs the network.
 - Development clusters wrote `logging_collector = off` and
   `log_destination = 'stderr'` and rejected both settings, so the single file
   `pg_ctl -l` writes grew without limit and PostgreSQL could not rotate its
