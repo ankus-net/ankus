@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <!-- Npgsql is explicitly approved for PostgreSQL integration tests. -->
-    <PackageVersion Include="Npgsql" Version="10.0.3" />
+    <PackageVersion Include="Npgsql" Version="11.0.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.9.0" />
     <PackageVersion Include="System.CommandLine" Version="3.0.0" />
