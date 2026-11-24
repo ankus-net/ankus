@@ -292,7 +292,9 @@ in the [evidence archive](docs/contributing/evidence/port-history.md#acceptance-
   through the tool, rotates with `pg_rotate_logfile()`, and finds a logged
   message in the file `current_logfiles` names and not in Ankus's file. On
   Linux x64 with PostgreSQL 18.6 it passes, with the existing cluster and
-  diagnostics tests.
+  diagnostics tests. #225's CI (45297252927) passed on Linux x64, Windows x64
+  and macOS ARM64, each job running all 1,415 build and 5,642 integration
+  tests with none failed.
 - Scheduled platform versions run 44559769049 lost one Windows/PostgreSQL 16.15
   case before its test body ran. One second after `initdb` shut the new cluster
   down, the server started, and its checkpointer exited with `FATAL: incorrect
