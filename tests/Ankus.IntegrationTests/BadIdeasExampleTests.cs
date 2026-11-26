@@ -50,7 +50,14 @@ public sealed class BadIdeasExampleTests(TestContext context)
             await Task.Delay(20, token);
         }
 
-        Assert.IsTrue(await ScalarAsync<bool>(administrator, $"SELECT pg_cancel_backend({backend})", token));
+        // pg_stat_activity reports the statement active from its Parse message, but PostgreSQL discards a cancel
+        // that arrives before it reads Execute, so a cancel can land too early to reach the loop.
+        while (!loop.IsCompleted)
+        {
+            Assert.IsTrue(await ScalarAsync<bool>(administrator, $"SELECT pg_cancel_backend({backend})", token));
+            await Task.WhenAny(loop, Task.Delay(500, token));
+        }
+
         PostgresException canceled = await Assert.ThrowsExactlyAsync<PostgresException>(() => loop);
         Assert.AreEqual("57014", canceled.SqlState, canceled.MessageText);
     });
